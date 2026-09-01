@@ -15,4 +15,4 @@ class Insumo(ModeloBase):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     nombre: Mapped[str] = mapped_column(index=True)
-    tipo: Mapped[UnidadMedida] = mapped_column()  
+    medida: Mapped[UnidadMedida] = mapped_column()  
