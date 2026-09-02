@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_validator
-from src.insumos.models import TipoInsumo
+from src.insumos.models import UnidadMedida
 from src.insumos import exceptions
 
 

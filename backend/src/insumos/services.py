@@ -10,8 +10,11 @@ from src.insumos import schemas, exceptions
 
 def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> schemas.Insumo:
     _insumo = Insumo(**insumo.model_dump())
-    db.add(_insumo)
-    db.commit()
+    try:
+        db.add(_insumo)
+        db.commit()
+    except:
+        raise exceptions.NombreDuplicado()
     db.refresh(_insumo)
     return _insumo
 
