@@ -16,6 +16,13 @@ function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
   console.log(insumo);
 }
 
+function handleGuardar(){
+
+  //Logica del backend para guardar el insumo
+}
+
+
+
 return (
   <div className="contenedor-formulario">
     <h1>Nuevo Insumo</h1>
@@ -40,7 +47,7 @@ return (
       </div>
 
       <div className="ContenedorBotones">
-        <button className="boton boton-guardar" type="submit">Guardar</button>
+        <button onClick={handleGuardar} className="boton boton-guardar" type="submit">Guardar</button>
         <button className="boton boton-cancelar" type="button" onClick={() => setInsumo({ nombre: "", unidad_medida: "" })}>Cancelar</button>
       </div>
 
