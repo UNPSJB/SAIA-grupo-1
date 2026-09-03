@@ -28,7 +28,16 @@ class InsumoCreate(InsumoBase):
 
 
 class InsumoUpdate(InsumoBase):
-    pass
+    nombre: Optional[str] = None
+    lote: Optional[str] = None
+    fechaRecibido: Optional[datetime] = None
+    fechaVencimiento: Optional[datetime] = None
+    cantRecibida: Optional[float] = None
+    stock: Optional[float] = None
+    medida: Optional[UnidadMedida] = None
+    
+class InsumoUpdateStock(InsumoBase):
+    stock = float
 
 
 class Insumo(InsumoBase):

@@ -31,11 +31,13 @@ def modificar_insumo(
     db: Session, insumo_id: int, insumo: schemas.InsumoUpdate
 ) -> Insumo:
     db_insumo = leer_insumo(db, insumo_id)
-    db.execute(update(Insumo)
-               .where(Insumo.id == insumo_id)
-               .values(**insumo.model_dump()))
-    db.commit()
-    db.refresh(db_insumo)
+    datos_actualizados = insumo.model_dump(exclude_unset=True)
+    if datos_actualizados:
+        db.execute(update(Insumo)
+                .where(Insumo.id == insumo_id)
+                .values(**datos_actualizados))
+        db.commit()
+        db.refresh(db_insumo)
     return db_insumo
 
 
@@ -47,13 +49,12 @@ def eliminar_insumo(db: Session, insumo_id: int) -> schemas.InsumoDelete:
     db.commit()
     return db_insumo
 
-def modificar_insumo_stock(
-    db: Session, insumo_id: int, insumo: schemas.InsumoUpdate
+def modificar_stock(
+    db: Session, insumo_id: int, datos_stock: schemas.InsumoUpdateStock
 ) -> Insumo:
     db_insumo = leer_insumo(db, insumo_id)
-    db.execute(update(Insumo)
-               .where(Insumo.id == insumo_id)
-               .values(**insumo.model_dump()))
+    nuevo_stock = db_insumo.stock + datos_stock.cantidad
+    db_insumo.stock = nuevo_stock
     db.commit()
     db.refresh(db_insumo)
     return db_insumo

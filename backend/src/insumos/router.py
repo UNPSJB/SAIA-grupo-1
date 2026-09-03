@@ -23,7 +23,7 @@ def read_insumo(insumo_id: int, db: Session = Depends(get_db)):
     return services.leer_insumo(db, insumo_id)
 
 
-@router.put("/{insumo_id}", response_model=schemas.Insumo)
+@router.patch("/{insumo_id}", response_model=schemas.Insumo)
 def update_insumo(
     insumo_id: int, insumo: schemas.InsumoUpdate, db: Session = Depends(get_db)
 ):
@@ -34,8 +34,8 @@ def update_insumo(
 def delete_insumo(insumo_id: int, db: Session = Depends(get_db)):
     return services.eliminar_insumo(db, insumo_id)
 
-@router.put("/Stock/{insumo_id}", response_model=schemas.Insumo)
+@router.put("/{insumo_id}/stock", response_model=schemas.Insumo)
 def update_insumo(
-    insumo_id: int, insumo: schemas.InsumoStockUpdate, db: Session = Depends(get_db)
+    insumo_id: int, insumo: schemas.InsumoUpdateStock, db: Session = Depends(get_db)
 ):
-    return services.modificar_insumo(db, insumo_id, insumo)
+    return services.modificar_stock(db, insumo_id, insumo)
