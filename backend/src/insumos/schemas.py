@@ -6,6 +6,11 @@ from src.insumos import exceptions
 
 class InsumoBase(BaseModel):
     nombre: str
+    lote: str
+    fechaRecibido: datetime
+    fechaVencimiento: Optional(datetime)
+    cantRecibida: int
+    stock: int
     medida: UnidadMedida
 
     @field_validator(
@@ -28,8 +33,6 @@ class InsumoUpdate(InsumoBase):
 
 class Insumo(InsumoBase):
     id: int
-    nombre: str
-    medida: UnidadMedida
     model_config = ConfigDict(from_attributes = True)
 
 

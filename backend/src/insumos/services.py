@@ -10,11 +10,8 @@ from src.insumos import schemas, exceptions
 
 def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> schemas.Insumo:
     _insumo = Insumo(**insumo.model_dump())
-    try:
-        db.add(_insumo)
-        db.commit()
-    except:
-        raise exceptions.NombreDuplicado()
+    db.add(_insumo)
+    db.commit()
     db.refresh(_insumo)
     return _insumo
 
@@ -48,4 +45,15 @@ def eliminar_insumo(db: Session, insumo_id: int) -> schemas.InsumoDelete:
         delete(Insumo).where(Insumo.id == insumo_id)
     )
     db.commit()
+    return db_insumo
+
+def modificar_insumo_stock(
+    db: Session, insumo_id: int, insumo: schemas.InsumoUpdate
+) -> Insumo:
+    db_insumo = leer_insumo(db, insumo_id)
+    db.execute(update(Insumo)
+               .where(Insumo.id == insumo_id)
+               .values(**insumo.model_dump()))
+    db.commit()
+    db.refresh(db_insumo)
     return db_insumo
