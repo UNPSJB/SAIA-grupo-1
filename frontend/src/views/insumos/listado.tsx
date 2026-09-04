@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { InsumoConId } from "./tipos";
-import '../../styles/listado.css';
+import '../../styles/formularioAlta.css';
 
 interface ListadoInsumosProps {
   onNuevoClick?: () => void;
@@ -89,7 +89,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({ onNuevoClick }) 
               insumos.map((i) => (
                 <tr key={i.id}>
                   <td>{i.nombre}</td>
-                  <td>{i.unidad_medida}</td>
+                  <td>{i.medida}</td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button className="btn-icon" title="Ver detalles">

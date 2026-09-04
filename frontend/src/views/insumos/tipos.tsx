@@ -1,6 +1,11 @@
 export interface Insumo {
   nombre: string;
-  unidad_medida: string;
+  lote: string;
+  fechaRecepcion: string;
+  fechaVencimiento?: string;
+  cantRecibida: number;
+  stock: number;
+  medida: string;
 }
 
 export interface InsumoConId extends Insumo {
