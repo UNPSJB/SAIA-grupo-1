@@ -4,6 +4,7 @@
 // import viteLogo from './assets/vite.svg'
 import './App.css'
 import NuevoInsumo from './views/insumos/nuevoInsumo'
+import { ListadoInsumos } from './views/insumos/listado'
 
 
 function App() {
@@ -119,8 +120,8 @@ function App() {
     //   <section id="spacer"></section>
     // </>
 
-    <NuevoInsumo />
-
+    // <NuevoInsumo />
+    <ListadoInsumos/>
   )
 }
 
