@@ -1,0 +1,83 @@
+.contenedor-formulario{
+  display: flex;
+  flex-direction: column;
+  place-content: center;
+  place-items: center;
+  flex-grow: 1;
+  text-align: left;
+}
+
+.contenedor-formulario > * {
+  width: 100%;
+  max-width: 380px;
+}
+
+.contenedor-formulario h1 {
+  font-size: 32px;
+  letter-spacing: normal;
+  margin: 0 0 4px;
+}
+
+h3{
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0 0 32px;
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.contenedorDato {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.contenedorDato label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.contenedorSelect, .contenedorInput{
+    background: var(--code-bg);
+    border: none;
+    border-radius: 10px;
+    width: 100%;
+    padding: 14px 16px;
+    box-sizing: border-box;
+    text-align: center;
+    font: inherit;
+}
+
+.ContenedorBotones{
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.boton {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.boton-guardar {
+  background: var(--text-h);
+  color: var(--bg);
+}
+
+.boton-cancelar {
+  background: transparent;
+  color: var(--text-h);
+  border-color: var(--text-h);
+}
