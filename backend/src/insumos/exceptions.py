@@ -11,3 +11,6 @@ class UnidadMedidaInvalida(ValueError):
         posibles_unidades = ", ".join(posibles_unidades)
         message = f"{ErrorCode.UNIDAD_MEDIDA_INVALIDA} {posibles_unidades}."
         super().__init__(message)
+        
+class NombreInsumoVacio(BadRequest):
+    DETAIL = ErrorCode.NOMBRE_VACIO

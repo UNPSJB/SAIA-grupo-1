@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import Optional
+from datetime import datetime
 from enum import auto, StrEnum
 from src.models import ModeloBase
 
@@ -18,7 +20,7 @@ class Insumo(ModeloBase):
     nombre: Mapped[str] = mapped_column(index=True, unique=True)
     lote: Mapped[str] = mapped_column(index=True)
     fechaRecepcion: Mapped[datetime] = mapped_column(index=True)
-    fechaVencimiento: Optional[datetime] = mapped_column(index=True)
-    cantInicial: Mapped[float] = mapped_column()
+    fechaVencimiento: Mapped[Optional[datetime]] = mapped_column(index=True)
+    cantRecibida: Mapped[float] = mapped_column()
     stock: Mapped[float] = mapped_column()
     medida: Mapped[UnidadMedida] = mapped_column(index=True)  

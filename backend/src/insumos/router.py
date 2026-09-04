@@ -34,8 +34,8 @@ def update_insumo(
 def delete_insumo(insumo_id: int, db: Session = Depends(get_db)):
     return services.eliminar_insumo(db, insumo_id)
 
-@router.put("/{insumo_id}/stock", response_model=schemas.Insumo)
-def update_insumo(
+@router.patch("/{insumo_id}/stock", response_model=schemas.Insumo)
+def update_insumo_stock(
     insumo_id: int, insumo: schemas.InsumoUpdateStock, db: Session = Depends(get_db)
 ):
     return services.modificar_stock(db, insumo_id, insumo)

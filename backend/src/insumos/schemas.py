@@ -1,16 +1,17 @@
 from pydantic import BaseModel, ConfigDict, field_validator
+from typing import Optional
 from src.insumos.models import UnidadMedida
 from src.insumos import exceptions
-
+from datetime import datetime
 
 
 class InsumoBase(BaseModel):
     nombre: str
     lote: str
-    fechaRecibido: datetime
-    fechaVencimiento: Optional(datetime)
-    cantRecibida: int
-    stock: int
+    fechaRecepcion: datetime
+    fechaVencimiento: Optional[datetime] = None
+    cantRecibida: float
+    stock: float
     medida: UnidadMedida
 
     @field_validator(
@@ -18,26 +19,32 @@ class InsumoBase(BaseModel):
     )
     @classmethod
     def is_valid_medida_insumo(cls, v: str) -> str:
-        if v.lower() not in UnidadMedida:
-            raise exceptions.UnidadMedidaInvalida(list(UnidadMedida))
-        return v.lower()
+        if isinstance(v, UnidadMedida):
+            return v
+        
+        if isinstance(v, str):
+            val_upper = v.upper()
+            if val_upper in UnidadMedida.__members__:
+                return UnidadMedida[val_upper]
+                
+        raise exceptions.UnidadMedidaInvalida(list(UnidadMedida))
 
 
 class InsumoCreate(InsumoBase):
     pass
 
 
-class InsumoUpdate(InsumoBase):
+class InsumoUpdate(BaseModel):
     nombre: Optional[str] = None
     lote: Optional[str] = None
-    fechaRecibido: Optional[datetime] = None
+    fechaRecepcion: Optional[datetime] = None
     fechaVencimiento: Optional[datetime] = None
     cantRecibida: Optional[float] = None
     stock: Optional[float] = None
     medida: Optional[UnidadMedida] = None
     
-class InsumoUpdateStock(InsumoBase):
-    stock = float
+class InsumoUpdateStock(BaseModel):
+    stock: float
 
 
 class Insumo(InsumoBase):
@@ -45,5 +52,5 @@ class Insumo(InsumoBase):
     model_config = ConfigDict(from_attributes = True)
 
 
-class InsumoDelete(InsumoBase):
+class InsumoDelete(BaseModel):
     id: int

@@ -8,7 +8,9 @@ from src.insumos import schemas, exceptions
 # operaciones CRUD para Insumo
 
 
-def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> schemas.Insumo:
+def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> Insumo:
+    if not insumo.nombre or insumo.nombre.strip() == "":
+        raise exceptions.NombreInsumoVacio()
     _insumo = Insumo(**insumo.model_dump())
     db.add(_insumo)
     db.commit()
@@ -16,7 +18,7 @@ def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> schemas.Insumo:
     return _insumo
 
 
-def listar_insumos(db: Session) -> List[schemas.Insumo]:
+def listar_insumos(db: Session) -> List[Insumo]:
     return db.scalars(select(Insumo)).all()
 
 
@@ -32,6 +34,11 @@ def modificar_insumo(
 ) -> Insumo:
     db_insumo = leer_insumo(db, insumo_id)
     datos_actualizados = insumo.model_dump(exclude_unset=True)
+    if "nombre" in datos_actualizados:
+        nombre_val = datos_actualizados["nombre"]
+        if nombre_val is None or nombre_val.strip() == "":
+            raise exceptions.NombreInsumoVacio()
+        
     if datos_actualizados:
         db.execute(update(Insumo)
                 .where(Insumo.id == insumo_id)
@@ -41,7 +48,7 @@ def modificar_insumo(
     return db_insumo
 
 
-def eliminar_insumo(db: Session, insumo_id: int) -> schemas.InsumoDelete:
+def eliminar_insumo(db: Session, insumo_id: int) -> Insumo:
     db_insumo = leer_insumo(db, insumo_id)
     db.execute(
         delete(Insumo).where(Insumo.id == insumo_id)
@@ -53,7 +60,7 @@ def modificar_stock(
     db: Session, insumo_id: int, datos_stock: schemas.InsumoUpdateStock
 ) -> Insumo:
     db_insumo = leer_insumo(db, insumo_id)
-    nuevo_stock = db_insumo.stock + datos_stock.cantidad
+    nuevo_stock = db_insumo.stock + datos_stock.stock
     db_insumo.stock = nuevo_stock
     db.commit()
     db.refresh(db_insumo)
