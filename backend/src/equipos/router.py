@@ -9,22 +9,22 @@ router = APIRouter(prefix="/equipos", tags=["equipos"])
 
 
 
-@router.post("/equipos", response_model=schemas.Equipo)
+@router.post("/", response_model=schemas.Equipo)
 async def create_equipo(equipo: schemas.EquipoCreate, db: Session = Depends(get_db)):
     return services.crear_equipo(db, equipo)
 
-@router.get("/equipos", response_model=list[schemas.Equipo])
+@router.get("/", response_model=list[schemas.Equipo])
 async def read_equipos(db: Session = Depends(get_db)):
     return services.listar_equipos(db)
 
-@router.get("/equipos/{equipo_id}", response_model=schemas.Equipo)
+@router.get("/{equipo_id}", response_model=schemas.Equipo)
 async def read_equipo(equipo_id: int, db: Session = Depends(get_db)):
     return services.obtener_equipo(db, equipo_id)
 
-@router.put("/equipos/{equipo_id}", response_model=schemas.Equipo)
+@router.put("/{equipo_id}", response_model=schemas.Equipo)
 async def editar_equipo(equipo_id: int, equipo: schemas.EquipoUpdate, db: Session = Depends(get_db)):
     return services.editar_equipo(db, equipo_id, equipo)
 
-@router.delete("/equipos/{equipo_id}", response_model=schemas.Equipo)
+@router.delete("/{equipo_id}", response_model=schemas.Equipo)
 async def eliminar_equipo(equipo_id: int, db: Session = Depends(get_db)):
     return services.eliminar_equipo(db, equipo_id)
