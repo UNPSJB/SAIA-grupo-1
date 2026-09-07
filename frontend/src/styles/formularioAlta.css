@@ -1,11 +1,16 @@
 .modulo-container {
   max-width: 900px;
-  margin: 2.5rem auto;
+  margin: 2.5rem 0 2.5rem 2.5rem; /* Alineado a la izquierda */
   padding: 0 1.5rem;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #2b2b2b;
 }
 
+.formulario-box {
+  max-width: 420px; /* Ancho ajustado a la tarjeta de la imagen */
+  margin-left: 0;
+  margin-right: auto;
+}
 
 .modulo-header {
   margin-bottom: 2rem;

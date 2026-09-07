@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Persona, TipoCapacidad } from './tipos';
+import type { PersonaCreate, TipoCapacidad } from './tipos';
 import '../../styles/formularioAlta.css';
 
 interface NuevaPersonaProps {
@@ -10,13 +10,12 @@ interface NuevaPersonaProps {
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel }) => {
-  const [formData, setFormData] = useState<Omit<Persona, 'id'>>({
-    legajo: '',
+  const [formData, setFormData] = useState<PersonaCreate>({
     documento: '',
     nombre: '',
     apellido: '',
     email: '',
-    capacidades: ['operar'], // Por defecto al menos una seleccionada
+    capacidades: ['operar'],
   });
 
   const [loading, setLoading] = useState(false);
@@ -28,7 +27,6 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Manejador para permitir una o ambas capacidades
   const handleCapacidadChange = (capacidad: TipoCapacidad) => {
     setFormData((prev) => {
       const yaExiste = prev.capacidades.includes(capacidad);
@@ -49,33 +47,36 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
     setSuccessMsg(null);
 
     if (
-      !formData.legajo.trim() ||
       !formData.documento.trim() ||
       !formData.nombre.trim() ||
       !formData.apellido.trim() ||
       !formData.email.trim()
     ) {
-      setErrorMsg('Por favor complete todos los datos.');
+      setErrorMsg('Por favor complete todos los campos obligatorios.');
       return;
     }
 
     if (formData.capacidades.length === 0) {
-      setErrorMsg('Debe asignar al menos una capacidad (operar, administrar o ambas).');
+      setErrorMsg('Debe asignar al menos una capacidad.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/personas/`, {
+      // Usamos /personas (sin slash final para evitar redirecciones 307 de FastAPI)
+      const response = await fetch(`${API_URL}/personas`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Error al guardar la persona.');
+        throw new Error(errorData.detail || `Error del servidor (${response.status})`);
       }
 
       setSuccessMsg('Persona dada de alta exitosamente.');
@@ -84,7 +85,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
       if (err instanceof Error) {
         setErrorMsg(err.message);
       } else {
-        setErrorMsg('Error de conexión con el servidor.');
+        setErrorMsg('No se pudo conectar con el servidor. Verifique si el backend está activo y el CORS habilitado.');
       }
     } finally {
       setLoading(false);
@@ -103,25 +104,12 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="legajo">Legajo</label>
-          <input
-            id="legajo"
-            name="legajo"
-            type="text"
-            placeholder="Introduce el legajo"
-            value={formData.legajo}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
           <label htmlFor="documento">Documento</label>
           <input
             id="documento"
             name="documento"
             type="text"
-            placeholder="Introduce el documento (DNI)"
+            placeholder="Introduce el documento"
             value={formData.documento}
             onChange={handleChange}
             required
@@ -167,7 +155,6 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
           />
         </div>
 
-        {/* Sección de capacidades con soporte para una o ambas */}
         <div className="form-group">
           <label>Capacidades asignadas</label>
           <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.4rem' }}>
