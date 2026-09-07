@@ -5,11 +5,12 @@ import '../styles/formularioAlta.css';
 interface ListadoEquiposProps {
     onNuevoClick: () => void;
     onDetalleClick: (id: number) => void;
+    onEditarClick: (id:number) => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, onDetalleClick }) => {
+export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, onDetalleClick, onEditarClick }) => {
     const [equipos, setEquipos] = useState<EquipoConId[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -101,7 +102,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, on
                                     <button className="btn-icon" title="Ver detalles" onClick={() => onDetalleClick(i.id)}>
                                         👁
                                     </button>
-                                    <button className="btn-icon" title="Editar">
+                                    <button className="btn-icon" title="Editar" onClick={() => onEditarClick(i.id)}>
                                         ✎
                                     </button>
                                     <button className="btn-icon" title="Eliminar" onClick={() => handleEliminar(i.id)}>
