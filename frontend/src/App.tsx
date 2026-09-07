@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import NuevoEquipo from './viewEquipos/nuevoEquipo'
-import {DetalleEquipo} from './viewEquipos/verDetalle'
+import {DetalleEquipo} from './viewEquipos/VerDetalle'
 import EditarEquipo from './viewEquipos/editarDetalle'
 import { ListadoEquipos } from './viewEquipos/listado'
 

@@ -92,7 +92,7 @@ return(
     <div className="modulo-container formulario-box">
         <div className="modulo-header">
             <h1>Editar Equipo</h1>
-            <div className="subtitulo">03 . Editar</div>
+            <div className="subtitulo">Editar Equipo: {equipoId}</div>
         </div>
 
         {errorMsg && <div className="alerta-error">{errorMsg}</div>}

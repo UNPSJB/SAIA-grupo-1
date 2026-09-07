@@ -35,55 +35,61 @@ export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId
 
     return (
         <div className="modulo-container">
-            <div className="listado-top-bar">
+
               <div className="modulo-header">
                 <h1>Detalle de Equipo</h1>
                 <div className="subtitulo">Equipo:{equipoId}</div>
                 </div>
-         </div>
 
-         <div className="tabla-wrapper">
-            <table className="tabla-custom">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Categoria</th>
-                        <th>Ubicación</th>
-                        <th>Plan de Limpieza</th>
-                        <th>Plan de Calibración</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {loading ? (
+         {loading ? (
                         <tr>
                             <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
                                 Cargando equipo...
                             </td>
                         </tr>
-                    ) : equipo ? (
-                        <tr>
-                            <td>{equipo.nombre}</td>
-                            <td>{equipo.categoria}</td>
-                            <td>{equipo.ubicacion}</td>
-                            <td>{equipo.plan_de_Limpieza}</td>
-                            <td>{equipo.plan_de_calibracion}</td>
-                        </tr>
-                    ) : (
-                        <tr>
-                            <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
-                                El equipo no existe.
-                            </td>
-                        </tr>
-                    )}
-                                   <div className="form-acciones"> 
-                                    <button type="button"  className="btn-cancelar" onClick={onCancel}>
-                                            Volver
-                                    </button>
-                                  </div>
-                </tbody>
-            </table>
-         </div>
-        </div>
-    );
+        ) : equipo ? (
+        <form>
+            <div className="form-group">
+                <label htmlFor="nombre">Nombre</label>
+                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.nombre}</td>
+            </div>
+            <div className="form-group">
+                <label htmlFor="categoria">Categoría:</label>
+                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.categoria}</td>
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="ubicacion">Ubicación</label>
+                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.ubicacion}</td>
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="plan_de_Limpieza">Plan de Limpieza</label>
+                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.plan_de_Limpieza}</td>
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="plan_de_calibracion">Plan de Calibración</label>
+                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.plan_de_calibracion}</td>
+            </div>
+        </form>
+        ) : (
+                <tr>
+                     <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
+                             El equipo no existe.
+                        </td>
+                </tr>
+                )}
+
+                <div className="form-acciones"> 
+                    <button type="button"  className="btn-cancelar" onClick={onCancel}>
+                         Volver
+                    </button>
+                </div>
+        
+    </div>
+    
+        
+)
 
 };
