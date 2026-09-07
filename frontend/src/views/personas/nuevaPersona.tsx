@@ -1,188 +1,192 @@
-import React, { useState, useEffect } from 'react';
-import type { Persona, PersonaCreate, TipoCapacidad } from './tipos';
+import React, { useState } from 'react';
+import type { Persona, TipoCapacidad } from './tipos';
 import '../../styles/formularioAlta.css';
 
 interface NuevaPersonaProps {
-  persona?: Persona | null;
-  modoSoloLectura?: boolean;
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export const NuevaPersona: React.FC<NuevaPersonaProps> = ({
-  persona,
-  modoSoloLectura = false,
-  onSuccess,
-  onCancel,
-}) => {
-  const [documento, setDocumento] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [apellido, setApellido] = useState('');
-  const [email, setEmail] = useState('');
-  const [operar, setOperar] = useState(false);
-  const [administrar, setAdministrar] = useState(false);
+export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel }) => {
+  const [formData, setFormData] = useState<Omit<Persona, 'id'>>({
+    legajo: '',
+    documento: '',
+    nombre: '',
+    apellido: '',
+    email: '',
+    capacidades: ['operar'], // Por defecto al menos una seleccionada
+  });
 
-  const [mensaje, setMensaje] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [guardando, setGuardando] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (persona) {
-      setDocumento(persona.documento || '');
-      setNombre(persona.nombre || '');
-      setApellido(persona.apellido || '');
-      setEmail(persona.email || '');
-      setOperar(persona.capacidades?.includes('operar') || false);
-      setAdministrar(persona.capacidades?.includes('administrar') || false);
-    } else {
-      setDocumento('');
-      setNombre('');
-      setApellido('');
-      setEmail('');
-      setOperar(true);
-      setAdministrar(false);
-    }
-  }, [persona]);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Manejador para permitir una o ambas capacidades
+  const handleCapacidadChange = (capacidad: TipoCapacidad) => {
+    setFormData((prev) => {
+      const yaExiste = prev.capacidades.includes(capacidad);
+      const nuevasCapacidades = yaExiste
+        ? prev.capacidades.filter((c) => c !== capacidad)
+        : [...prev.capacidades, capacidad];
+
+      return {
+        ...prev,
+        capacidades: nuevasCapacidades,
+      };
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (modoSoloLectura) return;
+    setErrorMsg(null);
+    setSuccessMsg(null);
 
-    setError(null);
-    setMensaje(null);
-
-    const capacidades: TipoCapacidad[] = [];
-    if (operar) capacidades.push('operar');
-    if (administrar) capacidades.push('administrar');
-
-    if (capacidades.length === 0) {
-      setError('Debes seleccionar al menos una capacidad.');
+    if (
+      !formData.legajo.trim() ||
+      !formData.documento.trim() ||
+      !formData.nombre.trim() ||
+      !formData.apellido.trim() ||
+      !formData.email.trim()
+    ) {
+      setErrorMsg('Por favor complete todos los datos.');
       return;
     }
 
-    const payload: PersonaCreate = {
-      documento,
-      nombre,
-      apellido,
-      email,
-      capacidades,
-    };
+    if (formData.capacidades.length === 0) {
+      setErrorMsg('Debe asignar al menos una capacidad (operar, administrar o ambas).');
+      return;
+    }
 
-    setGuardando(true);
+    setLoading(true);
 
     try {
-      const url = persona
-        ? `${API_URL}/personas/${persona.legajo}`
-        : `${API_URL}/personas/`;
-      const method = persona ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
+      const response = await fetch(`${API_URL}/personas/`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(formData),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || 'Error al guardar los datos.');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Error al guardar la persona.');
       }
 
-      setMensaje(persona ? 'Persona actualizada con éxito.' : 'Persona creada con éxito.');
-      setTimeout(() => {
-        onSuccess();
-      }, 500);
+      setSuccessMsg('Persona dada de alta exitosamente.');
+      if (onSuccess) onSuccess();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error inesperado.');
+      if (err instanceof Error) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg('Error de conexión con el servidor.');
+      }
     } finally {
-      setGuardando(false);
+      setLoading(false);
     }
   };
 
-  const titulo = modoSoloLectura
-    ? 'Detalle de Persona'
-    : persona
-    ? 'Editar Persona'
-    : 'Nueva Persona';
-
   return (
-    <div className="modulo-container">
+    <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>{titulo}</h1>
+        <h1>Nueva Persona</h1>
         <div className="subtitulo">02 · Formulario</div>
       </div>
 
-      {error && <div className="alerta-error">{error}</div>}
-      {mensaje && <div className="alerta-exito">{mensaje}</div>}
+      {errorMsg && <div className="alerta-error">{errorMsg}</div>}
+      {successMsg && <div className="alerta-exito">{successMsg}</div>}
 
-      <form onSubmit={handleSubmit} className="formulario-box">
+      <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label>Documento</label>
+          <label htmlFor="legajo">Legajo</label>
           <input
+            id="legajo"
+            name="legajo"
             type="text"
-            placeholder="Introduce el documento"
-            value={documento}
-            disabled={modoSoloLectura}
-            onChange={(e) => setDocumento(e.target.value)}
+            placeholder="Introduce el legajo"
+            value={formData.legajo}
+            onChange={handleChange}
             required
           />
         </div>
 
         <div className="form-group">
-          <label>Nombre</label>
+          <label htmlFor="documento">Documento</label>
           <input
+            id="documento"
+            name="documento"
+            type="text"
+            placeholder="Introduce el documento (DNI)"
+            value={formData.documento}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="nombre">Nombre</label>
+          <input
+            id="nombre"
+            name="nombre"
             type="text"
             placeholder="Introduce el nombre"
-            value={nombre}
-            disabled={modoSoloLectura}
-            onChange={(e) => setNombre(e.target.value)}
+            value={formData.nombre}
+            onChange={handleChange}
             required
           />
         </div>
 
         <div className="form-group">
-          <label>Apellido</label>
+          <label htmlFor="apellido">Apellido</label>
           <input
+            id="apellido"
+            name="apellido"
             type="text"
             placeholder="Introduce el apellido"
-            value={apellido}
-            disabled={modoSoloLectura}
-            onChange={(e) => setApellido(e.target.value)}
+            value={formData.apellido}
+            onChange={handleChange}
             required
           />
         </div>
 
         <div className="form-group">
-          <label>Email</label>
+          <label htmlFor="email">Email</label>
           <input
+            id="email"
+            name="email"
             type="email"
-            placeholder="Introduce el email"
-            value={email}
-            disabled={modoSoloLectura}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Introduce el correo electrónico"
+            value={formData.email}
+            onChange={handleChange}
             required
           />
         </div>
 
+        {/* Sección de capacidades con soporte para una o ambas */}
         <div className="form-group">
-          <label>Capacidades</label>
-          <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.3rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: modoSoloLectura ? 'default' : 'pointer' }}>
+          <label>Capacidades asignadas</label>
+          <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.4rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: 'normal' }}>
               <input
                 type="checkbox"
-                checked={operar}
-                disabled={modoSoloLectura}
-                onChange={(e) => setOperar(e.target.checked)}
+                checked={formData.capacidades.includes('operar')}
+                onChange={() => handleCapacidadChange('operar')}
+                style={{ width: 'auto' }}
               />
               Operar
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: modoSoloLectura ? 'default' : 'pointer' }}>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: 'normal' }}>
               <input
                 type="checkbox"
-                checked={administrar}
-                disabled={modoSoloLectura}
-                onChange={(e) => setAdministrar(e.target.checked)}
+                checked={formData.capacidades.includes('administrar')}
+                onChange={() => handleCapacidadChange('administrar')}
+                style={{ width: 'auto' }}
               />
               Administrar
             </label>
@@ -190,14 +194,14 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({
         </div>
 
         <div className="form-acciones">
-          {!modoSoloLectura && (
-            <button type="submit" className="btn-guardar" disabled={guardando}>
-              {guardando ? 'Guardando...' : 'Guardar'}
+          <button type="submit" className="btn-guardar" disabled={loading}>
+            {loading ? 'Guardando...' : 'Guardar'}
+          </button>
+          {onCancel && (
+            <button type="button" onClick={onCancel} className="btn-cancelar">
+              Cancelar
             </button>
           )}
-          <button type="button" onClick={onCancel} className="btn-cancelar">
-            {modoSoloLectura ? 'Volver' : 'Cancelar'}
-          </button>
         </div>
       </form>
     </div>
