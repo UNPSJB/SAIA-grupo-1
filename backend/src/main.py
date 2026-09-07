@@ -1,43 +1,24 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from src.database import engine
 from src.models import ModeloBase
-
-# Importamos la configuración validada por Pydantic
-from src.config import settings
-
-# Importamos configuracion de logger
-from src.logger import setup_logging
-
-# Importamos los routers desde nuestros modulos
 from src.personal.router import router as personal_router
-from fastapi.middleware.cors import CORSMiddleware
 
-ENV = settings.ENV.upper()
-ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
+ModeloBase.metadata.create_all(bind=engine)
 
-setup_logging()
-
-@asynccontextmanager
-async def db_creation_lifespan(app: FastAPI):
-    ModeloBase.metadata.create_all(bind=engine)
-    yield
-
-
-app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
-
-origins = [
-    "http://localhost:5173", # para recibir requests desde app React (puerto: 5173)
-]
+app = FastAPI(title="SAIA API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"], # Permite cualquier origen local
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Monta el router
+app.include_router(personal_router, prefix="/personas")
 
-# asociamos los routers a nuestra app
-app.include_router(personal_router)
+@app.get("/")
+def root():
+    return {"message": "API SAIA OK"}
