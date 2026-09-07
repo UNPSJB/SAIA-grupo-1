@@ -30,19 +30,19 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({ onNuevoClick }
     }
   };
 
-  const handleEliminar = async (id?: number) => {
-    if (!id) return;
-    if (!window.confirm('¿Seguro que desea eliminar a esta persona?')) return;
+  const handleEliminar = async (legajo?: number) => {
+  if (!legajo) return;
+  if (!window.confirm(`¿Seguro que desea eliminar a la persona con legajo ${legajo}?`)) return;
 
-    try {
-      const res = await fetch(`${API_URL}/personas/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setPersonas((prev) => prev.filter((p) => p.id !== id));
-      }
-    } catch {
-      alert('No se pudo eliminar la persona');
+  try {
+    const res = await fetch(`${API_URL}/personas/${legajo}`, { method: 'DELETE' });
+    if (res.ok) {
+      setPersonas((prev) => prev.filter((p) => p.legajo !== legajo));
     }
-  };
+  } catch {
+    alert('No se pudo eliminar la persona');
+  }
+};
 
   useEffect(() => {
     fetchPersonas();
@@ -90,7 +90,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({ onNuevoClick }
               </tr>
             ) : (
               personas.map((p) => (
-                <tr key={p.id || p.legajo}>
+                <tr key={p.legajo || p.legajo}>
                   <td>{p.legajo}</td>
                   <td>{p.documento}</td>
                   <td>{`${p.apellido}, ${p.nombre}`}</td>
@@ -111,7 +111,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({ onNuevoClick }
                       <button
                         className="btn-icon"
                         title="Eliminar"
-                        onClick={() => handleEliminar(p.id)}
+                        onClick={() => handleEliminar(p.legajo)}
                       >
                         🗑
                       </button>
