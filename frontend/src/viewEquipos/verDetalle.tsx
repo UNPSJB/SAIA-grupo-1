@@ -34,43 +34,72 @@ export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId
     }, [equipoId]);
 
     return (
-        <div className="modulo-container">
+    <div className="modulo-container formulario-box">
+        <div className="modulo-header">
+            <h1>Editar Equipo</h1>
+            <div className="subtitulo">Editar Equipo: {equipoId}</div>
+        </div>
 
-              <div className="modulo-header">
-                <h1>Detalle de Equipo</h1>
-                <div className="subtitulo">Equipo:{equipoId}</div>
-                </div>
-
-         {loading ? (
+            {loading ? (
                         <tr>
                             <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
                                 Cargando equipo...
                             </td>
                         </tr>
         ) : equipo ? (
-        <form>
+        <form >
             <div className="form-group">
                 <label htmlFor="nombre">Nombre</label>
-                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.nombre}</td>
+                <input
+                    id="nombre"
+                    name="nombre"
+                    type="text"
+                    value={equipo.nombre}
+                    disabled 
+                />
             </div>
             <div className="form-group">
                 <label htmlFor="categoria">Categoría:</label>
-                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.categoria}</td>
+                <input
+                    id="categoria"
+                    name="categoria"
+                    value={equipo.categoria}
+                    disabled
+                >
+                </input>
             </div>
 
             <div className="form-group">
                 <label htmlFor="ubicacion">Ubicación</label>
-                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.ubicacion}</td>
+                <input
+                    id="ubicacion"
+                    name="ubicacion"
+                    type="text"
+                    value={equipo.ubicacion}
+                    disabled
+                />
             </div>
 
             <div className="form-group">
                 <label htmlFor="plan_de_Limpieza">Plan de Limpieza</label>
-                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.plan_de_Limpieza}</td>
+                <input
+                    id="plan_de_Limpieza"
+                    name="plan_de_Limpieza"
+                    type="text"
+                    value={equipo.plan_de_Limpieza}
+                    disabled
+                />
             </div>
 
             <div className="form-group">
                 <label htmlFor="plan_de_calibracion">Plan de Calibración</label>
-                <td style={{ textAlign: 'center', padding: '2rem' }}>{equipo.plan_de_calibracion}</td>
+                <input
+                    id="plan_de_calibracion"
+                    name="plan_de_calibracion"
+                    type="text"
+                    value={equipo.plan_de_calibracion} 
+                    disabled
+                />
             </div>
         </form>
         ) : (
@@ -81,11 +110,11 @@ export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId
                 </tr>
                 )}
 
-                <div className="form-acciones"> 
-                    <button type="button"  className="btn-cancelar" onClick={onCancel}>
-                         Volver
-                    </button>
-                </div>
+                <div className="form-acciones">
+                <button type="button"  className="btn-cancelar" onClick={onCancel}>
+                    Cancelar
+                </button>
+            </div>
         
     </div>
     
