@@ -4,11 +4,12 @@ import '../styles/formularioAlta.css';
 
 interface ListadoEquiposProps {
     onNuevoClick: () => void;
+    onDetalleClick: (id: number) => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick }) => {
+export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, onDetalleClick }) => {
     const [equipos, setEquipos] = useState<EquipoConId[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -97,7 +98,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick }) 
                                 <td>{i.plan_de_calibracion}</td>
                                 <td className="acciones-col">
                                    <div className="acciones-btns"> 
-                                    <button className="btn-icon" title="Ver detalles">
+                                    <button className="btn-icon" title="Ver detalles" onClick={() => onDetalleClick(i.id)}>
                                         👁
                                     </button>
                                     <button className="btn-icon" title="Editar">
