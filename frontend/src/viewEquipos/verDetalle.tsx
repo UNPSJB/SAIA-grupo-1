@@ -36,8 +36,8 @@ export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId
     return (
     <div className="modulo-container formulario-box">
         <div className="modulo-header">
-            <h1>Editar Equipo</h1>
-            <div className="subtitulo">Editar Equipo: {equipoId}</div>
+            <h1>Detalle Equipo</h1>
+            <div className="subtitulo">Equipo: {equipoId}</div>
         </div>
 
             {loading ? (
