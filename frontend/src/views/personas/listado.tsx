@@ -3,16 +3,16 @@ import type { Persona } from './tipos';
 import '../../styles/formularioAlta.css';
 
 interface ListadoPersonasProps {
-  onNuevoClick?: () => void;
-  onVerClick?: (legajo: number) => void;
-  onEditarClick?: (legajo: number) => void;
+  onNuevoClick: () => void;
+  onDetalleClick: (legajo: number) => void;
+  onEditarClick: (legajo: number) => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
   onNuevoClick,
-  onVerClick,
+  onDetalleClick,
   onEditarClick,
 }) => {
   const [personas, setPersonas] = useState<Persona[]>([]);
@@ -35,18 +35,19 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     }
   };
 
-  const handleEliminar = async (legajo: number) => {
-    if (!window.confirm(`¿Seguro que desea eliminar a la persona con legajo ${legajo}?`)) return;
+  const handleEliminar = async (legajo?: number) => {
+    if (!legajo) return;
+    if (!window.confirm(`¿Está seguro de que desea eliminar a la persona con legajo ${legajo}?`)) return;
 
     try {
-      const res = await fetch(`${API_URL}/personas/${legajo}/`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/personas/${legajo}`, { method: 'DELETE' });
       if (res.ok) {
         setPersonas((prev) => prev.filter((p) => p.legajo !== legajo));
       } else {
-        alert('No se pudo eliminar la persona');
+        alert('No se pudo eliminar la persona.');
       }
     } catch {
-      alert('Error de conexión al intentar eliminar');
+      alert('Error al intentar eliminar la persona.');
     }
   };
 
@@ -77,7 +78,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
               <th>Documento</th>
               <th>Nombre Completo</th>
               <th>Email</th>
-              <th>Capacidades</th>
+              <th>Capacidad</th>
               <th className="acciones-col">Acciones</th>
             </tr>
           </thead>
@@ -102,8 +103,8 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                   <td>{`${p.apellido}, ${p.nombre}`}</td>
                   <td>{p.email}</td>
                   <td>
-                    {p.capacidades && p.capacidades.length > 0
-                      ? p.capacidades.map((c) => c.charAt(0).toUpperCase() + c.slice(1)).join(', ')
+                    {p.capacidad
+                      ? p.capacidad.charAt(0).toUpperCase() + p.capacidad.slice(1)
                       : 'Ninguna'}
                   </td>
                   <td className="acciones-col">
@@ -111,14 +112,14 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                       <button
                         className="btn-icon"
                         title="Ver detalles"
-                        onClick={() => onVerClick && onVerClick(p.legajo)}
+                        onClick={() => onDetalleClick(p.legajo)}
                       >
                         👁
                       </button>
                       <button
                         className="btn-icon"
                         title="Editar"
-                        onClick={() => onEditarClick && onEditarClick(p.legajo)}
+                        onClick={() => onEditarClick(p.legajo)}
                       >
                         ✎
                       </button>

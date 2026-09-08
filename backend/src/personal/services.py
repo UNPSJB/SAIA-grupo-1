@@ -4,22 +4,9 @@ from sqlalchemy.orm import Session
 
 from src.personal.models import Personal
 from src.personal import schemas
-from src.personal.schemas import Capacidades
 
 def crear_personal(db: Session, personal_in: schemas.PersonalCreate) -> Personal:
-    datos = personal_in.model_dump()
-    lista_capacidades = datos.pop("capacidades", [])
-
-    if lista_capacidades:
-        primera = str(lista_capacidades[0]).lower()
-        cap_enum = Capacidades.ADMINISTRAR if "admin" in primera else Capacidades.OPERAR
-    else:
-        cap_enum = Capacidades.OPERAR
-
-    _personal = Personal(
-        **datos,
-        capacidad=cap_enum
-    )
+    _personal = Personal(**personal_in.model_dump())
     db.add(_personal)
     db.commit()
     db.refresh(_personal)
@@ -41,13 +28,6 @@ def modificar_personal(
         return None
 
     update_data = personal_in.model_dump(exclude_unset=True)
-    
-    if "capacidades" in update_data:
-        lista_caps = update_data.pop("capacidades")
-        if lista_caps:
-            primera = str(lista_caps[0]).lower()
-            update_data["capacidad"] = Capacidades.ADMINISTRAR if "admin" in primera else Capacidades.OPERAR
-
     if update_data:
         db.execute(
             update(Personal)
@@ -64,8 +44,6 @@ def eliminar_persona(db: Session, personal_legajo: int) -> Optional[Personal]:
     if not db_personal:
         return None
 
-    db.execute(
-        delete(Personal).where(Personal.legajo == personal_legajo)
-    )
+    db.execute(delete(Personal).where(Personal.legajo == personal_legajo))
     db.commit()
     return db_personal

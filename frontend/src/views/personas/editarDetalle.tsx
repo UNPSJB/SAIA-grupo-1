@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import type { PersonaCreate, TipoCapacidad } from './tipos';
+import React, { useEffect, useState } from 'react';
+import type { Persona, PersonaCreate, TipoCapacidad } from './tipos';
 import '../../styles/formularioAlta.css';
 
-interface NuevaPersonaProps {
+interface EditarPersonaProps {
+  personaLegajo?: number | null;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -10,7 +11,11 @@ interface NuevaPersonaProps {
 const CAPACIDADES: TipoCapacidad[] = ['operar', 'administrar'];
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel }) => {
+export const EditarPersona: React.FC<EditarPersonaProps> = ({
+  personaLegajo,
+  onSuccess,
+  onCancel,
+}) => {
   const [formData, setFormData] = useState<PersonaCreate>({
     documento: '',
     nombre: '',
@@ -19,9 +24,38 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
     capacidad: 'operar',
   });
 
+  const [loadingFetch, setLoadingFetch] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (personaLegajo) {
+      const fetchPersona = async () => {
+        try {
+          const res = await fetch(`${API_URL}/personas/${personaLegajo}`);
+          if (res.ok) {
+            const data: Persona = await res.json();
+            setFormData({
+              documento: data.documento,
+              nombre: data.nombre,
+              apellido: data.apellido,
+              email: data.email,
+              capacidad: data.capacidad || 'operar',
+            });
+          } else {
+            setErrorMsg('No se pudo cargar la persona.');
+          }
+        } catch {
+          setErrorMsg('Error al conectar con el servidor.');
+        } finally {
+          setLoadingFetch(false);
+        }
+      };
+
+      fetchPersona();
+    }
+  }, [personaLegajo]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -30,50 +64,48 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!personaLegajo) return;
+
     setErrorMsg(null);
     setSuccessMsg(null);
-
-    if (
-      !formData.documento.trim() ||
-      !formData.nombre.trim() ||
-      !formData.apellido.trim() ||
-      !formData.email.trim()
-    ) {
-      setErrorMsg('Por favor complete todos los datos obligatorios.');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/personas/`, {
-        method: 'POST',
+      const res = await fetch(`${API_URL}/personas/${personaLegajo}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Error al guardar (${response.status})`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Error al actualizar la persona');
       }
 
-      setSuccessMsg('Persona dada de alta exitosamente.');
-      if (onSuccess) onSuccess();
+      setSuccessMsg('Persona actualizada exitosamente');
+      onSuccess?.();
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error de conexión con el servidor.');
+      setErrorMsg(err instanceof Error ? err.message : 'Error al conectar con el servidor');
     } finally {
       setLoading(false);
     }
   };
 
+  if (loadingFetch) {
+    return (
+      <div className="modulo-container formulario-box">
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando datos...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Nueva Persona</h1>
-        <div className="subtitulo">02 · Formulario</div>
+        <h1>Editar Persona</h1>
+        <div className="subtitulo">Legajo: {personaLegajo}</div>
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
@@ -81,12 +113,16 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
+          <label htmlFor="legajo">Legajo (No editable)</label>
+          <input id="legajo" type="text" value={personaLegajo || ''} disabled />
+        </div>
+
+        <div className="form-group">
           <label htmlFor="documento">Documento</label>
           <input
             id="documento"
             name="documento"
             type="text"
-            placeholder="Introduce el documento (DNI)"
             value={formData.documento}
             onChange={handleChange}
             required
@@ -99,7 +135,6 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="nombre"
             name="nombre"
             type="text"
-            placeholder="Introduce el nombre"
             value={formData.nombre}
             onChange={handleChange}
             required
@@ -112,7 +147,6 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="apellido"
             name="apellido"
             type="text"
-            placeholder="Introduce el apellido"
             value={formData.apellido}
             onChange={handleChange}
             required
@@ -125,7 +159,6 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="email"
             name="email"
             type="email"
-            placeholder="Introduce el correo electrónico"
             value={formData.email}
             onChange={handleChange}
             required
@@ -151,13 +184,11 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
-            {loading ? 'Guardando...' : 'Guardar'}
+            {loading ? 'Guardando...' : 'Guardar Cambios'}
           </button>
-          {onCancel && (
-            <button type="button" onClick={onCancel} className="btn-cancelar">
-              Cancelar
-            </button>
-          )}
+          <button type="button" className="btn-cancelar" onClick={onCancel}>
+            Cancelar
+          </button>
         </div>
       </form>
     </div>
