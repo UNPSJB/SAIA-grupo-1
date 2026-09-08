@@ -2,11 +2,16 @@ from enum import Enum
 from typing import Optional, Union
 from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 
+from enum import Enum
+
 class Capacidades(str, Enum):
     OPERAR = "operar"
     ADMINISTRAR = "administrar"
+    AMBAS = "ambas"
+    # Alias en minúsculas por compatibilidad
     operar = "operar"
     administrar = "administrar"
+    ambas = "ambas"
 
 class PersonalBase(BaseModel):
     documento: Union[str, int] = Field(...)

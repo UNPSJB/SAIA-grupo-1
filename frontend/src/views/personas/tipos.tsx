@@ -1,4 +1,4 @@
-export type TipoCapacidad = 'operar' | 'administrar';
+export type TipoCapacidad = 'operar' | 'administrar' | 'ambas';
 
 export interface Persona {
   legajo: number;

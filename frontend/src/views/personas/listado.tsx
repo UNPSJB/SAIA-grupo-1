@@ -103,9 +103,11 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                   <td>{`${p.apellido}, ${p.nombre}`}</td>
                   <td>{p.email}</td>
                   <td>
-                    {p.capacidad
-                      ? p.capacidad.charAt(0).toUpperCase() + p.capacidad.slice(1)
-                      : 'Ninguna'}
+                      {p.capacidad === 'ambas'
+                        ? 'Operar y Administrar'
+                        : p.capacidad
+                        ? p.capacidad.charAt(0).toUpperCase() + p.capacidad.slice(1)
+                        : 'Ninguna'}
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">

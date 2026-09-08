@@ -7,7 +7,7 @@ interface NuevaPersonaProps {
   onCancel?: () => void;
 }
 
-const CAPACIDADES: TipoCapacidad[] = ['operar', 'administrar'];
+const CAPACIDADES: TipoCapacidad[] = ['operar', 'administrar', 'ambas'];
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel }) => {
@@ -143,7 +143,9 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
           >
             {CAPACIDADES.map((cap) => (
               <option key={cap} value={cap}>
-                {cap.charAt(0).toUpperCase() + cap.slice(1)}
+                {cap === 'ambas'
+                  ? 'Operar y Administrar'
+                  : cap.charAt(0).toUpperCase() + cap.slice(1)}
               </option>
             ))}
           </select>

@@ -8,7 +8,11 @@ interface EditarPersonaProps {
   onCancel?: () => void;
 }
 
-const CAPACIDADES: TipoCapacidad[] = ['operar', 'administrar'];
+const CAPACIDADES: { valor: TipoCapacidad; etiqueta: string }[] = [
+  { valor: 'operar', etiqueta: 'Operar' },
+  { valor: 'administrar', etiqueta: 'Administrar' },
+  { valor: 'ambas', etiqueta: 'Operar y Administrar' },
+];
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const EditarPersona: React.FC<EditarPersonaProps> = ({
@@ -175,9 +179,9 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
             required
           >
             {CAPACIDADES.map((cap) => (
-              <option key={cap} value={cap}>
-                {cap.charAt(0).toUpperCase() + cap.slice(1)}
-              </option>
+             <option key={cap.valor} value={cap.valor}>
+                {cap.etiqueta}
+        </option>
             ))}
           </select>
         </div>
