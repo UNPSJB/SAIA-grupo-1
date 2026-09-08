@@ -52,20 +52,20 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
       !formData.apellido.trim() ||
       !formData.email.trim()
     ) {
-      setErrorMsg('Por favor complete todos los campos obligatorios.');
+      setErrorMsg('Por favor complete todos los datos obligatorios.');
       return;
     }
 
     if (formData.capacidades.length === 0) {
-      setErrorMsg('Debe asignar al menos una capacidad.');
+      setErrorMsg('Debe asignar al menos una capacidad (operar, administrar o ambas).');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Usamos /personas (sin slash final para evitar redirecciones 307 de FastAPI)
-      const response = await fetch(`${API_URL}/personas`, {
+      // Con barra final para coincidir exactamente con el router de FastAPI
+      const response = await fetch(`${API_URL}/personas/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Error del servidor (${response.status})`);
+        throw new Error(errorData.detail || `Error al guardar (${response.status})`);
       }
 
       setSuccessMsg('Persona dada de alta exitosamente.');
@@ -85,7 +85,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
       if (err instanceof Error) {
         setErrorMsg(err.message);
       } else {
-        setErrorMsg('No se pudo conectar con el servidor. Verifique si el backend está activo y el CORS habilitado.');
+        setErrorMsg('Error de conexión con el servidor.');
       }
     } finally {
       setLoading(false);
@@ -109,7 +109,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="documento"
             name="documento"
             type="text"
-            placeholder="Introduce el documento"
+            placeholder="Introduce el documento (DNI)"
             value={formData.documento}
             onChange={handleChange}
             required

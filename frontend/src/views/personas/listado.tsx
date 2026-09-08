@@ -4,11 +4,17 @@ import '../../styles/formularioAlta.css';
 
 interface ListadoPersonasProps {
   onNuevoClick?: () => void;
+  onVerClick?: (legajo: number) => void;
+  onEditarClick?: (legajo: number) => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({ onNuevoClick }) => {
+export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
+  onNuevoClick,
+  onVerClick,
+  onEditarClick,
+}) => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,26 +29,26 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({ onNuevoClick }
         setPersonas([]);
       }
     } catch {
-      // Dejar la lista vacía si el backend no responde
       setPersonas([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEliminar = async (legajo?: number) => {
-  if (!legajo) return;
-  if (!window.confirm(`¿Seguro que desea eliminar a la persona con legajo ${legajo}?`)) return;
+  const handleEliminar = async (legajo: number) => {
+    if (!window.confirm(`¿Seguro que desea eliminar a la persona con legajo ${legajo}?`)) return;
 
-  try {
-    const res = await fetch(`${API_URL}/personas/${legajo}`, { method: 'DELETE' });
-    if (res.ok) {
-      setPersonas((prev) => prev.filter((p) => p.legajo !== legajo));
+    try {
+      const res = await fetch(`${API_URL}/personas/${legajo}/`, { method: 'DELETE' });
+      if (res.ok) {
+        setPersonas((prev) => prev.filter((p) => p.legajo !== legajo));
+      } else {
+        alert('No se pudo eliminar la persona');
+      }
+    } catch {
+      alert('Error de conexión al intentar eliminar');
     }
-  } catch {
-    alert('No se pudo eliminar la persona');
-  }
-};
+  };
 
   useEffect(() => {
     fetchPersonas();
@@ -90,7 +96,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({ onNuevoClick }
               </tr>
             ) : (
               personas.map((p) => (
-                <tr key={p.legajo || p.legajo}>
+                <tr key={p.legajo}>
                   <td>{p.legajo}</td>
                   <td>{p.documento}</td>
                   <td>{`${p.apellido}, ${p.nombre}`}</td>
@@ -102,10 +108,18 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({ onNuevoClick }
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
-                      <button className="btn-icon" title="Ver detalles">
+                      <button
+                        className="btn-icon"
+                        title="Ver detalles"
+                        onClick={() => onVerClick && onVerClick(p.legajo)}
+                      >
                         👁
                       </button>
-                      <button className="btn-icon" title="Editar">
+                      <button
+                        className="btn-icon"
+                        title="Editar"
+                        onClick={() => onEditarClick && onEditarClick(p.legajo)}
+                      >
                         ✎
                       </button>
                       <button
