@@ -8,7 +8,7 @@ client = TestClient(app)
 
 
 def test_read_personas(session: Session) -> None:
-    response = client.get(f"/personas")
+    response = client.get(f"/personal")
     assert response.status_code == status.HTTP_200_OK
     assert len(response.json()) == 2
 
