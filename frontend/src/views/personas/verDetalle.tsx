@@ -17,7 +17,7 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({ onCancel, person
     if (personaLegajo) {
       const fetchPersona = async () => {
         try {
-          const res = await fetch(`${API_URL}/personas/${personaLegajo}`);
+          const res = await fetch(`${API_URL}/personal/${personaLegajo}`);
           if (res.ok) {
             const data = await res.json();
             setPersona(data);

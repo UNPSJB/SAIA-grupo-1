@@ -46,7 +46,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/personas/`, {
+      const response = await fetch(`${API_URL}/personal/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
