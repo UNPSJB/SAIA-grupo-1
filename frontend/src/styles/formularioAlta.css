@@ -84,6 +84,18 @@
   transition: opacity 0.2s;
 }
 
+.btn-eliminar{
+  background-color: var(--text-h);
+  color: var(--bg);
+  border: 1px solid var(--text-h);
+  padding: 0.65rem 1.6rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
 .btn-guardar:hover:not(:disabled) {
   opacity: 0.9;
 }
