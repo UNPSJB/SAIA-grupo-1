@@ -44,12 +44,17 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
         if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
-            setErrorMsg(errorData.detail || "Error al guardar el equipo");
+            /*console.log(errorData);
+           /* console.log(errorData.detail[0].msg);   
+            console.log(errorData.detail[1].msg);  */ 
+            setErrorMsg(errorData.detail|| "Error al guardar el equipo");
+        }else{
+            setSuccessMsg("Equipo dado de alta exitosamente");
+            setEquipo(EQUIPO_INICIAL);
+            onSuccess?.();
+
         }
 
-        setSuccessMsg("Equipo dado de alta exitosamente");
-        setEquipo(EQUIPO_INICIAL);
-        onSuccess?.();
     }catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
     }finally {
