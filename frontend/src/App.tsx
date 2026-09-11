@@ -11,17 +11,18 @@ function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#ffffff' }}>
       {vista === 'listado' ? (
-        <ListadoPersonas
+       <ListadoPersonas
+          key={Date.now()}
           onNuevoClick={() => setVista('alta')}
           onDetalleClick={(legajo) => {
-            setLegajoSeleccionado(legajo);
-            setVista('detalle');
-          }}
+          setLegajoSeleccionado(legajo);
+          setVista('detalle');
+  }}
           onEditarClick={(legajo) => {
-            setLegajoSeleccionado(legajo);
-            setVista('editar');
-          }}
-        />
+          setLegajoSeleccionado(legajo);
+          setVista('editar');
+  }}
+/>
       ) : vista === 'alta' ? (
         <NuevaPersona
           onSuccess={() => setVista('listado')}

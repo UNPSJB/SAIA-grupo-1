@@ -21,49 +21,111 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [advertenciaInput, setAdvertenciaInput] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    setAdvertenciaInput(null);
+
+    // Validación para documento
+    if (name === 'documento') {
+      if (/[^0-9]/.test(value)) {
+        setAdvertenciaInput('En el documento solo se permiten números.');
+        return;
+      }
+      if (value.length > 9) {
+        setAdvertenciaInput('El documento no puede tener más de 9 dígitos.');
+        return;
+      }
+      setFormData((prev) => ({ ...prev, documento: value }));
+      return;
+    }
+
+    // validación para nombre y apellido
+    if (name === 'nombre' || name === 'apellido') {
+      if (/[0-9]/.test(value)) {
+        setAdvertenciaInput(`No se permiten números en el campo ${name}.`);
+        return;
+      }
+      if (/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/.test(value)) {
+        setAdvertenciaInput(`No se permiten símbolos o caracteres especiales en el campo ${name}.`);
+        return;
+      }
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setAdvertenciaInput(null);
     setSuccessMsg(null);
 
-    if (
-      !formData.documento.trim() ||
-      !formData.nombre.trim() ||
-      !formData.apellido.trim() ||
-      !formData.email.trim()
-    ) {
-      setErrorMsg('Por favor complete todos los datos obligatorios.');
+    const doc = formData.documento.trim();
+    const nom = formData.nombre.trim();
+    const ape = formData.apellido.trim();
+    const mail = formData.email.trim();
+
+    if (!doc || !nom || !ape || !mail) {
+      setErrorMsg('Por favor complete todos los campos obligatorios.');
+      return;
+    }
+
+    // validamos q el mínimo sea de 7 dígitos en documento
+    if (doc.length < 7) {
+      setErrorMsg('El documento debe contener al menos 7 dígitos para ser válido.');
+      return;
+    }
+
+    // validar formato de correo estándar
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(mail)) {
+      setErrorMsg('Por favor ingrese un correo electrónico con formato válido (ejemplo: usuario@dominio.com).');
       return;
     }
 
     setLoading(true);
 
     try {
+      const payload = {
+        ...formData,
+        documento: doc,
+        nombre: nom,
+        apellido: ape,
+        email: mail,
+      };
+
       const response = await fetch(`${API_URL}/personas/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Error al guardar (${response.status})`);
+        let detalle = 'Error al registrar la persona.';
+        if (typeof data.detail === 'string') {
+          detalle = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          detalle = data.detail.map((err: { msg: string }) => err.msg).join(', ');
+        }
+        throw new Error(detalle);
       }
 
       setSuccessMsg('Persona dada de alta exitosamente.');
-      if (onSuccess) onSuccess();
+      setTimeout(() => {
+        if (onSuccess) onSuccess();
+      }, 500);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error de conexión con el servidor.');
+      setErrorMsg(err instanceof Error ? err.message : 'Error al conectar con el servidor.');
     } finally {
       setLoading(false);
     }
@@ -76,6 +138,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
         <div className="subtitulo">02 · Formulario</div>
       </div>
 
+      {advertenciaInput && <div className="alerta-error">{advertenciaInput}</div>}
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
       {successMsg && <div className="alerta-exito">{successMsg}</div>}
 
@@ -86,7 +149,8 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="documento"
             name="documento"
             type="text"
-            placeholder="Introduce el documento (DNI)"
+            inputMode="numeric"
+            placeholder="Ingrese solo números (mínimo 7 dígitos)"
             value={formData.documento}
             onChange={handleChange}
             required
@@ -99,7 +163,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="nombre"
             name="nombre"
             type="text"
-            placeholder="Introduce el nombre"
+            placeholder="Introduce el nombre (solo letras)"
             value={formData.nombre}
             onChange={handleChange}
             required
@@ -112,7 +176,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="apellido"
             name="apellido"
             type="text"
-            placeholder="Introduce el apellido"
+            placeholder="Introduce el apellido (solo letras)"
             value={formData.apellido}
             onChange={handleChange}
             required
@@ -125,7 +189,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="email"
             name="email"
             type="email"
-            placeholder="Introduce el correo electrónico"
+            placeholder="ejemplo@correo.com"
             value={formData.email}
             onChange={handleChange}
             required

@@ -1,49 +1,79 @@
 from typing import List, Optional
-from sqlalchemy import select, update, delete
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from src.personal import schemas, models
 
-from src.personal.models import Personal
-from src.personal import schemas
+def listar_personal(db: Session) -> List[models.Personal]:
+    return db.query(models.Personal).all()
 
-def crear_personal(db: Session, personal_in: schemas.PersonalCreate) -> Personal:
-    _personal = Personal(**personal_in.model_dump())
-    db.add(_personal)
+def leer_personal(db: Session, legajo: int) -> Optional[models.Personal]:
+    return db.query(models.Personal).filter(models.Personal.legajo == legajo).first()
+
+def crear_personal(db: Session, persona: schemas.PersonalCreate) -> models.Personal:
+    # valida que el email no esté duplicado
+    if db.query(models.Personal).filter(models.Personal.email == persona.email).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya existe una persona registrada con ese correo electrónico."
+        )
+
+    #valida que el documento no esté duplicado
+    doc_num = int(persona.documento)
+    if db.query(models.Personal).filter(models.Personal.documento == doc_num).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya existe una persona registrada con ese número de documento."
+        )
+
+    nueva_persona = models.Personal(
+        documento=doc_num,
+        nombre=persona.nombre,
+        apellido=persona.apellido,
+        email=persona.email,
+        capacidad=persona.capacidad
+    )
+    db.add(nueva_persona)
     db.commit()
-    db.refresh(_personal)
-    return _personal
-
-def listar_personal(db: Session) -> List[Personal]:
-    return list(db.scalars(select(Personal)).all())
-
-def leer_personal(db: Session, personal_legajo: int) -> Optional[Personal]:
-    return db.scalar(select(Personal).where(Personal.legajo == personal_legajo))
+    db.refresh(nueva_persona)
+    return nueva_persona
 
 def modificar_personal(
-    db: Session,
-    personal_legajo: int,
-    personal_in: schemas.PersonalUpdate
-) -> Optional[Personal]:
-    db_personal = leer_personal(db, personal_legajo)
-    if not db_personal:
+    db: Session, legajo: int, persona_update: schemas.PersonalUpdate
+) -> Optional[models.Personal]:
+    persona_db = leer_personal(db, legajo)
+    if not persona_db:
         return None
 
-    update_data = personal_in.model_dump(exclude_unset=True)
-    if update_data:
-        db.execute(
-            update(Personal)
-            .where(Personal.legajo == personal_legajo)
-            .values(**update_data)
-        )
-        db.commit()
-        db.refresh(db_personal)
+    datos = persona_update.model_dump(exclude_unset=True)
 
-    return db_personal
+    if "email" in datos and datos["email"] != persona_db.email:
+        if db.query(models.Personal).filter(models.Personal.email == datos["email"]).first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe una persona registrada con ese correo electrónico."
+            )
 
-def eliminar_persona(db: Session, personal_legajo: int) -> Optional[Personal]:
-    db_personal = leer_personal(db, personal_legajo)
-    if not db_personal:
-        return None
+    if "documento" in datos and datos["documento"] is not None:
+        doc_num = int(datos["documento"])
+        if doc_num != persona_db.documento:
+            if db.query(models.Personal).filter(models.Personal.documento == doc_num).first():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Ya existe una persona registrada con ese número de documento."
+                )
+        datos["documento"] = doc_num
 
-    db.execute(delete(Personal).where(Personal.legajo == personal_legajo))
+    for campo, valor in datos.items():
+        setattr(persona_db, campo, valor)
+
     db.commit()
-    return db_personal
+    db.refresh(persona_db)
+    return persona_db
+
+def eliminar_persona(db: Session, legajo: int) -> Optional[models.Personal]:
+    persona_db = leer_personal(db, legajo)
+    if not persona_db:
+        return None
+    db.delete(persona_db)
+    db.commit()
+    return persona_db
