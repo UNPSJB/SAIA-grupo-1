@@ -41,7 +41,8 @@ function App() {
       ): (
         <EliminarEquipo
         equipoID={equipoSeleccionado}
-        onCancel={() => setVista('listado')}/>
+        onCancel={() => setVista('listado')}
+        onSucces={()=> setVista('listado')}/>
       )}
       
     </div>

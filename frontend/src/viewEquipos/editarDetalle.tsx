@@ -1,4 +1,4 @@
-import React, { useEffect,useState } from 'react';
+import React, { useEffect,useRef,useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../styles/formularioAlta.css';
 
@@ -25,6 +25,8 @@ export default function EditarEquipo({ equipoId, onSuccess, onCancel }: EditarEq
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+    const dialog=useRef <HTMLDialogElement>(null);
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setEquipo({...equipo, [e.target.name]: e.target.value})
@@ -54,7 +56,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         }else{
             setSuccessMsg("Equipo editado exitosamente");
             setEquipo(EQUIPO_INICIAL);
-            onSuccess?.();
+            dialog.current?.showModal();
         }
     }catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
@@ -184,6 +186,11 @@ return(
                         </td>
                 </tr>
                 )}
+
+                <dialog ref={dialog} className="guardado-con-exito">
+                    <h2> Equipo Editado con Exito</h2>
+                <button type="button" className="btn-guardar" onClick={() => {dialog.current?.close(); onSuccess?.();}}> Aceptar</button>
+        </dialog>
         
     </div>
     

@@ -1,4 +1,4 @@
-import { useEffect,useState } from 'react';
+import { useEffect,useRef,useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../styles/formularioAlta.css';
 
@@ -7,7 +7,6 @@ interface EliminarEquipoProps{
     onCancel?: () => void;
     onSucces?: ()=> void;
 }
-
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default function EliminarEquipo({equipoID,onCancel,onSucces}:EliminarEquipoProps){
@@ -15,21 +14,21 @@ export default function EliminarEquipo({equipoID,onCancel,onSucces}:EliminarEqui
     const[equipo,setEquipo]= useState<EquipoConId | null>(null);
     const[loading, setLoading]= useState(true);
 
+    const dialog= useRef<HTMLDialogElement>(null);
+
 const handleEliminar = async (id?: number) => {
         if (!id) return;
-        if (!window.confirm('¿Está seguro de que desea eliminar este equipo?')) return;
 
         try {
             const res = await fetch(`${API_URL}/equipos/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 setEquipo(null);
-                if(onSucces) {
-                    onSucces()
-                }else if(onCancel){
-                    onCancel();
-                };
+                dialog.current?.showModal();// invoca el mensaje de eliminacion exitosa
+                
+
 
             }
+
         }catch{
             alert('No se pudo eliminar el equipo.');
         }
@@ -143,6 +142,11 @@ const handleEliminar = async (id?: number) => {
                     Cancelar
                 </button>
                 </div>
+
+                <dialog ref={dialog} className="eliminado-exito">
+                    <h2>Eliminacion Exitosa</h2>
+                    <button type="button" className="btn-eliminar" onClick={()=> { dialog.current?.close(); onSucces?.()}}>Aceptar</button>
+                </dialog>
 
         
     </div>

@@ -1,4 +1,4 @@
-import {useState} from "react"
+import {useRef, useState} from "react"
 import type {Equipo} from "./tipos"
 import "../styles/formularioAlta.css"
 
@@ -10,6 +10,8 @@ const EQUIPO_INICIAL :Equipo={
         plan_de_Limpieza: "",
         plan_de_calibracion: ""
     };
+
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface NuevoEquipoProps {
@@ -22,6 +24,7 @@ export default function NuevoEquipo({ onSuccess, onCancel }: NuevoEquipoProps) {
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const dialog= useRef<HTMLDialogElement>(null);
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setEquipo({...equipo, [e.target.name]: e.target.value})
@@ -42,6 +45,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
             body: JSON.stringify(equipo),
         });
 
+
         if (!res.ok) {
             const errorData = await res.json().catch(() => ({}));
             /*console.log(errorData);
@@ -49,9 +53,9 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
             console.log(errorData.detail[1].msg);  */ 
             setErrorMsg(errorData.detail|| "Error al guardar el equipo");
         }else{
+            dialog.current?.showModal();
             setSuccessMsg("Equipo dado de alta exitosamente");
             setEquipo(EQUIPO_INICIAL);
-            onSuccess?.();
 
         }
 
@@ -150,13 +154,18 @@ return(
 
             <div className="form-acciones">
                 <button type="submit" className="btn-guardar" disabled={loading}>
-                    {loading ? "Guardando..." : "Guardar"}
+                    {loading ? "guardando...":"Guardar"}
                 </button>
                 <button type="button"  className="btn-cancelar" onClick={handleCancelar}>
                     Cancelar
                 </button>
             </div>
         </form>
+
+        <dialog ref={dialog} className="guardado-con-exito">
+                    <h2> Equipo Guardado con Exito</h2>
+                <button type="button" className="btn-guardar" onClick={() => {dialog.current?.close(); onSuccess?.();}}> Aceptar</button>
+        </dialog>
     </div>
         
 )

@@ -209,9 +209,9 @@
 }
 
 
-/* edicion de tds
+/*Mensajes de exito*/
 
-.edicion td{
-   color: red;
+dialog::backdrop{
 
-}*/
+  background-color: white;
+}
