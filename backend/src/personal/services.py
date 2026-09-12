@@ -74,6 +74,7 @@ def eliminar_persona(db: Session, legajo: int) -> Optional[models.Personal]:
     persona_db = leer_personal(db, legajo)
     if not persona_db:
         return None
-    db.delete(persona_db)
+    #db.delete(persona_db)
+    persona_db.activo = False
     db.commit()
     return persona_db

@@ -17,6 +17,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
     apellido: '',
     email: '',
     capacidad: 'operar',
+    activo: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -150,7 +151,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             name="documento"
             type="text"
             inputMode="numeric"
-            placeholder="Ingrese solo números (mínimo 7 dígitos)"
+            placeholder="Ingrese documento (mínimo 7 dígitos)"
             value={formData.documento}
             onChange={handleChange}
             required
@@ -163,7 +164,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="nombre"
             name="nombre"
             type="text"
-            placeholder="Introduce el nombre (solo letras)"
+            placeholder="Introduce el nombre"
             value={formData.nombre}
             onChange={handleChange}
             required
@@ -176,7 +177,7 @@ export const NuevaPersona: React.FC<NuevaPersonaProps> = ({ onSuccess, onCancel 
             id="apellido"
             name="apellido"
             type="text"
-            placeholder="Introduce el apellido (solo letras)"
+            placeholder="Introduce el apellido"
             value={formData.apellido}
             onChange={handleChange}
             required

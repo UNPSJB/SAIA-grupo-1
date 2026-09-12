@@ -17,6 +17,7 @@ class PersonalBase(BaseModel):
     apellido: str = Field(..., min_length=2, max_length=100)
     email: EmailStr = Field(..., max_length=150)
     capacidad: Capacidades = Field(default=Capacidades.OPERAR)
+    activo: bool = Field(default=True)
 
     # validacones
     @field_validator("documento", mode="after")
@@ -46,6 +47,7 @@ class PersonalUpdate(BaseModel):
     apellido: Optional[str] = Field(None, min_length=2, max_length=100)
     email: Optional[EmailStr] = Field(None, max_length=150)
     capacidad: Optional[Capacidades] = None
+    activo: Optional[bool] = None
 
     @field_validator("documento", mode="after")
     @classmethod

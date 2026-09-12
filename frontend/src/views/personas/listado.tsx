@@ -79,6 +79,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
               <th>Nombre Completo</th>
               <th>Email</th>
               <th>Capacidad</th>
+              <th>Activo</th>
               <th className="acciones-col">Acciones</th>
             </tr>
           </thead>
@@ -109,6 +110,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                         ? p.capacidad.charAt(0).toUpperCase() + p.capacidad.slice(1)
                         : 'Ninguna'}
                   </td>
+                  <td> {p.activo ? 'Activo' : "Inactivo"} </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button
