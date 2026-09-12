@@ -21,7 +21,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
   const fetchPersonas = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/personas/`);
+      const res = await fetch(`${API_URL}/personal/`);
       if (res.ok) {
         const data = await res.json();
         setPersonas(data);
@@ -40,7 +40,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     if (!window.confirm(`¿Está seguro de que desea eliminar a la persona con legajo ${legajo}?`)) return;
 
     try {
-      const res = await fetch(`${API_URL}/personas/${legajo}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/personal/${legajo}`, { method: 'DELETE' });
       if (res.ok) {
         setPersonas((prev) => prev.filter((p) => p.legajo !== legajo));
       } else {

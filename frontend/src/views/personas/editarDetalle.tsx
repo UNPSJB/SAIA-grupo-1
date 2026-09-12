@@ -37,7 +37,7 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
     if (personaLegajo) {
       const fetchPersona = async () => {
         try {
-          const res = await fetch(`${API_URL}/personas/${personaLegajo}`);
+          const res = await fetch(`${API_URL}/personal/${personaLegajo}`);
           if (res.ok) {
             const data: Persona = await res.json();
             setFormData({
@@ -75,7 +75,7 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/personas/${personaLegajo}`, {
+      const res = await fetch(`${API_URL}/personal/${personaLegajo}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
