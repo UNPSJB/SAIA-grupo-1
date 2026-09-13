@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
-from typing import Optional
+from typing import Optional, Self
 from src.insumos.models import UnidadMedida
 from src.insumos import exceptions
 from datetime import datetime, timedelta
@@ -64,7 +64,7 @@ class InsumoCreate(InsumoBase):
         
 
     @model_validator(mode="after")
-    def validar_relacion_stock_cantidad(self) -> "InsumoBase":
+    def validar_relacion_stock_cantidad(self) -> Self:
         if self.stock > self.cantRecibida:
             raise exceptions.StockMayorCantidad()
         return self
@@ -73,7 +73,6 @@ class InsumoCreate(InsumoBase):
 class InsumoUpdate(BaseModel):
     nombre: Optional[str] = None
     lote: Optional[str] = None
-    fechaRecepcion: Optional[datetime] = None
     fechaVencimiento: Optional[datetime] = None
     cantRecibida: Optional[float] = None
     stock: Optional[float] = None
@@ -109,7 +108,7 @@ class InsumoUpdate(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validar_relacion_stock_cantidad_update(self) -> "InsumoUpdate":
+    def validar_relacion_stock_cantidad_update(self) -> Self:
         if self.stock is not None and self.cantRecibida is not None:
             if self.stock > self.cantRecibida:
                 raise exceptions.StockMayorCantidad()

@@ -20,7 +20,7 @@ def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> Insumo:
 
 
 def listar_insumos(db: Session) -> List[Insumo]:
-    return db.scalars(select(Insumo)).all()
+    return list(db.scalars(select(Insumo)).all())
 
 
 def leer_insumo(db: Session, insumo_id: int) -> Insumo:
@@ -36,8 +36,8 @@ def modificar_insumo(
     db_insumo = leer_insumo(db, insumo_id)
     datos_actualizados = insumo.model_dump(exclude_unset=True)
 
-    # Si se envían campos no nulleables como None, se descartan para no sobreescribir la BD con NULL
-    campos_no_nulos = ["nombre", "lote", "fechaRecepcion", "cantRecibida", "stock", "medida"]
+
+    campos_no_nulos = ["nombre", "lote", "cantRecibida", "stock", "medida"]
     for campo in campos_no_nulos:
         if campo in datos_actualizados and datos_actualizados[campo] is None:
             datos_actualizados.pop(campo)
@@ -47,27 +47,14 @@ def modificar_insumo(
         if nombre_val.strip() == "":
             raise exceptions.NombreInsumoVacio()
 
-    # Validación de fecha de recepción si se actualiza
-    if "fechaRecepcion" in datos_actualizados:
-        f_rec = datos_actualizados["fechaRecepcion"]
-        if f_rec > datetime.now():
-            raise exceptions.FechaRecepcionInvalida()
-
-    # Validación de fecha de vencimiento si se actualiza con un valor no nulo
     if "fechaVencimiento" in datos_actualizados and datos_actualizados["fechaVencimiento"] is not None:
         f_venc = datos_actualizados["fechaVencimiento"]
         minimo_venc = (datetime.now() + timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
         if f_venc < minimo_venc:
             raise exceptions.FechaVencimientoInvalida()
+        if f_venc < db_insumo.fechaRecepcion:
+            raise exceptions.FechaVencimientoInvalida()
 
-    # Fechas efectivas para asegurar coherencia entre ambas
-    recepcion_efectiva = datos_actualizados.get("fechaRecepcion", db_insumo.fechaRecepcion)
-    vencimiento_efectivo = datos_actualizados.get("fechaVencimiento") if "fechaVencimiento" in datos_actualizados else db_insumo.fechaVencimiento
-
-    if vencimiento_efectivo is not None and vencimiento_efectivo < recepcion_efectiva:
-        raise exceptions.FechaVencimientoInvalida()
-
-    # Valores efectivos de stock y cantidad recibida
     stock_efectivo = datos_actualizados.get("stock", db_insumo.stock)
     cant_efectiva = datos_actualizados.get("cantRecibida", db_insumo.cantRecibida)
 
