@@ -9,3 +9,12 @@ class NombreDuplicado(BadRequest):
 
 class EquipoNoTienePlanes(NotFound):
     DETAIL = ErrorCode.EQUIPO_NO_TIENE_NINGUN_PLAN
+
+class NombreConNumeros(BadRequest):
+    DETAIL = ErrorCode.NOMBRE_CON_NUMEROS
+
+class UbicacionConNumeros(BadRequest):
+    DETAIL= ErrorCode.UBICACION_CON_NUMERO
+
+class CadenaMayorOigualACUATRO(BadRequest):
+    DETAIL= ErrorCode.CARACTERES_MAYOR_A_CUATRO

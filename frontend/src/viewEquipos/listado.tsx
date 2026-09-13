@@ -4,11 +4,14 @@ import '../styles/formularioAlta.css';
 
 interface ListadoEquiposProps {
     onNuevoClick: () => void;
+    onDetalleClick: (id: number) => void;
+    onEditarClick: (id:number) => void;
+    onEliminarClick: (id:number) => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick }) => {
+export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, onDetalleClick, onEditarClick ,onEliminarClick}) => {
     const [equipos, setEquipos] = useState<EquipoConId[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -31,7 +34,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick }) 
         }
     };
 
-    const handleEliminar = async (id?: number) => {
+    /*const handleEliminar = async (id?: number) => {
         if (!id) return;
         if (!window.confirm('¿Está seguro de que desea eliminar este equipo?')) return;
 
@@ -43,7 +46,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick }) 
         }catch{
             alert('No se pudo eliminar el equipo.');
         }
-    };
+    };*/
 
     useEffect(() => {
         fetchEquipos();
@@ -97,13 +100,13 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick }) 
                                 <td>{i.plan_de_calibracion}</td>
                                 <td className="acciones-col">
                                    <div className="acciones-btns"> 
-                                    <button className="btn-icon" title="Ver detalles">
+                                    <button className="btn-icon" title="Ver detalles" onClick={() => onDetalleClick(i.id)}>
                                         👁
                                     </button>
-                                    <button className="btn-icon" title="Editar">
+                                    <button className="btn-icon" title="Editar" onClick={() => onEditarClick(i.id)}>
                                         ✎
                                     </button>
-                                    <button className="btn-icon" title="Eliminar" onClick={() => handleEliminar(i.id)}>
+                                    <button className="btn-icon" title="Eliminar" onClick={() => onEliminarClick(i.id)}>
                                         🗑
                                     </button>
                                   </div>
