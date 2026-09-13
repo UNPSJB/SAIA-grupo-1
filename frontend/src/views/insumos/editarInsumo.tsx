@@ -1,22 +1,10 @@
 import { useState } from "react";
-import type { InsumoForm } from "./tipos";
+import type { InsumoConId } from "./tipos";
 import "../../styles/formularioAlta.css";
 
 const UNIDADES = ["kilogramos", "gramos", "litros", "mililitros", "unidades"];
 
-const INSUMO_INICIAL: InsumoForm = {
-  nombre: "",
-  lote: "",
-  fechaRecepcion: "",
-  fechaVencimiento: "",
-  cantRecibida: "",
-  stock: "",
-  medida: "",
-};
-
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-const HOY = new Date().toISOString().split("T")[0];
 
 const getMinVencimiento = () => {
   const d = new Date();
@@ -24,24 +12,54 @@ const getMinVencimiento = () => {
   return d.toISOString().split("T")[0];
 };
 
-interface NuevoInsumoProps {
+const toInputDate = (dateStr?: string | null) => {
+  if (!dateStr) return "";
+  return dateStr.split("T")[0];
+};
+
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return "-";
+  try {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime())
+      ? dateStr
+      : d.toLocaleDateString("es-AR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+  } catch {
+    return dateStr;
+  }
+};
+
+interface EditarInsumoProps {
+  insumo: InsumoConId;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
-  const [insumo, setInsumo] = useState<InsumoForm>(INSUMO_INICIAL);
+export default function EditarInsumo({ insumo, onSuccess, onCancel }: EditarInsumoProps) {
+  const [formData, setFormData] = useState({
+    nombre: insumo.nombre,
+    lote: insumo.lote,
+    fechaVencimiento: toInputDate(insumo.fechaVencimiento),
+    cantRecibida: insumo.cantRecibida as number | "",
+    stock: insumo.stock as number | "",
+    medida: insumo.medida,
+  });
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setInsumo({ ...insumo, [e.target.name]: e.target.value });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   }
 
   function handleNumberChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
-    setInsumo({ ...insumo, [e.target.name]: val === "" ? "" : Number(val) });
+    setFormData({ ...formData, [e.target.name]: val === "" ? "" : Number(val) });
   }
 
   async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
@@ -50,41 +68,37 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
     setSuccessMsg(null);
 
     // Validaciones en cliente
-    if (!insumo.nombre.trim()) {
+    if (!formData.nombre.trim()) {
       setErrorMsg("El nombre del insumo no puede estar vacío.");
       return;
     }
 
-    if (insumo.cantRecibida === "" || Number(insumo.cantRecibida) <= 0) {
+    if (formData.cantRecibida === "" || Number(formData.cantRecibida) <= 0) {
       setErrorMsg("La cantidad recibida debe ser mayor a cero.");
       return;
     }
 
-    if (insumo.stock === "" || Number(insumo.stock) < 0) {
+    if (formData.stock === "" || Number(formData.stock) < 0) {
       setErrorMsg("El stock debe ser mayor o igual a cero.");
       return;
     }
 
-    const cantNum = Number(insumo.cantRecibida);
-    const stockNum = Number(insumo.stock);
+    const cantNum = Number(formData.cantRecibida);
+    const stockNum = Number(formData.stock);
 
     if (stockNum > cantNum) {
       setErrorMsg("El stock no puede ser mayor a la cantidad recibida.");
       return;
     }
 
-    if (insumo.fechaRecepcion > HOY) {
-      setErrorMsg("La fecha de recepción no puede ser posterior a la fecha actual.");
-      return;
-    }
-
-    if (insumo.fechaVencimiento) {
+    if (formData.fechaVencimiento) {
       const minVenc = getMinVencimiento();
-      if (insumo.fechaVencimiento < minVenc) {
+      if (formData.fechaVencimiento < minVenc) {
         setErrorMsg("La fecha de vencimiento no puede ser anterior a dentro de 7 días.");
         return;
       }
-      if (insumo.fechaVencimiento < insumo.fechaRecepcion) {
+      const fechaRecepcionInput = toInputDate(insumo.fechaRecepcion);
+      if (fechaRecepcionInput && formData.fechaVencimiento < fechaRecepcionInput) {
         setErrorMsg("La fecha de vencimiento no puede ser anterior a la fecha de recepción.");
         return;
       }
@@ -93,25 +107,24 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
     setLoading(true);
 
     const payload = {
-      nombre: insumo.nombre.trim(),
-      lote: insumo.lote.trim(),
-      fechaRecepcion: insumo.fechaRecepcion,
-      fechaVencimiento: insumo.fechaVencimiento || null,
+      nombre: formData.nombre.trim(),
+      lote: formData.lote.trim(),
+      fechaVencimiento: formData.fechaVencimiento || null,
       cantRecibida: cantNum,
       stock: stockNum,
-      medida: insumo.medida,
+      medida: formData.medida,
     };
 
     try {
-      const res = await fetch(`${API_URL}/insumos/`, {
-        method: "POST",
+      const res = await fetch(`${API_URL}/insumos/${insumo.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        let mensaje = "Error al guardar el insumo.";
+        let mensaje = "Error al actualizar el insumo.";
         if (typeof errorData.detail === "string") {
           mensaje = errorData.detail;
         } else if (Array.isArray(errorData.detail)) {
@@ -122,8 +135,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
         throw new Error(mensaje);
       }
 
-      setSuccessMsg("Insumo dado de alta exitosamente.");
-      setInsumo(INSUMO_INICIAL);
+      setSuccessMsg("Insumo modificado exitosamente.");
       setTimeout(() => {
         onSuccess?.();
       }, 1200);
@@ -134,18 +146,11 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
     }
   }
 
-  function handleCancelar() {
-    setInsumo(INSUMO_INICIAL);
-    setErrorMsg(null);
-    setSuccessMsg(null);
-    onCancel?.();
-  }
-
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Nuevo Insumo</h1>
-        <div className="subtitulo">02 · Formulario</div>
+        <h1>Editar Insumo</h1>
+        <div className="subtitulo">02 · Modificación</div>
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
@@ -159,7 +164,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
             name="nombre"
             type="text"
             placeholder="Introduce el nombre"
-            value={insumo.nombre}
+            value={formData.nombre}
             onChange={handleChange}
             required
           />
@@ -172,7 +177,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
             name="lote"
             type="text"
             placeholder="Introduce el lote"
-            value={insumo.lote}
+            value={formData.lote}
             onChange={handleChange}
             required
           />
@@ -182,12 +187,11 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
           <label htmlFor="fechaRecepcion">Fecha de recepción</label>
           <input
             id="fechaRecepcion"
-            name="fechaRecepcion"
-            type="date"
-            max={HOY}
-            value={insumo.fechaRecepcion}
-            onChange={handleChange}
-            required
+            type="text"
+            value={formatDate(insumo.fechaRecepcion)}
+            readOnly
+            disabled
+            style={{ cursor: "not-allowed", opacity: 0.7 }}
           />
         </div>
 
@@ -198,7 +202,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
             name="fechaVencimiento"
             type="date"
             min={getMinVencimiento()}
-            value={insumo.fechaVencimiento}
+            value={formData.fechaVencimiento}
             onChange={handleChange}
           />
         </div>
@@ -212,7 +216,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
             min="0.01"
             step="any"
             placeholder="Introduce la cantidad recibida"
-            value={insumo.cantRecibida}
+            value={formData.cantRecibida}
             onChange={handleNumberChange}
             required
           />
@@ -227,7 +231,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
             min="0"
             step="any"
             placeholder="Introduce el stock"
-            value={insumo.stock}
+            value={formData.stock}
             onChange={handleNumberChange}
             required
           />
@@ -235,7 +239,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
 
         <div className="form-group">
           <label htmlFor="medida">Unidad de Medida</label>
-          <select id="medida" name="medida" value={insumo.medida} onChange={handleChange} required>
+          <select id="medida" name="medida" value={formData.medida} onChange={handleChange} required>
             <option value="" disabled>Seleccione una unidad</option>
             {UNIDADES.map((unidad) => (
               <option key={unidad} value={unidad}>
@@ -247,9 +251,9 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
-            {loading ? "Guardando..." : "Guardar"}
+            {loading ? "Guardando..." : "Guardar Cambios"}
           </button>
-          <button type="button" className="btn-cancelar" onClick={handleCancelar}>
+          <button type="button" className="btn-cancelar" onClick={onCancel}>
             Cancelar
           </button>
         </div>

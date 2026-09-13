@@ -160,7 +160,7 @@
 
 .btn-icon {
   background-color: var(--code-bg);
-  border: none;
+  border: 1px solid transparent;
   border-radius: 50%;
   width: 32px;
   height: 32px;
@@ -170,11 +170,30 @@
   cursor: pointer;
   color: var(--text-h);
   font-size: 0.85rem;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, color 0.2s, transform 0.15s, border-color 0.2s;
 }
 
 .btn-icon:hover {
   background-color: var(--border);
+  transform: scale(1.08);
+}
+
+.btn-icon.btn-ver:hover {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.btn-icon.btn-editar:hover {
+  background-color: #d97706;
+  color: #ffffff;
+  border-color: #d97706;
+}
+
+.btn-icon.btn-eliminar:hover {
+  background-color: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
 }
 
 /* Alertas */
