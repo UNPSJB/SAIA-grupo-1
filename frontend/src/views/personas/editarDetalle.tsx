@@ -26,6 +26,7 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
     apellido: '',
     email: '',
     capacidad: 'operar',
+    activo: true,
   });
 
   const [loadingFetch, setLoadingFetch] = useState(true);
@@ -46,6 +47,7 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
               apellido: data.apellido,
               email: data.email,
               capacidad: data.capacidad || 'operar',
+              activo: data.activo,
             });
           } else {
             setErrorMsg('No se pudo cargar la persona.');
@@ -60,6 +62,10 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
       fetchPersona();
     }
   }, [personaLegajo]);
+
+  const toggleActivo = () => {
+  setFormData((prev) => ({ ...prev, activo: !prev.activo }));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -184,6 +190,32 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
         </option>
             ))}
           </select>
+        </div>
+
+        <div className="form-group">
+          <label>Estado</label>
+            <button
+              type="button"
+              onClick={toggleActivo}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.45rem 1rem',
+                borderRadius: '20px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                color: '#fff',
+                backgroundColor: formData.activo ? '#16a34a' : '#dc2626',
+                width: 'fit-content',
+                transition: 'background-color 0.2s ease',
+              }}
+            >
+              <span>{formData.activo ? '●' : '○'}</span>
+              <span>{formData.activo ? 'Activo' : 'Inactivo'}</span>
+            </button>
         </div>
 
         <div className="form-acciones">

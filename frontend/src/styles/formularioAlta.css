@@ -22,7 +22,7 @@
   font-weight: 400;
 }
 
-/* Formulario */
+
 .formulario-box {
   max-width: 500px;
 }
@@ -65,7 +65,6 @@
   background-color: var(--bg);
 }
 
-/* Botones */
 .form-acciones {
   display: flex;
   gap: 1rem;
@@ -121,7 +120,7 @@
   background-color: var(--code-bg);
 }
 
-/* Listado y Tabla */
+
 .listado-top-bar {
   display: flex;
   justify-content: space-between;
@@ -159,7 +158,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Acciones de la tabla */
 .acciones-col {
   text-align: right;
   width: 140px;
@@ -208,7 +206,6 @@
   border-color: #dc2626;
 }
 
-/* Alertas */
 .alerta-error {
   background-color: rgba(220, 38, 38, 0.12);
   color: #dc2626;
