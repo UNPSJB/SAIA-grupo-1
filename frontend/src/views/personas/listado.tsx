@@ -127,13 +127,6 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                       >
                         ✎
                       </button>
-                      <button
-                        className="btn-icon"
-                        title="Eliminar"
-                        onClick={() => handleEliminar(p.legajo)}
-                      >
-                        🗑
-                      </button>
                     </div>
                   </td>
                 </tr>
