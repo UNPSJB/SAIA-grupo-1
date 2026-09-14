@@ -1,7 +1,7 @@
 from typing import Optional, List
 from pydantic import EmailStr
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Enum as SQLEnum
+from sqlalchemy import String, Enum as SQLEnum, Boolean
 from src.models import ModeloBase
 from src.personal.schemas import Capacidades
 
@@ -15,3 +15,4 @@ class Personal(ModeloBase):
     apellido: Mapped[str] = mapped_column(String(20), index=True)
     email: Mapped[str] = mapped_column(unique=True, index=True)
     capacidad : Mapped[Capacidades] = mapped_column(SQLEnum(Capacidades), default=Capacidades.OPERAR, nullable=False)
+    activo : Mapped[bool] = mapped_column(Boolean, default=True)

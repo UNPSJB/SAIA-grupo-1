@@ -14,3 +14,18 @@ class UnidadMedidaInvalida(ValueError):
         
 class NombreInsumoVacio(BadRequest):
     DETAIL = ErrorCode.NOMBRE_VACIO
+
+class FechaRecepcionInvalida(BadRequest):
+    DETAIL = ErrorCode.FECHA_RECEPCION_INVALIDA
+
+class FechaVencimientoInvalida(BadRequest):
+    DETAIL = ErrorCode.FECHA_VENCIMIENTO_INVALIDA
+
+class CantidadRecibidaInvalida(BadRequest):
+    DETAIL = ErrorCode.CANTIDAD_RECIBIDA_INVALIDA
+
+class StockInvalido(BadRequest):
+    DETAIL = ErrorCode.STOCK_INVALIDO
+
+class StockMayorCantidad(BadRequest):
+    DETAIL = ErrorCode.STOCK_MAYOR_CANTIDAD
