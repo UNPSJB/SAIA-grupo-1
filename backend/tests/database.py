@@ -1,5 +1,6 @@
 import pytest
 from typing import Generator
+from datetime import datetime, timedelta
 from sqlalchemy import StaticPool, create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from src.main import app
@@ -8,6 +9,9 @@ from src.config import settings
 from src.models import ModeloBase
 from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate
+from src.insumos.services import crear_insumo
+from src.insumos.schemas import InsumoCreate
+from src.insumos.models import UnidadMedida
 
 
 # creamos una db para testing
@@ -25,13 +29,14 @@ def override_get_db():
     # Para usar restricciones de FK en SQLite, debemos habilitar la siguiente opción:
     db.execute(text("PRAGMA foreign_keys = ON"))
     try:
-        print("Using test DB!")
         yield db
     finally:
         db.close()
 
+
 # forzamos a fastapi para que utilice la db para testing.
 app.dependency_overrides[get_db] = override_get_db
+
 
 @pytest.fixture
 def session() -> Generator[Session, None, None]:
@@ -63,12 +68,49 @@ def session() -> Generator[Session, None, None]:
         ),
     )
 
-    db.add_all(
-        [
-            persona_1,
-            persona_2
-        ]
+    hoy = datetime.now()
+    vencimiento_valido = (hoy + timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
+    recepcion_valida = (hoy - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Insumos semilla para pruebas de POES y manipulación de alimentos
+    insumo_1 = crear_insumo(
+        db,
+        InsumoCreate(
+            nombre="Lavandina concentrada 55g/l",
+            lote="POES-LAV-001",
+            fechaRecepcion=recepcion_valida,
+            fechaVencimiento=vencimiento_valido,
+            cantRecibida=100.0,
+            stock=80.0,
+            medida=UnidadMedida.LITROS,
+        ),
     )
+    insumo_2 = crear_insumo(
+        db,
+        InsumoCreate(
+            nombre="Detergente desengrasante alcalino",
+            lote="POES-DET-002",
+            fechaRecepcion=recepcion_valida,
+            fechaVencimiento=vencimiento_valido,
+            cantRecibida=50.0,
+            stock=35.0,
+            medida=UnidadMedida.LITROS,
+        ),
+    )
+    insumo_3 = crear_insumo(
+        db,
+        InsumoCreate(
+            nombre="Bobina de toallas secamanos",
+            lote="POES-SEC-003",
+            fechaRecepcion=recepcion_valida,
+            fechaVencimiento=None,
+            cantRecibida=50.0,
+            stock=20.0,
+            medida=UnidadMedida.UNIDADES,
+        ),
+    )
+
+    db.add_all([persona_1, persona_2, insumo_1, insumo_2, insumo_3])
     db.commit()
 
     yield db

@@ -7,6 +7,7 @@ export interface Persona {
   apellido: string;
   email: string;
   capacidad: TipoCapacidad;
+  activo : boolean;
 }
 
 export type PersonaCreate = Omit<Persona, 'legajo'>;

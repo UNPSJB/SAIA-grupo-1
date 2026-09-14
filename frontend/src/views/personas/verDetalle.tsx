@@ -45,7 +45,7 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({ onCancel, person
       ) : persona ? (
         <form>
           <div className="form-group">
-            <label htmlFor="legajo">Legajo (No editable)</label>
+            <label htmlFor="legajo">Legajo</label>
             <input
               id="legajo"
               name="legajo"
@@ -106,12 +106,36 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({ onCancel, person
               name="capacidad"
               type="text"
               value={
-                persona.capacidad
+                persona.capacidad == 'ambas'
+                  ? 'Operar y Administrar'
+                  : persona.capacidad
                   ? persona.capacidad.charAt(0).toUpperCase() + persona.capacidad.slice(1)
                   : 'Ninguna'
               }
               disabled
             />
+          </div>
+          <div className="form-group">
+            <label>Estado</label>
+            <div style={{ marginTop: '0.25rem' }}>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '20px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  color: '#fff',
+                  backgroundColor: persona.activo ? '#16a34a' : '#dc2626',
+                  width: 'fit-content',
+                }}
+              >
+                <span>{persona.activo ? '●' : '○'}</span>
+                <span>{persona.activo ? 'Activo' : 'Inactivo'}</span>
+              </span>
+            </div>
           </div>
         </form>
       ) : (
