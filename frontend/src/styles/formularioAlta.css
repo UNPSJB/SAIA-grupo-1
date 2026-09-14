@@ -229,3 +229,24 @@
 dialog::backdrop{
   background-color: white;
 }
+
+dialog .btn-eliminar{
+  margin-right: 140px;
+}
+
+dialog .btn-guardar{
+  margin-left: 80px;
+}
+
+.btn-exito{
+  background-color: var(--text-h);
+  color: var(--bg);
+  border: 1px solid var(--text-h);
+  padding: 0.65rem 1.6rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  margin-left: 40px;
+}
