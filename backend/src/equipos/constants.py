@@ -5,3 +5,4 @@ class ErrorCode:
     NOMBRE_CON_NUMEROS = "El nombre no puede contener numeros"
     UBICACION_CON_NUMERO=" La Ubicacion no puede contener numeros"
     CARACTERES_MAYOR_A_CUATRO=" La cantidad de caracteres nombre y ubicacion debe ser mayor o igual a 4"
+    CATEGORIAINVALIDA= "La CATEGORIA indicada es inválida. El valor indicado debiera ser una de las opciones en la lista:"

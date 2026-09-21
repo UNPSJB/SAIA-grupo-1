@@ -11,6 +11,10 @@ class Categoria (StrEnum):
     DESINFECCION = auto() 
 
 
+class Estado(StrEnum):
+    ACTIVO= auto()
+    INACTIVO=auto()
+
 class Equipo(ModeloBase):
     __tablename__ = "equipos"
 
@@ -20,3 +24,5 @@ class Equipo(ModeloBase):
     ubicacion: Mapped[str] = mapped_column(String(50))
     plan_de_Limpieza: Mapped[str] = mapped_column(String(100))
     plan_de_calibracion: Mapped[str] = mapped_column(String(100))
+    estado: Mapped[Estado] = mapped_column(index=True)
+    

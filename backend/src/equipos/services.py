@@ -2,9 +2,8 @@ import logging
 from typing import List, Literal
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
-from src.equipos.models import Equipo
+from src.equipos.models import Equipo, Estado
 from src.equipos import schemas, exceptions
-
 
 
 
@@ -19,7 +18,7 @@ def crear_equipo(db: Session, equipo: schemas.EquipoCreate) -> schemas.Equipo:
     return _equipo
 
 def listar_equipos(db: Session) -> List[schemas.Equipo]:
-    return db.scalars(select(Equipo)).all()
+    return db.scalars(select(Equipo).where(Equipo.estado== Estado.ACTIVO)).all() 
 
 def obtener_equipo(db: Session, equipo_id: int) -> schemas.Equipo:
     db_equipo = db.scalar(select(Equipo).where(Equipo.id == equipo_id))
@@ -38,6 +37,9 @@ def editar_equipo(db: Session, equipo_id: int, equipo: schemas.EquipoUpdate) -> 
 
 def eliminar_equipo(db: Session, equipo_id: int) -> schemas.Equipo:
     db_equipo = obtener_equipo(db, equipo_id)
-    db.execute(delete(Equipo).where(Equipo.id == equipo_id))
-    db.commit()
+    if db_equipo:
+            db_equipo.estado="inactivo"
+            db.commit()
+            db.refresh(db_equipo)
+    
     return db_equipo
