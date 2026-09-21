@@ -74,8 +74,9 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, on
                         <th>Nombre</th>
                         <th>Categoria</th>
                         <th>Plan de Limpieza</th>
-                        <th>Plan de Calibración</th>
+                        <th>Estado</th>
                         <th className="acciones-col">Acciones</th>
+                        
                     </tr>
                 </thead>
                 <tbody>
@@ -92,12 +93,12 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, on
                             </td>
                         </tr>
                     ) : (
-                        equipos.map((i) => (
+                        equipos.map((i) => ( 
                             <tr key={i.id}>
                                 <td>{i.nombre}</td>
                                 <td>{i.categoria}</td>
                                 <td>{i.plan_de_Limpieza}</td>
-                                <td>{i.plan_de_calibracion}</td>
+                                <td>{i.estado}</td>
                                 <td className="acciones-col">
                                    <div className="acciones-btns"> 
                                     <button className="btn-icon" title="Ver detalles" onClick={() => onDetalleClick(i.id)}>
@@ -111,7 +112,10 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, on
                                     </button>
                                   </div>
                                 </td>
+                                
                             </tr>
+
+
                         ))
                     )}
                 </tbody>

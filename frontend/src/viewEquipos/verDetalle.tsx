@@ -101,6 +101,10 @@ export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId
                     disabled
                 />
             </div>
+
+           
+
+
         </form>
         ) : (
                 <tr>

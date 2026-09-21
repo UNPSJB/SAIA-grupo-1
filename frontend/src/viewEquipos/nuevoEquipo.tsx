@@ -8,7 +8,8 @@ const EQUIPO_INICIAL :Equipo={
         categoria: "",
         ubicacion: "",
         plan_de_Limpieza: "",
-        plan_de_calibracion: ""
+        plan_de_calibracion: "",
+        estado:"activo"
     };
 
 
@@ -49,9 +50,18 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
       return;
     }
 
+    if (equipo.nombre.trim().length < 4) {
+    setErrorMsg("El nombre debe tener al menos 4 caracteres.");
+    return;
+    }
+
     if (!equipo.ubicacion.trim()) {
       setErrorMsg("La ubicacion del equipo no puede estar vacío.");
       return;
+    }
+    if (equipo.ubicacion.trim().length < 4) {
+     setErrorMsg("La ubicacion debe tener al menos 4 caracteres.");
+     return;
     }
 
     if(!soloLetras(equipo.nombre)){
@@ -69,7 +79,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         categoria: equipo.categoria,
         ubicacion: equipo.ubicacion.trim(),
         plan_de_Limpieza: equipo.plan_de_Limpieza.trim(),
-        plan_de_calibracion: equipo.plan_de_calibracion.trim()
+        plan_de_calibracion: equipo.plan_de_calibracion.trim(),
+        estado:"activo"
     }
 
     setLoading(true);
@@ -86,17 +97,23 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
 
         if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            /*console.log(errorData);
-           /* console.log(errorData.detail[0].msg);   
-            console.log(errorData.detail[1].msg);  */ 
-            setErrorMsg(errorData.detail|| "Error al guardar el equipo");
-        }else{
-            dialog.current?.showModal();
-            setSuccessMsg("Equipo dado de alta exitosamente");
-            setEquipo(EQUIPO_INICIAL);
-
+        const errorData = await res.json().catch(() => ({}));
+        let mensaje = "Error al guardar el equipo.";
+        if (typeof errorData.detail === "string") {
+          mensaje = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          mensaje = errorData.detail
+            .map((err: { msg?: string }) => err.msg || JSON.stringify(err))
+            .join(", ");
         }
+        throw new Error(mensaje);
+      }
+
+    dialog.current?.showModal();
+    setSuccessMsg("Equipo dado de alta exitosamente");
+    setEquipo(EQUIPO_INICIAL);
+
+
 
     }catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
@@ -190,6 +207,9 @@ return(
                     required    
                 />
             </div>
+            
+            
+            
 
             <div className="form-acciones">
                 <button type="submit" className="btn-guardar" disabled={loading}>
