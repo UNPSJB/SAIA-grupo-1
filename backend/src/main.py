@@ -13,6 +13,8 @@ from src.logger import setup_logging
 from src.insumos.router import router as insumos_router
 from src.equipos.router import router as equipos_router
 from src.personal.router import router as personal_router
+from src.plan_De_limpieza.router import router as planLimpieza_router
+from src.tareas.router import router as  tarea_router
 from fastapi.middleware.cors import CORSMiddleware
 
 ENV = settings.ENV.upper()
@@ -48,3 +50,5 @@ app.add_middleware(
 app.include_router(insumos_router)
 app.include_router(equipos_router)
 app.include_router(personal_router, prefix="/personal", tags=["Personal"])
+app.include_router(planLimpieza_router)
+app.include_router(tarea_router)
