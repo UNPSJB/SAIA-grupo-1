@@ -10,7 +10,8 @@ const EQUIPO_INICIAL :EquipoConId={
         categoria: "",
         ubicacion: "",
         plan_de_Limpieza: "",
-        plan_de_calibracion: ""
+        plan_de_calibracion: "",
+        estado:"activo"
     };
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -36,6 +37,45 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
+
+     function soloLetras(nombre:string): boolean{
+
+        const patron=/^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$/;
+        return patron.test(nombre);
+
+    }
+
+
+
+    if (!equipo.nombre.trim()) {
+      setErrorMsg("El nombre del equipo no puede estar vacío.");
+      return;
+    }
+
+    if (!equipo.ubicacion.trim()) {
+      setErrorMsg("La ubicacion del equipo no puede estar vacío.");
+      return;
+    }
+
+    if(!soloLetras(equipo.nombre)){
+      setErrorMsg("No se permiten numeros en el nombre.");
+      return;
+    }
+
+    if(!soloLetras(equipo.ubicacion)){
+      setErrorMsg("No se permiten numeros en la ubicacion.");
+      return;
+    }
+
+    const payload={
+        nombre: equipo.nombre.trim(),
+        categoria: equipo.categoria,
+        ubicacion: equipo.ubicacion.trim(),
+        plan_de_Limpieza: equipo.plan_de_Limpieza.trim(),
+        plan_de_calibracion: equipo.plan_de_calibracion.trim(),
+        estado:"activo"
+    }
+
     setLoading(true);
 
     try {
@@ -44,7 +84,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify(equipo),
+            body: JSON.stringify(payload),
         });
 
         if (!res.ok) {

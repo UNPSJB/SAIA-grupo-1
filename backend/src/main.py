@@ -10,7 +10,9 @@ from src.config import settings
 from src.logger import setup_logging
 
 # Importamos los routers desde nuestros modulos
+from src.insumos.router import router as insumos_router
 from src.equipos.router import router as equipos_router
+from src.personal.router import router as personal_router
 from fastapi.middleware.cors import CORSMiddleware
 
 ENV = settings.ENV.upper()
@@ -32,12 +34,17 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "*"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
 # asociamos los routers a nuestra app
+app.include_router(insumos_router)
 app.include_router(equipos_router)
+app.include_router(personal_router, prefix="/personal", tags=["Personal"])
