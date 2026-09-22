@@ -16,10 +16,13 @@ class PlanDeLimpiezaCreate(PlanDeLimpiezaBase):
     equipo_id:int
     @field_validator("nombre")
     @classmethod
-    def validar_nombre(cls, v):
-            if v.isalpha():
-                return v
-            raise exceptions.NombreConNumeros()
+    def validar_nombre(cls, v:Optional[str])->Optional[str]:
+    
+                if v is None:
+                    return None
+                if all(c.isalnum() or c.isspace() for c in v):
+                    return v
+                raise exceptions.NombreCaracteresRaros()
 
     @field_validator("nombre")
     @classmethod
@@ -38,9 +41,9 @@ class PlanDeLimpiezaUpdate(PlanDeLimpiezaBase):
 
                  if v is None:
                     return None
-                 if v.isalpha():
+                 if all(c.isalnum() or c.isspace() for c in v):
                      return v
-                 raise exceptions.NombreConNumeros()
+                 raise exceptions.NombreCaracteresRaros()
      
      @field_validator("nombre")
      @classmethod

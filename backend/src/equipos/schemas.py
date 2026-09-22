@@ -34,14 +34,14 @@ class EquipoCreate(EquipoBase):
     @field_validator('nombre')
     @classmethod
     def validar_nombre(cls, v):
-        if v.isalpha():
+        if all(c.isalnum() or c.isspace() for c in v):
             return v
         raise exceptions.NombreConNumeros()
     
     @field_validator('ubicacion')
     @classmethod
     def validar_ubicacion(cls, v):
-            if v.isalpha():
+            if all(c.isalnum() or c.isspace() for c in v):
                 return v
             raise exceptions.UbicacionConNumeros()
     @field_validator('ubicacion','nombre')
@@ -82,7 +82,7 @@ class EquipoUpdate(EquipoBase):
 
             if v is None:
                  return None
-            if v.isalpha():
+            if all(c.isalnum() or c.isspace() for c in v):
                 return v
             raise exceptions.NombreConNumeros()
         
@@ -91,7 +91,7 @@ class EquipoUpdate(EquipoBase):
     def validar_ubicacion(cls, v:Optional[str]) -> Optional[str]:
                 if v is None:
                                  return None
-                if v.isalpha():
+                if all(c.isalnum() or c.isspace() for c in v):
                     return v
                 raise exceptions.UbicacionConNumeros()
     @field_validator('ubicacion','nombre')

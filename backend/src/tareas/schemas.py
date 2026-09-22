@@ -1,3 +1,5 @@
+import re
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Literal, Optional
 from src.tareas.models import Frecuencia
@@ -32,9 +34,15 @@ class TareaCreate(TareaBase):
     @field_validator("nombre")
     @classmethod
     def validar_nombre(cls, v):
-                if v.isalpha():
+                if all(c.isalpha() or c.isspace() for c in v):
                     return v
                 raise exceptions.NombreConNumeros()
+    @field_validator("descripcion")
+    @classmethod
+    def validar_descripcion(cls, v):
+                if re.match(r"^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s°.,-]+$", v):  #este RE le permite al usuario ingresar comas, puntos numeros y espacios
+                    return v
+                raise exceptions.DescripcionInvalidad()
     
     @field_validator("nombre","descripcion")
     @classmethod
@@ -53,9 +61,16 @@ class TareaUpdate(TareaBase):
       def validar_nombre(cls, v:Optional[str])-> Optional[str]:
                       if v is None:
                         return None
-                      if v.isalpha():
+                      if all(c.isalpha() or c.isspace() for c in v):
                           return v
                       raise exceptions.NombreConNumeros()
+
+      @field_validator("descripcion")
+      @classmethod
+      def validar_descripcion(cls, v):
+                      if re.match(r"^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s°.,-]+$", v):  #este RE le permite al usuario ingresar comas, puntos numeros y espacios
+                          return v
+                      raise exceptions.DescripcionInvalidad()
           
       @field_validator("nombre","descripcion")
       @classmethod
