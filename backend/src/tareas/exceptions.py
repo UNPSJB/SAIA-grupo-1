@@ -17,3 +17,6 @@ class FRECUENCIAInvalida(ValueError):
         posibles_frecuencias = ", ".join(posibles_frecuencias)
         message = f"{ErrorCode.FRECUENCIA_INVALIDA} {posibles_frecuencias}."
         super().__init__(message)
+
+class DescripcionInvalidad(BadRequest):
+    DETAIL=ErrorCode.TAREA_CON_CARACTERES_RAROS

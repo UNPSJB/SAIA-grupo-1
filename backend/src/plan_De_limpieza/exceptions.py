@@ -1,8 +1,8 @@
 from src.plan_De_limpieza.constants import ErrorCode
 from src.exceptions import NotFound, BadRequest
 
-class NombreConNumeros(BadRequest):
-    DETAIL=ErrorCode.NOMBRE_CON_NUMEROS
+class NombreCaracteresRaros(BadRequest):
+    DETAIL=ErrorCode.NOMBRE_CON_CARACTERES_RAROS
 
 class NombreError(BadRequest):
     DETAIL=ErrorCode.NOMBRE_ERROR
