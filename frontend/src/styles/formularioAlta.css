@@ -225,12 +225,6 @@
   font-size: 0.875rem;
 }
 
-/*Mensajes de exito*/
-
-/*dialog::backdrop{
-  background-color: white;
-}*/
-
 dialog .btn-eliminar{
   margin-right: 140px;
 }

@@ -9,9 +9,9 @@ import { ListadoEquipos } from './viewEquipos/listado';
 import { DetalleEquipo } from './viewEquipos/verDetalle';
 import EditarEquipo from './viewEquipos/editarDetalle';
 import EliminarEquipo from './viewEquipos/eliminarEquipo';
-import { NuevaPersona } from './views/personas/nuevaPersona';
+import { NuevoPersona as NuevaPersona } from "./views/personas/nuevaPersona";
 import { ListadoPersonas } from './views/personas/listado';
-import { DetallePersona } from './views/personas/verDetalle';
+import { VerPersona as DetallePersona } from "./views/personas/verDetalle";
 import { EditarPersona } from './views/personas/editarDetalle';
 import { Sidebar } from './components/Sidebar';
 
