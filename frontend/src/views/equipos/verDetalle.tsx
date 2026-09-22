@@ -1,6 +1,6 @@
 import React, { useEffect,useState } from 'react';
 import type { EquipoConId } from "./tipos";
-import '../styles/formularioAlta.css';
+import '../../styles/formularioAlta.css';
 
 interface DetalleEquipoProps {
     onCancel?: () => void;

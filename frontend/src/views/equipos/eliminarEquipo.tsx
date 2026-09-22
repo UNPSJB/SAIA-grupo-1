@@ -1,6 +1,6 @@
 import { useEffect,useRef,useState } from 'react';
 import type { EquipoConId } from "./tipos";
-import '../styles/formularioAlta.css';
+import '../../styles/formularioAlta.css';
 
 interface EliminarEquipoProps{
     equipoID?:number | null;

@@ -1,11 +1,9 @@
-import React, { useEffect,useRef,useState } from 'react';
-import type { EquipoConId } from "./tipos";
-import '../styles/formularioAlta.css';
-
+import {useRef, useState} from "react"
+import type {Equipo} from "./tipos"
+import "../../styles/formularioAlta.css"
 
 const CATEGORIAS= ["conservamiento","sanamiento","mantenimiento","desinfeccion"];
-const EQUIPO_INICIAL :EquipoConId={
-        id: 0,
+const EQUIPO_INICIAL :Equipo={
         nombre: "",
         categoria: "",
         ubicacion: "",
@@ -13,21 +11,21 @@ const EQUIPO_INICIAL :EquipoConId={
         plan_de_calibracion: "",
         estado:"activo"
     };
+
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-interface EditarEquipoProps {
-    equipoId: number | null;
+interface NuevoEquipoProps {
     onSuccess?: () => void;
     onCancel?: () => void;
 }
 
-export default function EditarEquipo({ equipoId, onSuccess, onCancel }: EditarEquipoProps) {
-    const [equipo, setEquipo] = useState<EquipoConId>(EQUIPO_INICIAL);
+export default function NuevoEquipo({ onSuccess, onCancel }: NuevoEquipoProps) {
+    const [equipo, setEquipo] = useState<Equipo>(EQUIPO_INICIAL);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-    const dialog=useRef <HTMLDialogElement>(null);
+    const dialog= useRef<HTMLDialogElement>(null);
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setEquipo({...equipo, [e.target.name]: e.target.value})
@@ -38,7 +36,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-     function soloLetras(nombre:string): boolean{
+    function soloLetras(nombre:string): boolean{
 
         const patron=/^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$/;
         return patron.test(nombre);
@@ -52,9 +50,18 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
       return;
     }
 
+    if (equipo.nombre.trim().length < 4) {
+    setErrorMsg("El nombre debe tener al menos 4 caracteres.");
+    return;
+    }
+
     if (!equipo.ubicacion.trim()) {
       setErrorMsg("La ubicacion del equipo no puede estar vacío.");
       return;
+    }
+    if (equipo.ubicacion.trim().length < 4) {
+     setErrorMsg("La ubicacion debe tener al menos 4 caracteres.");
+     return;
     }
 
     if(!soloLetras(equipo.nombre)){
@@ -78,26 +85,36 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
     setLoading(true);
 
+
     try {
-        const res= await fetch(`${API_URL}/equipos/${equipoId}`, {
-            method: "PUT",
+        const res= await fetch(`${API_URL}/equipos/`, {
+            method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(payload),
         });
 
+
         if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-           /* console.log(errorData);
-           /* console.log(errorData.detail[0].msg);
-            console.log(errorData.detail[1].msg);   */
-            setErrorMsg(errorData.detail || "Error al guardar el equipo");
-        }else{
-            setSuccessMsg("Equipo editado exitosamente");
-            setEquipo(EQUIPO_INICIAL);
-            dialog.current?.showModal();
+        const errorData = await res.json().catch(() => ({}));
+        let mensaje = "Error al guardar el equipo.";
+        if (typeof errorData.detail === "string") {
+          mensaje = errorData.detail;
+        } else if (Array.isArray(errorData.detail)) {
+          mensaje = errorData.detail
+            .map((err: { msg?: string }) => err.msg || JSON.stringify(err))
+            .join(", ");
         }
+        throw new Error(mensaje);
+      }
+
+    dialog.current?.showModal();
+    setSuccessMsg("Equipo dado de alta exitosamente");
+    setEquipo(EQUIPO_INICIAL);
+
+
+
     }catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
     }finally {
@@ -113,42 +130,17 @@ function handleCancelar() {
     onCancel?.();
 }
 
-useEffect(() => {
-        if (equipoId) {
-            const fetchEquipo = async () => {
-                try {
-                    const res = await fetch(`${API_URL}/equipos/${equipoId}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        setEquipo(data);
-                    }
-                } catch {
-                    alert('El equipo no existe.');
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            fetchEquipo();
-        }
-    }, [equipoId]);
 
 return(
     <div className="modulo-container formulario-box">
         <div className="modulo-header">
-            <h1>Editar Equipo</h1>
-            <div className="subtitulo">Editar Equipo: {equipoId}</div>
+            <h1>Nuevo Equipo</h1>
+            <div className="subtitulo">02 . Formulario</div>
         </div>
 
         {errorMsg && <div className="alerta-error">{errorMsg}</div>}
         {successMsg && <div className="alerta-exito">{successMsg}</div>}
-            {loading ? (
-                        <tr>
-                            <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
-                                Cargando equipo...
-                            </td>
-                        </tr>
-        ) : equipo ? (
+
         <form onSubmit={handleGuardar}>
             <div className="form-group">
                 <label htmlFor="nombre">Nombre</label>
@@ -156,8 +148,10 @@ return(
                     id="nombre"
                     name="nombre"
                     type="text"
+                    placeholder="Introduzca el nombre del equipo"
                     value={equipo.nombre}
-                    onChange={handleChange}    
+                    onChange={handleChange}
+                    required    
                 />
             </div>
             <div className="form-group">
@@ -167,6 +161,7 @@ return(
                     name="categoria"
                     value={equipo.categoria}
                     onChange={handleChange}
+                    required
                 >
                     <option value="" disabled>Seleccione una categoría</option>
                     {CATEGORIAS.map((categoria) => (
@@ -185,6 +180,7 @@ return(
                     type="text"
                     value={equipo.ubicacion}
                     onChange={handleChange}
+                    required    
                 />
             </div>
 
@@ -195,7 +191,8 @@ return(
                     name="plan_de_Limpieza"
                     type="text"
                     value={equipo.plan_de_Limpieza}
-                    onChange={handleChange}  
+                    onChange={handleChange}
+                    required    
                 />
             </div>
 
@@ -206,34 +203,29 @@ return(
                     name="plan_de_calibracion"
                     type="text"
                     value={equipo.plan_de_calibracion}
-                    onChange={handleChange}  
+                    onChange={handleChange}
+                    required    
                 />
             </div>
+            
+            
+            
 
             <div className="form-acciones">
                 <button type="submit" className="btn-guardar" disabled={loading}>
-                    {loading ? "Guardando..." : "Guardar"}
+                    {loading ? "guardando...":"Guardar"}
                 </button>
                 <button type="button"  className="btn-cancelar" onClick={handleCancelar}>
                     Cancelar
                 </button>
             </div>
         </form>
-        ) : (
-                <tr>
-                     <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
-                             El equipo no existe.
-                        </td>
-                </tr>
-                )}
 
-                <dialog ref={dialog} className="guardado-con-exito">
-                    <h2> Equipo Editado con Exito</h2>
+        <dialog ref={dialog} className="guardado-con-exito">
+                    <h2> Equipo Guardado con Exito</h2>
                 <button type="button" className="btn-guardar" onClick={() => {dialog.current?.close(); onSuccess?.();}}> Aceptar</button>
         </dialog>
-        
     </div>
-    
         
 )
 }
