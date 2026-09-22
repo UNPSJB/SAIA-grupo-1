@@ -4,7 +4,6 @@ from typing import List
 from src.database import get_db
 from . import schemas, services
 
-# Esta es la variable que busca main.py:
 router = APIRouter()
 
 @router.get("/", response_model=List[schemas.Personal])
