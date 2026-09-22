@@ -111,7 +111,6 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
         </button>
       </div>
 
-      {/* Filtros con capacidades corregidas */}
       <div style={{ display: "flex", gap: "14px", marginBottom: "25px", flexWrap: "wrap", alignItems: "center" }}>
         <input
           type="text"

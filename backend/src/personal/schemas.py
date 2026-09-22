@@ -33,7 +33,6 @@ class Personal(PersonaBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-# Alias de compatibilidad
 PersonaResponse = Personal
 PersonaCreate = PersonalCreate
 PersonaUpdate = PersonalUpdate
