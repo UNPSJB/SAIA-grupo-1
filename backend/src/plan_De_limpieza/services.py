@@ -28,9 +28,11 @@ def obtener_plan(db: Session, plan_id: int) -> schemas.PlanDeLimpieza:
 
 def editar_plan(db: Session, plan_id: int, plan: schemas.PlanDeLimpiezaUpdate) -> schemas.PlanDeLimpieza:
     db_plan = obtener_plan(db, plan_id)
-    db.execute(
-        update(Plan_de_Limpieza).where(Plan_de_Limpieza.id == plan_id).values(**plan.model_dump())
-    )
-    db.commit()
-    db.refresh(db_plan)
+    datos = plan.model_dump(exclude_unset=True)
+    if datos:
+        db.execute(
+            update(Plan_de_Limpieza).where(Plan_de_Limpieza.id == plan_id).values(**datos)
+        )
+        db.commit()
+        db.refresh(db_plan)
     return db_plan
