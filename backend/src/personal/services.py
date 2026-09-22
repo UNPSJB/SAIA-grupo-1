@@ -1,80 +1,97 @@
-from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from src.personal import schemas, models
+from sqlalchemy.exc import IntegrityError
+from . import models, schemas
 
-def listar_personal(db: Session) -> List[models.Personal]:
+def listar_personal(db: Session):
     return db.query(models.Personal).all()
 
-def leer_personal(db: Session, legajo: int) -> Optional[models.Personal]:
-    return db.query(models.Personal).filter(models.Personal.legajo == legajo).first()
+def obtener_personal_por_legajo(db: Session, legajo: int):
+    persona = db.query(models.Personal).filter(models.Personal.legajo == legajo).first()
+    if not persona:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Persona no encontrada."
+        )
+    return persona
 
-def crear_personal(db: Session, persona: schemas.PersonalCreate) -> models.Personal:
-    # valida que el email no esté duplicado
-    if db.query(models.Personal).filter(models.Personal.email == persona.email).first():
+def crear_personal(db: Session, persona: schemas.PersonalCreate):
+    existe_doc = db.query(models.Personal).filter(models.Personal.documento == persona.documento).first()
+    if existe_doc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe una persona registrada con ese correo electrónico."
+            detail=f"Ya existe una persona registrada con el DNI {persona.documento}."
         )
 
-    #valida que el documento no esté duplicado
-    doc_num = int(persona.documento)
-    if db.query(models.Personal).filter(models.Personal.documento == doc_num).first():
+    existe_email = db.query(models.Personal).filter(models.Personal.email == persona.email).first()
+    if existe_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe una persona registrada con ese número de documento."
+            detail=f"El correo electrónico {persona.email} ya está registrado."
         )
 
-    nueva_persona = models.Personal(
-        documento=doc_num,
-        nombre=persona.nombre,
-        apellido=persona.apellido,
-        email=persona.email,
-        capacidad=persona.capacidad
-    )
-    db.add(nueva_persona)
-    db.commit()
-    db.refresh(nueva_persona)
-    return nueva_persona
+    try:
+        nuevo = models.Personal(
+            nombre=persona.nombre,
+            apellido=persona.apellido,
+            documento=persona.documento,
+            email=persona.email,
+            activo=persona.activo,
+            capacidad=persona.capacidad,
+        )
+        db.add(nuevo)
+        db.commit()
+        db.refresh(nuevo)
+        return nuevo
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Error de duplicidad: el DNI o el correo electrónico ya existen en la base de datos."
+        )
 
-def modificar_personal(
-    db: Session, legajo: int, persona_update: schemas.PersonalUpdate
-) -> Optional[models.Personal]:
-    persona_db = leer_personal(db, legajo)
-    if not persona_db:
-        return None
+def actualizar_personal(db: Session, legajo: int, datos: schemas.PersonalUpdate):
+    persona = db.query(models.Personal).filter(models.Personal.legajo == legajo).first()
+    if not persona:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Persona no encontrada."
+        )
 
-    datos = persona_update.model_dump(exclude_unset=True)
+    datos_dict = datos.model_dump(exclude_unset=True)
+    datos_dict.pop("telefono", None)
 
-    if "email" in datos and datos["email"] != persona_db.email:
-        if db.query(models.Personal).filter(models.Personal.email == datos["email"]).first():
+    if "documento" in datos_dict and datos_dict["documento"] is not None:
+        doc_duplicado = db.query(models.Personal).filter(
+            models.Personal.documento == datos_dict["documento"],
+            models.Personal.legajo != legajo
+        ).first()
+        if doc_duplicado:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya existe una persona registrada con ese correo electrónico."
+                detail=f"Ya existe otra persona registrada con el DNI {datos_dict['documento']}."
             )
 
-    if "documento" in datos and datos["documento"] is not None:
-        doc_num = int(datos["documento"])
-        if doc_num != persona_db.documento:
-            if db.query(models.Personal).filter(models.Personal.documento == doc_num).first():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Ya existe una persona registrada con ese número de documento."
-                )
-        datos["documento"] = doc_num
+    if "email" in datos_dict and datos_dict["email"] is not None:
+        email_duplicado = db.query(models.Personal).filter(
+            models.Personal.email == datos_dict["email"],
+            models.Personal.legajo != legajo
+        ).first()
+        if email_duplicado:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El correo electrónico {datos_dict['email']} ya está en uso."
+            )
 
-    for campo, valor in datos.items():
-        setattr(persona_db, campo, valor)
-
-    db.commit()
-    db.refresh(persona_db)
-    return persona_db
-
-def eliminar_persona(db: Session, legajo: int) -> Optional[models.Personal]:
-    persona_db = leer_personal(db, legajo)
-    if not persona_db:
-        return None
-    #db.delete(persona_db)
-    persona_db.activo = False
-    db.commit()
-    return persona_db
+    try:
+        for clave, valor in datos_dict.items():
+            setattr(persona, clave, valor)
+        db.commit()
+        db.refresh(persona)
+        return persona
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conflicto de datos: DNI o correo duplicado."
+        )

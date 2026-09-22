@@ -1,14 +1,28 @@
-export type TipoCapacidad = 'operar' | 'administrar' | 'ambas';
-
 export interface Persona {
   legajo: number;
-  documento: string;
   nombre: string;
   apellido: string;
+  documento: number | string;
+  dni?: number | string;
   email: string;
-  capacidad: TipoCapacidad;
-  activo : boolean;
+  activo: boolean;
+  capacidad: "OPERAR" | "MANTENIMIENTO" | "AMBAS";
 }
 
-export type PersonaCreate = Omit<Persona, 'legajo'>;
-export type PersonaUpdate = Partial<PersonaCreate>;
+export interface PersonaCrear {
+  nombre: string;
+  apellido: string;
+  documento: number | string;
+  email: string;
+  activo?: boolean;
+  capacidad: "OPERAR" | "MANTENIMIENTO" | "AMBAS";
+}
+
+export interface PersonaActualizar {
+  nombre?: string;
+  apellido?: string;
+  documento?: number | string;
+  email?: string;
+  activo?: boolean;
+  capacidad?: "OPERAR" | "MANTENIMIENTO" | "AMBAS";
+}
