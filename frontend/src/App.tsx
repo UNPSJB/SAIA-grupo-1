@@ -17,6 +17,8 @@ import { Sidebar } from './components/Sidebar';
 
 import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
 import { NuevoElementoDeLimpieza } from './views/elementosDeLimpieza/nuevoElemento';
+import { EditarElementoDeLimpieza } from './views/elementosDeLimpieza/editarDetalle';
+import { DetalleElementoDeLimpieza } from './views/elementosDeLimpieza/verDetalle';
 
 type Modulo = 'insumos' | 'equipos' | 'personas' | 'elementosDeLimpieza';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
@@ -174,6 +176,17 @@ function App() {
             />
             ): vistaElementos === 'alta' ? (
               <NuevoElementoDeLimpieza
+                onSuccess={() => setVistaElementos('listado')}
+                onCancel={() => setVistaElementos('listado')}
+              />
+            ): vistaElementos === 'detalle' ? (
+              <DetalleElementoDeLimpieza
+                elementoId={elementoSeleccionado}
+                onCancel={() => setVistaElementos('listado')}
+              />
+            ) : vistaElementos === 'editar' ? (
+              <EditarElementoDeLimpieza
+                elementoId={elementoSeleccionado}
                 onSuccess={() => setVistaElementos('listado')}
                 onCancel={() => setVistaElementos('listado')}
               />
