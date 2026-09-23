@@ -251,3 +251,54 @@ dialog .btn-guardar{
   transition: opacity 0.2s;
   margin-left: 40px;
 }
+
+
+/*CSS DE PLAN DE LIMPIEZA*/
+
+.plan-container{
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 2.5rem;
+  max-width: 700px;
+  margin: 2rem auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-left: 2.5rem; 
+  margin-top: 2rem;
+}
+
+.plan-container h1 {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.form-group label {
+    font-size: 1.1rem; 
+    font-weight: 600;
+}
+
+.form-group input, 
+.form-group select {
+    font-size: 1rem;
+    padding: 0.75rem; 
+    width: 100%;
+    max-width: 400px;
+}
+
+.accion-agregar{
+  align-self: flex-end; /* muevo el boton agregar a la derecha*/
+}
+
+.btn-agregar{
+  background-color: var(--text-h);
+  color: var(--bg);
+  border: 1px solid var(--text-h);
+  padding: 0.65rem 1.6rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
