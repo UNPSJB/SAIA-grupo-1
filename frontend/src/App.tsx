@@ -13,9 +13,10 @@ import { NuevaPersona } from './views/personas/nuevaPersona';
 import { ListadoPersonas } from './views/personas/listado';
 import { DetallePersona } from './views/personas/verDetalle';
 import { EditarPersona } from './views/personas/editarDetalle';
+import { ListadoAuditoria } from './views/auditoria/listado';
 import { Sidebar } from './components/Sidebar';
 
-type Modulo = 'insumos' | 'equipos' | 'personas';
+type Modulo = 'insumos' | 'equipos' | 'personas' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -121,6 +122,8 @@ function App() {
               onSucces={() => setVistaEquipos('listado')}
             />
           )
+        ) : modulo === 'auditoria' ? (
+          <ListadoAuditoria />
         ) : vistaPersonas === 'listado' ? (
           <ListadoPersonas
             onNuevoClick={() => setVistaPersonas('alta')}
