@@ -8,7 +8,9 @@ from src.equipos.models import Equipo, Estado
 from src.personal.models import Personal
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.tareas.models import Frecuencia
+from src.logger import get_logger
 
+logger = get_logger(__name__)
 
 def tarea_corresponde_a_fecha(
     frecuencia: Frecuencia, fecha_inicio_plan: date, fecha_checklist: date
@@ -35,14 +37,17 @@ def generar_checklist(
 ) -> models.Checklist:
     fecha = datos.fecha or date.today()
     if fecha > date.today():
+        logger.warning("Intento de generar checklist con fecha futura: %s", fecha)
         raise exceptions.ChecklistFechaFutura()
 
     responsable = db.scalar(
         select(Personal).where(Personal.legajo == datos.responsable_legajo)
     )
     if not responsable:
+        logger.warning("Generar checklist: responsable legajo %s no encontrado", datos.responsable_legajo)
         raise exceptions.ResponsableNoEncontrado()
     if not responsable.activo:
+        logger.warning("Generar checklist: responsable legajo %s inactivo", datos.responsable_legajo)
         raise exceptions.ResponsableInactivo()
 
     planes = (
@@ -76,6 +81,7 @@ def generar_checklist(
                 items_a_crear.append(item)
 
     if not items_a_crear:
+        logger.warning("No hay tareas correspondientes para la fecha %s", fecha)
         raise exceptions.NoHayTareasCorrespondientes()
 
     checklist = models.Checklist(
@@ -87,6 +93,7 @@ def generar_checklist(
     db.add(checklist)
     db.commit()
     db.refresh(checklist)
+    logger.info("Checklist %s generado para fecha %s (%d tareas)", checklist.id, checklist.fecha, len(checklist.items))
     return checklist
 
 
@@ -105,6 +112,7 @@ def completar_tarea(
         )
     )
     if not item:
+        logger.warning("Completar tarea: item %s no encontrado en checklist %s", item_id, checklist_id)
         raise exceptions.TareaChecklistNoEncontrada()
 
     if item.estado == models.EstadoTareaItem.REALIZADO:
@@ -114,9 +122,11 @@ def completar_tarea(
         select(Personal).where(Personal.legajo == datos.responsable_legajo)
     )
     if not responsable:
+        logger.warning("Completar tarea %s: responsable legajo %s no encontrado", item_id, datos.responsable_legajo)
         raise exceptions.ResponsableNoEncontrado()
 
     if not responsable.activo:
+        logger.warning("Completar tarea %s: responsable legajo %s inactivo", item_id, datos.responsable_legajo)
         raise exceptions.ResponsableInactivo()
 
     item.responsable_legajo = datos.responsable_legajo
@@ -133,6 +143,7 @@ def completar_tarea(
     item.fecha_hora_fin = datetime.now()
 
     db.commit()
+    logger.info("Tarea %s del checklist %s completada por legajo %s", item_id, checklist_id, datos.responsable_legajo)
     db.refresh(item)
     return item
 
@@ -152,6 +163,7 @@ def actualizar_tarea(
         )
     )
     if not item:
+        logger.warning("Actualizar tarea: item %s no encontrado en checklist %s", item_id, checklist_id)
         raise exceptions.TareaChecklistNoEncontrada()
 
     campos_modificados = datos.model_dump(exclude_unset=True)
@@ -163,8 +175,10 @@ def actualizar_tarea(
                 select(Personal).where(Personal.legajo == legajo)
             )
             if not responsable:
+                logger.warning("Actualizar tarea %s: responsable legajo %s no encontrado", item_id, legajo)
                 raise exceptions.ResponsableNoEncontrado()
             if not responsable.activo:
+                logger.warning("Actualizar tarea %s: responsable legajo %s inactivo", item_id, legajo)
                 raise exceptions.ResponsableInactivo()
         item.responsable_legajo = legajo
 
@@ -191,6 +205,7 @@ def actualizar_tarea(
             item.fecha_hora_fin = None
 
     db.commit()
+    logger.info("Tarea %s del checklist %s actualizada. Campos: %s", item_id, checklist_id, ", ".join(campos_modificados.keys()))
     db.refresh(item)
     return item
 
@@ -235,6 +250,7 @@ def eliminar_checklist(db: Session, checklist_id: int) -> models.Checklist:
     checklist = obtener_checklist(db, checklist_id)
     checklist.activo = False
     db.commit()
+    logger.info("Checklist %s eliminado (baja lógica)", checklist_id)
     db.refresh(checklist)
     return checklist
 
@@ -242,9 +258,11 @@ def eliminar_checklist(db: Session, checklist_id: int) -> models.Checklist:
 def restaurar_checklist(db: Session, checklist_id: int) -> models.Checklist:
     checklist = obtener_checklist(db, checklist_id, incluir_inactivos=True)
     if checklist.activo:
+        logger.warning("Intento de restaurar checklist %s que ya está activo", checklist_id)
         raise exceptions.ChecklistYaActivo()
     checklist.activo = True
     db.commit()
+    logger.info("Checklist %s restaurado", checklist_id)
     db.refresh(checklist)
     return checklist
 
