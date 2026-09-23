@@ -14,6 +14,8 @@ from src.insumos.router import router as insumos_router
 from src.equipos.router import router as equipos_router
 from src.personal.router import router as personal_router
 from fastapi.middleware.cors import CORSMiddleware
+from .insumos_quimicos.router import router as insumos_quimicos_router
+
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -48,3 +50,4 @@ app.add_middleware(
 app.include_router(insumos_router)
 app.include_router(equipos_router)
 app.include_router(personal_router, prefix="/personal", tags=["Personal"])
+app.include_router(insumos_quimicos_router)
