@@ -16,6 +16,7 @@ import { EditarPersona } from './views/personas/editarDetalle';
 import { Sidebar } from './components/Sidebar';
 
 import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
+import { NuevoElementoDeLimpieza } from './views/elementosDeLimpieza/nuevoElemento';
 
 type Modulo = 'insumos' | 'equipos' | 'personas' | 'elementosDeLimpieza';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
@@ -171,7 +172,12 @@ function App() {
                 setVistaElementos('editar');
               }}
             />
-            ): null
+            ): vistaElementos === 'alta' ? (
+              <NuevoElementoDeLimpieza
+                onSuccess={() => setVistaElementos('listado')}
+                onCancel={() => setVistaElementos('listado')}
+              />
+            ):null
         ): null }
       </div>
     </div>
