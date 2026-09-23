@@ -50,46 +50,48 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
 
       onCreado();
     } catch (err: any) {
-      setError(err.message || 'Error de conexión');
+      setError(err.message || 'Error de conexión con el backend');
     } finally {
       setCargando(false);
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    backgroundColor: '#1b1c28',
-    border: '1px solid #292a3b',
-    borderRadius: '8px',
-    padding: '12px 16px',
-    color: '#fff',
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    marginTop: '6px'
-  };
-
   const labelStyle: React.CSSProperties = {
     display: 'block',
     fontSize: '14px',
-    fontWeight: '500',
-    color: '#d0d2e0'
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: '8px',
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    backgroundColor: '#171824',
+    border: '1px solid #232537',
+    borderRadius: '8px',
+    padding: '12px 16px',
+    color: '#ffffff',
+    fontSize: '14px',
+    outline: 'none',
+    boxSizing: 'border-box',
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: '650px', color: '#fff' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Nuevo Insumo Químico</h1>
-        <span style={{ fontSize: '13px', color: '#7a7d90', fontWeight: '500' }}>02 · Formulario</span>
+    <div style={{ width: '100%', maxWidth: '680px' }}>
+      <div style={{ marginBottom: '28px' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#ffffff', margin: '0 0 6px 0', letterSpacing: '-0.5px' }}>
+          Nuevo Insumo Químico
+        </h1>
+        <span style={{ fontSize: '13px', color: '#7a7e93', fontWeight: '500' }}>02 · Formulario</span>
       </div>
 
       {error && (
-        <div style={{ backgroundColor: '#3d1c23', border: '1px solid #f87171', color: '#fca5a5', padding: '12px', borderRadius: '8px', marginBottom: '18px', fontSize: '14px' }}>
+        <div style={{ backgroundColor: '#3d1c23', border: '1px solid #f87171', color: '#fca5a5', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' }}>
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div>
           <label style={labelStyle}>Nombre</label>
           <input
@@ -106,10 +108,10 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
           <select
             value={formData.tipo}
             onChange={(e) => setFormData({ ...formData, tipo: e.target.value as TipoQuimico })}
-            style={inputStyle}
+            style={{ ...inputStyle, cursor: 'pointer' }}
           >
             {OPCIONES_TIPO.map((opt) => (
-              <option key={opt.value} value={opt.value} style={{ backgroundColor: '#1b1c28' }}>
+              <option key={opt.value} value={opt.value} style={{ backgroundColor: '#171824' }}>
                 {opt.label}
               </option>
             ))}
@@ -121,10 +123,10 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
           <select
             value={formData.unidad_medida}
             onChange={(e) => setFormData({ ...formData, unidad_medida: e.target.value as UnidadMedida })}
-            style={inputStyle}
+            style={{ ...inputStyle, cursor: 'pointer' }}
           >
             {OPCIONES_UNIDAD.map((opt) => (
-              <option key={opt.value} value={opt.value} style={{ backgroundColor: '#1b1c28' }}>
+              <option key={opt.value} value={opt.value} style={{ backgroundColor: '#171824' }}>
                 {opt.label}
               </option>
             ))}
@@ -132,30 +134,31 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
         </div>
 
         <div>
-          <label style={labelStyle}>Stock Inicial</label>
+          <label style={labelStyle}>Existencias Iniciales</label>
           <input
             type="number"
             min="0"
             step="0.01"
+            placeholder="0.00"
             value={formData.stock_actual}
             onChange={(e) => setFormData({ ...formData, stock_actual: parseFloat(e.target.value) || 0 })}
             style={inputStyle}
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
           <button
             type="submit"
             disabled={cargando}
             style={{
-              backgroundColor: '#fff',
-              color: '#12131c',
+              backgroundColor: '#ffffff',
+              color: '#11121d',
               border: 'none',
               borderRadius: '8px',
-              padding: '10px 20px',
+              padding: '11px 22px',
               fontWeight: '600',
               fontSize: '14px',
-              cursor: 'pointer'
+              cursor: 'pointer',
             }}
           >
             {cargando ? 'Guardando...' : 'Guardar Insumo'}
@@ -165,14 +168,14 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
             type="button"
             onClick={onVolver}
             style={{
-              backgroundColor: '#202232',
-              color: '#d0d2e0',
+              backgroundColor: '#202234',
+              color: '#c4c7d7',
               border: 'none',
               borderRadius: '8px',
-              padding: '10px 20px',
+              padding: '11px 22px',
               fontWeight: '500',
               fontSize: '14px',
-              cursor: 'pointer'
+              cursor: 'pointer',
             }}
           >
             Cancelar
