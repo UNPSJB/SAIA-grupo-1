@@ -13,8 +13,6 @@ import { NuevaPersona } from './views/personas/nuevaPersona';
 import { ListadoPersonas } from './views/personas/listado';
 import { DetallePersona } from './views/personas/verDetalle';
 import { EditarPersona } from './views/personas/editarDetalle';
-
-// Insumos Químicos
 import { ListadoInsumosQuimicos } from './views/insumos_quimicos/listado';
 import { NuevoInsumoQuimico } from './views/insumos_quimicos/nuevoInsumoQuimico';
 import { EditarDetalle as EditarInsumoQuimico } from './views/insumos_quimicos/editarDetalle';
@@ -31,14 +29,20 @@ type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function App() {
   const [modulo, setModulo] = useState<Modulo>('insumos_quimicos');
+
+  // Estados módulo Equipos
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
   const [equipoSeleccionado, setEquipoSeleccionado] = useState<number | null>(null);
+
+  // Estados módulo Insumos
   const [vistaInsumos, setVistaInsumos] = useState<VistaInsumos>('listado');
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<InsumoConId | null>(null);
+
+  // Estados módulo Personas
   const [vistaPersonas, setVistaPersonas] = useState<VistaPersonas>('listado');
   const [legajoSeleccionado, setLegajoSeleccionado] = useState<number | null>(null);
 
-  // Estados propios de Insumos Químicos
+  // Estados módulo Insumos Químicos
   const [vistaInsumosQuimicos, setVistaInsumosQuimicos] = useState<VistaInsumosQuimicos>('listado');
   const [quimicoSeleccionado, setQuimicoSeleccionado] = useState<InsumoQuimico | null>(null);
 
@@ -72,9 +76,9 @@ function App() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', display: 'flex' }}>
-      <Sidebar seccionActual={modulo} onCambiarSeccion={cambiarModulo} />
+      <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
-      <div style={{ flex: 1, padding: '2rem 3rem' }}>
+      <div style={{ flex: 1, padding: '36px 48px', boxSizing: 'border-box' }}>
         {modulo === 'insumos' ? (
           vistaInsumos === 'listado' ? (
             <ListadoInsumos
@@ -83,7 +87,10 @@ function App() {
               onEditarClick={irAEditarInsumo}
             />
           ) : vistaInsumos === 'alta' ? (
-            <NuevoInsumo onSuccess={volverAListadoInsumos} onCancel={volverAListadoInsumos} />
+            <NuevoInsumo
+              onSuccess={volverAListadoInsumos}
+              onCancel={volverAListadoInsumos}
+            />
           ) : vistaInsumos === 'ver' && insumoSeleccionado ? (
             <VerInsumo
               insumo={insumoSeleccionado}
@@ -115,13 +122,27 @@ function App() {
               }}
             />
           ) : vistaEquipos === 'alta' ? (
-            <NuevoEquipo onSuccess={() => setVistaEquipos('listado')} onCancel={() => setVistaEquipos('listado')} />
+            <NuevoEquipo
+              onSuccess={() => setVistaEquipos('listado')}
+              onCancel={() => setVistaEquipos('listado')}
+            />
           ) : vistaEquipos === 'detalle' ? (
-            <DetalleEquipo equipoId={equipoSeleccionado} onCancel={() => setVistaEquipos('listado')} />
+            <DetalleEquipo
+              equipoId={equipoSeleccionado}
+              onCancel={() => setVistaEquipos('listado')}
+            />
           ) : vistaEquipos === 'editar' ? (
-            <EditarEquipo equipoId={equipoSeleccionado} onSuccess={() => setVistaEquipos('listado')} onCancel={() => setVistaEquipos('listado')} />
+            <EditarEquipo
+              equipoId={equipoSeleccionado}
+              onSuccess={() => setVistaEquipos('listado')}
+              onCancel={() => setVistaEquipos('listado')}
+            />
           ) : (
-            <EliminarEquipo equipoID={equipoSeleccionado} onCancel={() => setVistaEquipos('listado')} onSucces={() => setVistaEquipos('listado')} />
+            <EliminarEquipo
+              equipoID={equipoSeleccionado}
+              onCancel={() => setVistaEquipos('listado')}
+              onSucces={() => setVistaEquipos('listado')}
+            />
           )
         ) : modulo === 'personas' ? (
           vistaPersonas === 'listado' ? (
@@ -137,14 +158,24 @@ function App() {
               }}
             />
           ) : vistaPersonas === 'alta' ? (
-            <NuevaPersona onSuccess={() => setVistaPersonas('listado')} onCancel={() => setVistaPersonas('listado')} />
+            <NuevaPersona
+              onSuccess={() => setVistaPersonas('listado')}
+              onCancel={() => setVistaPersonas('listado')}
+            />
           ) : vistaPersonas === 'detalle' ? (
-            <DetallePersona personaLegajo={legajoSeleccionado} onCancel={() => setVistaPersonas('listado')} />
+            <DetallePersona
+              personaLegajo={legajoSeleccionado}
+              onCancel={() => setVistaPersonas('listado')}
+            />
           ) : (
-            <EditarPersona personaLegajo={legajoSeleccionado} onSuccess={() => setVistaPersonas('listado')} onCancel={() => setVistaPersonas('listado')} />
+            <EditarPersona
+              personaLegajo={legajoSeleccionado}
+              onSuccess={() => setVistaPersonas('listado')}
+              onCancel={() => setVistaPersonas('listado')}
+            />
           )
         ) : (
-          /* MÓDULO INSUMOS QUÍMICOS */
+          /* Módulo de Insumos Químicos */
           vistaInsumosQuimicos === 'listado' ? (
             <ListadoInsumosQuimicos
               onNuevo={() => setVistaInsumosQuimicos('alta')}
@@ -158,7 +189,10 @@ function App() {
               }}
             />
           ) : vistaInsumosQuimicos === 'alta' ? (
-            <NuevoInsumoQuimico onVolver={volverAListadoQuimicos} onCreado={volverAListadoQuimicos} />
+            <NuevoInsumoQuimico
+              onVolver={volverAListadoQuimicos}
+              onCreado={volverAListadoQuimicos}
+            />
           ) : vistaInsumosQuimicos === 'detalle' && quimicoSeleccionado ? (
             <VerDetalleInsumoQuimico
               insumo={quimicoSeleccionado}

@@ -14,11 +14,14 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
   const [filtroEstado, setFiltroEstado] = useState('TODOS');
   const [cargando, setCargando] = useState(false);
 
+  // Estado para el modal de confirmación de baja lógica / reactivación
+  const [quimicoAConfirmar, setQuimicoAConfirmar] = useState<InsumoQuimico | null>(null);
+
   const cargarDatos = async () => {
     try {
       setCargando(true);
       const res = await fetch('http://localhost:8000/api/insumos-quimicos');
-      if (!res.ok) throw new Error('Error al consultar insumos químicos');
+      if (!res.ok) throw new Error('Error al consultar');
       const data = await res.json();
       setInsumos(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -33,12 +36,15 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
     cargarDatos();
   }, []);
 
-  const handleToggleEstado = async (id: number) => {
+  const ejecutarToggle = async () => {
+    if (!quimicoAConfirmar) return;
     try {
-      await fetch(`http://localhost:8000/api/insumos-quimicos/${id}/toggle`, { method: 'PATCH' });
+      await fetch(`http://localhost:8000/api/insumos-quimicos/${quimicoAConfirmar.id}/toggle`, { method: 'PATCH' });
+      setQuimicoAConfirmar(null);
       cargarDatos();
     } catch (err) {
-      console.error('Error al cambiar estado:', err);
+      console.error(err);
+      setQuimicoAConfirmar(null);
     }
   };
 
@@ -55,36 +61,35 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
     : [];
 
   return (
-    <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', color: '#fff', fontFamily: 'inherit' }}>
-      {/* Header idéntico al de Lista de Personas / Insumos */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+    <div style={{ width: '100%', maxWidth: '1150px' }}>
+      {/* Header superior */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
         <div>
-          <h1 style={{ fontSize: '32px', fontWeight: 'bold', margin: '0 0 6px 0', letterSpacing: '-0.5px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#ffffff', margin: '0 0 6px 0', letterSpacing: '-0.5px' }}>
             Lista de Insumos Químicos
           </h1>
-          <span style={{ fontSize: '13px', color: '#7a7d90', fontWeight: '500' }}>01 · Listado</span>
+          <span style={{ fontSize: '13px', color: '#7a7e93', fontWeight: '500' }}>01 · Listado</span>
         </div>
 
         <button
           onClick={onNuevo}
           style={{
             backgroundColor: '#ffffff',
-            color: '#12131c',
+            color: '#11121d',
             border: 'none',
             borderRadius: '8px',
-            padding: '10px 18px',
+            padding: '10px 20px',
             fontWeight: '600',
             fontSize: '14px',
             cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
           }}
         >
           + Agregar Insumo Químico
         </button>
       </div>
 
-      {/* Filtros */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+      {/* Buscador y Filtros */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', alignItems: 'center' }}>
         <input
           type="text"
           placeholder="Buscar por nombre..."
@@ -92,14 +97,13 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           onChange={(e) => setBusqueda(e.target.value)}
           style={{
             flex: 1,
-            minWidth: '240px',
-            backgroundColor: '#1b1c28',
-            border: '1px solid #292a3b',
+            backgroundColor: '#171824',
+            border: '1px solid #232537',
             borderRadius: '8px',
-            padding: '10px 16px',
-            color: '#fff',
+            padding: '11px 16px',
+            color: '#ffffff',
             fontSize: '14px',
-            outline: 'none'
+            outline: 'none',
           }}
         />
 
@@ -107,14 +111,14 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
           style={{
-            backgroundColor: '#1b1c28',
-            border: '1px solid #292a3b',
+            backgroundColor: '#171824',
+            border: '1px solid #232537',
             borderRadius: '8px',
-            padding: '10px 16px',
-            color: '#c5c7d5',
+            padding: '11px 16px',
+            color: '#c4c7d7',
             fontSize: '14px',
             outline: 'none',
-            cursor: 'pointer'
+            cursor: 'pointer',
           }}
         >
           <option value="TODOS">Todos los tipos</option>
@@ -129,14 +133,14 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
           style={{
-            backgroundColor: '#1b1c28',
-            border: '1px solid #292a3b',
+            backgroundColor: '#171824',
+            border: '1px solid #232537',
             borderRadius: '8px',
-            padding: '10px 16px',
-            color: '#c5c7d5',
+            padding: '11px 16px',
+            color: '#c4c7d7',
             fontSize: '14px',
             outline: 'none',
-            cursor: 'pointer'
+            cursor: 'pointer',
           }}
         >
           <option value="TODOS">Todos los estados</option>
@@ -145,55 +149,62 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
         </select>
       </div>
 
-      {/* Tabla con estilo oscuro redondeado idéntico a Lista de Personas */}
-      <div style={{ backgroundColor: '#161722', borderRadius: '12px', border: '1px solid #232435', overflow: 'hidden' }}>
+      {/* Tabla estilo Insumos */}
+      <div
+        style={{
+          backgroundColor: '#151622',
+          border: '1px solid #202234',
+          borderRadius: '12px',
+          overflow: 'hidden',
+        }}
+      >
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid #232435', color: '#7a7d90', fontSize: '12px', fontWeight: 'bold' }}>
-              <th style={{ padding: '16px 20px' }}>Nombre</th>
-              <th style={{ padding: '16px 20px' }}>Tipo</th>
-              <th style={{ padding: '16px 20px' }}>Stock</th>
-              <th style={{ padding: '16px 20px' }}>Unidad</th>
-              <th style={{ padding: '16px 20px' }}>Estado</th>
-              <th style={{ padding: '16px 20px', textAlign: 'center' }}>Acciones</th>
+            <tr style={{ backgroundColor: '#1b1c2b', borderBottom: '1px solid #232537', color: '#ffffff', fontWeight: 'bold' }}>
+              <th style={{ padding: '16px 22px' }}>Nombre</th>
+              <th style={{ padding: '16px 22px' }}>Tipo</th>
+              <th style={{ padding: '16px 22px' }}>Existencias</th>
+              <th style={{ padding: '16px 22px' }}>Unidad</th>
+              <th style={{ padding: '16px 22px' }}>Estado</th>
+              <th style={{ padding: '16px 22px', textAlign: 'center' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {cargando ? (
               <tr>
-                <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#7a7d90' }}>
+                <td colSpan={6} style={{ padding: '36px', textAlign: 'center', color: '#7a7e93' }}>
                   Cargando insumos químicos...
                 </td>
               </tr>
             ) : insumosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#7a7d90' }}>
-                  No se encontraron insumos químicos.
+                <td colSpan={6} style={{ padding: '36px', textAlign: 'center', color: '#7a7e93' }}>
+                  No hay insumos químicos registrados.
                 </td>
               </tr>
             ) : (
               insumosFiltrados.map((item) => (
-                <tr key={item.id} style={{ borderBottom: '1px solid #1f2030' }}>
-                  <td style={{ padding: '16px 20px', color: '#fff', fontWeight: '500' }}>{item.nombre}</td>
-                  <td style={{ padding: '16px 20px', color: '#9da0b5' }}>{item.tipo}</td>
-                  <td style={{ padding: '16px 20px', color: '#fff' }}>{item.stock_actual}</td>
-                  <td style={{ padding: '16px 20px', color: '#9da0b5' }}>{item.unidad_medida}</td>
-                  <td style={{ padding: '16px 20px' }}>
+                <tr key={item.id} style={{ borderBottom: '1px solid #1c1d2c' }}>
+                  <td style={{ padding: '16px 22px', color: '#ffffff', fontWeight: '600' }}>{item.nombre}</td>
+                  <td style={{ padding: '16px 22px', color: '#9da0b3' }}>{item.tipo}</td>
+                  <td style={{ padding: '16px 22px', color: '#ffffff', fontWeight: '500' }}>{item.stock_actual}</td>
+                  <td style={{ padding: '16px 22px', color: '#9da0b3' }}>{item.unidad_medida}</td>
+                  <td style={{ padding: '16px 22px' }}>
                     <span
                       style={{
-                        padding: '4px 10px',
-                        borderRadius: '20px',
+                        padding: '4px 12px',
+                        borderRadius: '16px',
                         fontSize: '12px',
                         fontWeight: '600',
                         backgroundColor: item.activo ? '#143828' : '#3d1c23',
                         color: item.activo ? '#3dd68c' : '#f87171',
-                        display: 'inline-block'
+                        display: 'inline-block',
                       }}
                     >
                       {item.activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                  <td style={{ padding: '16px 22px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                       <button
                         onClick={() => onVerDetalle(item)}
@@ -202,13 +213,13 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
                           width: '32px',
                           height: '32px',
                           borderRadius: '50%',
-                          backgroundColor: '#202232',
+                          backgroundColor: '#202234',
                           border: 'none',
-                          color: '#fff',
+                          color: '#ffffff',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
                         }}
                       >
                         👁
@@ -220,31 +231,31 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
                           width: '32px',
                           height: '32px',
                           borderRadius: '50%',
-                          backgroundColor: '#202232',
+                          backgroundColor: '#202234',
                           border: 'none',
-                          color: '#fff',
+                          color: '#ffffff',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
                         }}
                       >
                         ✏️
                       </button>
                       <button
-                        onClick={() => handleToggleEstado(item.id)}
+                        onClick={() => setQuimicoAConfirmar(item)}
                         title={item.activo ? 'Desactivar' : 'Activar'}
                         style={{
                           width: '32px',
                           height: '32px',
                           borderRadius: '50%',
-                          backgroundColor: '#202232',
+                          backgroundColor: '#202234',
                           border: 'none',
-                          color: '#fff',
+                          color: '#ffffff',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
                         }}
                       >
                         {item.activo ? '🗑️' : '🔄'}
@@ -257,6 +268,74 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           </tbody>
         </table>
       </div>
+
+      {/* Modal de confirmación para Baja / Reactivación */}
+      {quimicoAConfirmar && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#171826',
+              border: '1px solid #282a3e',
+              borderRadius: '12px',
+              padding: '24px 28px',
+              maxWidth: '420px',
+              width: '90%',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#ffffff', fontWeight: 'bold' }}>
+              {quimicoAConfirmar.activo ? '¿Dar de baja producto?' : '¿Reactivar producto?'}
+            </h3>
+            <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#9da0b3', lineHeight: '1.5' }}>
+              ¿Estás seguro de que deseas {quimicoAConfirmar.activo ? 'desactivar' : 'reactivar'} el insumo{' '}
+              <strong style={{ color: '#ffffff' }}>"{quimicoAConfirmar.nombre}"</strong>?
+              {quimicoAConfirmar.activo && ' Dejará de estar disponible para el registro de consumo en tareas.'}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                onClick={() => setQuimicoAConfirmar(null)}
+                style={{
+                  backgroundColor: '#202234',
+                  color: '#c4c7d7',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '9px 18px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={ejecutarToggle}
+                style={{
+                  backgroundColor: quimicoAConfirmar.activo ? '#dc2626' : '#16a34a',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '9px 18px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                {quimicoAConfirmar.activo ? 'Confirmar Baja' : 'Confirmar Reactivación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
