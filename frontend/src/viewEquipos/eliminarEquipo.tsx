@@ -66,11 +66,9 @@ const handleEliminar = async (id?: number) => {
         </div>
 
             {loading ? (
-                        <tr>
-                            <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
-                                Cargando equipo...
-                            </td>
-                        </tr>
+                        <div style={{ textAlign: 'center', padding: '2rem' }}>
+                               Cargando equipo...
+                        </div>
         ) : equipo ? (
         <form >
             <div className="form-group">
@@ -146,7 +144,9 @@ const handleEliminar = async (id?: number) => {
 
                 <dialog ref={dialogSeguro} className="seguro">
                     <h2>Esta seguro de eliminar este equipo?</h2>
-                    <button type="button" className="btn-eliminar" onClick={() => handleEliminar(equipoID ?? undefined)}>Eliminar</button>
+
+                    <button type="button" className="btn-eliminar" onClick={() => {handleEliminar(equipoID ?? undefined); dialogSeguro.current?.close()}}>Eliminar</button>
+
                     <button type="button" className="btn-cancelar" onClick={() => {dialogSeguro.current?.close(); onCancel}}>Cancelar</button>
                 </dialog>
 

@@ -4,6 +4,7 @@ export interface Equipo {
   ubicacion: string;
   plan_de_Limpieza: string;
   plan_de_calibracion: string;
+  estado:string;
 }
 
 export interface EquipoConId extends Equipo{

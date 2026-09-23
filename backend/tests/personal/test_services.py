@@ -52,9 +52,8 @@ def test_eliminar_personal(session: Session) -> None:
     assert len(personas) == 3
 
     persona_3 = eliminar_persona(session, persona_3.legajo)
-
-    personas = listar_personal(session)
-    assert len(personas) == 2
+    assert persona_3 is not None
+    assert persona_3.activo is False
 
 
 def test_listar_personal(session: Session) -> None:
