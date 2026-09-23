@@ -10,7 +10,8 @@ const EQUIPO_INICIAL :EquipoConId={
         categoria: "",
         ubicacion: "",
         plan_de_Limpieza: "",
-        plan_de_calibracion: ""
+        plan_de_calibracion: "",
+        estado:"activo"
     };
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -71,7 +72,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         categoria: equipo.categoria,
         ubicacion: equipo.ubicacion.trim(),
         plan_de_Limpieza: equipo.plan_de_Limpieza.trim(),
-        plan_de_calibracion: equipo.plan_de_calibracion.trim()
+        plan_de_calibracion: equipo.plan_de_calibracion.trim(),
+        estado:"activo"
     }
 
     setLoading(true);

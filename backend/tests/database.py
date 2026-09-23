@@ -12,6 +12,14 @@ from src.personal.schemas import PersonalCreate
 from src.insumos.services import crear_insumo
 from src.insumos.schemas import InsumoCreate
 from src.insumos.models import UnidadMedida
+from src.equipos.services import crear_equipo
+from src.equipos.schemas import EquipoCreate
+from src.equipos.models import Categoria, Estado
+from src.plan_De_limpieza.services import crear_plan
+from src.plan_De_limpieza.schemas import PlanDeLimpiezaCreate
+from src.tareas.services import crear_tarea
+from src.tareas.schemas import TareaCreate
+from src.tareas.models import Frecuencia
 
 
 # creamos una db para testing
@@ -110,7 +118,58 @@ def session() -> Generator[Session, None, None]:
         ),
     )
 
-    db.add_all([persona_1, persona_2, insumo_1, insumo_2, insumo_3])
+    equipo_1 = crear_equipo(
+        db,
+        EquipoCreate(
+            nombre="Heladera",
+            categoria=Categoria.CONSERVAMIENTO,
+            ubicacion="Cocina",
+            estado=Estado.ACTIVO,
+            plan_de_calibracion="Semestral",
+        ),
+    )
+
+    equipo_2 = crear_equipo(
+        db,
+        EquipoCreate(
+            nombre="Freezer",
+            categoria=Categoria.CONSERVAMIENTO,
+            ubicacion="Deposito",
+            estado=Estado.ACTIVO,
+            plan_de_calibracion="Semestral",
+        ),
+    )
+
+    plan_semilla = crear_plan(
+        db,
+        PlanDeLimpiezaCreate(
+            nombre="PlanFreezer",
+            fecha_inicio=hoy.date() - timedelta(days=14),
+            equipo_id=equipo_2.id,
+        ),
+    )
+
+    tarea_1 = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Desinfeccion",
+            descripcion="Desinfectar estantes con alcohol 70%",
+            frecuencia=Frecuencia.DIARIO,
+            plan_id=plan_semilla.id,
+        ),
+    )
+
+    tarea_2 = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Descongelar",
+            descripcion="Descongelar y lavar burletes",
+            frecuencia=Frecuencia.SEMANAL,
+            plan_id=plan_semilla.id,
+        ),
+    )
+
+    db.add_all([persona_1, persona_2, insumo_1, insumo_2, insumo_3, equipo_1, equipo_2, plan_semilla, tarea_1, tarea_2])
     db.commit()
 
     yield db

@@ -1,3 +1,5 @@
+from typing import List
+
 from src.equipos.constants import ErrorCode
 from src.exceptions import NotFound, BadRequest
 
@@ -18,3 +20,9 @@ class UbicacionConNumeros(BadRequest):
 
 class CadenaMayorOigualACUATRO(BadRequest):
     DETAIL= ErrorCode.CARACTERES_MAYOR_A_CUATRO
+
+class CATEGORIAInvalida(ValueError):
+    def __init__(self, posibles_categorias: List[str]):
+        posibles_categorias = ", ".join(posibles_categorias)
+        message = f"{ErrorCode.CATEGORIAINVALIDA} {posibles_categorias}."
+        super().__init__(message)
