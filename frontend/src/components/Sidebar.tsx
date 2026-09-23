@@ -2,7 +2,7 @@ import React from 'react';
 import '../styles/sidebar.css';
 
 
-type Modulo = 'insumos' | 'equipos' | 'personas';
+type Modulo = 'insumos' | 'equipos' | 'personas' | 'elementosDeLimpieza';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -20,6 +20,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         </button>
         <button title='Personas' onClick={() => onCambiarModulo('personas')} className={moduloActivo === 'personas' ? 'sidebar-item activo' : 'sidebar-item'}>
             Personas
+        </button>
+        <button title='ElementosDeLimpieza' onClick={() => onCambiarModulo('elementosDeLimpieza')} className={moduloActivo === 'elementosDeLimpieza' ? 'sidebar-item activo' : 'sidebar-item'}>
+            Elementos de Limpieza
         </button>
     </nav>
   );
