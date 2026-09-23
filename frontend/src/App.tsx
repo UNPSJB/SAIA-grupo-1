@@ -13,12 +13,17 @@ import { NuevaPersona } from './views/personas/nuevaPersona';
 import { ListadoPersonas } from './views/personas/listado';
 import { DetallePersona } from './views/personas/verDetalle';
 import { EditarPersona } from './views/personas/editarDetalle';
+import NuevoPlanDeLimpieza from './views/planesDeLimpieza/nuevoPlan';
 import { Sidebar } from './components/Sidebar';
+import { ListadoPlanesLimp } from './views/planesDeLimpieza/listado';
+import EditarPlanDeLimpieza from './views/planesDeLimpieza/editarPlan';
+import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
 
-type Modulo = 'insumos' | 'equipos' | 'personas';
+type Modulo = 'insumos' | 'equipos' | 'personas' | 'planDeLimpieza';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function App() {
   const [modulo, setModulo] = useState<Modulo>('insumos');
@@ -28,12 +33,16 @@ function App() {
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<InsumoConId | null>(null);
   const [vistaPersonas, setVistaPersonas] = useState<VistaPersonas>('listado');
   const [legajoSeleccionado, setLegajoSeleccionado] = useState<number | null>(null);
+  const [vistaPlanLimp, setVistaPlanLimp] = useState <VistaPlanLimp>('listado');
+  const [planLimpSeleccionado, setPlanLimpSeleccionando]= useState<number | null>(null);
+  
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaEquipos('listado');
     setVistaInsumos('listado');
     setVistaPersonas('listado');
+    setVistaPlanLimp('listado');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -121,7 +130,8 @@ function App() {
               onSucces={() => setVistaEquipos('listado')}
             />
           )
-        ) : vistaPersonas === 'listado' ? (
+        ): modulo === 'personas' ? (
+           vistaPersonas === 'listado' ? (
           <ListadoPersonas
             onNuevoClick={() => setVistaPersonas('alta')}
             onDetalleClick={(legajo) => {
@@ -149,7 +159,40 @@ function App() {
             onSuccess={() => setVistaPersonas('listado')}
             onCancel={() => setVistaPersonas('listado')}
           />
-        )}
+        )):modulo==='planDeLimpieza'?(
+          vistaPlanLimp ==='listado'?(
+            <ListadoPlanesLimp 
+
+             onNuevoClick={() => setVistaPlanLimp('alta')}
+
+              onDetalleClick={(id) => {
+                setPlanLimpSeleccionando(id);
+                setVistaPlanLimp('detalle');
+              }}
+              onEditarClick={(id) => {
+                setPlanLimpSeleccionando(id);
+                setVistaPlanLimp('editar');
+              }}
+            />
+          ):
+          vistaPlanLimp === 'alta'?  (
+            <NuevoPlanDeLimpieza
+              onSuccess={() => setVistaPlanLimp('listado')}
+              onCancel={() => setVistaPlanLimp('listado')}
+            />
+          ) : vistaPlanLimp=== 'editar'?(
+            <EditarPlanDeLimpieza 
+              planlimpiezaID={planLimpSeleccionado}
+              onSuccess={() => setVistaPlanLimp('listado')}
+              onCancel={() => setVistaPlanLimp('listado')}
+            />
+          ): vistaPlanLimp=== 'detalle'?(
+            <VerPLanDeLimpieza
+            onCancel={()=> setVistaPlanLimp('listado')}
+            planlimpiezaID={planLimpSeleccionado}
+            />
+          ):null
+        ) : null }
       </div>
     </div>
   );

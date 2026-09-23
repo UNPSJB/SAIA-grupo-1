@@ -7,7 +7,6 @@ const EQUIPO_INICIAL :Equipo={
         nombre: "",
         categoria: "",
         ubicacion: "",
-        plan_de_Limpieza: "",
         plan_de_calibracion: "",
         estado:"activo"
     };
@@ -78,7 +77,6 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         nombre: equipo.nombre.trim(),
         categoria: equipo.categoria,
         ubicacion: equipo.ubicacion.trim(),
-        plan_de_Limpieza: equipo.plan_de_Limpieza.trim(),
         plan_de_calibracion: equipo.plan_de_calibracion.trim(),
         estado:"activo"
     }
@@ -184,17 +182,6 @@ return(
                 />
             </div>
 
-            <div className="form-group">
-                <label htmlFor="plan_de_Limpieza">Plan de Limpieza</label>
-                <input
-                    id="plan_de_Limpieza"
-                    name="plan_de_Limpieza"
-                    type="text"
-                    value={equipo.plan_de_Limpieza}
-                    onChange={handleChange}
-                    required    
-                />
-            </div>
 
             <div className="form-group">
                 <label htmlFor="plan_de_calibracion">Plan de Calibración</label>
@@ -209,8 +196,6 @@ return(
             </div>
             
             
-            
-
             <div className="form-acciones">
                 <button type="submit" className="btn-guardar" disabled={loading}>
                     {loading ? "guardando...":"Guardar"}
