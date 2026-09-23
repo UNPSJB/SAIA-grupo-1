@@ -31,6 +31,7 @@ class ChecklistItem(BaseModel):
     checklist_id: int
     plan_id: Optional[int] = None
     nombre_plan: str
+    nombre_equipo: Optional[str] = None
     tarea_id: Optional[int] = None
     nombre_tarea: str
     descripcion_tarea: Optional[str] = None

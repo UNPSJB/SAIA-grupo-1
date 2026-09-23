@@ -1,0 +1,497 @@
+.checklist-container {
+  max-width: 1000px;
+  margin: 2.5rem auto;
+  padding: 0 1.5rem;
+  color: var(--text);
+}
+
+.top-bar-acciones {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filtro-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.filtro-check input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.btn-dia-ver {
+  background-color: var(--accent);
+  color: #ffffff;
+  border: 1px solid var(--accent);
+  padding: 0.65rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-dia-ver:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.badge-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.badge-estado.pendiente {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-estado.completado {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-estado.vencido {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-registro {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.825rem;
+  font-weight: 600;
+}
+
+.badge-registro.activo {
+  color: #10b981;
+}
+
+.badge-registro.inactivo {
+  color: #ef4444;
+}
+
+.barra-progreso-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.barra-progreso-track {
+  flex: 1;
+  height: 8px;
+  background-color: var(--code-bg);
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.barra-progreso-fill {
+  height: 100%;
+  background-color: #10b981;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.barra-progreso-fill.parcial {
+  background-color: #f59e0b;
+}
+
+.barra-progreso-fill.vacio {
+  background-color: #9ca3af;
+}
+
+.barra-progreso-texto {
+  font-size: 0.85rem;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: right;
+  color: var(--text-h);
+}
+
+/* Cabecera Detalle */
+.checklist-cabecera-card {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.checklist-cabecera-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.checklist-cabecera-top h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-h);
+}
+
+.checklist-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.checklist-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.checklist-meta-item .label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.checklist-meta-item .valor {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.metricas-fila {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.metrica-caja {
+  background-color: var(--code-bg);
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.metrica-caja .metrica-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-h);
+}
+
+.metrica-caja .metrica-desc {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-top: 0.2rem;
+  font-weight: 600;
+}
+
+/* Acordeón de Planes */
+.planes-seccion-titulo {
+  margin: 2rem 0 1rem 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.plan-acordeon {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.plan-header {
+  padding: 1rem 1.25rem;
+  background-color: var(--code-bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s;
+}
+
+.plan-header:hover {
+  background-color: var(--border);
+}
+
+.plan-header-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.plan-nombre {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.plan-equipo-tag {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.plan-header-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.plan-progreso-pill {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  background-color: var(--bg);
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+.acordeon-chevron {
+  font-size: 0.85rem;
+  color: var(--text);
+  transition: transform 0.2s ease;
+}
+
+.acordeon-chevron.abierto {
+  transform: rotate(180deg);
+}
+
+.plan-tareas-lista {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Card de Tarea */
+.tarea-item-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  background-color: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color 0.2s;
+}
+
+.tarea-item-card.realizada {
+  border-left: 4px solid #10b981;
+}
+
+.tarea-item-card.pendiente {
+  border-left: 4px solid #f59e0b;
+}
+
+.tarea-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.tarea-info-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tarea-titulo-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tarea-nombre {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.tarea-frecuencia {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background-color: var(--code-bg);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.tarea-descripcion {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.tarea-detalles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  background-color: var(--code-bg);
+  padding: 0.75rem;
+  border-radius: 6px;
+}
+
+.tarea-detalle-dato {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tarea-detalle-dato span:first-child {
+  color: var(--text);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.tarea-detalle-dato span:last-child {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.tarea-insumos-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.insumo-chip {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.tarea-evidencia-link {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+/* Modales */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-content {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-width: 540px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+}
+
+.modal-header {
+  margin-bottom: 1.25rem;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--text-h);
+}
+
+.modal-header p {
+  color: var(--text);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.insumos-form-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.insumo-form-fila {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.insumo-form-fila input {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.btn-remover-insumo {
+  background: none;
+  border: 1px solid #dc2626;
+  color: #dc2626;
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-agregar-insumo {
+  background-color: var(--code-bg);
+  border: 1px dashed var(--border);
+  color: var(--text-h);
+  border-radius: 4px;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.btn-agregar-insumo:hover {
+  background-color: var(--border);
+}
+

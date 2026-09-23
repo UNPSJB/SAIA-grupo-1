@@ -18,41 +18,34 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPersonas = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/personal/`);
-      if (res.ok) {
-        const data = await res.json();
-        setPersonas(data);
-      } else {
-        setPersonas([]);
-      }
-    } catch {
-      setPersonas([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEliminar = async (legajo?: number) => {
-    if (!legajo) return;
-    if (!window.confirm(`¿Está seguro de que desea eliminar a la persona con legajo ${legajo}?`)) return;
-
-    try {
-      const res = await fetch(`${API_URL}/personal/${legajo}`, { method: 'DELETE' });
-      if (res.ok) {
-        setPersonas((prev) => prev.filter((p) => p.legajo !== legajo));
-      } else {
-        alert('No se pudo eliminar la persona.');
-      }
-    } catch {
-      alert('Error al intentar eliminar la persona.');
-    }
-  };
-
   useEffect(() => {
+    let cancelado = false;
+    const fetchPersonas = async () => {
+      try {
+        const res = await fetch(`${API_URL}/personal/`);
+        if (!cancelado) {
+          if (res.ok) {
+            const data = await res.json();
+            setPersonas(data);
+          } else {
+            setPersonas([]);
+          }
+        }
+      } catch {
+        if (!cancelado) {
+          setPersonas([]);
+        }
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchPersonas();
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   return (

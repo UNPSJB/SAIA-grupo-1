@@ -147,7 +147,7 @@ const handleEliminar = async (id?: number) => {
 
                     <button type="button" className="btn-eliminar" onClick={() => {handleEliminar(equipoID ?? undefined); dialogSeguro.current?.close()}}>Eliminar</button>
 
-                    <button type="button" className="btn-cancelar" onClick={() => {dialogSeguro.current?.close(); onCancel}}>Cancelar</button>
+                    <button type="button" className="btn-cancelar" onClick={() => {dialogSeguro.current?.close(); onCancel?.();}}>Cancelar</button>
                 </dialog>
 
                 <dialog ref={dialog} className="eliminado-exito">
