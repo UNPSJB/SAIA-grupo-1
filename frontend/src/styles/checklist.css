@@ -495,3 +495,20 @@
   background-color: var(--border);
 }
 
+.acciones-btns .btn-icon,
+.acciones-btns .btn-eliminar,
+.acciones-btns .btn-ver {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.85rem !important;
+}
+
+

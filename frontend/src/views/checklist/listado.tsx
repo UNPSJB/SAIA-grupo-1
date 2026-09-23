@@ -207,7 +207,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
               checked={mostrarInactivos}
               onChange={(e) => setMostrarInactivos(e.target.checked)}
             />
-            Mostrar bajas lógicas
+            Mostrar bajas
           </label>
 
           {checklistHoy ? (
@@ -304,7 +304,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                           c.activo ? 'activo' : 'inactivo'
                         }`}
                       >
-                        {c.activo ? '● Activo' : '○ Baja lógica'}
+                        {c.activo ? '● Activo' : '○ Baja'}
                       </span>
                     </td>
                     <td className="acciones-col">
@@ -320,7 +320,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                         {c.activo ? (
                           <button
                             className="btn-icon btn-eliminar"
-                            title="Dar de baja lógica este checklist"
+                            title="Dar de baja este checklist"
                             onClick={() => setConfirmDeleteId(c.id)}
                           >
                             🗑
@@ -409,13 +409,13 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         description={errorDialog.message}
       />
 
-      {/* Alerta de Confirmación de Baja Lógica con shadcn AlertDialog */}
+      {/* Alerta de Confirmación de Baja con shadcn AlertDialog */}
       <ConfirmAlertDialog
         open={confirmDeleteId !== null}
         onConfirm={confirmarBajaLogica}
         onCancel={() => setConfirmDeleteId(null)}
-        title="¿Dar de baja lógica este checklist?"
-        description="El checklist quedará inactivo en el historial y no aparecerá en las consultas estándar salvo que se habilite 'Mostrar bajas lógicas'. No se borrará físicamente y podrá ser restaurado posteriormente."
+        title="¿Dar de baja este checklist?"
+        description="El checklist quedará inactivo en el historial y no aparecerá en las consultas estándar salvo que se habilite 'Mostrar bajas'. No se borrará físicamente y podrá ser restaurado posteriormente."
         confirmText="Dar de baja"
         cancelText="Cancelar"
         isDestructive={true}

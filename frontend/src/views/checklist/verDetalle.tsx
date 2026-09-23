@@ -321,7 +321,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                       checklist.activo ? 'activo' : 'inactivo'
                     }`}
                   >
-                    {checklist.activo ? '● Activo' : '○ Baja lógica'}
+                    {checklist.activo ? '● Activo' : '○ Baja'}
                   </span>
                 </div>
               </div>
@@ -332,9 +332,9 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                     onClick={() => setConfirmDeleteOpen(true)}
                     className="btn-cancelar"
                     style={{ borderColor: '#dc2626', color: '#dc2626' }}
-                    title="Dar de baja lógica este checklist"
+                    title="Dar de baja este checklist"
                   >
-                    🗑 Dar de Baja Lógica
+                    🗑 Dar de Baja
                   </button>
                 ) : (
                   <button
@@ -504,7 +504,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           </div>
 
                           <div className="tarea-detalle-dato" style={{ gridColumn: 'span 2' }}>
-                            <span>Insumos Utilizados</span>
+                            <span>Insumos de Limpieza (Placeholder)</span>
                             {tarea.insumos_utilizados &&
                             tarea.insumos_utilizados.length > 0 ? (
                               <div className="tarea-insumos-lista">
@@ -516,7 +516,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                               </div>
                             ) : (
                               <span style={{ color: 'var(--text)', fontWeight: 400 }}>
-                                Ninguno registrado
+                                Sin insumos registrados
                               </span>
                             )}
                           </div>
@@ -606,10 +606,18 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
               </div>
 
               <div className="form-group">
-                <label>Insumos Utilizados</label>
+                <label>
+                  Insumos de Limpieza{' '}
+                  <span style={{ fontSize: '0.8rem', color: '#d97706', fontWeight: 500 }}>
+                    (Placeholder - En desarrollo)
+                  </span>
+                </label>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text)', opacity: 0.8, margin: '0 0 0.5rem 0' }}>
+                  * Los insumos de limpieza corresponden a una historia de usuario aún no finalizada. Este registro actúa como placeholder provisorio.
+                </p>
                 {formInsumos.length === 0 ? (
                   <p style={{ fontSize: '0.85rem', color: 'var(--text)', margin: '0.25rem 0' }}>
-                    No se han registrado insumos para esta tarea.
+                    No se han registrado insumos de limpieza para esta tarea.
                   </p>
                 ) : (
                   <div className="insumos-form-lista">
@@ -617,7 +625,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                       <div key={idx} className="insumo-form-fila">
                         <input
                           type="text"
-                          placeholder="Nombre del insumo (ej. Lavandina)"
+                          placeholder="Insumo de limpieza (Placeholder)"
                           value={ins.nombre}
                           style={{ flex: 2 }}
                           onChange={(e) =>
@@ -702,14 +710,14 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         description={errorDialog.message}
       />
 
-      {/* Alert Dialog de Confirmación de Baja Lógica */}
+      {/* Alert Dialog de Confirmación de Baja */}
       <ConfirmAlertDialog
         open={confirmDeleteOpen}
         onConfirm={handleBajaLogica}
         onCancel={() => setConfirmDeleteOpen(false)}
-        title="¿Dar de baja lógica este checklist?"
+        title="¿Dar de baja este checklist?"
         description="El checklist se marcará como inactivo pero no se borrará físicamente. Podrás reactivarlo en cualquier momento con el botón 'Restaurar Checklist'."
-        confirmText="Confirmar Baja Lógica"
+        confirmText="Dar de baja"
         cancelText="Cancelar"
         isDestructive={true}
       />
