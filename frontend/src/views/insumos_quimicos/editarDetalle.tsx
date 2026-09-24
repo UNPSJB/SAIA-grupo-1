@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { type InsumoQuimico, type InsumoQuimicoUpdateDTO, OPCIONES_TIPO, OPCIONES_UNIDAD } from './tipos';
+import type { InsumoQuimico, TipoQuimico, UnidadMedida } from './tipos';
+import { OPCIONES_TIPO, OPCIONES_UNIDAD } from './tipos';
 
 interface Props {
   insumo: InsumoQuimico;
@@ -8,119 +9,109 @@ interface Props {
 }
 
 export const EditarDetalle: React.FC<Props> = ({ insumo, onVolver, onActualizado }) => {
-  const [formData, setFormData] = useState<InsumoQuimicoUpdateDTO>({
+  const [formData, setFormData] = useState<{
+    nombre: string;
+    tipo: TipoQuimico;
+    unidad_medida: UnidadMedida;
+    stock_actual: string;
+  }>({
     nombre: insumo.nombre,
     tipo: insumo.tipo,
     unidad_medida: insumo.unidad_medida,
-    stock_actual: insumo.stock_actual,
-    activo: insumo.activo,
+    stock_actual: String(insumo.stock_actual),
   });
 
   const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.nombre?.trim()) {
+    setError(null);
+
+    if (!formData.nombre.trim()) {
       setError('El nombre no puede estar vacío.');
       return;
     }
-    if ((formData.stock_actual ?? 0) < 0) {
-      setError('El stock no puede ser menor a cero.');
+
+    const valorStock = parseFloat(formData.stock_actual);
+    if (formData.stock_actual === '' || isNaN(valorStock) || valorStock <= 0) {
+      setError('Las existencias deben ser mayores a cero.');
       return;
     }
 
     try {
+      setCargando(true);
       const res = await fetch(`http://localhost:8000/api/insumos-quimicos/${insumo.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          nombre: formData.nombre.trim(),
+          tipo: formData.tipo,
+          unidad_medida: formData.unidad_medida,
+          stock_actual: valorStock,
+          activo: insumo.activo,
+        }),
       });
 
-      if (!res.ok) throw new Error('Error al actualizar');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || 'Error al actualizar el insumo');
+      }
+
       onActualizado();
     } catch (err: any) {
-      setError(err.message || 'Error al conectar con la API');
+      setError(err.message || 'Error de conexión');
+    } finally {
+      setCargando(false);
     }
   };
 
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: '13px', fontWeight: '700', color: '#2b2b2b', marginBottom: '8px' };
+  const inputStyle: React.CSSProperties = { width: '100%', backgroundColor: '#faf9f5', border: '1px solid #e7e5de', borderRadius: '8px', padding: '12px 16px', color: '#333333', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
+
   return (
-    <div className="min-h-screen bg-[#11121c] text-white p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Editar Insumo Químico</h1>
-        <p className="text-sm text-gray-400 mt-1">02 · Edición</p>
+    <div style={{ width: '100%', maxWidth: '580px', fontFamily: 'inherit' }}>
+      <div style={{ marginBottom: '36px' }}>
+        <h1 style={{ fontSize: '38px', fontWeight: '800', margin: '0 0 6px 0', color: '#2b2b2b', letterSpacing: '-0.5px' }}>Editar Insumo Químico</h1>
+        <span style={{ fontSize: '15px', color: '#6b6b6b', fontWeight: '500' }}>02 · Formulario</span>
       </div>
 
       {error && (
-        <div className="max-w-2xl mb-4 p-3 bg-red-900/50 border border-red-500 rounded-lg text-sm text-red-200">
+        <div style={{ backgroundColor: '#fdeced', border: '1px solid #f5c6cb', color: '#721c24', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', fontSize: '14px' }}>
           {error}
         </div>
       )}
 
-      <form onSubmit={handleUpdate} className="max-w-2xl space-y-5">
+      <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1.5">Nombre</label>
-          <input
-            type="text"
-            value={formData.nombre}
-            onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-            className="w-full bg-[#1b1c28] border border-[#292a3b] rounded-lg px-4 py-2.5 text-sm text-gray-200 focus:outline-none"
-          />
+          <label style={labelStyle}>Nombre</label>
+          <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} style={inputStyle} />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1.5">Tipo</label>
-          <select
-            value={formData.tipo}
-            onChange={(e) => setFormData({ ...formData, tipo: e.target.value as any })}
-            className="w-full bg-[#1b1c28] border border-[#292a3b] rounded-lg px-4 py-2.5 text-sm text-gray-200 focus:outline-none"
-          >
-            {OPCIONES_TIPO.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
+          <label style={labelStyle}>Tipo de Químico</label>
+          <select value={formData.tipo} onChange={(e) => setFormData({ ...formData, tipo: e.target.value as TipoQuimico })} style={{ ...inputStyle, cursor: 'pointer' }}>
+            {OPCIONES_TIPO.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1.5">Unidad de Medida</label>
-          <select
-            value={formData.unidad_medida}
-            onChange={(e) => setFormData({ ...formData, unidad_medida: e.target.value as any })}
-            className="w-full bg-[#1b1c28] border border-[#292a3b] rounded-lg px-4 py-2.5 text-sm text-gray-200 focus:outline-none"
-          >
-            {OPCIONES_UNIDAD.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
+          <label style={labelStyle}>Unidad de Medida</label>
+          <select value={formData.unidad_medida} onChange={(e) => setFormData({ ...formData, unidad_medida: e.target.value as UnidadMedida })} style={{ ...inputStyle, cursor: 'pointer' }}>
+            {OPCIONES_UNIDAD.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1.5">Stock Actual</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.stock_actual}
-            onChange={(e) => setFormData({ ...formData, stock_actual: parseFloat(e.target.value) || 0 })}
-            className="w-full bg-[#1b1c28] border border-[#292a3b] rounded-lg px-4 py-2.5 text-sm text-gray-200 focus:outline-none"
-          />
+          <label style={labelStyle}>Existencias</label>
+          <input type="number" min="0.01" step="0.01" value={formData.stock_actual} onChange={(e) => setFormData({ ...formData, stock_actual: e.target.value })} style={inputStyle} />
         </div>
 
-        <div className="flex items-center gap-3 pt-4">
-          <button
-            type="submit"
-            className="bg-white text-gray-900 font-semibold px-5 py-2.5 rounded-lg text-sm hover:bg-gray-200 transition-colors"
-          >
-            Guardar Cambios
+        <div style={{ display: 'flex', gap: '14px', marginTop: '16px' }}>
+          <button type="submit" disabled={cargando} style={{ backgroundColor: '#32322e', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px 28px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
+            {cargando ? 'Guardando...' : 'Guardar'}
           </button>
-          <button
-            type="button"
-            onClick={onVolver}
-            className="bg-[#202231] text-gray-300 font-medium px-5 py-2.5 rounded-lg text-sm hover:bg-[#2a2c3f] transition-colors"
-          >
+          <button type="button" onClick={onVolver} style={{ backgroundColor: '#ffffff', color: '#32322e', border: '1px solid #32322e', borderRadius: '8px', padding: '12px 28px', fontWeight: '500', fontSize: '14px', cursor: 'pointer' }}>
             Cancelar
           </button>
         </div>

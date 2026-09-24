@@ -30,19 +30,19 @@ type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 function App() {
   const [modulo, setModulo] = useState<Modulo>('insumos_quimicos');
 
-  // Estados módulo Equipos
+  
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
   const [equipoSeleccionado, setEquipoSeleccionado] = useState<number | null>(null);
 
-  // Estados módulo Insumos
+  
   const [vistaInsumos, setVistaInsumos] = useState<VistaInsumos>('listado');
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<InsumoConId | null>(null);
 
-  // Estados módulo Personas
+  
   const [vistaPersonas, setVistaPersonas] = useState<VistaPersonas>('listado');
   const [legajoSeleccionado, setLegajoSeleccionado] = useState<number | null>(null);
 
-  // Estados módulo Insumos Químicos
+  
   const [vistaInsumosQuimicos, setVistaInsumosQuimicos] = useState<VistaInsumosQuimicos>('listado');
   const [quimicoSeleccionado, setQuimicoSeleccionado] = useState<InsumoQuimico | null>(null);
 
@@ -75,10 +75,10 @@ function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#ffffff', display: 'flex' }}>
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
-      <div style={{ flex: 1, padding: '36px 48px', boxSizing: 'border-box' }}>
+  <div style={{ flex: 1, padding: '40px 60px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}>
         {modulo === 'insumos' ? (
           vistaInsumos === 'listado' ? (
             <ListadoInsumos
@@ -175,7 +175,6 @@ function App() {
             />
           )
         ) : (
-          /* Módulo de Insumos Químicos */
           vistaInsumosQuimicos === 'listado' ? (
             <ListadoInsumosQuimicos
               onNuevo={() => setVistaInsumosQuimicos('alta')}
