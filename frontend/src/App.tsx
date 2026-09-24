@@ -14,7 +14,6 @@ import { ListadoPersonas } from './views/personas/listado';
 import { DetallePersona } from './views/personas/verDetalle';
 import { EditarPersona } from './views/personas/editarDetalle';
 import { Sidebar } from './components/Sidebar';
-
 import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
 import { NuevoElementoDeLimpieza } from './views/elementosDeLimpieza/nuevoElemento';
 import { EditarElementoDeLimpieza } from './views/elementosDeLimpieza/editarDetalle';
@@ -34,7 +33,6 @@ function App() {
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<InsumoConId | null>(null);
   const [vistaPersonas, setVistaPersonas] = useState<VistaPersonas>('listado');
   const [legajoSeleccionado, setLegajoSeleccionado] = useState<number | null>(null);
-
   const [vistaElementos, setVistaElementos] = useState<VistaElementos>('listado');
   const [elementoSeleccionado, setElementoSeleccionado] = useState<number | null>(null);
 

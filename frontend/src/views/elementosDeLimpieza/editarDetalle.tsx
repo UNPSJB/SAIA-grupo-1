@@ -84,7 +84,7 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
         return;
       }
 
-      const num = parseFloat(value);
+      const num = parseInt(value, 10);
       if (isNaN(num) || num <= 0) {
         setAdvertenciaInput('La frecuencia de cambio debe ser un número mayor a 0.');
       }
@@ -215,8 +215,8 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
             id="frecuenciaDeCambio"
             name="frecuenciaDeCambio"
             type="number"
-            step="any"
-            min="0.1"
+            step="1"
+            min="1"
             placeholder="Opcional (ej: 15 o 30)"
             value={frecuenciaInput}
             onChange={handleChange}
