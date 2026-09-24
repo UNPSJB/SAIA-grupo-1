@@ -4,10 +4,7 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.equipos import schemas, services
 
-
-router = APIRouter(prefix="/equipos", tags=["equipos"])
-
-
+router = APIRouter()
 
 @router.post("/", response_model=schemas.Equipo)
 async def create_equipo(equipo: schemas.EquipoCreate, db: Session = Depends(get_db)):
