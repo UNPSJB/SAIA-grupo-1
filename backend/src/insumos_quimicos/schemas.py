@@ -3,11 +3,12 @@ from typing import Optional
 from datetime import datetime
 from .constants import TipoQuimicoEnum, UnidadMedidaEnum
 
+# Esquema base general (permite >= 0 para lectura y existencia histórica)
 class InsumoQuimicoBase(BaseModel):
-    nombre: str = Field(..., min_length=1, max_length=150, description="Nombre del insumo químico")
+    nombre: str = Field(..., min_length=1, max_length=150)
     tipo: TipoQuimicoEnum
     unidad_medida: UnidadMedidaEnum
-    stock_actual: float = Field(0.0, ge=0.0, description="Stock debe ser mayor o igual a 0")
+    stock_actual: float = Field(0.0, ge=0.0)
 
     @field_validator('nombre')
     @classmethod
@@ -16,8 +17,9 @@ class InsumoQuimicoBase(BaseModel):
             raise ValueError("El nombre no puede estar vacío ni contener solo espacios.")
         return v.strip()
 
+# Solo al CREAR se exige estrictamente mayor a 0
 class InsumoQuimicoCreate(InsumoQuimicoBase):
-    pass
+    stock_actual: float = Field(..., gt=0.0, description="Al dar de alta debe ser mayor a 0")
 
 class InsumoQuimicoUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=1, max_length=150)
