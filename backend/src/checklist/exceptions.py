@@ -30,5 +30,18 @@ class NoHayTareasCorrespondientes(BadRequest):
     DETAIL = ErrorCode.NO_HAY_TAREAS_CORRESPONDIENTES
 
 
-class ChecklistYaActivo(BadRequest):
-    DETAIL = ErrorCode.CHECKLIST_YA_ACTIVO
+class ImagenNoEncontrada(NotFound):
+    DETAIL = ErrorCode.IMAGEN_NO_ENCONTRADA
+
+
+class FormatoImagenInvalido(BadRequest):
+    DETAIL = ErrorCode.FORMATO_IMAGEN_INVALIDO
+
+
+class ChecklistNoModificable(BadRequest):
+    DETAIL = ErrorCode.CHECKLIST_NO_MODIFICABLE
+
+
+class RangoFechasInvalido(BadRequest):
+    DETAIL = ErrorCode.RANGO_FECHAS_INVALIDO
+

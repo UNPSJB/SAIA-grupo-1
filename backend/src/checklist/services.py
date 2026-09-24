@@ -1,6 +1,10 @@
 import json
+import uuid
 from datetime import date, datetime
+from pathlib import Path
 from typing import List, Optional
+from fastapi import UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from src.checklist import exceptions, models, schemas
@@ -8,6 +12,9 @@ from src.equipos.models import Equipo, Estado
 from src.personal.models import Personal
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.tareas.models import Frecuencia
+
+IMAGENES_DIR = Path(__file__).resolve().parent / "imagenes"
+IMAGENES_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def tarea_corresponde_a_fecha(
@@ -90,13 +97,129 @@ def generar_checklist(
     return checklist
 
 
+def guardar_archivo_imagen_tarea(
+    db: Session, checklist_id: int, item_id: int, file: UploadFile
+) -> models.ChecklistItem:
+    checklist = obtener_checklist(db, checklist_id)
+    if checklist.estado in (
+        models.EstadoGeneralChecklist.COMPLETADO,
+        models.EstadoGeneralChecklist.VENCIDO,
+    ):
+        raise exceptions.ChecklistNoModificable()
+
+    item = db.scalar(
+        select(models.ChecklistItem).where(
+            models.ChecklistItem.id == item_id,
+            models.ChecklistItem.checklist_id == checklist_id,
+        )
+    )
+    if not item:
+        raise exceptions.TareaChecklistNoEncontrada()
+
+    if item.estado == models.EstadoTareaItem.REALIZADO:
+        raise exceptions.TareaYaCompletada()
+
+    extension = Path(file.filename or "").suffix.lower()
+    tipos_validos = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+    }
+    if extension not in tipos_validos:
+        if file.content_type == "image/jpeg":
+            extension = ".jpg"
+        elif file.content_type == "image/png":
+            extension = ".png"
+        elif file.content_type == "image/webp":
+            extension = ".webp"
+        elif file.content_type == "image/gif":
+            extension = ".gif"
+        else:
+            raise exceptions.FormatoImagenInvalido()
+
+    contenido = file.file.read()
+    if not contenido:
+        raise exceptions.FormatoImagenInvalido()
+
+    if item.imagen and item.imagen.startswith("/checklist/imagenes/"):
+        nombre_previo = Path(item.imagen).name
+        ruta_previa = IMAGENES_DIR / nombre_previo
+        if ruta_previa.is_file():
+            try:
+                ruta_previa.unlink()
+            except OSError:
+                pass
+
+    nombre_nuevo = f"chk_{checklist_id}_item_{item_id}_{uuid.uuid4().hex[:8]}{extension}"
+    ruta_destino = IMAGENES_DIR / nombre_nuevo
+    with open(ruta_destino, "wb") as f:
+        f.write(contenido)
+
+    item.imagen = f"/checklist/imagenes/{nombre_nuevo}"
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def eliminar_imagen_tarea(
+    db: Session, checklist_id: int, item_id: int
+) -> models.ChecklistItem:
+    checklist = obtener_checklist(db, checklist_id)
+    if checklist.estado in (
+        models.EstadoGeneralChecklist.COMPLETADO,
+        models.EstadoGeneralChecklist.VENCIDO,
+    ):
+        raise exceptions.ChecklistNoModificable()
+
+    item = db.scalar(
+        select(models.ChecklistItem).where(
+            models.ChecklistItem.id == item_id,
+            models.ChecklistItem.checklist_id == checklist_id,
+        )
+    )
+    if not item:
+        raise exceptions.TareaChecklistNoEncontrada()
+
+    if item.estado == models.EstadoTareaItem.REALIZADO:
+        raise exceptions.TareaYaCompletada()
+
+    if item.imagen and item.imagen.startswith("/checklist/imagenes/"):
+        nombre = Path(item.imagen).name
+        ruta = IMAGENES_DIR / nombre
+        if ruta.is_file():
+            try:
+                ruta.unlink()
+            except OSError:
+                pass
+
+    item.imagen = None
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def obtener_archivo_imagen(nombre_archivo: str) -> FileResponse:
+    nombre_seguro = Path(nombre_archivo).name
+    ruta = (IMAGENES_DIR / nombre_seguro).resolve()
+    if not ruta.is_file() or not str(ruta).startswith(str(IMAGENES_DIR.resolve())):
+        raise exceptions.ImagenNoEncontrada()
+    return FileResponse(ruta)
+
+
 def completar_tarea(
     db: Session,
     checklist_id: int,
     item_id: int,
     datos: schemas.CompletarTareaSchema,
 ) -> models.ChecklistItem:
-    obtener_checklist(db, checklist_id)
+    checklist = obtener_checklist(db, checklist_id)
+    if checklist.estado in (
+        models.EstadoGeneralChecklist.COMPLETADO,
+        models.EstadoGeneralChecklist.VENCIDO,
+    ):
+        raise exceptions.ChecklistNoModificable()
 
     item = db.scalar(
         select(models.ChecklistItem).where(
@@ -120,7 +243,6 @@ def completar_tarea(
         raise exceptions.ResponsableInactivo()
 
     item.responsable_legajo = datos.responsable_legajo
-    item.imagen = datos.imagen
     if datos.insumos_utilizados:
         item.insumos_utilizados = json.dumps(
             [insumo.model_dump() for insumo in datos.insumos_utilizados],
@@ -137,14 +259,11 @@ def completar_tarea(
     return item
 
 
-def actualizar_tarea(
+def obtener_tarea(
     db: Session,
     checklist_id: int,
     item_id: int,
-    datos: schemas.ChecklistItemUpdate,
 ) -> models.ChecklistItem:
-    obtener_checklist(db, checklist_id)
-
     item = db.scalar(
         select(models.ChecklistItem).where(
             models.ChecklistItem.id == item_id,
@@ -153,59 +272,27 @@ def actualizar_tarea(
     )
     if not item:
         raise exceptions.TareaChecklistNoEncontrada()
-
-    campos_modificados = datos.model_dump(exclude_unset=True)
-
-    if "responsable_legajo" in campos_modificados:
-        legajo = campos_modificados["responsable_legajo"]
-        if legajo is not None:
-            responsable = db.scalar(
-                select(Personal).where(Personal.legajo == legajo)
-            )
-            if not responsable:
-                raise exceptions.ResponsableNoEncontrado()
-            if not responsable.activo:
-                raise exceptions.ResponsableInactivo()
-        item.responsable_legajo = legajo
-
-    if "imagen" in campos_modificados:
-        item.imagen = campos_modificados["imagen"]
-
-    if "insumos_utilizados" in campos_modificados:
-        insumos = campos_modificados["insumos_utilizados"]
-        if insumos:
-            item.insumos_utilizados = json.dumps(
-                [insumo.model_dump() if hasattr(insumo, "model_dump") else insumo for insumo in insumos],
-                ensure_ascii=False,
-            )
-        else:
-            item.insumos_utilizados = "[]"
-
-    if "estado" in campos_modificados:
-        nuevo_estado = campos_modificados["estado"]
-        item.estado = nuevo_estado
-        if nuevo_estado == models.EstadoTareaItem.REALIZADO:
-            if not item.fecha_hora_fin:
-                item.fecha_hora_fin = datetime.now()
-        else:
-            item.fecha_hora_fin = None
-
-    db.commit()
-    db.refresh(item)
     return item
+
 
 
 def listar_checklists(
     db: Session,
     fecha: Optional[date] = None,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
     estado: Optional[str] = None,
-    incluir_inactivos: bool = False,
 ) -> List[models.Checklist]:
+    if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+        raise exceptions.RangoFechasInvalido()
+
     query = select(models.Checklist).order_by(models.Checklist.fecha.desc())
-    if not incluir_inactivos:
-        query = query.where(models.Checklist.activo.is_(True))
     if fecha:
         query = query.where(models.Checklist.fecha == fecha)
+    if fecha_desde:
+        query = query.where(models.Checklist.fecha >= fecha_desde)
+    if fecha_hasta:
+        query = query.where(models.Checklist.fecha <= fecha_hasta)
 
     checklists = db.scalars(query).all()
 
@@ -219,34 +306,9 @@ def listar_checklists(
 def obtener_checklist(
     db: Session,
     checklist_id: int,
-    incluir_inactivos: bool = False,
 ) -> models.Checklist:
     query = select(models.Checklist).where(models.Checklist.id == checklist_id)
-    if not incluir_inactivos:
-        query = query.where(models.Checklist.activo.is_(True))
-
     checklist = db.scalar(query)
     if not checklist:
         raise exceptions.ChecklistNoEncontrado()
     return checklist
-
-
-def eliminar_checklist(db: Session, checklist_id: int) -> models.Checklist:
-    checklist = obtener_checklist(db, checklist_id)
-    checklist.activo = False
-    db.commit()
-    db.refresh(checklist)
-    return checklist
-
-
-def restaurar_checklist(db: Session, checklist_id: int) -> models.Checklist:
-    checklist = obtener_checklist(db, checklist_id, incluir_inactivos=True)
-    if checklist.activo:
-        raise exceptions.ChecklistYaActivo()
-    checklist.activo = True
-    db.commit()
-    db.refresh(checklist)
-    return checklist
-
-
-undelete_checklist = restaurar_checklist

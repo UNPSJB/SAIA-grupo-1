@@ -129,7 +129,6 @@
   color: var(--text-h);
 }
 
-/* Cabecera Detalle */
 .checklist-cabecera-card {
   background-color: var(--bg);
   border: 1px solid var(--border);
@@ -208,7 +207,6 @@
   font-weight: 600;
 }
 
-/* Acordeón de Planes */
 .planes-seccion-titulo {
   margin: 2rem 0 1rem 0;
   font-size: 1.35rem;
@@ -297,7 +295,6 @@
   border-top: 1px solid var(--border);
 }
 
-/* Card de Tarea */
 .tarea-item-card {
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -409,7 +406,6 @@
   font-size: 0.85rem;
 }
 
-/* Modales */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -510,5 +506,169 @@
   justify-content: center !important;
   font-size: 0.85rem !important;
 }
+
+.tarea-imagen-preview {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.tarea-imagen-thumbnail {
+  max-width: 100%;
+  max-height: 180px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  object-fit: contain;
+  background-color: var(--code-bg);
+}
+
+.tarea-img-miniatura {
+  width: auto;
+  max-width: 220px;
+  max-height: 150px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  margin-top: 0.35rem;
+  display: block;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tarea-img-miniatura:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-subir-evidencia {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.btn-subir-evidencia:hover {
+  background-color: var(--border);
+}
+
+.filtros-historial {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background-color: var(--code-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.filtros-rango-campos {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.filtro-campo-grupo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filtro-campo-grupo label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.filtro-campo-grupo input[type="date"] {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.filtro-campo-grupo input[type="date"]:focus {
+  border-color: var(--accent);
+}
+
+.filtro-campo-grupo select {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.filtro-campo-grupo select:focus {
+  border-color: var(--accent);
+}
+
+
+.filtros-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-filtrar {
+  background-color: var(--accent);
+  color: #ffffff;
+  border: 1px solid var(--accent);
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.btn-filtrar:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-limpiar-filtro {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-limpiar-filtro:hover {
+  background-color: var(--border);
+}
+
 
 

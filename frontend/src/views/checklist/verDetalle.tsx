@@ -1,15 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import type {
   Checklist,
   ChecklistItem,
   InsumoUtilizado,
   PersonalResumen,
-  ChecklistItemUpdatePayload,
+  CompletarTareaPayload,
 } from './tipos';
-import {
-  ErrorAlertDialog,
-  ConfirmAlertDialog,
-} from '../../components/ui/alert-dialog';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
 
@@ -33,10 +30,11 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
   const [tareaSeleccionada, setTareaSeleccionada] = useState<ChecklistItem | null>(null);
   const [modalTareaAbierto, setModalTareaAbierto] = useState(false);
   const [formResponsable, setFormResponsable] = useState<number | ''>('');
-  const [formEstado, setFormEstado] = useState<'pendiente' | 'realizado'>('pendiente');
-  const [formImagen, setFormImagen] = useState('');
+  const [modalArchivoImagen, setModalArchivoImagen] = useState<File | null>(null);
   const [formInsumos, setFormInsumos] = useState<InsumoUtilizado[]>([]);
   const [guardandoTarea, setGuardandoTarea] = useState(false);
+  const [modalImagenVer, setModalImagenVer] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
@@ -48,8 +46,6 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     message: '',
   });
 
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-
   const mostrarError = (mensaje: string, titulo: string = 'Atención') => {
     setErrorDialog({
       open: true,
@@ -58,17 +54,21 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     });
   };
 
+  const obtenerUrlImagen = (ruta: string) => {
+    return `${API_URL}${ruta.startsWith('/') ? '' : '/'}${ruta}`;
+  };
+
   const recargarChecklist = async () => {
     if (!checklistId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/checklist/${checklistId}?incluir_inactivos=true`);
+      const res = await fetch(`${API_URL}/checklist/${checklistId}`);
       if (res.ok) {
         const data: Checklist = await res.json();
         setChecklist(data);
       }
     } catch {
-      // ignore
+      setChecklist(null);
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     const cargarDatos = async () => {
       try {
         const [resChecklist, resPersonal] = await Promise.all([
-          fetch(`${API_URL}/checklist/${checklistId}?incluir_inactivos=true`),
+          fetch(`${API_URL}/checklist/${checklistId}`),
           fetch(`${API_URL}/personal/`),
         ]);
 
@@ -136,11 +136,13 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     }));
   };
 
-  const abrirModalEditarTarea = (tarea: ChecklistItem) => {
+  const abrirModalCompletarTarea = (tarea: ChecklistItem) => {
+    if (checklist?.estado !== 'pendiente') return;
+    if (tarea.estado === 'realizado') return;
     setTareaSeleccionada(tarea);
     setFormResponsable(tarea.responsable_legajo ?? '');
-    setFormEstado(tarea.estado);
-    setFormImagen(tarea.imagen || '');
+    setModalArchivoImagen(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setFormInsumos(
       tarea.insumos_utilizados ? [...tarea.insumos_utilizados] : []
     );
@@ -172,7 +174,15 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     e.preventDefault();
     if (!checklist || !tareaSeleccionada) return;
 
-    if (formEstado === 'realizado' && !formResponsable) {
+    if (checklist.estado !== 'pendiente') {
+      mostrarError(
+        'El checklist se encuentra completado o vencido y no admite modificaciones.',
+        'Auditoría cerrada'
+      );
+      return;
+    }
+
+    if (!formResponsable) {
       mostrarError(
         'Debe asignar un responsable para marcar la tarea como realizada.',
         'Dato requerido'
@@ -196,17 +206,36 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
 
     setGuardandoTarea(true);
     try {
-      const payload: ChecklistItemUpdatePayload = {
-        responsable_legajo: formResponsable ? Number(formResponsable) : null,
-        estado: formEstado,
-        imagen: formImagen.trim() ? formImagen.trim() : null,
+      if (modalArchivoImagen) {
+        const formData = new FormData();
+        formData.append('file', modalArchivoImagen);
+        const resImg = await fetch(
+          `${API_URL}/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/imagen`,
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+        if (!resImg.ok) {
+          const errImg = await resImg.json();
+          mostrarError(
+            errImg.detail || 'No se pudo subir la imagen de la tarea.',
+            'Error al subir imagen'
+          );
+          setGuardandoTarea(false);
+          return;
+        }
+      }
+
+      const payload: CompletarTareaPayload = {
+        responsable_legajo: Number(formResponsable),
         insumos_utilizados: formInsumos,
       };
 
       const res = await fetch(
-        `${API_URL}/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}`,
+        `${API_URL}/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/completar`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         }
@@ -215,55 +244,19 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       if (res.ok) {
         setModalTareaAbierto(false);
         setTareaSeleccionada(null);
+        setModalArchivoImagen(null);
         await recargarChecklist();
       } else {
         const err = await res.json();
         mostrarError(
-          err.detail || 'No se pudo actualizar la tarea del checklist.',
+          err.detail || 'No se pudo completar la tarea del checklist.',
           'Error al guardar'
         );
       }
     } catch {
-      mostrarError('Error de red al intentar actualizar la tarea.', 'Error de conexión');
+      mostrarError('Error de red al intentar completar la tarea.', 'Error de conexión');
     } finally {
       setGuardandoTarea(false);
-    }
-  };
-
-  const handleBajaLogica = async () => {
-    if (!checklist) return;
-    setConfirmDeleteOpen(false);
-
-    try {
-      const res = await fetch(`${API_URL}/checklist/${checklist.id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setChecklist((prev) => (prev ? { ...prev, activo: false } : null));
-      } else {
-        const err = await res.json();
-        mostrarError(err.detail || 'No se pudo dar de baja el checklist.');
-      }
-    } catch {
-      mostrarError('Error al dar de baja el checklist.');
-    }
-  };
-
-  const handleRestaurar = async () => {
-    if (!checklist) return;
-
-    try {
-      const res = await fetch(`${API_URL}/checklist/${checklist.id}/restaurar`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        setChecklist((prev) => (prev ? { ...prev, activo: true } : null));
-      } else {
-        const err = await res.json();
-        mostrarError(err.detail || 'No se pudo restaurar el checklist.');
-      }
-    } catch {
-      mostrarError('Error al restaurar el checklist.');
     }
   };
 
@@ -307,45 +300,25 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         </div>
       ) : (
         <>
-          {/* Cabecera Informativa Inmutable del Checklist */}
           <div className="checklist-cabecera-card">
             <div className="checklist-cabecera-top">
               <div>
                 <h2>Checklist #{checklist.id}</h2>
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.4rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span className={`badge-estado ${checklist.estado}`}>
                     {checklist.estado}
                   </span>
-                  <span
-                    className={`badge-registro ${
-                      checklist.activo ? 'activo' : 'inactivo'
-                    }`}
-                  >
-                    {checklist.activo ? '● Activo' : '○ Baja'}
-                  </span>
+                  {checklist.estado === 'vencido' && (
+                    <span style={{ fontSize: '0.825rem', color: '#dc2626', fontWeight: 600 }}>
+                      (Auditoría cerrada · No admite modificaciones)
+                    </span>
+                  )}
+                  {checklist.estado === 'completado' && (
+                    <span style={{ fontSize: '0.825rem', color: '#059669', fontWeight: 600 }}>
+                      (Auditoría cerrada · Checklist finalizado)
+                    </span>
+                  )}
                 </div>
-              </div>
-
-              <div>
-                {checklist.activo ? (
-                  <button
-                    onClick={() => setConfirmDeleteOpen(true)}
-                    className="btn-cancelar"
-                    style={{ borderColor: '#dc2626', color: '#dc2626' }}
-                    title="Dar de baja este checklist"
-                  >
-                    🗑 Dar de Baja
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleRestaurar}
-                    className="btn-guardar"
-                    style={{ backgroundColor: '#059669', borderColor: '#059669' }}
-                    title="Restaurar checklist"
-                  >
-                    ↺ Restaurar Checklist
-                  </button>
-                )}
               </div>
             </div>
 
@@ -411,7 +384,6 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
             </div>
           </div>
 
-          {/* Listado de Tareas Agrupadas por Plan de Limpieza con Acordeón */}
           <div className="planes-seccion-titulo">
             Tareas por Plan de Limpieza
           </div>
@@ -471,16 +443,16 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             )}
                           </div>
 
-                          <button
-                            className="btn-guardar"
-                            style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
-                            onClick={() => abrirModalEditarTarea(tarea)}
-                            title="Modificar o completar tarea"
-                          >
-                            {tarea.estado === 'realizado'
-                              ? '✎ Modificar'
-                              : '✓ Completar'}
-                          </button>
+                          {checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (
+                            <button
+                              className="btn-guardar"
+                              style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                              onClick={() => abrirModalCompletarTarea(tarea)}
+                              title="Completar tarea"
+                            >
+                              ✓ Completar
+                            </button>
+                          )}
                         </div>
 
                         <div className="tarea-detalles-grid">
@@ -489,8 +461,8 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             <span>
                               {tarea.nombre_responsable ||
                                 (tarea.responsable_legajo
-                                  ? `Legajo ${tarea.responsable_legajo}`
-                                  : 'Sin asignar')}
+                                   ? `Legajo ${tarea.responsable_legajo}`
+                                   : 'Sin asignar')}
                             </span>
                           </div>
 
@@ -521,19 +493,32 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             )}
                           </div>
 
-                          {tarea.imagen && (
-                            <div className="tarea-detalle-dato" style={{ gridColumn: 'span 2' }}>
-                              <span>Evidencia Fotográfica</span>
-                              <a
-                                href={tarea.imagen}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="tarea-evidencia-link"
-                              >
-                                Ver imagen adjunta ↗
-                              </a>
+                          <div className="tarea-detalle-dato" style={{ gridColumn: 'span 2' }}>
+                            <span>Evidencia Fotográfica</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.2rem' }}>
+                              {tarea.imagen ? (
+                                <button
+                                  type="button"
+                                  className="tarea-evidencia-link"
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    font: 'inherit',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                  }}
+                                  onClick={() => setModalImagenVer(obtenerUrlImagen(tarea.imagen || ''))}
+                                >
+                                  📷 Ver imagen adjunta
+                                </button>
+                              ) : (
+                                <span style={{ color: 'var(--text)', fontWeight: 400 }}>
+                                  Sin evidencia adjunta
+                                </span>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -545,33 +530,18 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         </>
       )}
 
-      {/* Modal para Completar / Modificar Tarea */}
       {modalTareaAbierto && tareaSeleccionada && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>Tarea: {tareaSeleccionada.nombre_tarea}</h2>
+              <h2>Completar Tarea: {tareaSeleccionada.nombre_tarea}</h2>
               <p>Plan: <strong>{tareaSeleccionada.nombre_plan}</strong></p>
             </div>
 
             <form onSubmit={handleGuardarTarea}>
               <div className="form-group">
-                <label htmlFor="tarea-estado">Estado de la Tarea *</label>
-                <select
-                  id="tarea-estado"
-                  value={formEstado}
-                  onChange={(e) =>
-                    setFormEstado(e.target.value as 'pendiente' | 'realizado')
-                  }
-                >
-                  <option value="pendiente">Pendiente</option>
-                  <option value="realizado">Realizado</option>
-                </select>
-              </div>
-
-              <div className="form-group">
                 <label htmlFor="tarea-responsable">
-                  Responsable {formEstado === 'realizado' ? '*' : '(Opcional)'}
+                  Responsable *
                 </label>
                 <select
                   id="tarea-responsable"
@@ -581,7 +551,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                       e.target.value ? Number(e.target.value) : ''
                     )
                   }
-                  required={formEstado === 'realizado'}
+                  required
                 >
                   <option value="">-- Seleccionar personal activo --</option>
                   {personal
@@ -595,26 +565,72 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
               </div>
 
               <div className="form-group">
-                <label htmlFor="tarea-imagen">URL de Imagen / Evidencia (Opcional)</label>
+                <label htmlFor="tarea-imagen-archivo">Imagen / Evidencia (Archivo de imagen)</label>
                 <input
-                  id="tarea-imagen"
-                  type="url"
-                  placeholder="https://servidor.com/evidencia.jpg"
-                  value={formImagen}
-                  onChange={(e) => setFormImagen(e.target.value)}
+                  id="tarea-imagen-archivo"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      if (!f.type.startsWith('image/')) {
+                        mostrarError('El archivo debe ser una imagen válida (JPG, PNG, WebP, etc.).', 'Formato no soportado');
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                        return;
+                      }
+                      setModalArchivoImagen(f);
+                    }
+                  }}
+                  style={{ marginTop: '0.35rem' }}
                 />
+                {modalArchivoImagen ? (
+                  <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ fontSize: '0.825rem', color: '#059669', fontWeight: 600 }}>
+                      ✓ Archivo seleccionado: {modalArchivoImagen.name}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-cancelar"
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                      onClick={() => {
+                        setModalArchivoImagen(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ) : tareaSeleccionada.imagen ? (
+                  <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--text)', fontWeight: 500 }}>
+                      Evidencia previa adjunta:
+                    </span>
+                    <button
+                      type="button"
+                      className="tarea-evidencia-link"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        font: 'inherit',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => setModalImagenVer(obtenerUrlImagen(tareaSeleccionada.imagen || ''))}
+                    >
+                      📷 Ver imagen
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               <div className="form-group">
                 <label>
                   Insumos de Limpieza{' '}
                   <span style={{ fontSize: '0.8rem', color: '#d97706', fontWeight: 500 }}>
-                    (Placeholder - En desarrollo)
+                    (Placeholder)
                   </span>
                 </label>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text)', opacity: 0.8, margin: '0 0 0.5rem 0' }}>
-                  * Los insumos de limpieza corresponden a una historia de usuario aún no finalizada. Este registro actúa como placeholder provisorio.
-                </p>
                 {formInsumos.length === 0 ? (
                   <p style={{ fontSize: '0.85rem', color: 'var(--text)', margin: '0.25rem 0' }}>
                     No se han registrado insumos de limpieza para esta tarea.
@@ -686,7 +702,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                   className="btn-guardar"
                   disabled={guardandoTarea}
                 >
-                  {guardandoTarea ? 'Guardando...' : 'Guardar Cambios'}
+                  {guardandoTarea ? 'Guardando...' : 'Completar Tarea'}
                 </button>
                 <button
                   type="button"
@@ -702,7 +718,6 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         </div>
       )}
 
-      {/* Alert Dialog de Error con shadcn */}
       <ErrorAlertDialog
         open={errorDialog.open}
         onClose={() => setErrorDialog((prev) => ({ ...prev, open: false }))}
@@ -710,18 +725,44 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         description={errorDialog.message}
       />
 
-      {/* Alert Dialog de Confirmación de Baja */}
-      <ConfirmAlertDialog
-        open={confirmDeleteOpen}
-        onConfirm={handleBajaLogica}
-        onCancel={() => setConfirmDeleteOpen(false)}
-        title="¿Dar de baja este checklist?"
-        description="El checklist se marcará como inactivo pero no se borrará físicamente. Podrás reactivarlo en cualquier momento con el botón 'Restaurar Checklist'."
-        confirmText="Dar de baja"
-        cancelText="Cancelar"
-        isDestructive={true}
-      />
+      {modalImagenVer && (
+        <div className="modal-overlay" onClick={() => setModalImagenVer(null)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: '650px', textAlign: 'center' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1rem',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Evidencia Fotográfica</h3>
+              <button
+                type="button"
+                className="btn-cancelar"
+                style={{ padding: '0.25rem 0.6rem', fontSize: '0.85rem' }}
+                onClick={() => setModalImagenVer(null)}
+              >
+                ✕ Cerrar
+              </button>
+            </div>
+            <img
+              src={modalImagenVer}
+              alt="Evidencia fotográfica"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '75vh',
+                borderRadius: '6px',
+                objectFit: 'contain',
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
