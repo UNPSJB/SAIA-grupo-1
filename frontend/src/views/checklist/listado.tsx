@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Checklist, PersonalResumen } from './tipos';
-import { ErrorAlertDialog, ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
 
@@ -15,12 +15,16 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
 }) => {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mostrarInactivos, setMostrarInactivos] = useState(false);
 
   const [personal, setPersonal] = useState<PersonalResumen[]>([]);
   const [modalGenerar, setModalGenerar] = useState(false);
   const [responsableLegajo, setResponsableLegajo] = useState<number | ''>('');
   const [generando, setGenerando] = useState(false);
+
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
+  const [estadoFiltro, setEstadoFiltro] = useState('');
+  const [checklistHoyId, setChecklistHoyId] = useState<number | null>(null);
 
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
@@ -32,8 +36,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     message: '',
   });
 
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-
   const mostrarError = (mensaje: string, titulo: string = 'Atención') => {
     setErrorDialog({
       open: true,
@@ -42,15 +44,25 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     });
   };
 
-  const recargarChecklists = async (inactivos: boolean = mostrarInactivos) => {
+  const recargarChecklists = async (
+    desde: string = fechaDesde,
+    hasta: string = fechaHasta,
+    estado: string = estadoFiltro
+  ) => {
     setLoading(true);
     try {
-      const url = `${API_URL}/checklist/${inactivos ? '?incluir_inactivos=true' : ''}`;
-      const res = await fetch(url);
+      const params = new URLSearchParams();
+      if (desde) params.append('fecha_desde', desde);
+      if (hasta) params.append('fecha_hasta', hasta);
+      if (estado) params.append('estado', estado);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      const res = await fetch(`${API_URL}/checklist/${query}`);
       if (res.ok) {
         const data = await res.json();
         setChecklists(data);
       } else {
+        const err = await res.json();
+        mostrarError(err.detail || 'No se pudieron filtrar las checklists.');
         setChecklists([]);
       }
     } catch {
@@ -66,16 +78,20 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
 
     const cargarDatos = async () => {
       try {
-        const url = `${API_URL}/checklist/${mostrarInactivos ? '?incluir_inactivos=true' : ''}`;
         const [resChecklists, resPersonal] = await Promise.all([
-          fetch(url),
+          fetch(`${API_URL}/checklist/`),
           fetch(`${API_URL}/personal/`),
         ]);
 
         if (!cancelado) {
           if (resChecklists.ok) {
-            const data = await resChecklists.json();
+            const data: Checklist[] = await resChecklists.json();
             setChecklists(data);
+            const hoyIso = new Date().toISOString().split('T')[0];
+            const encontrado = data.find((c) => c.fecha === hoyIso);
+            if (encontrado) {
+              setChecklistHoyId(encontrado.id);
+            }
           } else {
             setChecklists([]);
           }
@@ -102,10 +118,34 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     return () => {
       cancelado = true;
     };
-  }, [mostrarInactivos]);
+  }, []);
 
   const hoy = new Date().toISOString().split('T')[0];
-  const checklistHoy = checklists.find((c) => c.fecha === hoy && c.activo);
+
+  const handleFiltrar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+      mostrarError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.", "Rango de fechas inválido");
+      return;
+    }
+    await recargarChecklists(fechaDesde, fechaHasta, estadoFiltro);
+  };
+
+  const handleEstadoChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nuevoEstado = e.target.value;
+    setEstadoFiltro(nuevoEstado);
+    if (!(fechaDesde && fechaHasta && fechaDesde > fechaHasta)) {
+      await recargarChecklists(fechaDesde, fechaHasta, nuevoEstado);
+    }
+  };
+
+  const handleLimpiarFiltro = async () => {
+    setFechaDesde('');
+    setFechaHasta('');
+    setEstadoFiltro('');
+    await recargarChecklists('', '', '');
+  };
+
 
   const handleGenerarChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +169,8 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         const nueva = await res.json();
         setModalGenerar(false);
         setResponsableLegajo('');
-        await recargarChecklists(mostrarInactivos);
+        setChecklistHoyId(nueva.id);
+        await recargarChecklists();
         onDetalleClick(nueva.id);
       } else {
         const err = await res.json();
@@ -148,49 +189,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     }
   };
 
-  const confirmarBajaLogica = async () => {
-    if (!confirmDeleteId) return;
-    const id = confirmDeleteId;
-    setConfirmDeleteId(null);
-
-    try {
-      const res = await fetch(`${API_URL}/checklist/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        if (!mostrarInactivos) {
-          setChecklists((prev) => prev.filter((c) => c.id !== id));
-        } else {
-          setChecklists((prev) =>
-            prev.map((c) => (c.id === id ? { ...c, activo: false } : c))
-          );
-        }
-      } else {
-        const err = await res.json();
-        mostrarError(err.detail || 'No se pudo dar de baja el checklist.');
-      }
-    } catch {
-      mostrarError('Error al intentar dar de baja el checklist.');
-    }
-  };
-
-  const handleRestaurar = async (id: number) => {
-    try {
-      const res = await fetch(`${API_URL}/checklist/${id}/restaurar`, {
-        method: 'POST',
-      });
-      if (res.ok) {
-        setChecklists((prev) =>
-          prev.map((c) => (c.id === id ? { ...c, activo: true } : c))
-        );
-      } else {
-        const err = await res.json();
-        mostrarError(err.detail || 'No se pudo restaurar el checklist.');
-      }
-    } catch {
-      mostrarError('Error al intentar restaurar el checklist.');
-    }
-  };
 
   return (
     <div className="checklist-container">
@@ -201,18 +199,9 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         </div>
 
         <div className="top-bar-acciones">
-          <label className="filtro-check">
-            <input
-              type="checkbox"
-              checked={mostrarInactivos}
-              onChange={(e) => setMostrarInactivos(e.target.checked)}
-            />
-            Mostrar bajas
-          </label>
-
-          {checklistHoy ? (
+          {checklistHoyId ? (
             <button
-              onClick={() => onDetalleClick(checklistHoy.id)}
+              onClick={() => onDetalleClick(checklistHoyId)}
               className="btn-dia-ver"
               title="Abrir el checklist generado para el día de hoy"
             >
@@ -230,6 +219,58 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         </div>
       </div>
 
+      <form onSubmit={handleFiltrar} className="filtros-historial">
+        <div className="filtros-rango-campos">
+          <div className="filtro-campo-grupo">
+            <label htmlFor="fecha-desde">Desde:</label>
+            <input
+              id="fecha-desde"
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => setFechaDesde(e.target.value)}
+            />
+          </div>
+          <div className="filtro-campo-grupo">
+            <label htmlFor="fecha-hasta">Hasta:</label>
+            <input
+              id="fecha-hasta"
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => setFechaHasta(e.target.value)}
+            />
+          </div>
+          <div className="filtro-campo-grupo">
+            <label htmlFor="filtro-estado">Estado:</label>
+            <select
+              id="filtro-estado"
+              value={estadoFiltro}
+              onChange={handleEstadoChange}
+            >
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="completado">Completado</option>
+              <option value="vencido">Vencido</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="filtros-acciones">
+          <button type="submit" className="btn-filtrar" title="Filtrar historial">
+            🔍 Filtrar
+          </button>
+          {(fechaDesde || fechaHasta || estadoFiltro) && (
+            <button
+              type="button"
+              onClick={handleLimpiarFiltro}
+              className="btn-limpiar-filtro"
+              title="Limpiar filtros"
+            >
+              ✕ Limpiar
+            </button>
+          )}
+        </div>
+      </form>
+
       <div className="tabla-wrapper">
         <table className="tabla-custom">
           <thead>
@@ -239,21 +280,22 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
               <th>Estado</th>
               <th>Cumplimiento</th>
               <th>Responsable</th>
-              <th>Registro</th>
               <th className="acciones-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem' }}>
                   Cargando historial de checklists...
                 </td>
               </tr>
             ) : checklists.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem' }}>
-                  No se encontraron checklists registrados.
+                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem' }}>
+                  {fechaDesde || fechaHasta || estadoFiltro
+                    ? 'No se encontraron checklists registrados con los filtros seleccionados.'
+                    : 'No se encontraron checklists registrados.'}
                 </td>
               </tr>
             ) : (
@@ -266,13 +308,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                     : 'vacio';
 
                 return (
-                  <tr
-                    key={c.id}
-                    style={{
-                      opacity: c.activo ? 1 : 0.65,
-                      backgroundColor: c.activo ? 'inherit' : 'var(--code-bg)',
-                    }}
-                  >
+                  <tr key={c.id}>
                     <td>
                       <strong>#{c.id}</strong>
                     </td>
@@ -298,15 +334,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                     <td>
                       {c.nombre_responsable || `Legajo: ${c.responsable_legajo}`}
                     </td>
-                    <td>
-                      <span
-                        className={`badge-registro ${
-                          c.activo ? 'activo' : 'inactivo'
-                        }`}
-                      >
-                        {c.activo ? '● Activo' : '○ Baja'}
-                      </span>
-                    </td>
                     <td className="acciones-col">
                       <div className="acciones-btns">
                         <button
@@ -316,25 +343,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                         >
                           👁
                         </button>
-
-                        {c.activo ? (
-                          <button
-                            className="btn-icon btn-eliminar"
-                            title="Dar de baja este checklist"
-                            onClick={() => setConfirmDeleteId(c.id)}
-                          >
-                            🗑
-                          </button>
-                        ) : (
-                          <button
-                            className="btn-icon"
-                            style={{ color: '#059669', borderColor: '#059669' }}
-                            title="Restaurar checklist"
-                            onClick={() => handleRestaurar(c.id)}
-                          >
-                            ↺
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -345,7 +353,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         </table>
       </div>
 
-      {/* Modal Generar Checklist */}
       {modalGenerar && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -401,26 +408,12 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         </div>
       )}
 
-      {/* Alerta de Error con shadcn AlertDialog */}
       <ErrorAlertDialog
         open={errorDialog.open}
         onClose={() => setErrorDialog((prev) => ({ ...prev, open: false }))}
         title={errorDialog.title}
         description={errorDialog.message}
       />
-
-      {/* Alerta de Confirmación de Baja con shadcn AlertDialog */}
-      <ConfirmAlertDialog
-        open={confirmDeleteId !== null}
-        onConfirm={confirmarBajaLogica}
-        onCancel={() => setConfirmDeleteId(null)}
-        title="¿Dar de baja este checklist?"
-        description="El checklist quedará inactivo en el historial y no aparecerá en las consultas estándar salvo que se habilite 'Mostrar bajas'. No se borrará físicamente y podrá ser restaurado posteriormente."
-        confirmText="Dar de baja"
-        cancelText="Cancelar"
-        isDestructive={true}
-      />
     </div>
   );
 };
-

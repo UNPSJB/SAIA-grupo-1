@@ -55,10 +55,9 @@ export interface ChecklistGenerarPayload {
   fecha?: string;
 }
 
-export interface ChecklistItemUpdatePayload {
-  responsable_legajo?: number | null;
-  imagen?: string | null;
-  estado?: EstadoTareaItem;
+export interface CompletarTareaPayload {
+  responsable_legajo: number;
   insumos_utilizados?: InsumoUtilizado[];
 }
+
 

@@ -15,15 +15,7 @@ class InsumoUtilizadoPlaceholder(BaseModel):
 
 class CompletarTareaSchema(BaseModel):
     responsable_legajo: int = Field(...)
-    imagen: Optional[str] = Field(None, max_length=500)
     insumos_utilizados: List[InsumoUtilizadoPlaceholder] = Field(default_factory=list)
-
-
-class ChecklistItemUpdate(BaseModel):
-    responsable_legajo: Optional[int] = None
-    imagen: Optional[str] = Field(None, max_length=500)
-    estado: Optional[EstadoTareaItem] = None
-    insumos_utilizados: Optional[List[InsumoUtilizadoPlaceholder]] = None
 
 
 class ChecklistItem(BaseModel):
