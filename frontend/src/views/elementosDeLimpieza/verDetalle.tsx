@@ -9,6 +9,23 @@ interface DetalleElementoProps {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// Formatear la fecha que viene en formato ISO desde el backend
+  const formatearFecha = (fechaStr?: string | null) => {
+    if (!fechaStr) return 'Sin fecha';
+    try {
+      const d = new Date(fechaStr);
+      return isNaN(d.getTime())
+        ? fechaStr
+        : d.toLocaleDateString('es-AR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          });
+    } catch {
+      return fechaStr;
+    }
+  };
+
 export const DetalleElementoDeLimpieza: React.FC<DetalleElementoProps> = ({ onCancel, elementoId }) => {
   const [elemento, setElemento] = useState<ElementoDeLimpieza | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,6 +94,21 @@ export const DetalleElementoDeLimpieza: React.FC<DetalleElementoProps> = ({ onCa
               value={
                 elemento.frecuenciaDeCambio !== null && elemento.frecuenciaDeCambio !== undefined
                   ? `${elemento.frecuenciaDeCambio} días`
+                  : 'Sin especificar'
+              }
+              disabled
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="fechaCambio">Fecha de Cambio</label>
+            <input
+              id="fechaCambio"
+              name="fechaCambio"
+              type="text"
+              value={
+                elemento.fechaCambio !== null && elemento.fechaCambio !== undefined
+                  ? `${formatearFecha(elemento.fechaCambio)}`
                   : 'Sin especificar'
               }
               disabled
