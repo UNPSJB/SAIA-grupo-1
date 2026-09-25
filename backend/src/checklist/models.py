@@ -117,9 +117,16 @@ class ChecklistItem(ModeloBase):
 
     checklist: Mapped["Checklist"] = relationship("Checklist", back_populates="items")
     responsable: Mapped[Optional["src.personal.models.Personal"]] = relationship(lazy="joined")
+    plan: Mapped[Optional["src.plan_De_limpieza.models.Plan_de_Limpieza"]] = relationship(lazy="joined")
 
     @property
     def nombre_responsable(self) -> Optional[str]:
         if self.responsable:
             return f"{self.responsable.nombre} {self.responsable.apellido}"
+        return None
+
+    @property
+    def nombre_equipo(self) -> Optional[str]:
+        if self.plan and self.plan.equipo:
+            return self.plan.equipo.nombre
         return None
