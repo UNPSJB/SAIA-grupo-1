@@ -35,9 +35,9 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    function soloLetras(nombre:string): boolean{
+    function soloLetrasyNumeros(nombre:string): boolean{
 
-        const patron=/^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$/;
+        const patron=/^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s]+$/;
         return patron.test(nombre);
 
     }
@@ -63,12 +63,12 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
      return;
     }
 
-    if(!soloLetras(equipo.nombre)){
+    if(!soloLetrasyNumeros(equipo.nombre)){
       setErrorMsg("No se permiten numeros en el nombre.");
       return;
     }
 
-    if(!soloLetras(equipo.ubicacion)){
+    if(!soloLetrasyNumeros(equipo.ubicacion)){
       setErrorMsg("No se permiten numeros en la ubicacion.");
       return;
     }
