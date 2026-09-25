@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 
 class Frecuencia(StrEnum):
-    DIARIO=auto()
+    DIARIA=auto()
     SEMANAL=auto()
     MENSUAL=auto()
     

@@ -8,7 +8,7 @@ export interface Tarea{
     descripcion:string;
     frecuencia:string;
     plan_id:number;
-    plan_de_limpieza:PlanDelimpieza
+    plan_de_limpieza?:PlanDelimpieza
 
 }
 
@@ -21,6 +21,6 @@ export interface TareaConId extends Tarea{
 export interface TareaForm{
     nombre:string;
     descripcion:string;
-    plan_id:number;
-    plan_de_limpieza:PlanDelimpieza
+    plan_id:number | "";
+    frecuencia:string;
 }

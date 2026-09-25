@@ -265,8 +265,8 @@ dialog .btn-guardar{
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  margin-left: 2.5rem; 
-  margin-top: 2rem;
+ /* margin-left: 2.5rem; */
+ /* margin-top: 2rem;*/
 }
 
 .plan-container h1 {
@@ -302,3 +302,107 @@ dialog .btn-guardar{
   cursor: pointer;
   transition: opacity 0.2s;
 }
+
+.invertir-css{
+  background-color: #1e1e2f; 
+    color: #e2e8f0;           
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.form-group td{
+  font-size:2rem
+}
+
+/* CSS DEL MODAL*/
+
+
+/* Fondo semitransparente que oscurece la pantalla de atrás y centra el modal */
+.modal-abierto {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+/* Tarjeta flotante del modal usando tus propias variables de color */
+.modal-content {
+  background-color: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 460px;
+  padding: 24px;
+  box-sizing: border-box;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Adaptación de los inputs y selects dentro del modal a tu paleta de colores */
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+  background-color: var(--code-bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  width: 100%;
+  font-size: 15px;
+  box-sizing: border-box;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  font-family: var(--sans);
+  outline: none;
+}
+
+/* Y aquí le damos el tamaño grande exclusivo al textarea sin necesidad de '!important' */
+.modal-content textarea {
+  resize: none;
+  height: 90px;
+}
+/*
+/*
+.modal-content textarea {
+  background-color: var(--code-bg) !important;
+  color: var(--text-h) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  padding: 10px 12px !important;
+  width: 100% !important;
+  font-size: 15px !important;
+  box-sizing: border-box !important;
+  margin-top: 4px !important;
+  margin-bottom: 12px !important;
+  font-family: var(--sans) !important;
+  outline: none !important;
+  
+  /* Mantenemos el tamaño grande pero sin la esquina de estirar */
+ /* resize: none !important;
+  height: 90px !important; 
+}*/
+
+.modal-content input:focus,
+.modal-content select:focus,
+.modal-content textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.modal-content label {
+  color: var(--text-h);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 4px;
+}
+
+  

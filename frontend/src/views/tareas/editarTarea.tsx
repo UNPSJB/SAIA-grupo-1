@@ -1,34 +1,38 @@
-import { useEffect, useState } from "react";
-import type { PlanConId } from "./tipos";
-import type { EquipoConId } from '../../viewEquipos/tipos';
+import { useState } from "react";
+import type { TareaConId} from "./tipos";
 import "../../styles/formularioAlta.css";
 
-const PLAN_INICAL:PlanConId ={
+const TAREA_INICIAL:TareaConId ={
     id:0,
-    equipo_id:0,
     nombre:"",
+    descripcion:"",
+    plan_id:0,
+    frecuencia:""
 } 
+
+const FRECUENCIA = ["diaria","semanal","mensual"]
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-interface EditarPlanDeLimpizaProps {
-    planlimpiezaID:number | null;
+
+interface EditarTareaProps {
+    tareaID:number | null;
+    planID:number | null;
     onSuccess?: () => void;
     onCancel?: () => void;
 
 }
 
 
-export default function EditarPlanDeLimpieza({planlimpiezaID,onSuccess, onCancel}: EditarPlanDeLimpizaProps){
-    const [planLimpieza, setPlanLimp] = useState<PlanConId>(PLAN_INICAL);
+export default function EditarTarea({tareaID,planID,onSuccess, onCancel}: EditarTareaProps){
+    const [tarea, setTarea] = useState<TareaConId>(TAREA_INICIAL);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
-    const [equipos,setEquipos]= useState<EquipoConId[]>([]);
 
 
-function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setPlanLimp({...planLimpieza, [e.target.name]: e.target.value})
+function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
+    setTarea({...tarea, [e.target.name]: e.target.value})
 }
 
 async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
@@ -45,31 +49,44 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
 
 
-    if (!planLimpieza.nombre.trim()) {
-      setErrorMsg("El nombre del plan no puede estar vacío.");
+    if (!tarea.nombre.trim()) {
+      setErrorMsg("El nombre no puede estar vacío.");
       return;
     }
 
-    if (planLimpieza.nombre.trim().length < 4) {
+    if (!tarea.descripcion.trim()) {
+      setErrorMsg("El Procedimiento no puede estar vacía.");
+      return;
+    }
+
+    if (tarea.nombre.trim().length < 4) {
     setErrorMsg("El nombre debe tener al menos 4 caracteres.");
     return;
     }
 
-    if(!soloLetrasYNumeros(planLimpieza.nombre)){
+    if (tarea.descripcion.trim().length < 2) {
+    setErrorMsg("El Procedimiento debe tener al menos 4 caracteres.");
+    return;
+    }
+
+    if(!soloLetrasYNumeros(tarea.nombre)){
       setErrorMsg("No se permiten caracteres especiales en el nombre.");
       return;
     }
 
+
     const payload={
-        nombre: planLimpieza.nombre.trim(),
-        equipo_id:Number(planLimpieza.equipo_id),
+        nombre: tarea.nombre.trim(),
+        descripcion:tarea.descripcion.trim(),
+        plan_id:planID,
+        frecuencia:tarea.frecuencia
     }
 
     setLoading(true);
 
 
     try {
-        const res= await fetch(`${API_URL}/plan_De_limpieza/${planlimpiezaID}`, {
+        const res= await fetch(`${API_URL}/tareas/${tareaID}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -80,7 +97,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
         if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        let mensaje = "Error al guardar el plan.";
+        let mensaje = "Error al editar la tarea.";
         if (typeof errorData.detail === "string") {
           mensaje = errorData.detail;
         } else if (Array.isArray(errorData.detail)) {
@@ -91,8 +108,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         throw new Error(mensaje);
       }
 
-    setSuccessMsg("Plan de Limpieza fue Editado exitosamente");
-    setPlanLimp(PLAN_INICAL);
+    setSuccessMsg("Tarea dado de editado exitosamente");
+    setTarea(TAREA_INICIAL);
     onSuccess?.();
 
 
@@ -105,44 +122,11 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
    
 }
 
-useEffect(() => {
-        if (planlimpiezaID) {
-            const fetchPlanLimp = async () => {
-                try {
-                    const res = await fetch(`${API_URL}/plan_De_limpieza/${planlimpiezaID}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        setPlanLimp(data);
-                    }
-                } catch {
-                    alert('El plan de limpieza no existe.');
-                } finally {
-                    setLoading(false);
-                }
-            };
 
-            fetchPlanLimp();
-        }
-    }, [planlimpiezaID]);
-
-useEffect(() => {
-        const fetchEquipos = async () => {
-            try {
-                const res = await fetch(`${API_URL}/equipos/`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setEquipos(data);
-                }
-            } catch {
-                setEquipos([]);
-            }
-        };
-        fetchEquipos();
-    }, []);
 
 
 function handleCancelar() {
-    setPlanLimp(PLAN_INICAL);
+    setTarea(TAREA_INICIAL);
     setErrorMsg(null);
     setSuccessMsg(null);
     onCancel?.();
@@ -150,36 +134,58 @@ function handleCancelar() {
 return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Editar Plan De Limpieza</h1>
-        <div className="subtitulo">02 · Modificacion</div>
+        <h1>Editar Tarea</h1>
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
       {successMsg && <div className="alerta-exito">{successMsg}</div>}
 
       <form onSubmit={handleGuardar}>
+
+
         <div className="form-group">
           <label htmlFor="nombre">Nombre</label>
           <input
             id="nombre"
             name="nombre"
             type="text"
-            value={planLimpieza.nombre}
+            placeholder="Introduce el nombre"
+            value={tarea.nombre}
             onChange={handleChange}
+            required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="equipo_id">Equipo ID</label>
-          <select id="equipo_id" name="equipo_id" value={planLimpieza.equipo_id} onChange={handleChange} >
-            <option value="" disabled>Seleccione un equipo</option>
-            {equipos.map((equipo) => (
-              <option key={equipo.id} value={equipo.id}>
-                {equipo.nombre}
-              </option>
-            ))}
-          </select>
+          <label htmlFor="descripcion">Procedimiento</label>
+          <textarea
+            id="descripcion"
+            name="descripcion"
+            placeholder="Introduce los pasos del procedimiento"
+            value={tarea.descripcion}
+            onChange={handleChange}
+            rows={4}
+            required
+          />
         </div>
+        <div className="form-group">
+                <label htmlFor="frecuencia">Frecuencia:</label>
+                <select
+                    id="frecuencia"
+                    name="frecuencia"
+                    value={tarea.frecuencia}
+                    onChange={handleChange}
+                    required
+                >
+                    <option value="" disabled>Seleccione la Frecuencia</option>
+                    {FRECUENCIA.map((frecuencia) => (
+                        <option key={frecuencia} value={frecuencia}>
+                            {frecuencia}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>

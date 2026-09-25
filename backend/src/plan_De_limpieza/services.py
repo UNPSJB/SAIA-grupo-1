@@ -1,6 +1,6 @@
 import logging
-from typing import List, Literal
-from sqlalchemy import delete, select, update
+from typing import List
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.plan_De_limpieza import schemas, exceptions
