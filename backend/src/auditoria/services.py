@@ -8,11 +8,16 @@ from src.auditoria import schemas, exceptions
 # operaciones para Auditoria (registro de solo lectura/escritura, sin update/delete: es inmutable)
 
 
-def registrar_auditoria(db: Session, auditoria: schemas.AuditoriaCreate) -> Auditoria:
+def registrar_auditoria(
+    db: Session, auditoria: schemas.AuditoriaCreate, commit: bool = True
+) -> Auditoria:
+    # commit=False permite que el llamador incluya el registro en su propia
+    # transaccion (se guarda junto con el cambio auditado, o no se guarda).
     _auditoria = Auditoria(**auditoria.model_dump())
     db.add(_auditoria)
-    db.commit()
-    db.refresh(_auditoria)
+    if commit:
+        db.commit()
+        db.refresh(_auditoria)
     return _auditoria
 
 
