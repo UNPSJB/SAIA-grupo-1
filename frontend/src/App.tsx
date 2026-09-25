@@ -13,13 +13,16 @@ import { NuevaPersona } from './views/personas/nuevaPersona';
 import { ListadoPersonas } from './views/personas/listado';
 import { DetallePersona } from './views/personas/verDetalle';
 import { EditarPersona } from './views/personas/editarDetalle';
+import { ListadoChecklists } from './views/checklist/listado';
+import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { Sidebar } from './components/Sidebar';
 
-type Modulo = 'insumos' | 'equipos' | 'personas' | 'auditoria';
+type Modulo = 'insumos' | 'equipos' | 'personas' | 'checklist' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaChecklist = 'listado' | 'detalle';
 
 function App() {
   const [modulo, setModulo] = useState<Modulo>('insumos');
@@ -29,12 +32,15 @@ function App() {
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<InsumoConId | null>(null);
   const [vistaPersonas, setVistaPersonas] = useState<VistaPersonas>('listado');
   const [legajoSeleccionado, setLegajoSeleccionado] = useState<number | null>(null);
+  const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
+  const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaEquipos('listado');
     setVistaInsumos('listado');
     setVistaPersonas('listado');
+    setVistaChecklist('listado');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -122,35 +128,49 @@ function App() {
               onSucces={() => setVistaEquipos('listado')}
             />
           )
+        ) : modulo === 'personas' ? (
+          vistaPersonas === 'listado' ? (
+            <ListadoPersonas
+              onNuevoClick={() => setVistaPersonas('alta')}
+              onDetalleClick={(legajo) => {
+                setLegajoSeleccionado(legajo);
+                setVistaPersonas('detalle');
+              }}
+              onEditarClick={(legajo) => {
+                setLegajoSeleccionado(legajo);
+                setVistaPersonas('editar');
+              }}
+            />
+          ) : vistaPersonas === 'alta' ? (
+            <NuevaPersona
+              onSuccess={() => setVistaPersonas('listado')}
+              onCancel={() => setVistaPersonas('listado')}
+            />
+          ) : vistaPersonas === 'detalle' ? (
+            <DetallePersona
+              personaLegajo={legajoSeleccionado}
+              onCancel={() => setVistaPersonas('listado')}
+            />
+          ) : (
+            <EditarPersona
+              personaLegajo={legajoSeleccionado}
+              onSuccess={() => setVistaPersonas('listado')}
+              onCancel={() => setVistaPersonas('listado')}
+            />
+          )
         ) : modulo === 'auditoria' ? (
           <ListadoAuditoria />
-        ) : vistaPersonas === 'listado' ? (
-          <ListadoPersonas
-            onNuevoClick={() => setVistaPersonas('alta')}
-            onDetalleClick={(legajo) => {
-              setLegajoSeleccionado(legajo);
-              setVistaPersonas('detalle');
+        ) : vistaChecklist === 'listado' ? (
+          <ListadoChecklists
+            onDetalleClick={(id) => {
+              setChecklistSeleccionado(id);
+              setVistaChecklist('detalle');
             }}
-            onEditarClick={(legajo) => {
-              setLegajoSeleccionado(legajo);
-              setVistaPersonas('editar');
-            }}
-          />
-        ) : vistaPersonas === 'alta' ? (
-          <NuevaPersona
-            onSuccess={() => setVistaPersonas('listado')}
-            onCancel={() => setVistaPersonas('listado')}
-          />
-        ) : vistaPersonas === 'detalle' ? (
-          <DetallePersona
-            personaLegajo={legajoSeleccionado}
-            onCancel={() => setVistaPersonas('listado')}
           />
         ) : (
-          <EditarPersona
-            personaLegajo={legajoSeleccionado}
-            onSuccess={() => setVistaPersonas('listado')}
-            onCancel={() => setVistaPersonas('listado')}
+          <DetalleChecklist
+            checklistId={checklistSeleccionado}
+            onVolver={() => setVistaChecklist('listado')}
           />
         )}
       </div>

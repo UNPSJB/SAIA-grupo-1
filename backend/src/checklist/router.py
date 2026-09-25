@@ -1,6 +1,7 @@
 from datetime import date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from src.checklist import schemas, services
 from src.database import get_db
@@ -26,13 +27,28 @@ async def generar_checklist_endpoint(
 )
 async def listar_checklists_endpoint(
     fecha: Optional[date] = Query(None),
+    fecha_desde: Optional[date] = Query(None),
+    fecha_hasta: Optional[date] = Query(None),
     estado: Optional[str] = Query(None),
-    incluir_inactivos: bool = Query(False),
     db: Session = Depends(get_db),
 ):
     return services.listar_checklists(
-        db, fecha=fecha, estado=estado, incluir_inactivos=incluir_inactivos
+        db,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        estado=estado,
     )
+
+
+@router.get(
+    "/imagenes/{nombre_archivo}",
+    response_class=FileResponse,
+)
+async def obtener_imagen_endpoint(
+    nombre_archivo: str,
+):
+    return services.obtener_archivo_imagen(nombre_archivo)
 
 
 @router.get(
@@ -41,25 +57,22 @@ async def listar_checklists_endpoint(
 )
 async def obtener_checklist_endpoint(
     checklist_id: int,
-    incluir_inactivos: bool = Query(False),
     db: Session = Depends(get_db),
 ):
-    return services.obtener_checklist(
-        db, checklist_id, incluir_inactivos=incluir_inactivos
-    )
+    return services.obtener_checklist(db, checklist_id)
 
 
-@router.patch(
+@router.get(
     "/{checklist_id}/tareas/{item_id}",
     response_model=schemas.ChecklistItem,
 )
-async def actualizar_tarea_endpoint(
+async def obtener_tarea_endpoint(
     checklist_id: int,
     item_id: int,
-    datos: schemas.ChecklistItemUpdate,
     db: Session = Depends(get_db),
 ):
-    return services.actualizar_tarea(db, checklist_id, item_id, datos)
+    return services.obtener_tarea(db, checklist_id, item_id)
+
 
 
 @router.post(
@@ -75,23 +88,26 @@ async def completar_tarea_endpoint(
     return services.completar_tarea(db, checklist_id, item_id, datos)
 
 
-@router.delete(
-    "/{checklist_id}",
-    response_model=schemas.Checklist,
-)
-async def eliminar_checklist_endpoint(
-    checklist_id: int,
-    db: Session = Depends(get_db),
-):
-    return services.eliminar_checklist(db, checklist_id)
-
-
 @router.post(
-    "/{checklist_id}/restaurar",
-    response_model=schemas.Checklist,
+    "/{checklist_id}/tareas/{item_id}/imagen",
+    response_model=schemas.ChecklistItem,
 )
-async def restaurar_checklist_endpoint(
+async def subir_imagen_tarea_endpoint(
     checklist_id: int,
+    item_id: int,
+    file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
-    return services.restaurar_checklist(db, checklist_id)
+    return services.guardar_archivo_imagen_tarea(db, checklist_id, item_id, file)
+
+
+@router.delete(
+    "/{checklist_id}/tareas/{item_id}/imagen",
+    response_model=schemas.ChecklistItem,
+)
+async def eliminar_imagen_tarea_endpoint(
+    checklist_id: int,
+    item_id: int,
+    db: Session = Depends(get_db),
+):
+    return services.eliminar_imagen_tarea(db, checklist_id, item_id)

@@ -1,17 +1,18 @@
+import io
 from datetime import date, timedelta
 import pytest
 from sqlalchemy.orm import Session
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from tests.database import session
 from src.checklist import exceptions, models, schemas
 from src.checklist.services import (
-    actualizar_tarea,
     completar_tarea,
-    eliminar_checklist,
+    eliminar_imagen_tarea,
     generar_checklist,
+    guardar_archivo_imagen_tarea,
     listar_checklists,
     obtener_checklist,
-    restaurar_checklist,
-    undelete_checklist,
+    obtener_tarea,
 )
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.tareas.models import Frecuencia
@@ -76,7 +77,6 @@ def test_completar_tarea(session: Session) -> None:
 
     datos_completar = schemas.CompletarTareaSchema(
         responsable_legajo=1,
-        imagen="http://localhost:8000/imagenes/evidencia.jpg",
         insumos_utilizados=[
             schemas.InsumoUtilizadoPlaceholder(nombre="Alcohol 70%", cantidad=150.0, unidad="mililitros"),
             schemas.InsumoUtilizadoPlaceholder(nombre="Bobina papel", cantidad=2.0, unidad="unidades"),
@@ -88,7 +88,6 @@ def test_completar_tarea(session: Session) -> None:
     assert item_completado.estado == models.EstadoTareaItem.REALIZADO
     assert item_completado.responsable_legajo == 1
     assert item_completado.nombre_responsable == "Juan Perez"
-    assert item_completado.imagen == "http://localhost:8000/imagenes/evidencia.jpg"
     assert item_completado.fecha_hora_fin is not None
 
     schema_item = schemas.ChecklistItem.model_validate(item_completado)
@@ -99,39 +98,39 @@ def test_completar_tarea(session: Session) -> None:
         completar_tarea(session, checklist.id, item.id, datos_completar)
 
 
-def test_actualizar_tarea_campos_permitidos(session: Session) -> None:
+def test_obtener_tarea(session: Session) -> None:
+    hoy = date.today()
+    checklist = generar_checklist(
+        session, schemas.ChecklistGenerar(fecha=hoy, responsable_legajo=1)
+    )
+    item = checklist.items[0]
+    obtenido = obtener_tarea(session, checklist.id, item.id)
+    assert obtenido.id == item.id
+    assert obtenido.checklist_id == checklist.id
+
+    with pytest.raises(exceptions.TareaChecklistNoEncontrada):
+        obtener_tarea(session, checklist.id, 99999)
+
+
+
+def test_guardar_y_eliminar_archivo_imagen_tarea(session: Session) -> None:
     hoy = date.today()
     checklist = generar_checklist(
         session, schemas.ChecklistGenerar(fecha=hoy, responsable_legajo=1)
     )
     item = checklist.items[0]
 
-    datos_actualizar = schemas.ChecklistItemUpdate(
-        responsable_legajo=1,
-        imagen="http://servidor/nueva_foto.png",
-        insumos_utilizados=[
-            schemas.InsumoUtilizadoPlaceholder(nombre="Lavandina", cantidad=1.5, unidad="litros")
-        ],
-        estado=models.EstadoTareaItem.REALIZADO,
+    archivo = StarletteUploadFile(
+        filename="foto_test.png",
+        file=io.BytesIO(b"fake image content"),
+        headers={"content-type": "image/png"},
     )
+    item_con_img = guardar_archivo_imagen_tarea(session, checklist.id, item.id, archivo)
+    assert item_con_img.imagen is not None
+    assert item_con_img.imagen.startswith("/checklist/imagenes/")
 
-    item_actualizado = actualizar_tarea(session, checklist.id, item.id, datos_actualizar)
-    assert item_actualizado.responsable_legajo == 1
-    assert item_actualizado.imagen == "http://servidor/nueva_foto.png"
-    assert item_actualizado.estado == models.EstadoTareaItem.REALIZADO
-    assert item_actualizado.fecha_hora_fin is not None
-
-    schema_item = schemas.ChecklistItem.model_validate(item_actualizado)
-    assert len(schema_item.insumos_utilizados) == 1
-    assert schema_item.insumos_utilizados[0].nombre == "Lavandina"
-
-    datos_reset = schemas.ChecklistItemUpdate(
-        estado=models.EstadoTareaItem.PENDIENTE
-    )
-    item_reset = actualizar_tarea(session, checklist.id, item.id, datos_reset)
-    assert item_reset.estado == models.EstadoTareaItem.PENDIENTE
-    assert item_reset.fecha_hora_fin is None
-    assert item_reset.responsable_legajo == 1
+    item_sin_img = eliminar_imagen_tarea(session, checklist.id, item.id)
+    assert item_sin_img.imagen is None
 
 
 def test_completar_tarea_responsable_invalido(session: Session) -> None:
@@ -234,55 +233,85 @@ def test_estado_vencido_vs_pendiente_por_frecuencia(session: Session) -> None:
     assert checklist_diario_vencido.estado == models.EstadoGeneralChecklist.VENCIDO
 
 
-def test_baja_logica_checklist(session: Session) -> None:
+def test_checklist_vencido_no_admite_modificaciones(session: Session) -> None:
+    hoy = date.today()
+    checklist_vencido = models.Checklist(
+        fecha=hoy - timedelta(days=2),
+        activo=True,
+        responsable_legajo=1,
+        items=[
+            models.ChecklistItem(
+                nombre_plan="PlanTest",
+                nombre_tarea="TareaDiaria",
+                frecuencia=Frecuencia.DIARIO,
+                estado=models.EstadoTareaItem.PENDIENTE,
+            )
+        ],
+    )
+    session.add(checklist_vencido)
+    session.commit()
+    session.refresh(checklist_vencido)
+
+    with pytest.raises(exceptions.ChecklistNoModificable):
+        completar_tarea(
+            session,
+            checklist_vencido.id,
+            checklist_vencido.items[0].id,
+            schemas.CompletarTareaSchema(responsable_legajo=1),
+        )
+
+    archivo = StarletteUploadFile(
+        filename="foto.png",
+        file=io.BytesIO(b"abc"),
+        headers={"content-type": "image/png"},
+    )
+    with pytest.raises(exceptions.ChecklistNoModificable):
+        guardar_archivo_imagen_tarea(
+            session,
+            checklist_vencido.id,
+            checklist_vencido.items[0].id,
+            archivo,
+        )
+
+
+def test_listar_checklists_rango_fechas(session: Session) -> None:
     hoy = date.today()
     checklist = generar_checklist(
         session, schemas.ChecklistGenerar(fecha=hoy, responsable_legajo=1)
     )
-    checklist_id = checklist.id
 
-    checklists_antes = listar_checklists(session)
-    assert any(c.id == checklist_id for c in checklists_antes)
+    resultados_ok = listar_checklists(session, fecha_desde=hoy, fecha_hasta=hoy)
+    assert any(c.id == checklist.id for c in resultados_ok)
 
-    checklist_eliminado = eliminar_checklist(session, checklist_id)
-    assert checklist_eliminado.activo is False
+    resultados_vacio = listar_checklists(
+        session,
+        fecha_desde=hoy - timedelta(days=20),
+        fecha_hasta=hoy - timedelta(days=10),
+    )
+    assert not any(c.id == checklist.id for c in resultados_vacio)
 
-    checklists_despues = listar_checklists(session)
-    assert not any(c.id == checklist_id for c in checklists_despues)
+    with pytest.raises(exceptions.RangoFechasInvalido):
+        listar_checklists(
+            session,
+            fecha_desde=hoy,
+            fecha_hasta=hoy - timedelta(days=1),
+        )
 
-    with pytest.raises(exceptions.ChecklistNoEncontrado):
-        obtener_checklist(session, checklist_id)
 
-
-def test_restaurar_checklist_undelete(session: Session) -> None:
+def test_listar_checklists_filtro_estado(session: Session) -> None:
     hoy = date.today()
     checklist = generar_checklist(
         session, schemas.ChecklistGenerar(fecha=hoy, responsable_legajo=1)
     )
-    checklist_id = checklist.id
 
-    eliminar_checklist(session, checklist_id)
-    assert not any(c.id == checklist_id for c in listar_checklists(session))
-    assert any(c.id == checklist_id for c in listar_checklists(session, incluir_inactivos=True))
+    pendientes = listar_checklists(session, estado="pendiente")
+    assert any(c.id == checklist.id for c in pendientes)
 
-    restaurado = restaurar_checklist(session, checklist_id)
-    assert restaurado.activo is True
-    assert any(c.id == checklist_id for c in listar_checklists(session))
+    completados = listar_checklists(session, estado="completado")
+    assert not any(c.id == checklist.id for c in completados)
 
-    eliminar_checklist(session, checklist_id)
-    restaurado_alias = undelete_checklist(session, checklist_id)
-    assert restaurado_alias.activo is True
+    vencidos = listar_checklists(session, estado="vencido")
+    assert not any(c.id == checklist.id for c in vencidos)
 
 
-def test_restaurar_checklist_ya_activo(session: Session) -> None:
-    hoy = date.today()
-    checklist = generar_checklist(
-        session, schemas.ChecklistGenerar(fecha=hoy, responsable_legajo=1)
-    )
-    with pytest.raises(exceptions.ChecklistYaActivo):
-        restaurar_checklist(session, checklist.id)
 
-
-def test_restaurar_checklist_no_encontrado(session: Session) -> None:
-    with pytest.raises(exceptions.ChecklistNoEncontrado):
-        restaurar_checklist(session, 99999)
