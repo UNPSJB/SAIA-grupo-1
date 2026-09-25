@@ -25,3 +25,7 @@ async def update_elementoDeLimpieza(elementoDeLimpieza_id: int, elementoDeLimpie
 @router.delete("/{elementoDeLimpieza_id}", response_model=schemas.ElementoDeLimpieza)
 async def delete_elementoDeLimpieza(elementoDeLimpieza_id: int, db: Session = Depends(get_db)):
     return services.eliminar_elementoDeLimpieza(db, elementoDeLimpieza_id)
+
+@router.post("/{elementoDeLimpieza_id}/cambiar", response_model=schemas.ElementoDeLimpieza)
+async def efectuar_cambio(elementoDeLimpieza_id: int, db: Session = Depends(get_db)):
+    return services.registrar_cambio_fecha(db, elementoDeLimpieza_id)
