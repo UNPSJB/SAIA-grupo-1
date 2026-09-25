@@ -4,6 +4,9 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from src.checklist import exceptions, models, schemas
+from src.auditoria.models import AccionAuditoria
+from src.auditoria.schemas import AuditoriaCreate
+from src.auditoria.services import registrar_auditoria
 from src.equipos.models import Equipo, Estado
 from src.personal.models import Personal
 from src.plan_De_limpieza.models import Plan_de_Limpieza
@@ -11,6 +14,35 @@ from src.tareas.models import Frecuencia
 from src.logger import get_logger
 
 logger = get_logger(__name__)
+
+TABLA_CHECKLIST = "checklists"
+TABLA_CHECKLIST_ITEM = "checklist_items"
+
+
+def _auditar(
+    db: Session,
+    tabla: str,
+    registro_id: int,
+    accion: AccionAuditoria,
+    campo: Optional[str] = None,
+    previo=None,
+    posterior=None,
+) -> None:
+    # Se agrega a la sesion sin commit: queda en la misma transaccion que el
+    # cambio auditado.
+    registrar_auditoria(
+        db,
+        AuditoriaCreate(
+            tabla=tabla,
+            registro_id=registro_id,
+            accion=accion,
+            campo=campo,
+            valor_previo=None if previo is None else str(previo),
+            valor_posterior=None if posterior is None else str(posterior),
+        ),
+        commit=False,
+    )
+
 
 def tarea_corresponde_a_fecha(
     frecuencia: Frecuencia, fecha_inicio_plan: date, fecha_checklist: date
@@ -91,10 +123,37 @@ def generar_checklist(
         items=items_a_crear,
     )
     db.add(checklist)
+    db.flush()
+    _auditar(
+        db,
+        TABLA_CHECKLIST,
+        checklist.id,
+        AccionAuditoria.CREAR,
+        campo="fecha",
+        posterior=checklist.fecha,
+    )
     db.commit()
     db.refresh(checklist)
     logger.info("Checklist %s generado para fecha %s (%d tareas)", checklist.id, checklist.fecha, len(checklist.items))
     return checklist
+
+
+def _auditar_cambios_item(
+    db: Session, item: models.ChecklistItem, previos: dict
+) -> None:
+    # Un registro por cada campo que realmente cambio.
+    for campo, previo in previos.items():
+        posterior = getattr(item, campo)
+        if posterior != previo:
+            _auditar(
+                db,
+                TABLA_CHECKLIST_ITEM,
+                item.id,
+                AccionAuditoria.MODIFICAR,
+                campo=campo,
+                previo=previo,
+                posterior=posterior,
+            )
 
 
 def completar_tarea(
@@ -129,6 +188,13 @@ def completar_tarea(
         logger.warning("Completar tarea %s: responsable legajo %s inactivo", item_id, datos.responsable_legajo)
         raise exceptions.ResponsableInactivo()
 
+    previos = {
+        "estado": item.estado,
+        "responsable_legajo": item.responsable_legajo,
+        "imagen": item.imagen,
+        "insumos_utilizados": item.insumos_utilizados,
+    }
+
     item.responsable_legajo = datos.responsable_legajo
     item.imagen = datos.imagen
     if datos.insumos_utilizados:
@@ -142,6 +208,7 @@ def completar_tarea(
     item.estado = models.EstadoTareaItem.REALIZADO
     item.fecha_hora_fin = datetime.now()
 
+    _auditar_cambios_item(db, item, previos)
     db.commit()
     logger.info("Tarea %s del checklist %s completada por legajo %s", item_id, checklist_id, datos.responsable_legajo)
     db.refresh(item)
@@ -167,6 +234,12 @@ def actualizar_tarea(
         raise exceptions.TareaChecklistNoEncontrada()
 
     campos_modificados = datos.model_dump(exclude_unset=True)
+    previos = {
+        "estado": item.estado,
+        "responsable_legajo": item.responsable_legajo,
+        "imagen": item.imagen,
+        "insumos_utilizados": item.insumos_utilizados,
+    }
 
     if "responsable_legajo" in campos_modificados:
         legajo = campos_modificados["responsable_legajo"]
@@ -204,6 +277,7 @@ def actualizar_tarea(
         else:
             item.fecha_hora_fin = None
 
+    _auditar_cambios_item(db, item, previos)
     db.commit()
     logger.info("Tarea %s del checklist %s actualizada. Campos: %s", item_id, checklist_id, ", ".join(campos_modificados.keys()))
     db.refresh(item)
@@ -249,6 +323,15 @@ def obtener_checklist(
 def eliminar_checklist(db: Session, checklist_id: int) -> models.Checklist:
     checklist = obtener_checklist(db, checklist_id)
     checklist.activo = False
+    _auditar(
+        db,
+        TABLA_CHECKLIST,
+        checklist.id,
+        AccionAuditoria.ELIMINAR,
+        campo="activo",
+        previo=True,
+        posterior=False,
+    )
     db.commit()
     logger.info("Checklist %s eliminado (baja lógica)", checklist_id)
     db.refresh(checklist)
@@ -261,6 +344,15 @@ def restaurar_checklist(db: Session, checklist_id: int) -> models.Checklist:
         logger.warning("Intento de restaurar checklist %s que ya está activo", checklist_id)
         raise exceptions.ChecklistYaActivo()
     checklist.activo = True
+    _auditar(
+        db,
+        TABLA_CHECKLIST,
+        checklist.id,
+        AccionAuditoria.MODIFICAR,
+        campo="activo",
+        previo=False,
+        posterior=True,
+    )
     db.commit()
     logger.info("Checklist %s restaurado", checklist_id)
     db.refresh(checklist)
