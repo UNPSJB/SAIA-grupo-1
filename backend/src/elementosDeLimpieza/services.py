@@ -59,3 +59,19 @@ def eliminar_elementoDeLimpieza(db: Session, elementoDeLimpieza_id: int) -> sche
             db.refresh(db_elementoDeLimpieza)
     
     return db_elementoDeLimpieza
+
+from datetime import datetime, timedelta
+from src.elementosDeLimpieza.models import ElementoDeLimpieza
+
+def registrar_cambio_fecha(db: Session, elemento_id: int) -> ElementoDeLimpieza:
+    elemento = obtener_elementoDeLimpieza(db, elemento_id)
+    
+    # Recalcula la fecha sumando la frecuencia a partir de ahora
+    if elemento.frecuenciaDeCambio and elemento.frecuenciaDeCambio > 0:
+        elemento.fechaCambio = datetime.now() + timedelta(days=elemento.frecuenciaDeCambio)
+    else:
+        elemento.fechaCambio = None
+
+    db.commit()
+    db.refresh(elemento)
+    return elemento
