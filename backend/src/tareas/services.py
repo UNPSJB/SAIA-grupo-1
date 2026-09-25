@@ -37,6 +37,10 @@ def editar_tarea(db: Session, tarea_id: int, tarea: schemas.TareaUpdate) -> sche
 
 def eliminar_tarea(db: Session, tarea_id: int) -> schemas.Tarea:
     db_tarea = obtener_tarea(db, tarea_id)
+
+    if not db_tarea:
+        return False
+    
     db.execute(delete(Tarea).where(Tarea.id == tarea_id))
     db.commit()
     return db_tarea

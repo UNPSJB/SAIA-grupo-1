@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TareaConId} from "./tipos";
 import "../../styles/formularioAlta.css";
 
@@ -24,7 +24,7 @@ interface EditarTareaProps {
 }
 
 
-export default function EditarTarea({tareaID,planID,onSuccess, onCancel}: EditarTareaProps){
+export default function EditarTarea({tareaID, planID,onSuccess, onCancel}: EditarTareaProps){
     const [tarea, setTarea] = useState<TareaConId>(TAREA_INICIAL);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -122,8 +122,25 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
    
 }
 
+useEffect(() => {
+        if (tareaID) {
+            const fetchPlanLimp = async () => {
+                try {
+                    const res = await fetch(`${API_URL}/tareas/${tareaID}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setTarea(data);
+                    }
+                } catch {
+                    alert('La tarea no existe.');
+                } finally {
+                    setLoading(false);
+                }
+            };
 
-
+            fetchPlanLimp();
+        }
+    }, [tareaID]);
 
 function handleCancelar() {
     setTarea(TAREA_INICIAL);
@@ -152,7 +169,6 @@ return (
             placeholder="Introduce el nombre"
             value={tarea.nombre}
             onChange={handleChange}
-            required
           />
         </div>
 
@@ -165,7 +181,6 @@ return (
             value={tarea.descripcion}
             onChange={handleChange}
             rows={4}
-            required
           />
         </div>
         <div className="form-group">
@@ -175,7 +190,6 @@ return (
                     name="frecuencia"
                     value={tarea.frecuencia}
                     onChange={handleChange}
-                    required
                 >
                     <option value="" disabled>Seleccione la Frecuencia</option>
                     {FRECUENCIA.map((frecuencia) => (

@@ -4,13 +4,13 @@ import type {TareaConId } from '../tareas/tipos';
 import '../../styles/formularioAlta.css';
 import NuevaTarea from '../tareas/nuevaTarea';
 import EditarTarea from '../tareas/editarTarea';
+import { VerTarea } from '../tareas/verTarea';
 
 interface DetallePlanLimpiezaProps {
     onCancel?: () => void;
     planlimpiezaID?: number | null;
 }
 
-type nuevoModal= 'crear'| 'editar';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -34,7 +34,9 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
     const [planLimpieza, setPlanLimp] = useState<PlanConId | null>(null);
     const [loading, setLoading] = useState(true);
     const [modalAbierto,setModal]=useState(false);
-    const [tareaSeleccionada,setTareaSeleccionada]=useState<number | null>(null);
+    const [modalEditar,setModalEditar]=useState(false);
+    const [modalVerTarea, setModelVer] = useState(false);
+    const [tareaSeleccionada, setTareaSeleccionada]=useState <number | null>(null);
     
 
     const fetchPlanLimp = useCallback(async () => {
@@ -55,6 +57,22 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
     useEffect(() => {
         fetchPlanLimp();
     }, [fetchPlanLimp]);
+
+    const handleEliminarTarea = async (id?: number) => {
+    if (!id) return;
+    if (!window.confirm('¿Seguro que desea eliminar esta tarea?')) return;
+
+    try {
+      const res = await fetch(`${API_URL}/tareas/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+         await fetchPlanLimp();
+      } else {
+        alert('No se pudo eliminar la tarea');
+      }
+    } catch {
+      alert('Error de conexión al eliminar la tarea');
+    }
+  };
 
     return (
     <div className="plan-container invertir-css">
@@ -120,8 +138,30 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
                   />
 
                 </div>
-
       </div>)}
+
+      {modalEditar &&(
+        <div className="modal-abierto">\
+        <div className="modal-content">
+          <EditarTarea
+          tareaID={tareaSeleccionada}
+          planID={planLimpieza.id}
+          onSuccess={() =>{setModalEditar(false); fetchPlanLimp()}}
+          onCancel={() => setModalEditar(false)}
+          />
+          </div>
+          </div>)}
+
+          {modalVerTarea && (
+            <div className="modal-abierto">
+              <div className="modal-content">
+                <VerTarea
+                tareaID={tareaSeleccionada}
+                onCancel={() => setModelVer(false)}
+                />
+                </div>
+                </div>
+          )}
 
       <div className="tabla-wrapper">
         <table className="tabla-custom">
@@ -157,22 +197,26 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
                       <button
                         className="btn-icon btn-ver"
                         title="Ver detalles"
+                        onClick={() => {setModelVer(true); setTareaSeleccionada(t.id)}}
                       >
                         👁
                       </button>
                       <button
                         className="btn-icon btn-editar"
                         title="Editar"
+                        onClick={() => {setModalEditar(true); setTareaSeleccionada(t.id)}}
                       >
                         ✎
                       </button>
                       <button
                         className="btn-icon btn-eliminar"
                         title="Eliminar"
+                        onClick={() => handleEliminarTarea(t.id)}
                       >
                         🗑
                       </button>
                     </div>
+
                   </td>
                 </tr>
 
@@ -187,7 +231,7 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
         ) : (
                 <tr>
                      <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
-                             El equipo no existe.
+                             El plan no existe.
                         </td>
                 </tr>
                 )

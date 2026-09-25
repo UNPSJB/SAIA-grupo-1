@@ -316,7 +316,6 @@ dialog .btn-guardar{
 /* CSS DEL MODAL*/
 
 
-/* Fondo semitransparente que oscurece la pantalla de atrás y centra el modal */
 .modal-abierto {
   position: fixed;
   top: 0;
@@ -331,7 +330,6 @@ dialog .btn-guardar{
   backdrop-filter: blur(2px);
 }
 
-/* Tarjeta flotante del modal usando tus propias variables de color */
 .modal-content {
   background-color: var(--bg);
   color: var(--text);
@@ -346,7 +344,6 @@ dialog .btn-guardar{
   overflow-y: auto;
 }
 
-/* Adaptación de los inputs y selects dentro del modal a tu paleta de colores */
 .modal-content input,
 .modal-content select,
 .modal-content textarea {
@@ -364,31 +361,11 @@ dialog .btn-guardar{
   outline: none;
 }
 
-/* Y aquí le damos el tamaño grande exclusivo al textarea sin necesidad de '!important' */
 .modal-content textarea {
   resize: none;
   height: 90px;
 }
-/*
-/*
-.modal-content textarea {
-  background-color: var(--code-bg) !important;
-  color: var(--text-h) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 6px !important;
-  padding: 10px 12px !important;
-  width: 100% !important;
-  font-size: 15px !important;
-  box-sizing: border-box !important;
-  margin-top: 4px !important;
-  margin-bottom: 12px !important;
-  font-family: var(--sans) !important;
-  outline: none !important;
-  
-  /* Mantenemos el tamaño grande pero sin la esquina de estirar */
- /* resize: none !important;
-  height: 90px !important; 
-}*/
+
 
 .modal-content input:focus,
 .modal-content select:focus,
@@ -405,4 +382,23 @@ dialog .btn-guardar{
   margin-bottom: 4px;
 }
 
+
+.datos-tarea {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.datos-tarea .form-group {
+  min-width: 0;
+}
+
+.procedimiento {
+  width: 100%;
+}
+
+.procedimiento textarea {
+  height: 180px;
+}
   

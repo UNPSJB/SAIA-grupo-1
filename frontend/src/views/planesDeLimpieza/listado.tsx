@@ -18,22 +18,6 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
   const [planes, setPlanes] = useState<PlanConId[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const handleEliminar = async (id?: number) => {
-    if (!id) return;
-    if (!window.confirm('¿Seguro que desea eliminar este pla de limpieza?')) return;
-
-    try {
-      const res = await fetch(`${API_URL}/plan_De_limpieza/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setPlanes((prev) => prev.filter((i) => i.id !== id));
-      } else {
-        alert('No se pudo eliminar el plan de limpieza');
-      }
-    } catch {
-      alert('Error de conexión al eliminar el plan de limpieza');
-    }
-  };
-
   useEffect(() => {
     let ignore = false;
     async function load() {
@@ -116,13 +100,6 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
                         onClick={() => onEditarClick?.(p.id)}
                       >
                         ✎
-                      </button>
-                      <button
-                        className="btn-icon btn-eliminar"
-                        title="Eliminar"
-                        onClick={() => handleEliminar(p.id)}
-                      >
-                        🗑
                       </button>
                     </div>
                   </td>

@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.tareas import schemas, services
@@ -26,6 +26,14 @@ async def editar_tarea(tarea_id: int, tarea: schemas.TareaUpdate, db: Session = 
     return services.editar_tarea(db, tarea_id, tarea)
 
 
-@router.delete("/{tarea_id}", response_model=schemas.Tarea)
+@router.delete("/{tarea_id}", status_code=204)
 def delete_tarea(tarea_id: int, db: Session = Depends(get_db)):
-    return services.eliminar_tarea(db, tarea_id)
+    eliminado = services.eliminar_tarea(db, tarea_id)
+
+    if not eliminado:
+        raise HTTPException(
+            status_code=404,
+            detail="La tarea no existe"
+        )
+
+    return Response(status_code=204)
