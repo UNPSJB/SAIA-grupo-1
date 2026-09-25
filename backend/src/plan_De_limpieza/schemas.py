@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Literal, Optional
 from src.tareas.schemas import Tarea
@@ -8,6 +10,7 @@ from src.plan_De_limpieza import exceptions
 
 class PlanDeLimpiezaBase(BaseModel):
     nombre:str=Field(max_length=20)
+    fecha_creacion:datetime
 
 
 class PlanDeLimpiezaCreate(PlanDeLimpiezaBase):
@@ -23,6 +26,13 @@ class PlanDeLimpiezaCreate(PlanDeLimpiezaBase):
                 if all(c.isalnum() or c.isspace() for c in v):
                     return v
                 raise exceptions.NombreCaracteresRaros()
+
+    @field_validator("fecha_creacion")
+    @classmethod
+    def validar_fecha_creacion(cls, v: datetime) -> datetime:
+        if v > datetime.now():
+            raise exceptions.FechaCreacionInvalida()
+        return v
 
     @field_validator("nombre")
     @classmethod

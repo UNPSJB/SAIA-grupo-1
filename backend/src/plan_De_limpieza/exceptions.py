@@ -9,3 +9,5 @@ class NombreError(BadRequest):
 
 class PlanNoEncontrado(BadRequest):
     DETAIL=ErrorCode.PLAN_ENCONTRADO
+class FechaCreacionInvalida(BadRequest):
+    DETAIL=ErrorCode.FECHA_CREACION_INVALIDA

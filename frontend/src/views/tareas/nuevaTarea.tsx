@@ -1,35 +1,36 @@
-import { useEffect, useState } from "react";
-import type { PlanForm } from "./tipos";
-import type { EquipoConId } from '../../viewEquipos/tipos';
+import { useState } from "react";
+import type { TareaForm } from "./tipos";
 import "../../styles/formularioAlta.css";
 
-const PLAN_INICAL:PlanForm ={
+const TAREA_INICAL:TareaForm ={
     nombre:"",
-    equipo_id:"",
-    fecha_creacion:""
+    descripcion:"",
+    plan_id:"",
+    frecuencia:""
 } 
+
+const FRECUENCIA = ["diaria","semanal","mensual"]
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-const HOY = new Date().toISOString().split("T")[0];
 
-interface NuevoPlanDeLimpizaProps {
+interface NuevaTareaProps {
+    planID:number | null;
     onSuccess?: () => void;
     onCancel?: () => void;
 
 }
 
 
-export default function NuevoPlanDeLimpieza({onSuccess, onCancel}: NuevoPlanDeLimpizaProps){
-    const [planLimpieza, setPlanLimp] = useState<PlanForm>(PLAN_INICAL);
+export default function NuevaTarea({planID,onSuccess, onCancel}: NuevaTareaProps){
+    const [tarea, setTarea] = useState<TareaForm>(TAREA_INICAL);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
-    const [equipos,setEquipos]= useState<EquipoConId[]>([]);
 
 
-function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setPlanLimp({...planLimpieza, [e.target.name]: e.target.value})
+function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
+    setTarea({...tarea, [e.target.name]: e.target.value})
 }
 
 async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
@@ -46,37 +47,44 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
 
 
-    if (!planLimpieza.nombre.trim()) {
-      setErrorMsg("El nombre del plan no puede estar vacío.");
+    if (!tarea.nombre.trim()) {
+      setErrorMsg("El nombre no puede estar vacío.");
       return;
     }
 
-    if (planLimpieza.nombre.trim().length < 4) {
+    if (!tarea.descripcion.trim()) {
+      setErrorMsg("El Procedimiento no puede estar vacía.");
+      return;
+    }
+
+    if (tarea.nombre.trim().length < 4) {
     setErrorMsg("El nombre debe tener al menos 4 caracteres.");
     return;
     }
 
-    if(!soloLetrasYNumeros(planLimpieza.nombre)){
+    if (tarea.descripcion.trim().length < 2) {
+    setErrorMsg("El Procedimiento debe tener al menos 4 caracteres.");
+    return;
+    }
+
+    if(!soloLetrasYNumeros(tarea.nombre)){
       setErrorMsg("No se permiten caracteres especiales en el nombre.");
       return;
     }
 
-    if(planLimpieza.fecha_creacion > HOY){
-
-      setErrorMsg("La fecha no puede ser mayor a la fecha actual");
-    }
 
     const payload={
-        nombre: planLimpieza.nombre.trim(),
-        equipo_id:Number(planLimpieza.equipo_id),
-        fecha_creacion:planLimpieza.fecha_creacion
+        nombre: tarea.nombre.trim(),
+        descripcion:tarea.descripcion.trim(),
+        plan_id:planID,
+        frecuencia:tarea.frecuencia
     }
 
     setLoading(true);
 
 
     try {
-        const res= await fetch(`${API_URL}/plan_De_limpieza/`, {
+        const res= await fetch(`${API_URL}/tareas/`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -87,7 +95,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
         if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        let mensaje = "Error al guardar el plan.";
+        let mensaje = "Error al guardar la tarea.";
         if (typeof errorData.detail === "string") {
           mensaje = errorData.detail;
         } else if (Array.isArray(errorData.detail)) {
@@ -98,8 +106,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         throw new Error(mensaje);
       }
 
-    setSuccessMsg("Plan de Limpieza dado de alta exitosamente");
-    setPlanLimp(PLAN_INICAL);
+    setSuccessMsg("Tarea dado de alta exitosamente");
+    setTarea(TAREA_INICAL);
     onSuccess?.();
 
 
@@ -112,24 +120,11 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
    
 }
 
-useEffect(() => {
-        const fetchEquipos = async () => {
-            try {
-                const res = await fetch(`${API_URL}/equipos/`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setEquipos(data);
-                }
-            } catch {
-                setEquipos([]);
-            }
-        };
-        fetchEquipos();
-    }, []);
+
 
 
 function handleCancelar() {
-    setPlanLimp(PLAN_INICAL);
+    setTarea(TAREA_INICAL);
     setErrorMsg(null);
     setSuccessMsg(null);
     onCancel?.();
@@ -137,27 +132,13 @@ function handleCancelar() {
 return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Nuevo Plan De Limpieza</h1>
-        <div className="subtitulo">02 · Formulario</div>
+        <h1>Nueva Tarea</h1>
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
       {successMsg && <div className="alerta-exito">{successMsg}</div>}
 
       <form onSubmit={handleGuardar}>
-
-        <div className="form-group">
-          <label htmlFor="fecha_creacion">Fecha del Plan</label>
-          <input
-            id="fecha_creacion"
-            name="fecha_creacion"
-            type="date"
-            max={HOY}
-            value={planLimpieza.fecha_creacion}
-            onChange={handleChange}
-            required
-          />
-        </div>
 
 
         <div className="form-group">
@@ -167,23 +148,42 @@ return (
             name="nombre"
             type="text"
             placeholder="Introduce el nombre"
-            value={planLimpieza.nombre}
+            value={tarea.nombre}
             onChange={handleChange}
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="equipo_id">Equipo ID</label>
-          <select id="equipo_id" name="equipo_id" value={planLimpieza.equipo_id} onChange={handleChange} required>
-            <option value="" disabled>Seleccione un equipo</option>
-            {equipos.map((equipo) => (
-              <option key={equipo.id} value={equipo.id}>
-                {equipo.nombre}
-              </option>
-            ))}
-          </select>
+          <label htmlFor="descripcion">Procedimiento</label>
+          <textarea
+            id="descripcion"
+            name="descripcion"
+            placeholder="Introduce los pasos del procedimiento"
+            value={tarea.descripcion}
+            onChange={handleChange}
+            rows={4}
+            required
+          />
         </div>
+        <div className="form-group">
+                <label htmlFor="frecuencia">Frecuencia:</label>
+                <select
+                    id="frecuencia"
+                    name="frecuencia"
+                    value={tarea.frecuencia}
+                    onChange={handleChange}
+                    required
+                >
+                    <option value="" disabled>Seleccione la Frecuencia</option>
+                    {FRECUENCIA.map((frecuencia) => (
+                        <option key={frecuencia} value={frecuencia}>
+                            {frecuencia}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
