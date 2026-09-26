@@ -47,7 +47,7 @@ app.add_middleware(
 )
 
 # asociamos los routers a nuestra app
-app.include_router(insumos_router)
-app.include_router(equipos_router)
+app.include_router(insumos_router, prefix="/insumos", tags=["Insumos"])
+app.include_router(equipos_router, prefix="/equipos", tags=["Equipos"])
 app.include_router(personal_router, prefix="/personal", tags=["Personal"])
 app.include_router(insumos_quimicos_router)

@@ -1,0 +1,360 @@
+import json
+from datetime import date, datetime
+from typing import List, Optional
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from src.checklist import exceptions, models, schemas
+from src.auditoria.models import AccionAuditoria
+from src.auditoria.schemas import AuditoriaCreate
+from src.auditoria.services import registrar_auditoria
+from src.equipos.models import Equipo, Estado
+from src.personal.models import Personal
+from src.plan_De_limpieza.models import Plan_de_Limpieza
+from src.tareas.models import Frecuencia
+from src.logger import get_logger
+
+logger = get_logger(__name__)
+
+TABLA_CHECKLIST = "checklists"
+TABLA_CHECKLIST_ITEM = "checklist_items"
+
+
+def _auditar(
+    db: Session,
+    tabla: str,
+    registro_id: int,
+    accion: AccionAuditoria,
+    campo: Optional[str] = None,
+    previo=None,
+    posterior=None,
+) -> None:
+    registrar_auditoria(
+        db,
+        AuditoriaCreate(
+            tabla=tabla,
+            registro_id=registro_id,
+            accion=accion,
+            campo=campo,
+            valor_previo=None if previo is None else str(previo),
+            valor_posterior=None if posterior is None else str(posterior),
+        ),
+        commit=False,
+    )
+
+
+def tarea_corresponde_a_fecha(
+    frecuencia: Frecuencia, fecha_inicio_plan: date, fecha_checklist: date
+) -> bool:
+    if fecha_checklist < fecha_inicio_plan:
+        return False
+
+    dias = (fecha_checklist - fecha_inicio_plan).days
+
+    if frecuencia == Frecuencia.DIARIO:
+        return True
+    elif frecuencia == Frecuencia.SEMANAL:
+        return dias % 7 == 0
+    elif frecuencia == Frecuencia.MENSUAL:
+        return (fecha_checklist.day == fecha_inicio_plan.day) or (
+            dias > 0 and dias % 30 == 0
+        )
+
+    return False
+
+
+def generar_checklist(
+    db: Session, datos: schemas.ChecklistGenerar
+) -> models.Checklist:
+    fecha = datos.fecha or date.today()
+    if fecha > date.today():
+        logger.warning("Intento de generar checklist con fecha futura: %s", fecha)
+        raise exceptions.ChecklistFechaFutura()
+
+    responsable = db.scalar(
+        select(Personal).where(Personal.legajo == datos.responsable_legajo)
+    )
+    if not responsable:
+        logger.warning("Generar checklist: responsable legajo %s no encontrado", datos.responsable_legajo)
+        raise exceptions.ResponsableNoEncontrado()
+    if not responsable.activo:
+        logger.warning("Generar checklist: responsable legajo %s inactivo", datos.responsable_legajo)
+        raise exceptions.ResponsableInactivo()
+
+    planes = (
+        db.scalars(
+            select(Plan_de_Limpieza)
+            .join(Equipo)
+            .where(
+                Equipo.estado == Estado.ACTIVO,
+                Plan_de_Limpieza.fecha_inicio <= fecha,
+            )
+        )
+        .all()
+    )
+
+    items_a_crear: List[models.ChecklistItem] = []
+
+    for plan in planes:
+        for tarea in plan.tareas:
+            if tarea_corresponde_a_fecha(
+                tarea.frecuencia, plan.fecha_inicio, fecha
+            ):
+                item = models.ChecklistItem(
+                    plan_id=plan.id,
+                    nombre_plan=plan.nombre,
+                    tarea_id=tarea.id,
+                    nombre_tarea=tarea.nombre,
+                    descripcion_tarea=tarea.descripcion,
+                    frecuencia=tarea.frecuencia,
+                    estado=models.EstadoTareaItem.PENDIENTE,
+                )
+                items_a_crear.append(item)
+
+    if not items_a_crear:
+        logger.warning("No hay tareas correspondientes para la fecha %s", fecha)
+        raise exceptions.NoHayTareasCorrespondientes()
+
+    checklist = models.Checklist(
+        fecha=fecha,
+        responsable_legajo=datos.responsable_legajo,
+        activo=True,
+        items=items_a_crear,
+    )
+    db.add(checklist)
+    db.flush()
+    _auditar(
+        db,
+        TABLA_CHECKLIST,
+        checklist.id,
+        AccionAuditoria.CREAR,
+        campo="fecha",
+        posterior=checklist.fecha,
+    )
+    db.commit()
+    db.refresh(checklist)
+    logger.info("Checklist %s generado para fecha %s (%d tareas)", checklist.id, checklist.fecha, len(checklist.items))
+    return checklist
+
+
+def _auditar_cambios_item(
+    db: Session, item: models.ChecklistItem, previos: dict
+) -> None:
+    # Un registro por cada campo que realmente cambio.
+    for campo, previo in previos.items():
+        posterior = getattr(item, campo)
+        if posterior != previo:
+            _auditar(
+                db,
+                TABLA_CHECKLIST_ITEM,
+                item.id,
+                AccionAuditoria.MODIFICAR,
+                campo=campo,
+                previo=previo,
+                posterior=posterior,
+            )
+
+
+def completar_tarea(
+    db: Session,
+    checklist_id: int,
+    item_id: int,
+    datos: schemas.CompletarTareaSchema,
+) -> models.ChecklistItem:
+    obtener_checklist(db, checklist_id)
+
+    item = db.scalar(
+        select(models.ChecklistItem).where(
+            models.ChecklistItem.id == item_id,
+            models.ChecklistItem.checklist_id == checklist_id,
+        )
+    )
+    if not item:
+        logger.warning("Completar tarea: item %s no encontrado en checklist %s", item_id, checklist_id)
+        raise exceptions.TareaChecklistNoEncontrada()
+
+    if item.estado == models.EstadoTareaItem.REALIZADO:
+        raise exceptions.TareaYaCompletada()
+
+    responsable = db.scalar(
+        select(Personal).where(Personal.legajo == datos.responsable_legajo)
+    )
+    if not responsable:
+        logger.warning("Completar tarea %s: responsable legajo %s no encontrado", item_id, datos.responsable_legajo)
+        raise exceptions.ResponsableNoEncontrado()
+
+    if not responsable.activo:
+        logger.warning("Completar tarea %s: responsable legajo %s inactivo", item_id, datos.responsable_legajo)
+        raise exceptions.ResponsableInactivo()
+
+    previos = {
+        "estado": item.estado,
+        "responsable_legajo": item.responsable_legajo,
+        "imagen": item.imagen,
+        "insumos_utilizados": item.insumos_utilizados,
+    }
+
+    item.responsable_legajo = datos.responsable_legajo
+    item.imagen = datos.imagen
+    if datos.insumos_utilizados:
+        item.insumos_utilizados = json.dumps(
+            [insumo.model_dump() for insumo in datos.insumos_utilizados],
+            ensure_ascii=False,
+        )
+    else:
+        item.insumos_utilizados = "[]"
+
+    item.estado = models.EstadoTareaItem.REALIZADO
+    item.fecha_hora_fin = datetime.now()
+
+    _auditar_cambios_item(db, item, previos)
+    db.commit()
+    logger.info("Tarea %s del checklist %s completada por legajo %s", item_id, checklist_id, datos.responsable_legajo)
+    db.refresh(item)
+    return item
+
+
+def actualizar_tarea(
+    db: Session,
+    checklist_id: int,
+    item_id: int,
+    datos: schemas.ChecklistItemUpdate,
+) -> models.ChecklistItem:
+    obtener_checklist(db, checklist_id)
+
+    item = db.scalar(
+        select(models.ChecklistItem).where(
+            models.ChecklistItem.id == item_id,
+            models.ChecklistItem.checklist_id == checklist_id,
+        )
+    )
+    if not item:
+        logger.warning("Actualizar tarea: item %s no encontrado en checklist %s", item_id, checklist_id)
+        raise exceptions.TareaChecklistNoEncontrada()
+
+    campos_modificados = datos.model_dump(exclude_unset=True)
+    previos = {
+        "estado": item.estado,
+        "responsable_legajo": item.responsable_legajo,
+        "imagen": item.imagen,
+        "insumos_utilizados": item.insumos_utilizados,
+    }
+
+    if "responsable_legajo" in campos_modificados:
+        legajo = campos_modificados["responsable_legajo"]
+        if legajo is not None:
+            responsable = db.scalar(
+                select(Personal).where(Personal.legajo == legajo)
+            )
+            if not responsable:
+                logger.warning("Actualizar tarea %s: responsable legajo %s no encontrado", item_id, legajo)
+                raise exceptions.ResponsableNoEncontrado()
+            if not responsable.activo:
+                logger.warning("Actualizar tarea %s: responsable legajo %s inactivo", item_id, legajo)
+                raise exceptions.ResponsableInactivo()
+        item.responsable_legajo = legajo
+
+    if "imagen" in campos_modificados:
+        item.imagen = campos_modificados["imagen"]
+
+    if "insumos_utilizados" in campos_modificados:
+        insumos = campos_modificados["insumos_utilizados"]
+        if insumos:
+            item.insumos_utilizados = json.dumps(
+                [insumo.model_dump() if hasattr(insumo, "model_dump") else insumo for insumo in insumos],
+                ensure_ascii=False,
+            )
+        else:
+            item.insumos_utilizados = "[]"
+
+    if "estado" in campos_modificados:
+        nuevo_estado = campos_modificados["estado"]
+        item.estado = nuevo_estado
+        if nuevo_estado == models.EstadoTareaItem.REALIZADO:
+            if not item.fecha_hora_fin:
+                item.fecha_hora_fin = datetime.now()
+        else:
+            item.fecha_hora_fin = None
+
+    _auditar_cambios_item(db, item, previos)
+    db.commit()
+    logger.info("Tarea %s del checklist %s actualizada. Campos: %s", item_id, checklist_id, ", ".join(campos_modificados.keys()))
+    db.refresh(item)
+    return item
+
+
+def listar_checklists(
+    db: Session,
+    fecha: Optional[date] = None,
+    estado: Optional[str] = None,
+    incluir_inactivos: bool = False,
+) -> List[models.Checklist]:
+    query = select(models.Checklist).order_by(models.Checklist.fecha.desc())
+    if not incluir_inactivos:
+        query = query.where(models.Checklist.activo.is_(True))
+    if fecha:
+        query = query.where(models.Checklist.fecha == fecha)
+
+    checklists = db.scalars(query).all()
+
+    if estado:
+        estado_lower = estado.lower()
+        checklists = [c for c in checklists if c.estado.value == estado_lower]
+
+    return checklists
+
+
+def obtener_checklist(
+    db: Session,
+    checklist_id: int,
+    incluir_inactivos: bool = False,
+) -> models.Checklist:
+    query = select(models.Checklist).where(models.Checklist.id == checklist_id)
+    if not incluir_inactivos:
+        query = query.where(models.Checklist.activo.is_(True))
+
+    checklist = db.scalar(query)
+    if not checklist:
+        raise exceptions.ChecklistNoEncontrado()
+    return checklist
+
+
+def eliminar_checklist(db: Session, checklist_id: int) -> models.Checklist:
+    checklist = obtener_checklist(db, checklist_id)
+    checklist.activo = False
+    _auditar(
+        db,
+        TABLA_CHECKLIST,
+        checklist.id,
+        AccionAuditoria.ELIMINAR,
+        campo="activo",
+        previo=True,
+        posterior=False,
+    )
+    db.commit()
+    logger.info("Checklist %s eliminado (baja lógica)", checklist_id)
+    db.refresh(checklist)
+    return checklist
+
+
+def restaurar_checklist(db: Session, checklist_id: int) -> models.Checklist:
+    checklist = obtener_checklist(db, checklist_id, incluir_inactivos=True)
+    if checklist.activo:
+        logger.warning("Intento de restaurar checklist %s que ya está activo", checklist_id)
+        raise exceptions.ChecklistYaActivo()
+    checklist.activo = True
+    _auditar(
+        db,
+        TABLA_CHECKLIST,
+        checklist.id,
+        AccionAuditoria.MODIFICAR,
+        campo="activo",
+        previo=False,
+        posterior=True,
+    )
+    db.commit()
+    logger.info("Checklist %s restaurado", checklist_id)
+    db.refresh(checklist)
+    return checklist
+
+
+undelete_checklist = restaurar_checklist
