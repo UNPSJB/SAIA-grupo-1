@@ -86,7 +86,7 @@ export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId
                     id="plan_de_Limpieza"
                     name="plan_de_Limpieza"
                     type="text"
-                    value={equipo.plan_de_Limpieza}
+                    value={equipo.plan_de_Limpieza?.nombre}
                     disabled
                 />
             </div>

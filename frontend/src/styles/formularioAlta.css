@@ -251,3 +251,154 @@ dialog .btn-guardar{
   transition: opacity 0.2s;
   margin-left: 40px;
 }
+
+
+/*CSS DE PLAN DE LIMPIEZA*/
+
+.plan-container{
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 2.5rem;
+  max-width: 700px;
+  margin: 2rem auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+ /* margin-left: 2.5rem; */
+ /* margin-top: 2rem;*/
+}
+
+.plan-container h1 {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.form-group label {
+    font-size: 1.1rem; 
+    font-weight: 600;
+}
+
+.form-group input, 
+.form-group select {
+    font-size: 1rem;
+    padding: 0.75rem; 
+    width: 100%;
+    max-width: 400px;
+}
+
+.accion-agregar{
+  align-self: flex-end; /* muevo el boton agregar a la derecha*/
+}
+
+.btn-agregar{
+  background-color: var(--text-h);
+  color: var(--bg);
+  border: 1px solid var(--text-h);
+  padding: 0.65rem 1.6rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.invertir-css{
+  background-color: #1e1e2f; 
+    color: #e2e8f0;           
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.form-group td{
+  font-size:2rem
+}
+
+/* CSS DEL MODAL*/
+
+
+.modal-abierto {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.modal-content {
+  background-color: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 460px;
+  padding: 24px;
+  box-sizing: border-box;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+  background-color: var(--code-bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  width: 100%;
+  font-size: 15px;
+  box-sizing: border-box;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  font-family: var(--sans);
+  outline: none;
+}
+
+.modal-content textarea {
+  resize: none;
+  height: 90px;
+}
+
+
+.modal-content input:focus,
+.modal-content select:focus,
+.modal-content textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.modal-content label {
+  color: var(--text-h);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 4px;
+}
+
+
+.datos-tarea {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.datos-tarea .form-group {
+  min-width: 0;
+}
+
+.procedimiento {
+  width: 100%;
+}
+
+.procedimiento textarea {
+  height: 180px;
+}
+  

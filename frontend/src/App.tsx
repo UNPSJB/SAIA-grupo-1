@@ -24,13 +24,18 @@ import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
 import { NuevoElementoDeLimpieza } from './views/elementosDeLimpieza/nuevoElemento';
 import { EditarElementoDeLimpieza } from './views/elementosDeLimpieza/editarDetalle';
 import { DetalleElementoDeLimpieza } from './views/elementosDeLimpieza/verDetalle';
+import NuevoPlanDeLimpieza from './views/planesDeLimpieza/nuevoPlan';
+import { ListadoPlanesLimp } from './views/planesDeLimpieza/listado';
+import EditarPlanDeLimpieza from './views/planesDeLimpieza/editarPlan';
+import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
 
-type Modulo = 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza';
+type Modulo = 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
+type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function App() {
   const [modulo, setModulo] = useState<Modulo>('insumos');
@@ -53,6 +58,9 @@ function App() {
   const [vistaInsumosQuimicos, setVistaInsumosQuimicos] = useState<VistaInsumosQuimicos>('listado');
   const [quimicoSeleccionado, setQuimicoSeleccionado] = useState<InsumoQuimico | null>(null);
 
+  const [vistaPlanLimp, setVistaPlanLimp] = useState<VistaPlanLimp>('listado');
+  const [planLimpSeleccionado, setPlanLimpSeleccionando] = useState<number | null>(null);
+
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaEquipos('listado');
@@ -60,6 +68,7 @@ function App() {
     setVistaPersonas('listado');
     setVistaInsumosQuimicos('listado');
     setVistaElementos('listado');
+    setVistaPlanLimp('listado');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -241,6 +250,36 @@ function App() {
               elementoId={elementoSeleccionado}
               onSuccess={() => setVistaElementos('listado')}
               onCancel={() => setVistaElementos('listado')}
+            />
+          ) : null
+        ) : modulo === 'planDeLimpieza' ? (
+          vistaPlanLimp === 'listado' ? (
+            <ListadoPlanesLimp
+              onNuevoClick={() => setVistaPlanLimp('alta')}
+              onDetalleClick={(id) => {
+                setPlanLimpSeleccionando(id);
+                setVistaPlanLimp('detalle');
+              }}
+              onEditarClick={(id) => {
+                setPlanLimpSeleccionando(id);
+                setVistaPlanLimp('editar');
+              }}
+            />
+          ) : vistaPlanLimp === 'alta' ? (
+            <NuevoPlanDeLimpieza
+              onSuccess={() => setVistaPlanLimp('listado')}
+              onCancel={() => setVistaPlanLimp('listado')}
+            />
+          ) : vistaPlanLimp === 'editar' ? (
+            <EditarPlanDeLimpieza
+              planlimpiezaID={planLimpSeleccionado}
+              onSuccess={() => setVistaPlanLimp('listado')}
+              onCancel={() => setVistaPlanLimp('listado')}
+            />
+          ) : vistaPlanLimp === 'detalle' ? (
+            <VerPLanDeLimpieza
+              onCancel={() => setVistaPlanLimp('listado')}
+              planlimpiezaID={planLimpSeleccionado}
             />
           ) : null
         ) : null}

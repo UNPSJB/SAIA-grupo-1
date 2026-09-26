@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Literal, Optional
-from src.equipos.exceptions import CadenaMayorOigualACUATRO, NombreConNumeros, UbicacionConNumeros
+from src.plan_De_limpieza.schemas import PlanDeLimpieza
 from src.equipos.models import Categoria
 from src.equipos.models import Estado
 from src.equipos import exceptions
@@ -9,7 +9,6 @@ class EquipoBase(BaseModel):
     ubicacion: str = Field( max_length=50)
     categoria: Categoria
     estado:Estado
-    plan_de_Limpieza: str = Field(min_length=1, max_length =100)
     plan_de_calibracion: str = Field(min_length=1, max_length=100)
 
     @field_validator(
@@ -35,14 +34,14 @@ class EquipoCreate(EquipoBase):
     @field_validator('nombre')
     @classmethod
     def validar_nombre(cls, v):
-        if v.isalpha():
+        if all(c.isalnum() or c.isspace() for c in v):
             return v
         raise exceptions.NombreConNumeros()
     
     @field_validator('ubicacion')
     @classmethod
     def validar_ubicacion(cls, v):
-            if v.isalpha():
+            if all(c.isalnum() or c.isspace() for c in v):
                 return v
             raise exceptions.UbicacionConNumeros()
     @field_validator('ubicacion','nombre')
@@ -58,7 +57,6 @@ class EquipoUpdate(EquipoBase):
     nombre: Optional[str] = Field( None,max_length=20)  
     ubicacion: Optional[str] = Field( None,max_length=50)
     categoria:Optional[Categoria]=None
-    plan_de_Limpieza:Optional[str] = Field(None,max_length=100)
     plan_de_calibracion:Optional[str] = Field( None,max_length=100)
 
 
@@ -84,7 +82,7 @@ class EquipoUpdate(EquipoBase):
 
             if v is None:
                  return None
-            if v.isalpha():
+            if all(c.isalnum() or c.isspace() for c in v):
                 return v
             raise exceptions.NombreConNumeros()
         
@@ -93,7 +91,7 @@ class EquipoUpdate(EquipoBase):
     def validar_ubicacion(cls, v:Optional[str]) -> Optional[str]:
                 if v is None:
                                  return None
-                if v.isalpha():
+                if all(c.isalnum() or c.isspace() for c in v):
                     return v
                 raise exceptions.UbicacionConNumeros()
     @field_validator('ubicacion','nombre')
@@ -109,4 +107,5 @@ class EquipoUpdate(EquipoBase):
 
 class Equipo(EquipoBase):
     id:int
+    plan_de_Limpieza: Optional[PlanDeLimpieza] = None
     model_config = ConfigDict(from_attributes=True)

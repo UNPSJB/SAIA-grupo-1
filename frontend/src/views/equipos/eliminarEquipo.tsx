@@ -109,7 +109,7 @@ const handleEliminar = async (id?: number) => {
                     id="plan_de_Limpieza"
                     name="plan_de_Limpieza"
                     type="text"
-                    value={equipo.plan_de_Limpieza}
+                    value={equipo.plan_de_Limpieza?.nombre}
                     disabled
                 />
             </div>
@@ -144,7 +144,9 @@ const handleEliminar = async (id?: number) => {
 
                 <dialog ref={dialogSeguro} className="seguro">
                     <h2>Esta seguro de eliminar este equipo?</h2>
+
                     <button type="button" className="btn-eliminar" onClick={() => {handleEliminar(equipoID ?? undefined); dialogSeguro.current?.close()}}>Eliminar</button>
+
                     <button type="button" className="btn-cancelar" onClick={() => {dialogSeguro.current?.close(); onCancel}}>Cancelar</button>
                 </dialog>
 
