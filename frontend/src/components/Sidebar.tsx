@@ -1,6 +1,11 @@
 import React from 'react';
 
+<<<<<<< HEAD
 export type Modulo = 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos';
+=======
+
+type Modulo = 'insumos' | 'equipos' | 'personas' | 'elementosDeLimpieza';
+>>>>>>> alta-de-elementos-de-limpieza
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -16,6 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
   ];
 
   return (
+<<<<<<< HEAD
     <aside
       style={{
         width: '210px',
@@ -55,5 +61,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         );
       })}
     </aside>
+=======
+    <nav className="sidebar">
+        <button title='Insumos' onClick={() => onCambiarModulo('insumos')} className={moduloActivo === 'insumos' ? 'sidebar-item activo' : 'sidebar-item'}>
+            Insumos
+        </button>
+        <button title='Equipos' onClick={() => onCambiarModulo('equipos')} className={moduloActivo === 'equipos' ? 'sidebar-item activo' : 'sidebar-item'}>
+            Equipos
+        </button>
+        <button title='Personas' onClick={() => onCambiarModulo('personas')} className={moduloActivo === 'personas' ? 'sidebar-item activo' : 'sidebar-item'}>
+            Personas
+        </button>
+        <button title='ElementosDeLimpieza' onClick={() => onCambiarModulo('elementosDeLimpieza')} className={moduloActivo === 'elementosDeLimpieza' ? 'sidebar-item activo' : 'sidebar-item'}>
+            Elementos de Limpieza
+        </button>
+    </nav>
+>>>>>>> alta-de-elementos-de-limpieza
   );
 };
