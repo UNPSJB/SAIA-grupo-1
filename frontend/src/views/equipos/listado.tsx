@@ -97,7 +97,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, on
                             <tr key={i.id}>
                                 <td>{i.nombre}</td>
                                 <td>{i.categoria}</td>
-                                <td>{i.plan_de_Limpieza}</td>
+                                <td>{i.plan_de_Limpieza?.nombre}</td>
                                 <td>{i.estado}</td>
                                 <td className="acciones-col">
                                    <div className="acciones-btns"> 
