@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import type { PlanForm } from "./tipos";
 import type { EquipoConId } from '../../viewEquipos/tipos';
 import "../../styles/formularioAlta.css";
+import type { TareaConId } from "../tareas/tipos";
+import NuevaTarea from "../tareas/nuevaTarea";
 
 const PLAN_INICAL:PlanForm ={
     nombre:"",
     equipo_id:"",
-    fecha_creacion:""
+    fecha_creacion:"",
+    tareas:[]
 } 
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -26,6 +29,8 @@ export default function NuevoPlanDeLimpieza({onSuccess, onCancel}: NuevoPlanDeLi
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [equipos,setEquipos]= useState<EquipoConId[]>([]);
+    const [tareas,setTareas]= useState<TareaConId[]> ([]);
+    const [modalAbierto,setModalAbierto]= useState(false);
 
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -69,7 +74,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
     const payload={
         nombre: planLimpieza.nombre.trim(),
         equipo_id:Number(planLimpieza.equipo_id),
-        fecha_creacion:planLimpieza.fecha_creacion
+        fecha_creacion:planLimpieza.fecha_creacion,
+        tareas: tareas
     }
 
     setLoading(true);
@@ -100,6 +106,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
     setSuccessMsg("Plan de Limpieza dado de alta exitosamente");
     setPlanLimp(PLAN_INICAL);
+    setTareas([]);
     onSuccess?.();
 
 
@@ -130,6 +137,7 @@ useEffect(() => {
 
 function handleCancelar() {
     setPlanLimp(PLAN_INICAL);
+    setTareas([]);
     setErrorMsg(null);
     setSuccessMsg(null);
     onCancel?.();
@@ -185,6 +193,55 @@ return (
           </select>
         </div>
 
+        <div className="listado-top-bar">
+                   <div className="modulo-header">
+                   <h2>Tareas</h2>
+              </div>
+      
+              <div className="accion-agregar">
+                  <button type="button" className="btn-agregar" onClick={()=>setModalAbierto(true)}>
+                      +Agregar Tarea
+                  </button>
+                  </div>
+            </div>
+      
+            <div className="tabla-wrapper">
+              <table className="tabla-custom">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Procedimiento</th>
+                    <th>Frecuencia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                        Cargando Tareas...
+                      </td>
+                    </tr>
+                  ) :tareas?.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                        No hay Tareas registradas.
+                      </td>
+                    </tr>
+                  ) : (
+                    tareas?.map((t: TareaConId) => (
+                      <tr key={t.id}>
+                        <td style={{ fontWeight: 500 }}>{t.nombre}</td>
+                        <td>{t.descripcion}</td>
+                        <td>{t.frecuencia}</td>
+                      </tr>
+      
+                      
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
             {loading ? "Guardando..." : "Guardar"}
@@ -194,6 +251,21 @@ return (
           </button>
         </div>
       </form>
+
+      
+            {modalAbierto &&(
+      
+                    <div className="modal-abierto">
+                      <div className="modal-content">
+                        <NuevaTarea
+                        onSuccess={()=> setModalAbierto(false)}
+                        onCancel={() => setModalAbierto(false)}
+                        onAgregarLocal={(nuevaTarea) => {setTareas(prev =>[...prev,nuevaTarea])}}
+                        />
+      
+                      </div>
+            </div>)}
+      
     </div>
   );
 }
