@@ -20,12 +20,24 @@ import { VerDetalle as VerDetalleInsumoQuimico } from './views/insumos_quimicos/
 import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
 
 import { Sidebar } from './components/Sidebar';
+import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
+import { NuevoElementoDeLimpieza } from './views/elementosDeLimpieza/nuevoElemento';
+import { EditarElementoDeLimpieza } from './views/elementosDeLimpieza/editarDetalle';
+import { DetalleElementoDeLimpieza } from './views/elementosDeLimpieza/verDetalle';
 
+<<<<<<< HEAD
 type Modulo = 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
+=======
+type Modulo = 'insumos' | 'equipos' | 'personas' | 'elementosDeLimpieza';
+type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
+type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
+type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
+>>>>>>> alta-de-elementos-de-limpieza
 
 function App() {
   const [modulo, setModulo] = useState<Modulo>('insumos_quimicos');
@@ -41,6 +53,8 @@ function App() {
   
   const [vistaPersonas, setVistaPersonas] = useState<VistaPersonas>('listado');
   const [legajoSeleccionado, setLegajoSeleccionado] = useState<number | null>(null);
+  const [vistaElementos, setVistaElementos] = useState<VistaElementos>('listado');
+  const [elementoSeleccionado, setElementoSeleccionado] = useState<number | null>(null);
 
   
   const [vistaInsumosQuimicos, setVistaInsumosQuimicos] = useState<VistaInsumosQuimicos>('listado');
@@ -51,7 +65,11 @@ function App() {
     setVistaEquipos('listado');
     setVistaInsumos('listado');
     setVistaPersonas('listado');
+<<<<<<< HEAD
     setVistaInsumosQuimicos('listado');
+=======
+    setVistaElementos('listado');
+>>>>>>> alta-de-elementos-de-limpieza
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -173,6 +191,7 @@ function App() {
               onSuccess={() => setVistaPersonas('listado')}
               onCancel={() => setVistaPersonas('listado')}
             />
+<<<<<<< HEAD
           )
         ) : (
           vistaInsumosQuimicos === 'listado' ? (
@@ -206,6 +225,40 @@ function App() {
             />
           ) : null
         )}
+=======
+          ) 
+        ) : modulo === 'elementosDeLimpieza' ? (
+          vistaElementos === 'listado' ? (
+            <ListadoElementosLimpieza
+              onNuevoClick={() => setVistaElementos('alta')}
+              onDetalleClick={(id) => {
+                setElementoSeleccionado(id);
+                setVistaElementos('detalle');
+              }}
+              onEditarClick={(id) => {
+                setElementoSeleccionado(id);
+                setVistaElementos('editar');
+              }}
+            />
+            ): vistaElementos === 'alta' ? (
+              <NuevoElementoDeLimpieza
+                onSuccess={() => setVistaElementos('listado')}
+                onCancel={() => setVistaElementos('listado')}
+              />
+            ): vistaElementos === 'detalle' ? (
+              <DetalleElementoDeLimpieza
+                elementoId={elementoSeleccionado}
+                onCancel={() => setVistaElementos('listado')}
+              />
+            ) : vistaElementos === 'editar' ? (
+              <EditarElementoDeLimpieza
+                elementoId={elementoSeleccionado}
+                onSuccess={() => setVistaElementos('listado')}
+                onCancel={() => setVistaElementos('listado')}
+              />
+            ):null
+        ): null }
+>>>>>>> alta-de-elementos-de-limpieza
       </div>
     </div>
   );
