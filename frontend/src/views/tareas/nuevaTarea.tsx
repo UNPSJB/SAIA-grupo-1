@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { TareaForm } from "./tipos";
+import type { Tarea, TareaConId, TareaForm } from "./tipos";
 import "../../styles/formularioAlta.css";
 
 const TAREA_INICAL:TareaForm ={
@@ -15,14 +15,15 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 
 interface NuevaTareaProps {
-    planID:number | null;
+    planID?:number | null;
     onSuccess?: () => void;
     onCancel?: () => void;
+    onAgregarLocal?: (Tarea:TareaConId)=> void;
 
 }
 
 
-export default function NuevaTarea({planID,onSuccess, onCancel}: NuevaTareaProps){
+export default function NuevaTarea({onAgregarLocal,planID,onSuccess, onCancel}: NuevaTareaProps){
     const [tarea, setTarea] = useState<TareaForm>(TAREA_INICAL);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -43,6 +44,12 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         const patron=/^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s]+$/;
         return patron.test(nombre);
 
+    }
+
+    if (!planID) {
+          onAgregarLocal?.(tarea as TareaConId);
+          onSuccess?.();
+          return;
     }
 
 

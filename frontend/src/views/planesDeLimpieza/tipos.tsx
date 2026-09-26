@@ -21,4 +21,5 @@ export interface PlanForm {
   nombre: string;
   equipo_id:number | "";
   fecha_creacion:string;
+  tareas:TareaConId[] | [];
 }
