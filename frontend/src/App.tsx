@@ -25,22 +25,15 @@ import { NuevoElementoDeLimpieza } from './views/elementosDeLimpieza/nuevoElemen
 import { EditarElementoDeLimpieza } from './views/elementosDeLimpieza/editarDetalle';
 import { DetalleElementoDeLimpieza } from './views/elementosDeLimpieza/verDetalle';
 
-<<<<<<< HEAD
-type Modulo = 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos';
+type Modulo = 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
-=======
-type Modulo = 'insumos' | 'equipos' | 'personas' | 'elementosDeLimpieza';
-type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
-type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
-type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
->>>>>>> alta-de-elementos-de-limpieza
 
 function App() {
-  const [modulo, setModulo] = useState<Modulo>('insumos_quimicos');
+  const [modulo, setModulo] = useState<Modulo>('insumos');
 
   
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
@@ -65,11 +58,8 @@ function App() {
     setVistaEquipos('listado');
     setVistaInsumos('listado');
     setVistaPersonas('listado');
-<<<<<<< HEAD
     setVistaInsumosQuimicos('listado');
-=======
     setVistaElementos('listado');
->>>>>>> alta-de-elementos-de-limpieza
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -191,9 +181,8 @@ function App() {
               onSuccess={() => setVistaPersonas('listado')}
               onCancel={() => setVistaPersonas('listado')}
             />
-<<<<<<< HEAD
           )
-        ) : (
+        ) : modulo === 'insumos_quimicos' ? (
           vistaInsumosQuimicos === 'listado' ? (
             <ListadoInsumosQuimicos
               onNuevo={() => setVistaInsumosQuimicos('alta')}
@@ -224,9 +213,6 @@ function App() {
               onActualizado={volverAListadoQuimicos}
             />
           ) : null
-        )}
-=======
-          ) 
         ) : modulo === 'elementosDeLimpieza' ? (
           vistaElementos === 'listado' ? (
             <ListadoElementosLimpieza
@@ -240,25 +226,24 @@ function App() {
                 setVistaElementos('editar');
               }}
             />
-            ): vistaElementos === 'alta' ? (
-              <NuevoElementoDeLimpieza
-                onSuccess={() => setVistaElementos('listado')}
-                onCancel={() => setVistaElementos('listado')}
-              />
-            ): vistaElementos === 'detalle' ? (
-              <DetalleElementoDeLimpieza
-                elementoId={elementoSeleccionado}
-                onCancel={() => setVistaElementos('listado')}
-              />
-            ) : vistaElementos === 'editar' ? (
-              <EditarElementoDeLimpieza
-                elementoId={elementoSeleccionado}
-                onSuccess={() => setVistaElementos('listado')}
-                onCancel={() => setVistaElementos('listado')}
-              />
-            ):null
-        ): null }
->>>>>>> alta-de-elementos-de-limpieza
+          ) : vistaElementos === 'alta' ? (
+            <NuevoElementoDeLimpieza
+              onSuccess={() => setVistaElementos('listado')}
+              onCancel={() => setVistaElementos('listado')}
+            />
+          ) : vistaElementos === 'detalle' ? (
+            <DetalleElementoDeLimpieza
+              elementoId={elementoSeleccionado}
+              onCancel={() => setVistaElementos('listado')}
+            />
+          ) : vistaElementos === 'editar' ? (
+            <EditarElementoDeLimpieza
+              elementoId={elementoSeleccionado}
+              onSuccess={() => setVistaElementos('listado')}
+              onCancel={() => setVistaElementos('listado')}
+            />
+          ) : null
+        ) : null}
       </div>
     </div>
   );
