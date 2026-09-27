@@ -15,41 +15,34 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({ onNuevoClick, on
     const [equipos, setEquipos] = useState<EquipoConId[]>([]);
     const [loading, setLoading] = useState(true);
     
-    const fetchEquipos = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_URL}/equipos/`); //chequea el backend
-            if (res.ok) {
-                const data = await res.json();
-                setEquipos(data);
-            } else {
-                setEquipos([]);
-            }
-        } catch  {
-            //dejamos la lista vacia sin el backend no responde
-
-            setEquipos([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    /*const handleEliminar = async (id?: number) => {
-        if (!id) return;
-        if (!window.confirm('¿Está seguro de que desea eliminar este equipo?')) return;
-
-        try {
-            const res = await fetch(`${API_URL}/equipos/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                setEquipos((prev) => prev.filter((equipo) => equipo.id !== id));
-            }
-        }catch{
-            alert('No se pudo eliminar el equipo.');
-        }
-    };*/
-
     useEffect(() => {
+        let cancelado = false;
+        const fetchEquipos = async () => {
+            try {
+                const res = await fetch(`${API_URL}/equipos/`);
+                if (!cancelado) {
+                    if (res.ok) {
+                        const data = await res.json();
+                        setEquipos(data);
+                    } else {
+                        setEquipos([]);
+                    }
+                }
+            } catch {
+                if (!cancelado) {
+                    setEquipos([]);
+                }
+            } finally {
+                if (!cancelado) {
+                    setLoading(false);
+                }
+            }
+        };
+
         fetchEquipos();
+        return () => {
+            cancelado = true;
+        };
     }, []);
 
     return (
