@@ -31,8 +31,9 @@ import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
 import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
+import { Panel as PanelDashboard } from './views/dashboard/panel';
 
-type Modulo = 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -42,7 +43,7 @@ type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
 
 function App() {
-  const [modulo, setModulo] = useState<Modulo>('insumos');
+  const [modulo, setModulo] = useState<Modulo>('dashboard');
 
   
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
@@ -104,7 +105,9 @@ function App() {
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
   <div style={{ flex: 1, padding: '40px 60px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}>
-        {modulo === 'insumos' ? (
+        {modulo === 'dashboard' ? (
+          <PanelDashboard />
+        ) : modulo === 'insumos' ? (
           vistaInsumos === 'listado' ? (
             <ListadoInsumos
               onNuevoClick={() => setVistaInsumos('alta')}

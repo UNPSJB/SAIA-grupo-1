@@ -1,0 +1,69 @@
+.dashboard-container {
+  max-width: 1200px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+}
+
+.dashboard-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.dashboard-card-header h2 {
+  font-size: 1.05rem;
+  margin: 0;
+  flex: 1;
+}
+
+.dashboard-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: var(--code-bg);
+  color: var(--text-h);
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.dashboard-dona-wrapper {
+  position: relative;
+}
+
+.dashboard-dona-centro {
+  position: absolute;
+  top: 50%;
+  left: 30%;
+  transform: translate(-50%, -50%);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-h);
+  pointer-events: none;
+}
+
+.dashboard-sin-datos {
+  color: var(--text);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 2rem 0;
+}
