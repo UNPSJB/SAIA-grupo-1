@@ -216,9 +216,9 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
             value={formData.capacidad}
             onChange={handleChange}
           >
-            <option value="OPERAR">OPERAR</option>
-            <option value="MANTENIMIENTO">MANTENIMIENTO</option>
-            <option value="AMBAS">AMBAS</option>
+            <option value="OPERAR">Operar</option>
+            <option value="ADMINISTRAR">Administrar</option>
+            <option value="AMBAS">Operar y Administrar</option>
           </select>
         </div>
 

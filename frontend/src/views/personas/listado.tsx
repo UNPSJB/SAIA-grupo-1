@@ -121,9 +121,9 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           style={{ ...campoFiltroStyle, cursor: "pointer" }}
         >
           <option value="TODOS">Todas las capacidades</option>
-          <option value="OPERAR">OPERAR</option>
-          <option value="MANTENIMIENTO">MANTENIMIENTO</option>
-          <option value="AMBAS">AMBAS</option>
+          <option value="OPERAR">Operar</option>
+          <option value="ADMINISTRAR">Administrar</option>
+          <option value="AMBAS">Operar y Administrar</option>
         </select>
 
         <select
@@ -172,7 +172,10 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                     <td>{p.nombre}</td>
                     <td>{p.apellido}</td>
                     <td>{p.email}</td>
-                    <td>{p.capacidad || "-"}</td>
+                    <td>{p.capacidad == "OPERAR"? "Operar"
+                        : p.capacidad == "ADMINISTRAR"? "Administrar"
+                        : p.capacidad == "AMBAS"? "Operar y Administrar"
+                        : "-"}</td>
                     <td>
                       <span
                         style={{

@@ -6,7 +6,7 @@ export interface Persona {
   dni?: number | string;
   email: string;
   activo: boolean;
-  capacidad: "OPERAR" | "MANTENIMIENTO" | "AMBAS";
+  capacidad: "OPERAR" | "ADMINISTRAR" | "AMBAS";
 }
 
 export interface PersonaCrear {
@@ -15,7 +15,7 @@ export interface PersonaCrear {
   documento: number | string;
   email: string;
   activo?: boolean;
-  capacidad: "OPERAR" | "MANTENIMIENTO" | "AMBAS";
+  capacidad: "OPERAR" | "ADMINISTRAR" | "AMBAS";
 }
 
 export interface PersonaActualizar {
@@ -24,5 +24,5 @@ export interface PersonaActualizar {
   documento?: number | string;
   email?: string;
   activo?: boolean;
-  capacidad?: "OPERAR" | "MANTENIMIENTO" | "AMBAS";
+  capacidad?: "OPERAR" | "ADMINISTRAR" | "AMBAS";
 }

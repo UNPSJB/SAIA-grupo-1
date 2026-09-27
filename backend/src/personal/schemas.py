@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 class Capacidades(str, Enum):
     OPERAR = "OPERAR"
-    MANTENIMIENTO = "MANTENIMIENTO"
+    ADMINISTRAR = "ADMINISTRAR"
     AMBAS = "AMBAS"
 
 class PersonaBase(BaseModel):
