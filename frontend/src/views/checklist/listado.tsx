@@ -10,6 +10,14 @@ interface ListadoChecklistsProps {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+const obtenerFechaLocalHoy = (): string => {
+  const ahora = new Date();
+  const anio = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+};
+
 export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   onDetalleClick,
 }) => {
@@ -87,7 +95,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
           if (resChecklists.ok) {
             const data: Checklist[] = await resChecklists.json();
             setChecklists(data);
-            const hoyIso = new Date().toISOString().split('T')[0];
+            const hoyIso = obtenerFechaLocalHoy();
             const encontrado = data.find((c) => c.fecha === hoyIso);
             if (encontrado) {
               setChecklistHoyId(encontrado.id);
@@ -120,7 +128,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     };
   }, []);
 
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = obtenerFechaLocalHoy();
 
   const handleFiltrar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +154,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     await recargarChecklists('', '', '');
   };
 
-
   const handleGenerarChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!responsableLegajo) {
@@ -161,7 +168,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           responsable_legajo: Number(responsableLegajo),
-          fecha: hoy,
         }),
       });
 
