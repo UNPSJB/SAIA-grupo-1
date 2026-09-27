@@ -63,6 +63,33 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     return new Date() >= fechaLimite;
   };
 
+  const handleEfectuarCambio = async (id: number, nombre: string) => {
+    const confirmacion = window.confirm(`¿Confirmar que cambiaste "${nombre}"? Se actualizará la próxima fecha.`);
+    if (!confirmacion) return;
+
+    try {
+      const res = await fetch(`${API_URL}/elementosDeLimpieza/${id}/cambiar`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      if (res.ok) {
+        const elementoActualizado: ElementoDeLimpieza = await res.json();
+      
+        // Actualizamos la fila en la tabla sin recargar toda la página
+        setElementos((prev) =>
+          prev.map((elem) => (elem.id === id ? elementoActualizado : elem))
+        );
+      } else {
+        alert('No se pudo registrar el cambio.');
+      }
+    } catch {
+      alert('Error al conectar con el servidor.');
+    }
+  };
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -139,6 +166,16 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                     <td>{item.activo ? 'Activo' : 'Inactivo'}</td>
                     <td className="acciones-col">
                       <div className="acciones-btns">
+                        {item.frecuenciaDeCambio && (
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            title="Efectuar cambio (actualizar fecha)"
+                            onClick={() => handleEfectuarCambio(item.id, item.nombre)}
+                          >
+                            ↻
+                          </button>
+                        )}
                         <button
                           className="btn-icon"
                           title="Ver detalles"
