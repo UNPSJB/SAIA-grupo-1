@@ -57,10 +57,26 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
   };
 
   // Chequea si la fecha ya expiró para resaltar la alerta
-  const estaVencido = (fechaStr?: string | null) => {
-    if (!fechaStr) return false;
-    const fechaLimite = new Date(fechaStr);
-    return new Date() >= fechaLimite;
+  type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia' | 'sin_fecha';
+
+  const calcularEstadoVencimiento = (fechaCambioStr?: string | null): EstadoVencimiento => {
+    if (!fechaCambioStr) return 'sin_fecha';
+
+    const fechaLimite = new Date(fechaCambioStr);
+    const hoy = new Date();
+
+    // Diferencia en milisegundos convertida a días
+    const diffTiempo = fechaLimite.getTime() - hoy.getTime();
+    const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
+
+    if (diffDias <= 0) {
+      return 'vencido';
+    }else if (diffDias <= 2) {
+      // Si quedan 1 o 2 días, consideramos "próximo a vencer"
+      return 'proximo';
+    }
+
+    return 'al_dia';
   };
 
   const handleEfectuarCambio = async (id: number, nombre: string) => {
@@ -132,7 +148,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
               </tr>
             ) : (
               elementos.map((item) => {
-                const vencido = estaVencido(item.fechaCambio);
 
                 return (
                   <tr key={item.id}>
@@ -144,21 +159,48 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                         : 'Sin especificar'}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <span>{formatearFecha(item.fechaCambio)}</span>
-                        {item.fechaCambio && vencido && (
+
+                        {/* VENCIDO: Rojo */}
+                        {calcularEstadoVencimiento(item.fechaCambio) === 'vencido' && (
                           <span
-                            title="Recambio requerido"
+                            title="El elemento ha superado la fecha límite"
                             style={{
-                              backgroundColor: 'rgba(220, 38, 38, 0.2)',
+                              backgroundColor: '#fee2e2',
                               color: '#dc2626',
-                              padding: '0.15rem 0.45rem',
-                              borderRadius: '4px',
+                              border: '1px solid #f87171',
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '12px',
                               fontSize: '0.75rem',
-                              fontWeight: 700,
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
                             }}
                           >
-                            ⚠️ Requiere cambio
+                            ● Vencido
+                          </span>
+                        )}
+
+                        {/* PRÓXIMO A VENCER: Amarillo / Ámbar */}
+                        {calcularEstadoVencimiento(item.fechaCambio) === 'proximo' && (
+                          <span
+                            title="Quedan 2 días o menos para el recambio"
+                            style={{
+                              backgroundColor: '#fef3c7',
+                              color: '#d97706',
+                              border: '1px solid #fcd34d',
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                            }}
+                          >
+                            ▲ Próximo a vencer
                           </span>
                         )}
                       </div>
