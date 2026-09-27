@@ -35,6 +35,12 @@
   gap: 0.35rem;
 }
 
+.campo-error {
+  color: #dc2626;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
 .form-group label {
   font-size: 0.9rem;
   font-weight: 700;
