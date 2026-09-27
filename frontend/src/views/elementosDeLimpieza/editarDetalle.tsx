@@ -60,7 +60,15 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
   }, [elementoId]);
 
   const toggleActivo = () => {
-    setFormData((prev) => ({ ...prev, activo: !prev.activo }));
+    const nuevoEstado = !formData.activo;
+    const mensaje = nuevoEstado
+      ? '¿Estás seguro de que deseas ACTIVAR este elemento de limpieza?'
+      : '¿Estás seguro de que deseas DESACTIVAR este elemento de limpieza?';
+
+    const confirmacion = window.confirm(mensaje);
+    if (!confirmacion) return;
+
+    setFormData((prev) => ({ ...prev, activo: nuevoEstado }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
