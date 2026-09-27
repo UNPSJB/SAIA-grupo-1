@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { Persona } from "./tipos";
+import '../../styles/formularioAlta.css';
 
 export interface ListadoPersonasProps {
   onNuevoClick: () => void;
@@ -13,6 +14,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
   onEditarClick,
 }) => {
   const [personas, setPersonas] = useState<Persona[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCapacidad, setFiltroCapacidad] = useState<string>("TODOS");
   const [filtroEstado, setFiltroEstado] = useState<string>("TODOS");
@@ -30,6 +32,8 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
       }
     } catch (e) {
       console.error("Error al cargar personas:", e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -79,69 +83,42 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     return matchBusqueda && matchCapacidad && matchEstado;
   });
 
+  const campoFiltroStyle: React.CSSProperties = {
+    padding: "10px 12px",
+    border: "1px solid var(--border)",
+    borderRadius: "6px",
+    backgroundColor: "var(--code-bg)",
+    fontSize: "14px",
+    color: "var(--text-h)",
+    outline: "none",
+  };
+
   return (
-    <div style={{ padding: "40px 60px", backgroundColor: "#13131a", minHeight: "100vh", fontFamily: "system-ui, -apple-system, sans-serif", color: "#ffffff" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "30px" }}>
-        <div>
-          <h1 style={{ fontSize: "36px", fontWeight: "bold", margin: "0 0 6px 0", color: "#ffffff", letterSpacing: "-0.5px" }}>
-            Lista de Personas
-          </h1>
-          <span style={{ fontSize: "15px", color: "#9ca3af" }}>
-            01 · Listado
-          </span>
+    <div className="modulo-container">
+      <div className="listado-top-bar">
+        <div className="modulo-header">
+          <h1>Lista de Personas</h1>
+          <div className="subtitulo">01 · Listado</div>
         </div>
 
-        <button
-          onClick={onNuevoClick}
-          style={{
-            backgroundColor: "#ffffff",
-            color: "#000000",
-            border: "none",
-            borderRadius: "8px",
-            padding: "12px 24px",
-            fontWeight: "600",
-            fontSize: "15px",
-            cursor: "pointer",
-            transition: "opacity 0.2s",
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.opacity = "0.9")}
-          onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
-        >
+        <button onClick={onNuevoClick} className="btn-guardar">
           + Agregar Persona
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: "14px", marginBottom: "25px", flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: "14px", marginBottom: "20px", flexWrap: "wrap", alignItems: "center" }}>
         <input
           type="text"
           placeholder="Buscar por DNI, Nombre o Apellido..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            padding: "10px 16px",
-            border: "1px solid #2d2d3a",
-            borderRadius: "8px",
-            backgroundColor: "#1c1c26",
-            fontSize: "14px",
-            minWidth: "280px",
-            color: "#ffffff",
-            outline: "none",
-          }}
+          style={{ ...campoFiltroStyle, minWidth: "280px" }}
         />
 
         <select
           value={filtroCapacidad}
           onChange={(e) => setFiltroCapacidad(e.target.value)}
-          style={{
-            padding: "10px 16px",
-            border: "1px solid #2d2d3a",
-            borderRadius: "8px",
-            backgroundColor: "#1c1c26",
-            fontSize: "14px",
-            color: "#ffffff",
-            cursor: "pointer",
-            outline: "none",
-          }}
+          style={{ ...campoFiltroStyle, cursor: "pointer" }}
         >
           <option value="TODOS">Todas las capacidades</option>
           <option value="OPERAR">OPERAR</option>
@@ -152,16 +129,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
         <select
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
-          style={{
-            padding: "10px 16px",
-            border: "1px solid #2d2d3a",
-            borderRadius: "8px",
-            backgroundColor: "#1c1c26",
-            fontSize: "14px",
-            color: "#ffffff",
-            cursor: "pointer",
-            outline: "none",
-          }}
+          style={{ ...campoFiltroStyle, cursor: "pointer" }}
         >
           <option value="TODOS">Todos los estados</option>
           <option value="ACTIVO">Activos</option>
@@ -169,120 +137,76 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
         </select>
       </div>
 
-      <div style={{ width: "100%", overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 10px", textAlign: "left" }}>
+      <div className="tabla-wrapper">
+        <table className="tabla-custom">
           <thead>
-            <tr style={{ backgroundColor: "#1e1e28", color: "#e5e7eb", fontSize: "15px", fontWeight: "bold" }}>
-              <th style={{ padding: "16px 20px", borderTopLeftRadius: "10px", borderBottomLeftRadius: "10px" }}>DNI</th>
-              <th style={{ padding: "16px 20px" }}>Nombre</th>
-              <th style={{ padding: "16px 20px" }}>Apellido</th>
-              <th style={{ padding: "16px 20px" }}>Correo</th>
-              <th style={{ padding: "16px 20px" }}>Capacidad</th>
-              <th style={{ padding: "16px 20px" }}>Estado</th>
-              <th style={{ padding: "16px 20px", textAlign: "center", borderTopRightRadius: "10px", borderBottomRightRadius: "10px" }}>Acciones</th>
+            <tr>
+              <th>DNI</th>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th>Correo</th>
+              <th>Capacidad</th>
+              <th>Estado</th>
+              <th className="acciones-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {personasFiltradas.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
+                  Cargando personas...
+                </td>
+              </tr>
+            ) : personasFiltradas.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
+                  No se encontraron personas registradas.
+                </td>
+              </tr>
+            ) : (
               personasFiltradas.map((p) => {
                 const identificador = p.legajo ?? (p as any).id;
                 return (
-                  <tr
-                    key={identificador}
-                    style={{
-                      backgroundColor: "#181822",
-                      color: "#d1d5db",
-                      fontSize: "14px",
-                    }}
-                  >
-                    <td style={{ padding: "16px 20px", fontWeight: "500", color: "#ffffff" }}>
-                      {p.documento ?? p.dni}
-                    </td>
-                    <td style={{ padding: "16px 20px" }}>{p.nombre}</td>
-                    <td style={{ padding: "16px 20px" }}>{p.apellido}</td>
-                    <td style={{ padding: "16px 20px" }}>{p.email}</td>
-                    <td style={{ padding: "16px 20px" }}>{p.capacidad || "-"}</td>
-                    <td style={{ padding: "16px 20px" }}>
+                  <tr key={identificador}>
+                    <td>{p.documento ?? p.dni}</td>
+                    <td>{p.nombre}</td>
+                    <td>{p.apellido}</td>
+                    <td>{p.email}</td>
+                    <td>{p.capacidad || "-"}</td>
+                    <td>
                       <span
                         style={{
                           padding: "4px 10px",
                           borderRadius: "12px",
                           fontSize: "12px",
-                          fontWeight: "600",
-                          backgroundColor: p.activo ? "#143322" : "#3b171a",
-                          color: p.activo ? "#4ade80" : "#f87171",
+                          fontWeight: 600,
+                          backgroundColor: p.activo ? "#dcfce7" : "#fee2e2",
+                          color: p.activo ? "#166534" : "#991b1b",
                         }}
                       >
                         {p.activo ? "Activo" : "Inactivo"}
                       </span>
                     </td>
-                    <td style={{ padding: "16px 20px", textAlign: "center" }}>
-                      <div style={{ display: "inline-flex", gap: "8px", alignItems: "center" }}>
-                        <button
-                          onClick={() => onDetalleClick(identificador)}
-                          title="Ver detalle"
-                          style={{
-                            backgroundColor: "#252533",
-                            border: "none",
-                            borderRadius: "50%",
-                            width: "34px",
-                            height: "34px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer",
-                            fontSize: "14px",
-                          }}
-                        >
-                          👁️
+                    <td className="acciones-col">
+                      <div className="acciones-btns">
+                        <button className="btn-icon" title="Ver detalle" onClick={() => onDetalleClick(identificador)}>
+                          👁
+                        </button>
+                        <button className="btn-icon" title="Editar" onClick={() => onEditarClick(identificador)}>
+                          ✎
                         </button>
                         <button
-                          onClick={() => onEditarClick(identificador)}
-                          title="Editar"
-                          style={{
-                            backgroundColor: "#252533",
-                            border: "none",
-                            borderRadius: "50%",
-                            width: "34px",
-                            height: "34px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer",
-                            fontSize: "13px",
-                          }}
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => handleToggleActivo(identificador, p.activo)}
+                          className="btn-icon"
                           title={p.activo ? "Dar de baja" : "Reactivar"}
-                          style={{
-                            backgroundColor: "#252533",
-                            border: "none",
-                            borderRadius: "50%",
-                            width: "34px",
-                            height: "34px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer",
-                            fontSize: "13px",
-                          }}
+                          onClick={() => handleToggleActivo(identificador, p.activo)}
                         >
-                          {p.activo ? "🗑️" : "🔄"}
+                          {p.activo ? "🗑" : "🔄"}
                         </button>
                       </div>
                     </td>
                   </tr>
                 );
               })
-            ) : (
-              <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: "40px", color: "#6b7280", fontSize: "15px" }}>
-                  No se encontraron personas registradas.
-                </td>
-              </tr>
             )}
           </tbody>
         </table>
