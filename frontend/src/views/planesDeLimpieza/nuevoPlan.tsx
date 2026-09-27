@@ -8,7 +8,7 @@ import NuevaTarea from "../tareas/nuevaTarea";
 const PLAN_INICAL:PlanForm ={
     nombre:"",
     equipo_id:"",
-    fecha_creacion:"",
+    fecha_inicio:"",
     tareas:[]
 } 
 
@@ -66,7 +66,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
       return;
     }
 
-    if(planLimpieza.fecha_creacion > HOY){
+    if(planLimpieza.fecha_inicio > HOY){
 
       setErrorMsg("La fecha no puede ser mayor a la fecha actual");
     }
@@ -74,7 +74,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
     const payload={
         nombre: planLimpieza.nombre.trim(),
         equipo_id:Number(planLimpieza.equipo_id),
-        fecha_creacion:planLimpieza.fecha_creacion,
+        fecha_inicio:planLimpieza.fecha_inicio,
         tareas: tareas
     }
 
@@ -155,13 +155,13 @@ return (
       <form onSubmit={handleGuardar}>
 
         <div className="form-group">
-          <label htmlFor="fecha_creacion">Fecha del Plan</label>
+          <label htmlFor="fecha_inicio">Fecha del Plan</label>
           <input
-            id="fecha_creacion"
-            name="fecha_creacion"
+            id="fecha_inicio"
+            name="fecha_inicio"
             type="date"
             max={HOY}
-            value={planLimpieza.fecha_creacion}
+            value={planLimpieza.fecha_inicio}
             onChange={handleChange}
             required
           />

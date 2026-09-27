@@ -201,6 +201,15 @@
   border-color: #d97706;
 }
 
+.btn-icon.btn-eliminar {
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--code-bg);
+  color: var(--text-h);
+}
+
 .btn-icon.btn-eliminar:hover {
   background-color: #dc2626;
   color: #ffffff;

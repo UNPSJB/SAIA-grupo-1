@@ -325,4 +325,6 @@ psd
 thumb
 sketch
 
+seed_db.py
+
 # End of https://www.toptal.com/developers/gitignore/api/react,node,python

@@ -90,8 +90,8 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
         <div >
 
           <div className="form-group">
-          <label htmlFor="fecha_creacion">Fecha de Creacion</label>
-          <td>{formatDate(planLimpieza.fecha_creacion)}</td>
+          <label htmlFor="fecha_inicio">Fecha de Inicio</label>
+          <td>{formatDate(planLimpieza.fecha_inicio)}</td>
         </div>
             <div className="form-group">
                 <label htmlFor="nombre">PLAN</label>

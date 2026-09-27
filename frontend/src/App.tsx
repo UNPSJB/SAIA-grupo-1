@@ -28,14 +28,18 @@ import NuevoPlanDeLimpieza from './views/planesDeLimpieza/nuevoPlan';
 import { ListadoPlanesLimp } from './views/planesDeLimpieza/listado';
 import EditarPlanDeLimpieza from './views/planesDeLimpieza/editarPlan';
 import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
+import { ListadoChecklists } from './views/checklist/listado';
+import { DetalleChecklist } from './views/checklist/verDetalle';
+import { ListadoAuditoria } from './views/auditoria/listado';
 
-type Modulo = 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza';
+type Modulo = 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaChecklist = 'listado' | 'detalle';
 
 function App() {
   const [modulo, setModulo] = useState<Modulo>('insumos');
@@ -54,12 +58,15 @@ function App() {
   const [vistaElementos, setVistaElementos] = useState<VistaElementos>('listado');
   const [elementoSeleccionado, setElementoSeleccionado] = useState<number | null>(null);
 
-  
+
   const [vistaInsumosQuimicos, setVistaInsumosQuimicos] = useState<VistaInsumosQuimicos>('listado');
   const [quimicoSeleccionado, setQuimicoSeleccionado] = useState<InsumoQuimico | null>(null);
 
   const [vistaPlanLimp, setVistaPlanLimp] = useState<VistaPlanLimp>('listado');
   const [planLimpSeleccionado, setPlanLimpSeleccionando] = useState<number | null>(null);
+
+  const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
+  const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
@@ -69,6 +76,7 @@ function App() {
     setVistaInsumosQuimicos('listado');
     setVistaElementos('listado');
     setVistaPlanLimp('listado');
+    setVistaChecklist('listado');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -282,6 +290,22 @@ function App() {
               planlimpiezaID={planLimpSeleccionado}
             />
           ) : null
+        ) : modulo === 'auditoria' ? (
+          <ListadoAuditoria />
+        ) : modulo === 'checklist' ? (
+          vistaChecklist === 'listado' ? (
+            <ListadoChecklists
+              onDetalleClick={(id) => {
+                setChecklistSeleccionado(id);
+                setVistaChecklist('detalle');
+              }}
+            />
+          ) : (
+            <DetalleChecklist
+              checklistId={checklistSeleccionado}
+              onVolver={() => setVistaChecklist('listado')}
+            />
+          )
         ) : null}
       </div>
     </div>

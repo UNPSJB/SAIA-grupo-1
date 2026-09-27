@@ -7,7 +7,7 @@ export interface PlanDelimpieza{
     equipo_id:number;
     equipo?:Equipo;
     tareas?:TareaConId[];
-    fecha_creacion?:string;
+    fecha_inicio?:string;
 }
 
 export interface PlanConId extends PlanDelimpieza {
@@ -20,6 +20,6 @@ export interface PlanConId extends PlanDelimpieza {
 export interface PlanForm {
   nombre: string;
   equipo_id:number | "";
-  fecha_creacion:string;
+  fecha_inicio:string;
   tareas:TareaConId[] | [];
 }
