@@ -40,9 +40,13 @@ def editar_elementoDeLimpieza(db: Session, elementoDeLimpieza_id: int, elementoD
     datos_actualizar = elementoDeLimpieza.model_dump(exclude_unset=True)
 
     if "frecuenciaDeCambio" in datos_actualizar:
-        datos_actualizar["fechaCambio"] = calcular_fecha_cambio(
-            datos_actualizar["frecuenciaDeCambio"]
-        )
+        nueva_frecuencia = datos_actualizar["frecuenciaDeCambio"]
+        frecuencia_anterior = db_elementoDeLimpieza.frecuenciaDeCambio
+
+        if nueva_frecuencia != frecuencia_anterior:
+            datos_actualizar["fechaCambio"] = calcular_fecha_cambio(nueva_frecuencia)
+        else:
+            datos_actualizar.pop("fechaCambio", None)
 
     db.execute(
         update(ElementoDeLimpieza).where(ElementoDeLimpieza.id ==elementoDeLimpieza_id).values(**datos_actualizar)
