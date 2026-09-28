@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect,useState } from 'react';
 import type { PlanConId } from "./tipos";
-import type {TareaConId } from '../tareas/tipos';
+import type { TareaConId } from '../tareas/tipos';
 import '../../styles/formularioAlta.css';
-import NuevaTarea from '../tareas/nuevaTarea';
 import { VerTarea } from '../tareas/verTarea';
 
 interface DetallePlanLimpiezaProps {
