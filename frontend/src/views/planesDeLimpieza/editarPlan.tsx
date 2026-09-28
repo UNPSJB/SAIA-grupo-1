@@ -6,6 +6,7 @@ import EditarTarea from "../tareas/editarTarea";
 import { VerTarea } from "../tareas/verTarea";
 import NuevaTarea from "../tareas/nuevaTarea";
 import type { TareaConId } from "../tareas/tipos";
+import { ConfirmAlertDialog } from "../../components/ui/alert-dialog";
 
 const PLAN_INICAL:PlanConId ={
     id:0,
@@ -49,6 +50,8 @@ export default function EditarPlanDeLimpieza({planlimpiezaID,onSuccess, onCancel
     const [modalEditar,setModalEditar]=useState(false);
     const [modalVerTarea, setModelVer] = useState(false);
     const [tareaSeleccionada, setTareaSeleccionada]=useState <number | null>(null);
+    const [tareaAConfirmar, setTareaAConfirmar] = useState<TareaConId | null>(null);
+    const [dialogAbierto, setDialogAbierto] = useState(false);
 
     const fetchPlanLimp = useCallback(async () => {
             if (!planlimpiezaID) return;
@@ -183,7 +186,7 @@ useEffect(() => {
         fetchEquipos();
     }, []);
 
-const handleEliminarTarea = async (id?: number) => {
+/*const handleEliminarTarea = async (id?: number) => {
     if (!id) return;
     if (!window.confirm('¿Seguro que desea eliminar esta tarea?')) return;
 
@@ -197,8 +200,12 @@ const handleEliminarTarea = async (id?: number) => {
     } catch {
       alert('Error de conexión al eliminar la tarea');
     }
-  };
+  };*/
 
+const abrirConfirmacion = (tarea: TareaConId) => {
+        setTareaAConfirmar(tarea);
+        setDialogAbierto(true);
+    };
 
 function handleCancelar() {
     setPlanLimp(PLAN_INICAL);
@@ -206,6 +213,37 @@ function handleCancelar() {
     setSuccessMsg(null);
     onCancel?.();
 }
+
+const ejecutarBajaTarea = async () => {
+    if (!tareaAConfirmar) return;
+
+    try {
+        const res = await fetch(
+            `${API_URL}/tareas/${tareaAConfirmar.id}`,
+            {
+                method: "DELETE",
+            }
+        );
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(
+                err.detail || "No se pudo eliminar la tarea."
+            );
+        }
+        await fetchPlanLimp();
+
+    } catch (err: unknown) {
+        alert(
+            err instanceof Error
+                ? err.message
+                : "Error de conexión al eliminar la tarea."
+        );
+    } finally {
+        setDialogAbierto(false);
+        setTareaAConfirmar(null);
+    }
+};
 return (
     <div className="plan-container formulario-box">
       <div className="modulo-header">
@@ -304,12 +342,13 @@ return (
                         ✎
                       </button>
                       <button
-                        className="btn-icon btn-eliminar"
-                        title="Eliminar"
-                        onClick={() => handleEliminarTarea(t.id)}
-                      >
-                        🗑
-                      </button>
+                          type="button"
+                          className="btn-icon btn-eliminar"
+                          title="Dar de baja"
+                          onClick={() => abrirConfirmacion(t)} 
+                          >
+                         🗑
+                    </button>
                     </div>
 
                   </td>
@@ -331,6 +370,20 @@ return (
           </button>
         </div>
       </form>
+
+      <ConfirmAlertDialog
+                open={dialogAbierto}
+                title="¿Dar de baja tarea?"
+                description={`¿Estás seguro de que deseas eliminar la tarea "${tareaAConfirmar?.nombre}"? Esta acción no se puede deshacer.`}
+                confirmText="Confirmar Baja"
+                cancelText="Cancelar"
+                isDestructive={true}
+                onConfirm={ejecutarBajaTarea}
+                 onCancel={() => {
+                       setDialogAbierto(false);
+                       setTareaAConfirmar(null);
+                      }}
+                />
 
       {modalAbierto &&(
       
@@ -367,6 +420,8 @@ return (
                       </div>
                       </div>
                 )}
+
+                
     </div>
   );
 }
