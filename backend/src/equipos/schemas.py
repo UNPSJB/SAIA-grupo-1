@@ -5,8 +5,8 @@ from src.equipos.models import Categoria
 from src.equipos.models import Estado
 from src.equipos import exceptions
 class EquipoBase(BaseModel):
-    nombre: str = Field( max_length=20)
-    ubicacion: str = Field( max_length=50)
+    nombre: str = Field(max_length=50)
+    ubicacion: str = Field(max_length=50)
     categoria: Categoria
     estado:Estado
     plan_de_calibracion: str = Field(min_length=1, max_length=100)
@@ -28,7 +28,7 @@ class EquipoBase(BaseModel):
 
 
 class EquipoCreate(EquipoBase):
-    nombre: str = Field( max_length=20)
+    nombre: str = Field(max_length=50)
     ubicacion: str = Field(max_length=50)
 
     @field_validator('nombre')
@@ -54,7 +54,7 @@ class EquipoCreate(EquipoBase):
          
 
 class EquipoUpdate(EquipoBase):
-    nombre: Optional[str] = Field( None,max_length=20)  
+    nombre: Optional[str] = Field(None, max_length=50)  
     ubicacion: Optional[str] = Field( None,max_length=50)
     categoria:Optional[Categoria]=None
     plan_de_calibracion:Optional[str] = Field( None,max_length=100)

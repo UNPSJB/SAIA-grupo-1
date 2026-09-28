@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { Persona } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { ConfirmAlertDialog } from "../../components/ui/alert-dialog";
 
 export interface ListadoPersonasProps {
   onNuevoClick: () => void;
@@ -18,6 +19,9 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCapacidad, setFiltroCapacidad] = useState<string>("TODOS");
   const [filtroEstado, setFiltroEstado] = useState<string>("TODOS");
+
+  const [personaAConfirmar, setPersonaAConfirmar] = useState<Persona | null>(null);
+  const [dialogAbierto, setDialogAbierto] = useState(false);
 
   const cargarPersonas = async () => {
     try {
@@ -41,12 +45,19 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     cargarPersonas();
   }, []);
 
-  const handleToggleActivo = async (legajo: number, estadoActual: boolean) => {
+  const abrirConfirmacion = (p: Persona) => {
+    setPersonaAConfirmar(p);
+    setDialogAbierto(true);
+  };
+
+  const ejecutarToggle = async () => {
+    if (!personaAConfirmar) return;
+    const identificador = personaAConfirmar.legajo;
+    const estadoActual = personaAConfirmar.activo;
     const accion = estadoActual ? "dar de baja" : "reactivar";
-    if (!window.confirm(`¿Seguro que desea ${accion} a esta persona?`)) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/personal/${legajo}`, {
+      const res = await fetch(`http://127.0.0.1:8000/personal/${identificador}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ activo: !estadoActual }),
@@ -58,6 +69,9 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
       cargarPersonas();
     } catch (err: any) {
       alert(err.message || `Error al ${accion} la persona.`);
+    } finally {
+      setDialogAbierto(false);
+      setPersonaAConfirmar(null);
     }
   };
 
@@ -83,16 +97,6 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     return matchBusqueda && matchCapacidad && matchEstado;
   });
 
-  const campoFiltroStyle: React.CSSProperties = {
-    padding: "10px 12px",
-    border: "1px solid var(--border)",
-    borderRadius: "6px",
-    backgroundColor: "var(--code-bg)",
-    fontSize: "14px",
-    color: "var(--text-h)",
-    outline: "none",
-  };
-
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -106,19 +110,19 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
+      <div className="filtros-top-bar">
         <input
           type="text"
           placeholder="Buscar por DNI, nombre o apellido..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ ...campoFiltroStyle, flex: 1, minWidth: "220px" }}
+          className="input-busqueda"
         />
 
         <select
           value={filtroCapacidad}
           onChange={(e) => setFiltroCapacidad(e.target.value)}
-          style={{ ...campoFiltroStyle, cursor: "pointer" }}
+          className="select-filtro"
         >
           <option value="TODOS">Todas las capacidades</option>
           <option value="OPERAR">Operar</option>
@@ -129,7 +133,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
         <select
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
-          style={{ ...campoFiltroStyle, cursor: "pointer" }}
+          className="select-filtro"
         >
           <option value="TODOS">Todos los estados</option>
           <option value="ACTIVO">Activos</option>
@@ -142,8 +146,8 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           <thead>
             <tr>
               <th>DNI</th>
-              <th>Nombre y apellido</th>
-              <th>Correo</th>
+              <th>Nombre Completo</th>
+              <th>Correo Electrónico</th>
               <th>Capacidad</th>
               <th>Estado</th>
               <th className="acciones-col">Acciones</th>
@@ -159,48 +163,53 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
             ) : personasFiltradas.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
-                  No se encontraron personas registradas.
+                  {searchTerm || filtroCapacidad !== "TODOS" || filtroEstado !== "TODOS"
+                    ? "No se encontraron personas con los filtros seleccionados."
+                    : "No hay personas registradas."}
                 </td>
               </tr>
             ) : (
               personasFiltradas.map((p) => {
-                const identificador = p.legajo ?? (p as any).id;
+                const identificador = p.legajo;
                 return (
                   <tr key={identificador}>
                     <td>{p.documento ?? p.dni}</td>
                     <td>{`${p.nombre ?? ""} ${p.apellido ?? ""}`.trim()}</td>
                     <td className="col-correo">{p.email}</td>
-                    <td>{p.capacidad == "OPERAR"? "Operar"
-                        : p.capacidad == "ADMINISTRAR"? "Administrar"
-                        : p.capacidad == "AMBAS"? "Operar y Administrar"
-                        : "-"}</td>
                     <td>
-                      <span
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: "16px",
-                          whiteSpace: "nowrap",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                          backgroundColor: p.activo ? "#dcfce7" : "#fee2e2",
-                          color: p.activo ? "#166534" : "#991b1b",
-                        }}
-                      >
+                      {p.capacidad === "OPERAR"
+                        ? "Operar"
+                        : p.capacidad === "ADMINISTRAR"
+                        ? "Administrar"
+                        : p.capacidad === "AMBAS"
+                        ? "Operar y Administrar"
+                        : "-"}
+                    </td>
+                    <td>
+                      <span className={`badge-status ${p.activo ? "activo" : "inactivo"}`}>
                         {p.activo ? "Activo" : "Inactivo"}
                       </span>
                     </td>
                     <td className="acciones-col">
                       <div className="acciones-btns">
-                        <button className="btn-icon" title="Ver detalle" onClick={() => onDetalleClick(identificador)}>
+                        <button
+                          className="btn-icon btn-ver"
+                          title="Ver detalle"
+                          onClick={() => onDetalleClick(identificador)}
+                        >
                           👁
                         </button>
-                        <button className="btn-icon" title="Editar" onClick={() => onEditarClick(identificador)}>
+                        <button
+                          className="btn-icon btn-editar"
+                          title="Editar"
+                          onClick={() => onEditarClick(identificador)}
+                        >
                           ✎
                         </button>
                         <button
-                          className="btn-icon"
+                          className={`btn-icon ${p.activo ? "btn-eliminar" : "btn-reactivar"}`}
                           title={p.activo ? "Dar de baja" : "Reactivar"}
-                          onClick={() => handleToggleActivo(identificador, p.activo)}
+                          onClick={() => abrirConfirmacion(p)}
                         >
                           {p.activo ? "🗑" : "🔄"}
                         </button>
@@ -213,6 +222,24 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           </tbody>
         </table>
       </div>
+
+      <ConfirmAlertDialog
+        open={dialogAbierto}
+        title={personaAConfirmar?.activo ? "¿Dar de baja persona?" : "¿Reactivar persona?"}
+        description={
+          personaAConfirmar?.activo
+            ? `¿Seguro que deseas dar de baja a "${personaAConfirmar?.nombre} ${personaAConfirmar?.apellido}"?`
+            : `¿Seguro que deseas reactivar a "${personaAConfirmar?.nombre} ${personaAConfirmar?.apellido}"?`
+        }
+        confirmText={personaAConfirmar?.activo ? "Dar de baja" : "Reactivar"}
+        cancelText="Cancelar"
+        isDestructive={Boolean(personaAConfirmar?.activo)}
+        onConfirm={ejecutarToggle}
+        onCancel={() => {
+          setDialogAbierto(false);
+          setPersonaAConfirmar(null);
+        }}
+      />
     </div>
   );
 };

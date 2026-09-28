@@ -17,6 +17,9 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
 }) => {
   const [planes, setPlanes] = useState<PlanConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroFrecuencia, setFiltroFrecuencia] = useState('TODOS');
+  const [filtroTareas, setFiltroTareas] = useState('TODOS');
 
   useEffect(() => {
     let ignore = false;
@@ -41,6 +44,22 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
     };
   }, []);
 
+  const planesFiltrados = planes.filter((p) => {
+    const term = busqueda.toLowerCase().trim();
+    const coincideBusqueda =
+      !term ||
+      (p.nombre?.toLowerCase().includes(term) ?? false) ||
+      (p.nombre_equipo?.toLowerCase().includes(term) ?? false);
+    const coincideFrecuencia =
+      filtroFrecuencia === 'TODOS' ||
+      (p.tareas ?? []).some((t) => t.frecuencia?.toUpperCase() === filtroFrecuencia);
+    const cantTareas = p.tareas?.length ?? 0;
+    const coincideTareas =
+      filtroTareas === 'TODOS' ||
+      (filtroTareas === 'CON_TAREAS' ? cantTareas > 0 : cantTareas === 0);
+    return coincideBusqueda && coincideFrecuencia && coincideTareas;
+  });
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -56,6 +75,37 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
         )}
       </div>
 
+      <div className="filtros-top-bar">
+        <input
+          type="text"
+          className="input-busqueda"
+          placeholder="Buscar por plan o equipo..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+
+        <select
+          value={filtroFrecuencia}
+          onChange={(e) => setFiltroFrecuencia(e.target.value)}
+          className="select-filtro"
+        >
+          <option value="TODOS">Todas las frecuencias</option>
+          <option value="DIARIA">Con tareas diarias</option>
+          <option value="SEMANAL">Con tareas semanales</option>
+          <option value="MENSUAL">Con tareas mensuales</option>
+        </select>
+
+        <select
+          value={filtroTareas}
+          onChange={(e) => setFiltroTareas(e.target.value)}
+          className="select-filtro"
+        >
+          <option value="TODOS">Todos los planes</option>
+          <option value="CON_TAREAS">Con tareas</option>
+          <option value="SIN_TAREAS">Sin tareas</option>
+        </select>
+      </div>
+
       <div className="tabla-wrapper">
         <table className="tabla-custom">
           <thead>
@@ -69,18 +119,20 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando Planes...
                 </td>
               </tr>
-            ) : planes.length === 0 ? (
+            ) : planesFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No hay Planes registrados.
+                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                  {busqueda || filtroFrecuencia !== 'TODOS' || filtroTareas !== 'TODOS'
+                    ? 'No se encontraron planes de limpieza que coincidan con los filtros.'
+                    : 'No hay planes registrados.'}
                 </td>
               </tr>
             ) : (
-              planes.map((p) => (
+              planesFiltrados.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
                   <td>{p.nombre_equipo}</td>

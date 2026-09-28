@@ -3,7 +3,6 @@ import type { PlanConId } from "./tipos";
 import type {TareaConId } from '../tareas/tipos';
 import '../../styles/formularioAlta.css';
 import NuevaTarea from '../tareas/nuevaTarea';
-import EditarTarea from '../tareas/editarTarea';
 import { VerTarea } from '../tareas/verTarea';
 
 interface DetallePlanLimpiezaProps {

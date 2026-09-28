@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
+import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 
 interface ListadoElementosLimpiezaProps {
@@ -21,6 +22,10 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
   // Estados para filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
+
+  // Estado para diálogo de confirmación
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [elementoACambiar, setElementoACambiar] = useState<{ id: number; nombre: string } | null>(null);
 
   const fetchElementos = async () => {
     setLoading(true);
@@ -81,9 +86,16 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     return 'al_dia';
   };
 
-  const handleEfectuarCambio = async (id: number, nombre: string) => {
-    const confirmacion = window.confirm(`¿Confirmar que cambiaste "${nombre}"? Se actualizará la próxima fecha.`);
-    if (!confirmacion) return;
+  const abrirConfirmacionCambio = (id: number, nombre: string) => {
+    setElementoACambiar({ id, nombre });
+    setDialogOpen(true);
+  };
+
+  const ejecutarCambio = async () => {
+    if (!elementoACambiar) return;
+    const { id } = elementoACambiar;
+    setDialogOpen(false);
+    setElementoACambiar(null);
 
     try {
       const res = await fetch(`${API_URL}/elementosDeLimpieza/${id}/cambiar`, {
@@ -118,16 +130,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     return matchNombre && matchEstado;
   });
 
-  const campoFiltroStyle: React.CSSProperties = {
-    padding: '10px 14px',
-    border: '1px solid var(--border, #e5e7eb)',
-    borderRadius: '6px',
-    backgroundColor: 'var(--code-bg, #f7f7f5)',
-    fontSize: '14px',
-    color: 'var(--text-h, #1f2937)',
-    outline: 'none',
-  };
-
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -144,27 +146,19 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
       </div>
 
       {/* Barra de Filtros */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '14px',
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
+      <div className="filtros-top-bar">
         <input
           type="text"
+          className="input-busqueda"
           placeholder="Buscar por nombre..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ ...campoFiltroStyle, minWidth: '280px', flex: '1 1 300px' }}
         />
 
         <select
+          className="select-filtro"
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
-          style={{ ...campoFiltroStyle, cursor: 'pointer', minWidth: '160px' }}
         >
           <option value="TODOS">Todos los estados</option>
           <option value="ACTIVO">Activos</option>
@@ -255,16 +249,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                     </div>
                   </td>
                   <td>
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        backgroundColor: item.activo ? '#dcfce7' : '#fee2e2',
-                        color: item.activo ? '#166534' : '#991b1b',
-                      }}
-                    >
+                    <span className={`badge-status ${item.activo ? 'activo' : 'inactivo'}`}>
                       {item.activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
@@ -273,16 +258,16 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                       {item.activo && item.frecuenciaDeCambio && (
                         <button
                           type="button"
-                          className="btn-icon"
+                          className="btn-icon btn-reactivar"
                           title="Efectuar cambio (actualizar fecha)"
-                          onClick={() => handleEfectuarCambio(item.id, item.nombre)}
+                          onClick={() => abrirConfirmacionCambio(item.id, item.nombre)}
                         >
                           ↻
                         </button>
                       )}
                       <button
                         type="button"
-                        className="btn-icon"
+                        className="btn-icon btn-ver"
                         title="Ver detalles"
                         onClick={() => onDetalleClick(item.id)}
                       >
@@ -290,7 +275,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                       </button>
                       <button
                         type="button"
-                        className="btn-icon"
+                        className="btn-icon btn-editar"
                         title="Editar"
                         onClick={() => onEditarClick(item.id)}
                       >
@@ -304,6 +289,19 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           </tbody>
         </table>
       </div>
+
+      <ConfirmAlertDialog
+        open={dialogOpen}
+        title="Confirmar Recambio"
+        description={`¿Confirmar que realizaste el cambio de "${elementoACambiar?.nombre}"? Se actualizará la próxima fecha de recambio.`}
+        confirmText="Confirmar Recambio"
+        cancelText="Cancelar"
+        onConfirm={ejecutarCambio}
+        onCancel={() => {
+          setDialogOpen(false);
+          setElementoACambiar(null);
+        }}
+      />
     </div>
   );
 };

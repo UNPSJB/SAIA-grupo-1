@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 from fastapi import UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from src.checklist import exceptions, models, schemas
 from src.auditoria.models import AccionAuditoria
@@ -317,13 +317,20 @@ def completar_tarea(
     insumos_guardados = []
     if datos.insumos_utilizados:
         for insumo_dto in datos.insumos_utilizados:
-            query = select(InsumoQuimico)
             if insumo_dto.id:
-                query = query.where(InsumoQuimico.id == insumo_dto.id)
+                quimico: Optional[InsumoQuimico] = db.scalar(
+                    select(InsumoQuimico).where(InsumoQuimico.id == insumo_dto.id)
+                )
             else:
-                query = query.where(InsumoQuimico.nombre == insumo_dto.nombre)
+                nombre_limpio = insumo_dto.nombre.strip().lower()
+                quimico = db.scalar(
+                    select(InsumoQuimico).where(func.lower(InsumoQuimico.nombre) == nombre_limpio)
+                )
+                if not quimico:
+                    quimico = db.scalar(
+                        select(InsumoQuimico).where(func.lower(InsumoQuimico.nombre).contains(nombre_limpio))
+                    )
 
-            quimico: Optional[InsumoQuimico] = db.scalar(query)
             if not quimico:
                 raise exceptions.InsumoQuimicoNoEncontrado()
 
@@ -400,7 +407,6 @@ def listar_checklists(
     if fecha_hasta:
         query = query.where(models.Checklist.fecha <= fecha_hasta)
 
-    # Conversión explícita a list para satisfacer el tipo de retorno List[models.Checklist]
     checklists: List[models.Checklist] = list(db.scalars(query).all())
 
     if estado:
