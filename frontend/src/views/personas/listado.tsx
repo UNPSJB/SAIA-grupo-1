@@ -106,13 +106,13 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: "14px", marginBottom: "20px", flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
         <input
           type="text"
-          placeholder="Buscar por DNI, Nombre o Apellido..."
+          placeholder="Buscar por DNI, nombre o apellido..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ ...campoFiltroStyle, minWidth: "280px" }}
+          style={{ ...campoFiltroStyle, flex: 1, minWidth: "220px" }}
         />
 
         <select
@@ -138,12 +138,11 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
       </div>
 
       <div className="tabla-wrapper">
-        <table className="tabla-custom">
+        <table className="tabla-custom tabla-personas">
           <thead>
             <tr>
               <th>DNI</th>
-              <th>Nombre</th>
-              <th>Apellido</th>
+              <th>Nombre y apellido</th>
               <th>Correo</th>
               <th>Capacidad</th>
               <th>Estado</th>
@@ -153,13 +152,13 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
                   Cargando personas...
                 </td>
               </tr>
             ) : personasFiltradas.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
                   No se encontraron personas registradas.
                 </td>
               </tr>
@@ -169,9 +168,8 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                 return (
                   <tr key={identificador}>
                     <td>{p.documento ?? p.dni}</td>
-                    <td>{p.nombre}</td>
-                    <td>{p.apellido}</td>
-                    <td>{p.email}</td>
+                    <td>{`${p.nombre ?? ""} ${p.apellido ?? ""}`.trim()}</td>
+                    <td className="col-correo">{p.email}</td>
                     <td>{p.capacidad == "OPERAR"? "Operar"
                         : p.capacidad == "ADMINISTRAR"? "Administrar"
                         : p.capacidad == "AMBAS"? "Operar y Administrar"
@@ -179,8 +177,9 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                     <td>
                       <span
                         style={{
-                          padding: "4px 10px",
-                          borderRadius: "12px",
+                          padding: "4px 12px",
+                          borderRadius: "16px",
+                          whiteSpace: "nowrap",
                           fontSize: "12px",
                           fontWeight: 600,
                           backgroundColor: p.activo ? "#dcfce7" : "#fee2e2",
