@@ -17,6 +17,7 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
 }) => {
   const [planes, setPlanes] = useState<PlanConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
 
   useEffect(() => {
     let ignore = false;
@@ -41,6 +42,14 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
     };
   }, []);
 
+  const planesFiltrados = planes.filter((p) => {
+    const term = busqueda.toLowerCase().trim();
+    if (!term) return true;
+    const matchNombre = p.nombre?.toLowerCase().includes(term);
+    const matchEquipo = p.nombre_equipo?.toLowerCase().includes(term);
+    return matchNombre || matchEquipo;
+  });
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -56,6 +65,16 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
         )}
       </div>
 
+      <div className="filtros-top-bar">
+        <input
+          type="text"
+          className="input-busqueda"
+          placeholder="Buscar por plan o equipo..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      </div>
+
       <div className="tabla-wrapper">
         <table className="tabla-custom">
           <thead>
@@ -69,18 +88,18 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando Planes...
                 </td>
               </tr>
-            ) : planes.length === 0 ? (
+            ) : planesFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No hay Planes registrados.
+                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                  No se encontraron planes de limpieza.
                 </td>
               </tr>
             ) : (
-              planes.map((p) => (
+              planesFiltrados.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
                   <td>{p.nombre_equipo}</td>
