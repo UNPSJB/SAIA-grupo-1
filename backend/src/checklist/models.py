@@ -79,10 +79,10 @@ class Checklist(ModeloBase):
         for item in self.items:
             if item.estado != EstadoTareaItem.REALIZADO:
                 dias_limite = DIAS_POR_FRECUENCIA.get(item.frecuencia, 1)
-                if dias_transcurridos >= dias_limite:
-                    return EstadoGeneralChecklist.VENCIDO
+                if dias_transcurridos < dias_limite:
+                    return EstadoGeneralChecklist.PENDIENTE
 
-        return EstadoGeneralChecklist.PENDIENTE
+        return EstadoGeneralChecklist.VENCIDO
 
 
 class ChecklistItem(ModeloBase):
@@ -102,7 +102,7 @@ class ChecklistItem(ModeloBase):
         ForeignKey("tareas.id", ondelete="SET NULL"), nullable=True, index=True
     )
     nombre_tarea: Mapped[str] = mapped_column(String(50), index=True)
-    descripcion_tarea: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    descripcion_tarea: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     frecuencia: Mapped[Frecuencia] = mapped_column(index=True)
 
     estado: Mapped[EstadoTareaItem] = mapped_column(
