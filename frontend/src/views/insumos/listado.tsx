@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { InsumoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
 
 interface ListadoInsumosProps {
   onNuevoClick?: () => void;
@@ -33,20 +34,32 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
 }) => {
   const [insumos, setInsumos] = useState<InsumoConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
 
-  const handleEliminar = async (id?: number) => {
-    if (!id) return;
-    if (!window.confirm('¿Seguro que desea eliminar este insumo?')) return;
+  const [idAEliminar, setIdAEliminar] = useState<number | null>(null);
+  const [nombreAEliminar, setNombreAEliminar] = useState<string>('');
+  const [dialogAbierto, setDialogAbierto] = useState(false);
 
+  const abrirConfirmacion = (i: InsumoConId) => {
+    setIdAEliminar(i.id);
+    setNombreAEliminar(i.nombre);
+    setDialogAbierto(true);
+  };
+
+  const ejecutarEliminar = async () => {
+    if (!idAEliminar) return;
     try {
-      const res = await fetch(`${API_URL}/insumos/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/insumos/${idAEliminar}`, { method: 'DELETE' });
       if (res.ok) {
-        setInsumos((prev) => prev.filter((i) => i.id !== id));
+        setInsumos((prev) => prev.filter((i) => i.id !== idAEliminar));
       } else {
-        alert('No se pudo eliminar el insumo');
+        alert('No se pudo eliminar el ingrediente');
       }
     } catch {
-      alert('Error de conexión al eliminar el insumo');
+      alert('Error de conexión al eliminar el ingrediente');
+    } finally {
+      setDialogAbierto(false);
+      setIdAEliminar(null);
     }
   };
 
@@ -73,6 +86,15 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     };
   }, []);
 
+  const insumosFiltrados = insumos.filter((i) => {
+    const term = busqueda.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      i.nombre.toLowerCase().includes(term) ||
+      i.lote.toLowerCase().includes(term)
+    );
+  });
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -86,6 +108,16 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
             + Agregar Ingrediente
           </button>
         )}
+      </div>
+
+      <div className="filtros-top-bar">
+        <input
+          type="text"
+          placeholder="Buscar ingrediente por nombre o lote..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          className="input-busqueda"
+        />
       </div>
 
       <div className="tabla-wrapper">
@@ -109,14 +141,14 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                   Cargando ingredientes...
                 </td>
               </tr>
-            ) : insumos.length === 0 ? (
+            ) : insumosFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No hay ingredientes registrados.
+                  {busqueda ? 'No se encontraron ingredientes que coincidan con la búsqueda.' : 'No hay ingredientes registrados.'}
                 </td>
               </tr>
             ) : (
-              insumos.map((i) => (
+              insumosFiltrados.map((i) => (
                 <tr key={i.id}>
                   <td style={{ fontWeight: 500 }}>{i.nombre}</td>
                   <td>{i.lote}</td>
@@ -144,7 +176,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                       <button
                         className="btn-icon btn-eliminar"
                         title="Eliminar"
-                        onClick={() => handleEliminar(i.id)}
+                        onClick={() => abrirConfirmacion(i)}
                       >
                         🗑
                       </button>
@@ -156,6 +188,20 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
           </tbody>
         </table>
       </div>
+
+      <ConfirmAlertDialog
+        open={dialogAbierto}
+        title="¿Eliminar ingrediente?"
+        description={`¿Seguro que desea eliminar "${nombreAEliminar}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDestructive={true}
+        onConfirm={ejecutarEliminar}
+        onCancel={() => {
+          setDialogAbierto(false);
+          setIdAEliminar(null);
+        }}
+      />
     </div>
   );
 };

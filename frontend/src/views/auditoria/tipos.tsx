@@ -1,4 +1,4 @@
-export type AccionAuditoria = "CREAR" | "MODIFICAR" | "ELIMINAR";
+export type AccionAuditoria = "CREAR" | "MODIFICAR" | "ELIMINAR" | "crear" | "modificar" | "eliminar" | string;
 
 export interface Auditoria {
   id: number;
