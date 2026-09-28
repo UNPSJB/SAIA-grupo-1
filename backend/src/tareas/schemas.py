@@ -8,7 +8,7 @@ from src.tareas import exceptions
 
 class TareaBase(BaseModel):
     nombre:str=Field(max_length=50)
-    descripcion:str=Field(max_length=100)
+    descripcion:str
     frecuencia:Frecuencia
 
     @field_validator(
@@ -28,19 +28,19 @@ class TareaBase(BaseModel):
 
 class TareaCreate(TareaBase):
     nombre:str= Field(max_length=50)
-    descripcion:str = Field(max_length=100)
+    descripcion:str
     plan_id:int
 
     @field_validator("nombre")
     @classmethod
     def validar_nombre(cls, v):
-                if all(c.isalpha() or c.isspace() for c in v):
+                if v and all(c.isalnum() or c.isspace() for c in v):
                     return v
                 raise exceptions.NombreConNumeros()
     @field_validator("descripcion")
     @classmethod
     def validar_descripcion(cls, v):
-                if re.match(r"^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s°.,-]+$", v):  #este RE le permite al usuario ingresar comas, puntos numeros y espacios
+                if v and re.match(r"^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s°.,-]+$", v):  #este RE le permite al usuario ingresar comas, puntos numeros y espacios
                     return v
                 raise exceptions.DescripcionInvalidad()
     
@@ -53,7 +53,7 @@ class TareaCreate(TareaBase):
 
 class TareaUpdate(TareaBase):
       nombre:Optional[str]= Field(None,max_length=50)
-      descripcion:Optional[str]=Field(None,max_length=100)
+      descripcion:Optional[str]=Field(None)
       plan_id:Optional[int]=None
 
       @field_validator("nombre")
@@ -61,14 +61,16 @@ class TareaUpdate(TareaBase):
       def validar_nombre(cls, v:Optional[str])-> Optional[str]:
                       if v is None:
                         return None
-                      if all(c.isalpha() or c.isspace() for c in v):
+                      if v and all(c.isalnum() or c.isspace() for c in v):
                           return v
                       raise exceptions.NombreConNumeros()
 
       @field_validator("descripcion")
       @classmethod
-      def validar_descripcion(cls, v):
-                      if re.match(r"^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s°.,-]+$", v):  #este RE le permite al usuario ingresar comas, puntos numeros y espacios
+      def validar_descripcion(cls, v:Optional[str]) -> Optional[str]:
+                      if v is None:
+                             return None
+                      if v and re.match(r"^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s°.,-]+$", v):  #este RE le permite al usuario ingresar comas, puntos numeros y espacios
                           return v
                       raise exceptions.DescripcionInvalidad()
           
