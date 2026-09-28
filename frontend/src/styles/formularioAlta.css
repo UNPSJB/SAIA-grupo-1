@@ -165,6 +165,16 @@
   border-bottom: 1px solid var(--border);
 }
 
+.tabla-personas th,
+.tabla-personas td {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.tabla-personas .col-correo {
+  word-break: break-all;
+}
+
 .acciones-col {
   text-align: right;
   width: 140px;
@@ -310,12 +320,6 @@ dialog .btn-guardar{
   border-radius: 6px;
   cursor: pointer;
   transition: opacity 0.2s;
-}
-
-.invertir-css{
-  background-color: #1e1e2f; 
-    color: #e2e8f0;           
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 .form-group td{

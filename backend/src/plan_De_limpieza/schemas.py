@@ -38,7 +38,7 @@ class PlanDeLimpiezaCreate(PlanDeLimpiezaBase):
     def validar_nombre(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return None
-        if all(c.isalnum() or c.isspace() for c in v):
+        if v and all(c.isalnum() or c.isspace() for c in v):
             return v
         raise exceptions.NombreCaracteresRaros()
 
@@ -60,7 +60,7 @@ class PlanDeLimpiezaUpdate(BaseModel):
     def validar_nombre(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return None
-        if all(c.isalnum() or c.isspace() for c in v):
+        if v and all(c.isalnum() or c.isspace() for c in v):
             return v
         raise exceptions.NombreCaracteresRaros()
 
