@@ -33,7 +33,6 @@ const formatDate = (dateStr?: string | null) => {
 export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel, planlimpiezaID }) => {
     const [planLimpieza, setPlanLimp] = useState<PlanConId | null>(null);
     const [loading, setLoading] = useState(true);
-    const [modalAbierto,setModal]=useState(false);
     const [modalVerTarea, setModelVer] = useState(false);
     const [tareaSeleccionada, setTareaSeleccionada]=useState <number | null>(null);
     
@@ -119,25 +118,7 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
              <h2>Tareas</h2>
         </div>
 
-        <div className="accion-agregar">
-            <button type="button" className="btn-agregar" onClick={()=>setModal(true)}>
-                +Agregar Tarea
-            </button>
-            </div>
       </div>
-
-      {modalAbierto &&(
-
-              <div className="modal-abierto">
-                <div className="modal-content">
-                  <NuevaTarea
-                  planID={planLimpieza?.id}
-                  onSuccess={()=> {setModal(false); fetchPlanLimp()}}
-                  onCancel={() => setModal(false)}
-                  />
-
-                </div>
-      </div>)}
 
           {modalVerTarea && (
             <div className="modal-abierto">
