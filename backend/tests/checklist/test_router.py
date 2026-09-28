@@ -34,6 +34,15 @@ def test_post_generar_checklist_fecha_futura_falla(session: Session) -> None:
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
+def test_post_generar_checklist_fecha_pasada_falla(session: Session) -> None:
+    pasado = (date.today() - timedelta(days=1)).isoformat()
+    response = client.post(
+        "/checklist/generar",
+        json={"fecha": pasado, "responsable_legajo": 1},
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
 def test_get_checklists_y_detalle(session: Session) -> None:
     res_crear = client.post(
         "/checklist/generar",

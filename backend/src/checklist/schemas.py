@@ -89,6 +89,8 @@ class ChecklistGenerar(BaseModel):
     def validar_fecha(cls, v: date) -> date:
         if v > date.today():
             raise exceptions.ChecklistFechaFutura()
+        if v < date.today():
+            raise exceptions.ChecklistFechaPasada()
         return v
 
 

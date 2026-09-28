@@ -26,6 +26,10 @@ class ChecklistFechaFutura(BadRequest):
     DETAIL = ErrorCode.CHECKLIST_FECHA_FUTURA
 
 
+class ChecklistFechaPasada(BadRequest):
+    DETAIL = ErrorCode.CHECKLIST_FECHA_PASADA
+
+
 class NoHayTareasCorrespondientes(BadRequest):
     DETAIL = ErrorCode.NO_HAY_TAREAS_CORRESPONDIENTES
 
