@@ -45,3 +45,13 @@ class ChecklistNoModificable(BadRequest):
 class RangoFechasInvalido(BadRequest):
     DETAIL = ErrorCode.RANGO_FECHAS_INVALIDO
 
+class InsumoQuimicoInactivo(BadRequest):
+    DETAIL = ErrorCode.INSUMO_QUIMICO_INACTIVO
+
+
+class InsumoQuimicoNoEncontrado(NotFound):
+    DETAIL = ErrorCode.INSUMO_QUIMICO_NO_ENCONTRADO
+
+
+class CantidadConsumoInvalida(BadRequest):
+    DETAIL = ErrorCode.CANTIDAD_CONSUMO_INVALIDA
