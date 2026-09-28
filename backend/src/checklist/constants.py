@@ -5,6 +5,7 @@ class ErrorCode:
     RESPONSABLE_NO_ENCONTRADO = "El responsable asignado no existe o no está registrado."
     RESPONSABLE_INACTIVO = "El responsable asignado no se encuentra activo."
     CHECKLIST_FECHA_FUTURA = "No se puede generar un checklist para una fecha posterior a la actual."
+    CHECKLIST_FECHA_PASADA = "No se puede generar un checklist para una fecha anterior a la actual. Solo se permite generar para el día de hoy."
     NO_HAY_TAREAS_CORRESPONDIENTES = "No hay tareas de limpieza que correspondan ejecutarse en la fecha indicada."
     IMAGEN_NO_ENCONTRADA = "La imagen solicitada no fue encontrada."
     FORMATO_IMAGEN_INVALIDO = "El archivo enviado no es una imagen válida."

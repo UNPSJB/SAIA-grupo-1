@@ -6,6 +6,7 @@ import type {
   PersonalResumen,
   CompletarTareaPayload,
 } from './tipos';
+import { parsearPasos } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
@@ -463,11 +464,6 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                                 {tarea.estado}
                               </span>
                             </div>
-                            {tarea.descripcion_tarea && (
-                              <p className="tarea-descripcion">
-                                {tarea.descripcion_tarea}
-                              </p>
-                            )}
                           </div>
 
                           {checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (
@@ -481,6 +477,22 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             </button>
                           )}
                         </div>
+
+                        {tarea.descripcion_tarea && (
+                          <div className="tarea-procedimiento-box">
+                            <div className="tarea-procedimiento-header">
+                              <span className="tarea-procedimiento-tag">📋 Procedimiento / Instrucciones a seguir</span>
+                            </div>
+                            <div className="tarea-procedimiento-pasos">
+                              {parsearPasos(tarea.descripcion_tarea).map((paso, idx) => (
+                                <div key={idx} className="paso-item">
+                                  {paso.numero && <span className="paso-numero-badge">{paso.numero}</span>}
+                                  <span className="paso-texto">{paso.texto}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="tarea-detalles-grid">
                           <div className="tarea-detalle-dato">
@@ -564,6 +576,22 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
               <h2>Completar Tarea: {tareaSeleccionada.nombre_tarea}</h2>
               <p>Plan: <strong>{tareaSeleccionada.nombre_plan}</strong></p>
             </div>
+
+            {tareaSeleccionada.descripcion_tarea && (
+              <div className="modal-procedimiento-box">
+                <div className="tarea-procedimiento-header">
+                  <span className="tarea-procedimiento-tag">📋 Procedimiento a seguir:</span>
+                </div>
+                <div className="tarea-procedimiento-pasos">
+                  {parsearPasos(tareaSeleccionada.descripcion_tarea).map((paso, idx) => (
+                    <div key={idx} className="paso-item">
+                      {paso.numero && <span className="paso-numero-badge">{paso.numero}</span>}
+                      <span className="paso-texto">{paso.texto}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleGuardarTarea}>
               <div className="form-group">

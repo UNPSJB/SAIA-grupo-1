@@ -52,21 +52,62 @@ IMAGENES_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def tarea_corresponde_a_fecha(
-    frecuencia: Frecuencia, fecha_inicio_plan: date, fecha_checklist: date
+    frecuencia: Frecuencia,
+    fecha_inicio_plan: date,
+    fecha_checklist: date,
+    db: Optional[Session] = None,
+    tarea_id: Optional[int] = None,
 ) -> bool:
     if fecha_checklist < fecha_inicio_plan:
         return False
 
-    dias = (fecha_checklist - fecha_inicio_plan).days
-
     if frecuencia == Frecuencia.DIARIA:
         return True
-    elif frecuencia == Frecuencia.SEMANAL:
-        return dias % 7 == 0
-    elif frecuencia == Frecuencia.MENSUAL:
-        return (fecha_checklist.day == fecha_inicio_plan.day) or (
-            dias > 0 and dias % 30 == 0
+
+    dias = (fecha_checklist - fecha_inicio_plan).days
+
+    # Si no se pasó db o tarea_id (p. ej. en invocaciones aisladas de pruebas), se usa cálculo clásico
+    if db is None or tarea_id is None:
+        if frecuencia == Frecuencia.SEMANAL:
+            return dias % 7 == 0
+        elif frecuencia == Frecuencia.MENSUAL:
+            return (fecha_checklist.day == fecha_inicio_plan.day) or (
+                dias > 0 and dias % 30 == 0
+            )
+        return False
+
+    # Buscamos la última fecha en que esta tarea fue generada en un checklist activo hasta fecha_checklist
+    ultima_fecha = db.scalar(
+        select(func.max(models.Checklist.fecha))
+        .join(models.ChecklistItem, models.ChecklistItem.checklist_id == models.Checklist.id)
+        .where(
+            models.Checklist.activo == True,
+            models.ChecklistItem.tarea_id == tarea_id,
+            models.Checklist.fecha <= fecha_checklist,
         )
+    )
+
+    if ultima_fecha is not None and ultima_fecha == fecha_checklist:
+        # Ya está incluida en un checklist generado para esta misma fecha
+        return False
+
+    if frecuencia == Frecuencia.SEMANAL:
+        if ultima_fecha is None:
+            # Nunca se generó aún para este plan activo: corresponde generarla
+            return True
+        dias_desde_ultima = (fecha_checklist - ultima_fecha).days
+        ciclo_hoy = dias // 7
+        ciclo_ultima = (ultima_fecha - fecha_inicio_plan).days // 7
+        # Corresponde si pasaron 7 o más días, o si estamos en un ciclo semanal posterior con al menos 4 días de separación
+        return dias_desde_ultima >= 7 or (ciclo_hoy > ciclo_ultima and dias_desde_ultima >= 4)
+
+    elif frecuencia == Frecuencia.MENSUAL:
+        if ultima_fecha is None:
+            return True
+        dias_desde_ultima = (fecha_checklist - ultima_fecha).days
+        ciclo_hoy = dias // 30
+        ciclo_ultima = (ultima_fecha - fecha_inicio_plan).days // 30
+        return dias_desde_ultima >= 30 or (ciclo_hoy > ciclo_ultima and dias_desde_ultima >= 15)
 
     return False
 
@@ -106,7 +147,11 @@ def generar_checklist(
     for plan in planes:
         for tarea in plan.tareas:
             if tarea_corresponde_a_fecha(
-                tarea.frecuencia, plan.fecha_inicio, fecha
+                tarea.frecuencia,
+                plan.fecha_inicio,
+                fecha,
+                db=db,
+                tarea_id=tarea.id,
             ):
                 item = models.ChecklistItem(
                     plan_id=plan.id,

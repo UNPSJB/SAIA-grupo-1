@@ -670,5 +670,187 @@
   background-color: var(--border);
 }
 
+/* === ESTILOS PARA PROCEDIMIENTOS DE TAREAS (POES) === */
+
+.tarea-procedimiento-box {
+  background-color: var(--code-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid #6366f1;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tarea-procedimiento-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tarea-procedimiento-tag {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-h);
+}
+
+.tarea-procedimiento-pasos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.paso-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-h);
+}
+
+.paso-numero-badge {
+  background-color: #6366f1;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.paso-texto {
+  flex: 1;
+}
+
+.modal-procedimiento-box {
+  background-color: var(--code-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid #6366f1;
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* === FILA EXPANDIDA EN HISTORIAL DE CHECKLISTS === */
+
+.btn-expandir-fila {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+  color: var(--text);
+  margin-right: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+.btn-expandir-fila:hover {
+  background-color: var(--border);
+  color: var(--text-h);
+}
+
+.fila-tareas-expandida td {
+  padding: 0 !important;
+  background-color: transparent;
+}
+
+.tareas-expandidas-contenedor {
+  padding: 1.25rem 1.5rem;
+  background-color: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.tareas-expandidas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tareas-expandidas-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-h);
+  font-weight: 700;
+}
+
+.btn-ver-detalle-inline {
+  background: none;
+  border: none;
+  color: var(--accent, #6366f1);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.btn-ver-detalle-inline:hover {
+  background-color: rgba(99, 102, 241, 0.1);
+  text-decoration: underline;
+}
+
+.tareas-expandidas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 0.85rem;
+}
+
+.tarea-expandida-card {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tarea-expandida-card.realizado {
+  border-left: 4px solid #10b981;
+}
+
+.tarea-expandida-card.pendiente {
+  border-left: 4px solid #f59e0b;
+}
+
+.tarea-expandida-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tarea-expandida-nombre {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-h);
+}
+
+.tarea-expandida-plan {
+  font-size: 0.8rem;
+  color: var(--text);
+  background-color: var(--code-bg);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
 
 

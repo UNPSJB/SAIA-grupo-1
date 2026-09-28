@@ -76,13 +76,32 @@ INSUMOS = [
 
 # (nombre, tipo, unidad, stock)
 INSUMOS_QUIMICOS = [
-    ("Lavandina Comercial 55g/l", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 80.0),
-    ("Detergente Neutro", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 30.0),
-    ("Amonio Cuaternario", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 40.0),
-    ("Desengrasante Industrial", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.LITROS, 25.0),
-    ("Sanitizante Multiuso", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.LITROS, 15.0),
-    ("Alcohol al 70%", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 20.0),
-    ("Jabon Liquido de Manos", TipoQuimicoEnum.OTRO, UnidadQuimico.LITROS, 12.0),
+    # Líquidos en Litros (L)
+    ("Lavandina Concentrada 55g", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 80.0),
+    ("Detergente Neutro Espumante", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 50.0),
+    ("Amonio Cuaternario 5ta Generacion", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 40.0),
+    ("Desengrasante Alcalino Pesado", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.LITROS, 30.0),
+    ("Sanitizante Clorado Liquido", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.LITROS, 25.0),
+    
+    # Líquidos y Sprays en Mililitros (ML)
+    ("Alcohol Isopropilico 70 Spray", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.MILILITROS, 5000.0),
+    ("Limpiavidrios Antiestatico", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 3500.0),
+    ("Jabon Antibacterial Clorhexidina", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 4000.0),
+    ("Desinfectante Concentrado Peracetico", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.MILILITROS, 2000.0),
+    
+    # Sólidos y Polvos en Kilogramos (KG)
+    ("Soda Caustica en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 40.0),
+    ("Detergente en Polvo Enzimatico", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.KILOGRAMOS, 35.0),
+    ("Hipoclorito de Calcio Granulado", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.KILOGRAMOS, 20.0),
+    
+    # Sólidos en Gramos (G)
+    ("Pastillas Efervescentes Cloradas", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.GRAMOS, 1500.0),
+    ("Polvo Abrasivo Sanitizante", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.GRAMOS, 2500.0),
+    
+    # Unidades y Paquetes (UN)
+    ("Toallitas Desinfectantes con Alcohol", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.UNIDADES, 60.0),
+    ("Pastillas Sanitizantes de Cisterna", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.UNIDADES, 50.0),
+    ("Bloque Desincrustante Quimico", TipoQuimicoEnum.OTRO, UnidadQuimico.UNIDADES, 24.0),
 ]
 
 
@@ -115,8 +134,8 @@ def main() -> None:
     juan = crear_personal(db, PersonalCreate(documento="30111222", nombre="Juan", apellido="Perez", email="juan.perez@ejemplo.com", capacidad="OPERAR"))
     ana = crear_personal(db, PersonalCreate(documento="30222333", nombre="Ana", apellido="Gomez", email="ana.gomez@ejemplo.com", capacidad="ADMINISTRAR"))
     marcos = crear_personal(db, PersonalCreate(documento="30333444", nombre="Marcos", apellido="Diaz", email="marcos.diaz@ejemplo.com", capacidad="AMBAS"))
-    crear_personal(db, PersonalCreate(documento="30444555", nombre="Lucia", apellido="Fernandez", email="lucia.fernandez@ejemplo.com", capacidad="OPERAR"))
-    crear_personal(db, PersonalCreate(documento="30555666", nombre="Sofia", apellido="Martinez", email="sofia.martinez@ejemplo.com", capacidad="OPERAR"))
+    lucia = crear_personal(db, PersonalCreate(documento="30444555", nombre="Lucia", apellido="Fernandez", email="lucia.fernandez@ejemplo.com", capacidad="OPERAR"))
+    sofia = crear_personal(db, PersonalCreate(documento="30555666", nombre="Sofia", apellido="Martinez", email="sofia.martinez@ejemplo.com", capacidad="OPERAR"))
 
     print("Creando insumos (materias primas)...")
     for nombre, lote, dias_recepcion, dias_venc, cant, stock, medida in INSUMOS:
@@ -151,7 +170,7 @@ def main() -> None:
     crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Cepillo de Mesada", frecuenciaDeCambio=60))
     crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Guantes Limpieza", frecuenciaDeCambio=None))
 
-    print("Creando planes de limpieza y tareas...")
+    print("Creando planes de limpieza y tareas (con procedimientos paso a paso)...")
     fecha_inicio_planes = hoy.date() - timedelta(days=21)
     plan_heladera = crear_plan(db, PlanDeLimpiezaCreate(nombre="Plan Heladera", fecha_inicio=fecha_inicio_planes, equipo_id=heladera.id))
     plan_freezer = crear_plan(db, PlanDeLimpiezaCreate(nombre="Plan Freezer", fecha_inicio=fecha_inicio_planes, equipo_id=freezer.id))
@@ -159,51 +178,197 @@ def main() -> None:
     plan_amasadora = crear_plan(db, PlanDeLimpiezaCreate(nombre="Plan Amasadora", fecha_inicio=fecha_inicio_planes, equipo_id=amasadora.id))
     plan_horno = crear_plan(db, PlanDeLimpiezaCreate(nombre="Plan Horno", fecha_inicio=fecha_inicio_planes, equipo_id=horno.id))
 
-    crear_tarea(db, TareaCreate(nombre="Desinfeccion Diaria", descripcion="Desinfectar superficies con alcohol", frecuencia=Frecuencia.DIARIA, plan_id=plan_heladera.id))
-    crear_tarea(db, TareaCreate(nombre="Descongelado Semanal", descripcion="Descongelar y limpiar bandejas", frecuencia=Frecuencia.SEMANAL, plan_id=plan_heladera.id))
-    crear_tarea(db, TareaCreate(nombre="Limpieza Diaria", descripcion="Limpiar exterior e interior del freezer", frecuencia=Frecuencia.DIARIA, plan_id=plan_freezer.id))
-    crear_tarea(db, TareaCreate(nombre="Revision Mensual", descripcion="Revisar burletes y temperatura", frecuencia=Frecuencia.MENSUAL, plan_id=plan_freezer.id))
-    crear_tarea(db, TareaCreate(nombre="Limpieza de Pisos", descripcion="Barrer y trapear piso de la camara con lavandina", frecuencia=Frecuencia.DIARIA, plan_id=plan_camara.id))
-    crear_tarea(db, TareaCreate(nombre="Limpieza Estantes", descripcion="Vaciar y desinfectar estantes con amonio cuaternario", frecuencia=Frecuencia.SEMANAL, plan_id=plan_camara.id))
-    crear_tarea(db, TareaCreate(nombre="Limpieza de Batea", descripcion="Retirar restos de masa y sanitizar batea y gancho", frecuencia=Frecuencia.DIARIA, plan_id=plan_amasadora.id))
-    crear_tarea(db, TareaCreate(nombre="Desengrase Interior", descripcion="Desengrasar paredes internas y bandejas del horno", frecuencia=Frecuencia.SEMANAL, plan_id=plan_horno.id))
-    crear_tarea(db, TareaCreate(nombre="Limpieza de Burletes", descripcion="Limpiar burletes y vidrio de la puerta", frecuencia=Frecuencia.MENSUAL, plan_id=plan_horno.id))
+    t_heladera_diaria = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Desinfeccion de Superficies",
+            descripcion="Paso 1. Retirar temporalmente alimentos del estante. Paso 2. Pulverizar Alcohol Isopropilico 70 Spray a 20 cm de distancia. Paso 3. Dejar actuar durante 5 minutos para eliminar carga microbiana. Paso 4. Secar con paño descartable y restablecer la mercaderia.",
+            frecuencia=Frecuencia.DIARIA,
+            plan_id=plan_heladera.id,
+        ),
+    )
+    t_heladera_semanal = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Descongelado y Lavado Profundo",
+            descripcion="Paso 1. Desconectar la unidad electrica. Paso 2. Trasladar productos a camara auxiliar. Paso 3. Retirar rejillas y lavar en bacha con Detergente Neutro Espumante diluido. Paso 4. Enjuagar con agua caliente a 60°. Paso 5. Aplicar Sanitizante Clorado Liquido en paredes y dejar secar.",
+            frecuencia=Frecuencia.SEMANAL,
+            plan_id=plan_heladera.id,
+        ),
+    )
+
+    t_freezer_diaria = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Sanitizacion Diaria de Puerta y Manija",
+            descripcion="Paso 1. Limpiar manija exterior y panel con Toallitas Desinfectantes con Alcohol. Paso 2. Rociar marco con Alcohol Isopropilico 70 Spray. Paso 3. Dejar evaporar al aire sin frotar con trapo sucio.",
+            frecuencia=Frecuencia.DIARIA,
+            plan_id=plan_freezer.id,
+        ),
+    )
+    t_freezer_mensual = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Desinfeccion Mensual y Control de Burletes",
+            descripcion="Paso 1. Inspeccionar burletes de goma imantada. Paso 2. Lavar con Detergente Neutro Espumante tibio usando esponja suave. Paso 3. Secar minuciosamente los pliegues para evitar moho. Paso 4. Pulverizar solucion de Amonio Cuaternario 5ta Generacion y cerrar hermeticamente.",
+            frecuencia=Frecuencia.MENSUAL,
+            plan_id=plan_freezer.id,
+        ),
+    )
+
+    t_camara_diaria = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Lavado y Sanitizacion de Pisos",
+            descripcion="Paso 1. Barrer residuos solidos hacia la salida. Paso 2. Preparar solucion de Lavandina Concentrada 55g al 1 por ciento en balde con agua fria. Paso 3. Fregar con cepillo duro desde el fondo hacia el desague. Paso 4. Dejar actuar 10 minutos y escurrir.",
+            frecuencia=Frecuencia.DIARIA,
+            plan_id=plan_camara.id,
+        ),
+    )
+    t_camara_semanal = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Desinfeccion de Estanterias y Racks",
+            descripcion="Paso 1. Despejar bandejas de cada nivel. Paso 2. Preparar solucion de Amonio Cuaternario 5ta Generacion a razon de 5 ml por litro de agua. Paso 3. Pulverizar sobre todos los perfiles de acero inoxidable. Paso 4. Respetar 10 minutos de contacto antes de reubicar insumos.",
+            frecuencia=Frecuencia.SEMANAL,
+            plan_id=plan_camara.id,
+        ),
+    )
+
+    t_amasadora_diaria = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Limpieza y Desinfeccion de Batea",
+            descripcion="Paso 1. Cortar energia electrica y accionar parada de emergencia. Paso 2. Retirar restos secos de harina y masa con espatula plastica. Paso 3. Disolver 150 gramos de Detergente en Polvo Enzimatico en agua tibia a 45°. Paso 4. Cepillar batea y gancho espiral. Paso 5. Enjuagar con abundante agua potable y rociar con Alcohol Isopropilico 70 Spray.",
+            frecuencia=Frecuencia.DIARIA,
+            plan_id=plan_amasadora.id,
+        ),
+    )
+    t_amasadora_semanal = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Desengrase General de Motor y Guardas",
+            descripcion="Paso 1. Verificar motor apagado. Paso 2. Aplicar Desengrasante Alcalino Pesado con trapo humedo sobre carcasa externa. Paso 3. Retirar gratitud acumulada frotando en movimientos circulares. Paso 4. Repasar con paño humedo limpio y secar.",
+            frecuencia=Frecuencia.SEMANAL,
+            plan_id=plan_amasadora.id,
+        ),
+    )
+
+    t_horno_diaria = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Limpieza de Vidrio y Burlete Frontal",
+            descripcion="Paso 1. Pulverizar Limpiavidrios Antiestatico sobre el cristal exterior e interior. Paso 2. Limpiar con papel tissue descartable. Paso 3. Repasar la goma selladora con Detergente Neutro Espumante y secar suavemente.",
+            frecuencia=Frecuencia.DIARIA,
+            plan_id=plan_horno.id,
+        ),
+    )
+    t_horno_semanal = crear_tarea(
+        db,
+        TareaCreate(
+            nombre="Desengrase Intensivo de Camara",
+            descripcion="Paso 1. Esperar a que el horno baje a temperatura tibia menor a 50°. Paso 2. Colocar guantes y proteccion ocular. Paso 3. Pulverizar Desengrasante Alcalino Pesado en paredes, turbina y techo interno. Paso 4. Dejar actuar 15 minutos para emulsionar grasas. Paso 5. Fregar con fibra abrasiva y enjuagar 3 veces con agua limpia.",
+            frecuencia=Frecuencia.SEMANAL,
+            plan_id=plan_horno.id,
+        ),
+    )
 
     db.commit()
 
-    print("Generando historial de checklists completados (dias anteriores)...")
-    insumos_rotativos = [
-        ("Lavandina Comercial 55g/l", "L"),
-        ("Detergente Neutro", "L"),
-        ("Amonio Cuaternario", "L"),
-        ("Sanitizante Multiuso", "L"),
+    print("Generando historial de checklists completados (dias anteriores con insumos y procedimientos)...")
+    tareas_diarias = [
+        {
+            "plan": plan_heladera,
+            "tarea": t_heladera_diaria,
+            "insumos": [
+                {"nombre": "Alcohol Isopropilico 70 Spray", "cantidad": 200.0, "unidad": "ML"}
+            ]
+        },
+        {
+            "plan": plan_freezer,
+            "tarea": t_freezer_diaria,
+            "insumos": [
+                {"nombre": "Toallitas Desinfectantes con Alcohol", "cantidad": 2.0, "unidad": "UN"},
+                {"nombre": "Alcohol Isopropilico 70 Spray", "cantidad": 50.0, "unidad": "ML"}
+            ]
+        },
+        {
+            "plan": plan_camara,
+            "tarea": t_camara_diaria,
+            "insumos": [
+                {"nombre": "Lavandina Concentrada 55g", "cantidad": 0.25, "unidad": "L"}
+            ]
+        },
+        {
+            "plan": plan_amasadora,
+            "tarea": t_amasadora_diaria,
+            "insumos": [
+                {"nombre": "Detergente en Polvo Enzimatico", "cantidad": 150.0, "unidad": "G"},
+                {"nombre": "Alcohol Isopropilico 70 Spray", "cantidad": 100.0, "unidad": "ML"}
+            ]
+        },
+        {
+            "plan": plan_horno,
+            "tarea": t_horno_diaria,
+            "insumos": [
+                {"nombre": "Limpiavidrios Antiestatico", "cantidad": 80.0, "unidad": "ML"},
+                {"nombre": "Detergente Neutro Espumante", "cantidad": 0.05, "unidad": "L"}
+            ]
+        },
     ]
-    tareas_diarias = (
-        (plan_heladera, "Desinfeccion Diaria", "Desinfectar superficies con alcohol"),
-        (plan_freezer, "Limpieza Diaria", "Limpiar exterior e interior del freezer"),
-        (plan_camara, "Limpieza de Pisos", "Barrer y trapear piso de la camara con lavandina"),
-        (plan_amasadora, "Limpieza de Batea", "Retirar restos de masa y sanitizar batea y gancho"),
-    )
-    responsables = [juan, ana, marcos]
-    for i, offset in enumerate(range(10, 0, -1)):
+
+    tareas_semanales = [
+        {
+            "plan": plan_heladera,
+            "tarea": t_heladera_semanal,
+            "insumos": [
+                {"nombre": "Detergente Neutro Espumante", "cantidad": 0.4, "unidad": "L"},
+                {"nombre": "Sanitizante Clorado Liquido", "cantidad": 0.2, "unidad": "L"}
+            ]
+        },
+        {
+            "plan": plan_camara,
+            "tarea": t_camara_semanal,
+            "insumos": [
+                {"nombre": "Amonio Cuaternario 5ta Generacion", "cantidad": 0.4, "unidad": "L"}
+            ]
+        },
+        {
+            "plan": plan_horno,
+            "tarea": t_horno_semanal,
+            "insumos": [
+                {"nombre": "Desengrasante Alcalino Pesado", "cantidad": 0.5, "unidad": "L"},
+                {"nombre": "Soda Caustica en Escamas", "cantidad": 0.25, "unidad": "KG"}
+            ]
+        },
+    ]
+
+    responsables = [juan, ana, marcos, lucia, sofia]
+    for i, offset in enumerate(range(12, 0, -1)):
         fecha = datetime.now().date() - timedelta(days=offset)
         responsable = responsables[i % len(responsables)]
         checklist = Checklist(fecha=fecha, responsable_legajo=responsable.legajo, activo=True)
-        for j, (plan, tarea_nombre, tarea_desc) in enumerate(tareas_diarias):
-            # algunos dias quedan tareas sin hacer para que el cumplimiento no sea siempre 100%
-            realizada = not (i % 4 == 3 and j == len(tareas_diarias) - 1)
-            nombre_insumo, unidad_insumo = insumos_rotativos[(i + j) % len(insumos_rotativos)]
+
+        lista_tareas_del_dia = list(tareas_diarias)
+        if offset % 7 == 0:
+            lista_tareas_del_dia.extend(tareas_semanales)
+
+        for j, t_info in enumerate(lista_tareas_del_dia):
+            plan = t_info["plan"]
+            tarea = t_info["tarea"]
+            # En algunos dias dejamos 1 tarea sin hacer para variacion realista de metricas
+            realizada = not (i % 4 == 0 and j == len(lista_tareas_del_dia) - 1)
             item = ChecklistItem(
                 plan_id=plan.id,
                 nombre_plan=plan.nombre,
-                tarea_id=None,
-                nombre_tarea=tarea_nombre,
-                descripcion_tarea=tarea_desc,
-                frecuencia=Frecuencia.DIARIA,
+                tarea_id=tarea.id,
+                nombre_tarea=tarea.nombre,
+                descripcion_tarea=tarea.descripcion,
+                frecuencia=tarea.frecuencia,
                 estado=EstadoTareaItem.REALIZADO if realizada else EstadoTareaItem.PENDIENTE,
                 responsable_legajo=responsable.legajo if realizada else None,
                 insumos_utilizados=json.dumps(
-                    [{"nombre": nombre_insumo, "cantidad": 0.5 + (i + j) % 3, "unidad": unidad_insumo}],
+                    t_info["insumos"],
                     ensure_ascii=False,
                 ) if realizada else None,
                 fecha_hora_fin=datetime.combine(fecha, datetime.min.time()) + timedelta(hours=9, minutes=15 * j) if realizada else None,
@@ -212,27 +377,29 @@ def main() -> None:
         db.add(checklist)
     db.commit()
 
-    print("Generando el checklist de hoy (queda pendiente para que lo pruebes en la app)...")
+    print("Generando el checklist de hoy (para probarlo en la app)...")
     checklist_hoy = generar_checklist(db, ChecklistGenerar(responsable_legajo=marcos.legajo, fecha=date.today()))
-    # completamos solo el primero, el resto queda pendiente para probar la UI
-    completar_tarea(
-        db,
-        checklist_hoy.id,
-        checklist_hoy.items[0].id,
-        CompletarTareaSchema(
-            responsable_legajo=marcos.legajo,
-            insumos_utilizados=[InsumoUtilizadoPlaceholder(nombre="Amonio Cuaternario", cantidad=2.0, unidad="L")],
-        ),
-    )
+    if checklist_hoy.items:
+        completar_tarea(
+            db,
+            checklist_hoy.id,
+            checklist_hoy.items[0].id,
+            CompletarTareaSchema(
+                responsable_legajo=marcos.legajo,
+                insumos_utilizados=[
+                    InsumoUtilizadoPlaceholder(nombre="Alcohol Isopropilico 70 Spray", cantidad=200.0, unidad="ML")
+                ],
+            ),
+        )
 
     id_checklist_hoy = checklist_hoy.id
     db.close()
-    print("\nListo. Base alimentada:")
-    print(f"  - 5 personas, {len(INSUMOS)} insumos (alimentos), {len(INSUMOS_QUIMICOS)} insumos quimicos")
-    print("  - 10 equipos (1 inactivo), 6 elementos de limpieza")
-    print("  - 5 planes de limpieza con 9 tareas en total")
-    print("  - 10 checklists de dias anteriores (para probar el historial y el dashboard)")
-    print(f"  - 1 checklist de hoy (checklist #{id_checklist_hoy}), parcialmente completado (para probarlo en vivo)")
+    print("\nListo. Base alimentada exitosamente:")
+    print(f"  - 5 personas, {len(INSUMOS)} insumos (materias primas), {len(INSUMOS_QUIMICOS)} insumos quimicos con unidades variadas (L, ML, KG, G, UN)")
+    print("  - 10 equipos, 6 elementos de limpieza")
+    print("  - 5 planes de limpieza con 10 tareas con procedimientos paso a paso")
+    print("  - 12 checklists historicos completados con registro detallado de insumos")
+    print(f"  - 1 checklist de hoy (checklist #{id_checklist_hoy}), con tarea inicial completada y restantes pendientes para prueba en vivo")
 
 
 if __name__ == "__main__":

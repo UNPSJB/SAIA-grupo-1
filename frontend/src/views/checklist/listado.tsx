@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Checklist, PersonalResumen } from './tipos';
+import { parsearPasos } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
@@ -33,6 +34,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   const [fechaHasta, setFechaHasta] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState('');
   const [checklistHoyId, setChecklistHoyId] = useState<number | null>(null);
+  const [checklistExpandido, setChecklistExpandido] = useState<number | null>(null);
 
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
@@ -181,6 +183,9 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         const nueva = await res.json();
         setModalGenerar(false);
         setResponsableLegajo('');
+        if (nueva.fecha === hoy) {
+          setChecklistHoyId(nueva.id);
+        }
         setChecklistHoyId(nueva.id);
         await recargarChecklists();
         onDetalleClick(nueva.id);
@@ -222,7 +227,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             <button
               onClick={() => setModalGenerar(true)}
               className="btn-guardar"
-              title="Generar checklist para las tareas de hoy"
+              title="Generar checklist del día de hoy"
             >
               + Generar Checklist del Día
             </button>
@@ -318,45 +323,105 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                     ? 'parcial'
                     : 'vacio';
 
+                const estaExpandido = checklistExpandido === c.id;
+
                 return (
-                  <tr key={c.id}>
-                    <td>
-                      <strong>#{c.id}</strong>
-                    </td>
-                    <td>{c.fecha}</td>
-                    <td>
-                      <span className={`badge-estado ${c.estado}`}>
-                        {c.estado}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="barra-progreso-wrapper">
-                        <div className="barra-progreso-track">
-                          <div
-                            className={`barra-progreso-fill ${fillClass}`}
-                            style={{ width: `${c.porcentaje_cumplimiento}%` }}
-                          />
-                        </div>
-                        <span className="barra-progreso-texto">
-                          {c.porcentaje_cumplimiento}%
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      {c.nombre_responsable || `Legajo: ${c.responsable_legajo}`}
-                    </td>
-                    <td className="acciones-col">
-                      <div className="acciones-btns">
+                  <React.Fragment key={c.id}>
+                    <tr>
+                      <td>
                         <button
-                          className="btn-icon btn-ver"
-                          title="Ver detalle del checklist"
-                          onClick={() => onDetalleClick(c.id)}
+                          type="button"
+                          className="btn-expandir-fila"
+                          onClick={() => setChecklistExpandido((prev) => (prev === c.id ? null : c.id))}
+                          title={estaExpandido ? 'Ocultar tareas y procedimientos' : 'Ver tareas y procedimientos'}
                         >
-                          👁
+                          {estaExpandido ? '▲' : '▼'}
                         </button>
-                      </div>
-                    </td>
-                  </tr>
+                        <strong>#{c.id}</strong>
+                      </td>
+                      <td>{c.fecha}</td>
+                      <td>
+                        <span className={`badge-estado ${c.estado}`}>
+                          {c.estado}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="barra-progreso-wrapper">
+                          <div className="barra-progreso-track">
+                            <div
+                              className={`barra-progreso-fill ${fillClass}`}
+                              style={{ width: `${c.porcentaje_cumplimiento}%` }}
+                            />
+                          </div>
+                          <span className="barra-progreso-texto">
+                            {c.porcentaje_cumplimiento}%
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        {c.nombre_responsable || `Legajo: ${c.responsable_legajo}`}
+                      </td>
+                      <td className="acciones-col">
+                        <div className="acciones-btns">
+                          <button
+                            className="btn-icon btn-ver"
+                            title="Ver detalle del checklist"
+                            onClick={() => onDetalleClick(c.id)}
+                          >
+                            👁
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {estaExpandido && (
+                      <tr className="fila-tareas-expandida">
+                        <td colSpan={6}>
+                          <div className="tareas-expandidas-contenedor">
+                            <div className="tareas-expandidas-header">
+                              <h4>Tareas y Procedimientos del Checklist #{c.id} ({c.fecha})</h4>
+                              <button
+                                type="button"
+                                className="btn-ver-detalle-inline"
+                                onClick={() => onDetalleClick(c.id)}
+                              >
+                                Abrir detalle completo y ejecutar ➔
+                              </button>
+                            </div>
+                            <div className="tareas-expandidas-grid">
+                              {c.items && c.items.length > 0 ? (
+                                c.items.map((item) => (
+                                  <div key={item.id} className={`tarea-expandida-card ${item.estado}`}>
+                                    <div className="tarea-expandida-top">
+                                      <span className="tarea-expandida-nombre">{item.nombre_tarea}</span>
+                                      <span className="tarea-expandida-plan">{item.nombre_plan}</span>
+                                      <span className={`badge-estado ${item.estado}`}>{item.estado}</span>
+                                    </div>
+                                    {item.descripcion_tarea && (
+                                      <div className="tarea-procedimiento-box">
+                                        <div className="tarea-procedimiento-header">
+                                          <span className="tarea-procedimiento-tag">📋 Procedimiento / Instrucciones:</span>
+                                        </div>
+                                        <div className="tarea-procedimiento-pasos">
+                                          {parsearPasos(item.descripcion_tarea).map((paso, idx) => (
+                                            <div key={idx} className="paso-item">
+                                              {paso.numero && <span className="paso-numero-badge">{paso.numero}</span>}
+                                              <span className="paso-texto">{paso.texto}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <p style={{ color: 'var(--text)', margin: 0 }}>No hay tareas registradas en este checklist.</p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })
             )}
@@ -369,7 +434,9 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
           <div className="modal-content">
             <div className="modal-header">
               <h2>Generar Checklist del Día</h2>
-              <p>Fecha programada: <strong>{hoy}</strong></p>
+              <p>
+                Fecha programada: <strong>{hoy}</strong>
+              </p>
             </div>
 
             <form onSubmit={handleGenerarChecklist}>
@@ -400,7 +467,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                   className="btn-guardar"
                   disabled={generando || !responsableLegajo}
                 >
-                  {generando ? 'Generando...' : 'Generar Checklist'}
+                  {generando ? 'Generando...' : 'Generar Checklist del Día'}
                 </button>
                 <button
                   type="button"

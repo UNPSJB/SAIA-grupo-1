@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.equipos import schemas, services
 
+from typing import Optional
+
 router = APIRouter()
 
 @router.post("/", response_model=schemas.Equipo)
@@ -11,8 +13,8 @@ async def create_equipo(equipo: schemas.EquipoCreate, db: Session = Depends(get_
     return services.crear_equipo(db, equipo)
 
 @router.get("/", response_model=list[schemas.Equipo])
-async def read_equipos(db: Session = Depends(get_db)):
-    return services.listar_equipos(db)
+async def read_equipos(estado: Optional[schemas.Estado] = None, db: Session = Depends(get_db)):
+    return services.listar_equipos(db, estado=estado)
 
 @router.get("/{equipo_id}", response_model=schemas.Equipo)
 async def read_equipo(equipo_id: int, db: Session = Depends(get_db)):
@@ -25,3 +27,11 @@ async def editar_equipo(equipo_id: int, equipo: schemas.EquipoUpdate, db: Sessio
 @router.delete("/{equipo_id}", response_model=schemas.Equipo)
 async def eliminar_equipo(equipo_id: int, db: Session = Depends(get_db)):
     return services.eliminar_equipo(db, equipo_id)
+
+@router.patch("/{equipo_id}/reactivar", response_model=schemas.Equipo)
+async def reactivar_equipo(equipo_id: int, db: Session = Depends(get_db)):
+    return services.reactivar_equipo(db, equipo_id)
+
+@router.put("/{equipo_id}/reactivar", response_model=schemas.Equipo)
+async def reactivar_equipo_put(equipo_id: int, db: Session = Depends(get_db)):
+    return services.reactivar_equipo(db, equipo_id)
