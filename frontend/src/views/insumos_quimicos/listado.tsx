@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { InsumoQuimico } from './tipos';
 import '../../styles/formularioAlta.css';
+import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
 
 interface Props {
   onNuevo: () => void;
@@ -10,26 +11,26 @@ interface Props {
 
 export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onVerDetalle }) => {
   const [insumos, setInsumos] = useState<InsumoQuimico[]>([]);
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('TODOS');
-  const [filtroEstado, setFiltroEstado] = useState('TODOS');
-  const [cargando, setCargando] = useState(false);
+  const [cargando, setCargando] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [busqueda, setBusqueda] = useState<string>('');
+  const [filtroTipo, setFiltroTipo] = useState<string>('TODOS');
+  const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
+
   const [quimicoAConfirmar, setQuimicoAConfirmar] = useState<InsumoQuimico | null>(null);
-  const dialogConfirmar = useRef<HTMLDialogElement>(null);
+  const [dialogAbierto, setDialogAbierto] = useState<boolean>(false);
 
   const cargarDatos = async () => {
     try {
       setCargando(true);
+      setError(null);
       const res = await fetch('http://localhost:8000/api/insumos-quimicos');
-      if (!res.ok) {
-        console.error('Error del servidor:', await res.text());
-        throw new Error('Error al cargar insumos');
-      }
+      if (!res.ok) throw new Error('Error al cargar insumos químicos');
       const data = await res.json();
-      setInsumos(Array.isArray(data) ? data : []);
+      setInsumos(data);
     } catch (err) {
-      console.error(err);
-      setInsumos([]);
+      setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setCargando(false);
     }
@@ -39,25 +40,21 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
     cargarDatos();
   }, []);
 
-  const abrirConfirmacion = (item: InsumoQuimico) => {
-    setQuimicoAConfirmar(item);
-    dialogConfirmar.current?.showModal();
-  };
-
-  const cerrarConfirmacion = () => {
-    dialogConfirmar.current?.close();
-    setQuimicoAConfirmar(null);
+  const abrirConfirmacion = (insumo: InsumoQuimico) => {
+    setQuimicoAConfirmar(insumo);
+    setDialogAbierto(true);
   };
 
   const ejecutarToggle = async () => {
     if (!quimicoAConfirmar) return;
     try {
       await fetch(`http://localhost:8000/api/insumos-quimicos/${quimicoAConfirmar.id}/toggle`, { method: 'PATCH' });
-      cerrarConfirmacion();
       cargarDatos();
     } catch (err) {
       console.error(err);
-      cerrarConfirmacion();
+    } finally {
+      setDialogAbierto(false);
+      setQuimicoAConfirmar(null);
     }
   };
 
@@ -73,16 +70,6 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
       })
     : [];
 
-  const campoFiltroStyle: React.CSSProperties = {
-    padding: '10px 12px',
-    border: '1px solid var(--border)',
-    borderRadius: '6px',
-    backgroundColor: 'var(--code-bg)',
-    fontSize: '14px',
-    color: 'var(--text-h)',
-    outline: 'none',
-  };
-
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -96,19 +83,19 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div className="filtros-top-bar">
         <input
           type="text"
           placeholder="Buscar por nombre..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          style={{ ...campoFiltroStyle, flex: 1, minWidth: '220px' }}
+          className="input-busqueda"
         />
 
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
-          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+          className="select-filtro"
         >
           <option value="TODOS">Todos los tipos</option>
           <option value="DETERGENTE">Detergente</option>
@@ -121,7 +108,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
         <select
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
-          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+          className="select-filtro"
         >
           <option value="TODOS">Todos los estados</option>
           <option value="ACTIVO">Activo</option>
@@ -129,14 +116,16 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
         </select>
       </div>
 
+      {error && <div className="alerta-error">{error}</div>}
+
       <div className="tabla-wrapper">
         <table className="tabla-custom">
           <thead>
             <tr>
               <th>Nombre</th>
               <th>Tipo</th>
-              <th>Existencias</th>
-              <th>Unidad</th>
+              <th>Stock Actual</th>
+              <th>Unidad de Medida</th>
               <th>Estado</th>
               <th className="acciones-col">Acciones</th>
             </tr>
@@ -151,40 +140,33 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
             ) : insumosFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No hay insumos químicos registrados.
+                  {busqueda || filtroTipo !== 'TODOS' || filtroEstado !== 'TODOS'
+                    ? 'No se encontraron insumos químicos que coincidan con los filtros.'
+                    : 'No hay insumos químicos registrados.'}
                 </td>
               </tr>
             ) : (
               insumosFiltrados.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.nombre}</td>
+                  <td style={{ fontWeight: 500 }}>{item.nombre}</td>
                   <td>{item.tipo}</td>
                   <td>{item.stock_actual}</td>
                   <td>{item.unidad_medida}</td>
                   <td>
-                    <span
-                      style={{
-                        padding: '4px 12px',
-                        borderRadius: '16px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        backgroundColor: item.activo ? '#dcfce7' : '#fee2e2',
-                        color: item.activo ? '#166534' : '#991b1b',
-                      }}
-                    >
+                    <span className={`badge-status ${item.activo ? 'activo' : 'inactivo'}`}>
                       {item.activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
-                      <button className="btn-icon" title="Ver Detalle" onClick={() => onVerDetalle(item)}>
+                      <button className="btn-icon btn-ver" title="Ver Detalle" onClick={() => onVerDetalle(item)}>
                         👁
                       </button>
-                      <button className="btn-icon" title="Editar" onClick={() => onEditar(item)}>
+                      <button className="btn-icon btn-editar" title="Editar" onClick={() => onEditar(item)}>
                         ✎
                       </button>
                       <button
-                        className="btn-icon"
+                        className={`btn-icon ${item.activo ? 'btn-eliminar' : 'btn-reactivar'}`}
                         title={item.activo ? 'Dar de baja' : 'Reactivar'}
                         onClick={() => abrirConfirmacion(item)}
                       >
@@ -199,21 +181,23 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
         </table>
       </div>
 
-      <dialog ref={dialogConfirmar} className="seguro">
-        <h2>
-          {quimicoAConfirmar?.activo ? '¿Dar de baja insumo químico?' : '¿Reactivar insumo químico?'}
-        </h2>
-        <p>
-          ¿Estás seguro de que deseas {quimicoAConfirmar?.activo ? 'desactivar' : 'reactivar'} el insumo "
-          {quimicoAConfirmar?.nombre}"?
-        </p>
-        <button type="button" className="btn-eliminar" onClick={ejecutarToggle}>
-          {quimicoAConfirmar?.activo ? 'Confirmar Baja' : 'Confirmar Reactivación'}
-        </button>
-        <button type="button" className="btn-cancelar" onClick={cerrarConfirmacion}>
-          Cancelar
-        </button>
-      </dialog>
+      <ConfirmAlertDialog
+        open={dialogAbierto}
+        title={quimicoAConfirmar?.activo ? '¿Dar de baja insumo químico?' : '¿Reactivar insumo químico?'}
+        description={
+          quimicoAConfirmar?.activo
+            ? `¿Estás seguro de que deseas desactivar el insumo "${quimicoAConfirmar?.nombre}"?`
+            : `¿Estás seguro de que deseas reactivar el insumo "${quimicoAConfirmar?.nombre}"?`
+        }
+        confirmText={quimicoAConfirmar?.activo ? 'Confirmar Baja' : 'Confirmar Reactivación'}
+        cancelText="Cancelar"
+        isDestructive={Boolean(quimicoAConfirmar?.activo)}
+        onConfirm={ejecutarToggle}
+        onCancel={() => {
+          setDialogAbierto(false);
+          setQuimicoAConfirmar(null);
+        }}
+      />
     </div>
   );
 };

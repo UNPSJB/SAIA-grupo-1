@@ -1,4 +1,4 @@
-export type Frecuencia = 'diario' | 'semanal' | 'mensual';
+export type Frecuencia = 'diaria' | 'semanal' | 'mensual';
 
 export type EstadoTareaItem = 'pendiente' | 'realizado';
 

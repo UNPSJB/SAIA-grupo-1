@@ -7,7 +7,7 @@ from src.plan_De_limpieza import exceptions
 
 
 class PlanDeLimpiezaBase(BaseModel):
-    nombre: str = Field(max_length=20)
+    nombre: str = Field(max_length=50)
     fecha_inicio: date = Field(validation_alias=AliasChoices("fecha_inicio", "fechaInicio"))
 
     @field_validator("fecha_inicio", mode="before")
@@ -51,7 +51,7 @@ class PlanDeLimpiezaCreate(PlanDeLimpiezaBase):
 
 
 class PlanDeLimpiezaUpdate(BaseModel):
-    nombre: Optional[str] = Field(None, max_length=20)
+    nombre: Optional[str] = Field(None, max_length=50)
     fecha_inicio: Optional[date] = Field(None, validation_alias=AliasChoices("fecha_inicio", "fechaInicio"))
     equipo_id: Optional[int] = None
 

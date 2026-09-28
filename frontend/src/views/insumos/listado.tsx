@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { InsumoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
 
 interface ListadoInsumosProps {
   onNuevoClick?: () => void;
@@ -37,19 +38,30 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
   const [filtroUnidad, setFiltroUnidad] = useState('TODOS');
   const [filtroVencimiento, setFiltroVencimiento] = useState('TODOS');
 
-  const handleEliminar = async (id?: number) => {
-    if (!id) return;
-    if (!window.confirm('¿Seguro que desea eliminar este insumo?')) return;
+  const [idAEliminar, setIdAEliminar] = useState<number | null>(null);
+  const [nombreAEliminar, setNombreAEliminar] = useState<string>('');
+  const [dialogAbierto, setDialogAbierto] = useState(false);
 
+  const abrirConfirmacion = (i: InsumoConId) => {
+    setIdAEliminar(i.id);
+    setNombreAEliminar(i.nombre);
+    setDialogAbierto(true);
+  };
+
+  const ejecutarEliminar = async () => {
+    if (!idAEliminar) return;
     try {
-      const res = await fetch(`${API_URL}/insumos/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/insumos/${idAEliminar}`, { method: 'DELETE' });
       if (res.ok) {
-        setInsumos((prev) => prev.filter((i) => i.id !== id));
+        setInsumos((prev) => prev.filter((i) => i.id !== idAEliminar));
       } else {
-        alert('No se pudo eliminar el insumo');
+        alert('No se pudo eliminar el ingrediente');
       }
     } catch {
-      alert('Error de conexión al eliminar el insumo');
+      alert('Error de conexión al eliminar el ingrediente');
+    } finally {
+      setDialogAbierto(false);
+      setIdAEliminar(null);
     }
   };
 
@@ -85,8 +97,9 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
   };
 
   const insumosFiltrados = insumos.filter((i) => {
-    const term = busqueda.toLowerCase();
+    const term = busqueda.toLowerCase().trim();
     const coincideBusqueda =
+      !term ||
       (i.nombre?.toLowerCase().includes(term) ?? false) ||
       (i.lote?.toLowerCase().includes(term) ?? false);
     const coincideUnidad = filtroUnidad === 'TODOS' || i.medida?.toUpperCase() === filtroUnidad;
@@ -95,44 +108,34 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     return coincideBusqueda && coincideUnidad && coincideVencimiento;
   });
 
-  const campoFiltroStyle: React.CSSProperties = {
-    padding: '10px 12px',
-    border: '1px solid var(--border)',
-    borderRadius: '6px',
-    backgroundColor: 'var(--code-bg)',
-    fontSize: '14px',
-    color: 'var(--text-h)',
-    outline: 'none',
-  };
-
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Lista de Insumos</h1>
+          <h1>Lista de Ingredientes</h1>
           <div className="subtitulo">01 · Listado</div>
         </div>
 
         {onNuevoClick && (
           <button onClick={onNuevoClick} className="btn-guardar">
-            + Agregar Insumo
+            + Agregar Ingrediente
           </button>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div className="filtros-top-bar">
         <input
           type="text"
-          placeholder="Buscar por nombre o lote..."
+          placeholder="Buscar ingrediente por nombre o lote..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          style={{ ...campoFiltroStyle, flex: 1, minWidth: '220px' }}
+          className="input-busqueda"
         />
 
         <select
           value={filtroUnidad}
           onChange={(e) => setFiltroUnidad(e.target.value)}
-          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+          className="select-filtro"
         >
           <option value="TODOS">Todas las unidades</option>
           <option value="KILOGRAMOS">Kilogramos</option>
@@ -145,7 +148,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
         <select
           value={filtroVencimiento}
           onChange={(e) => setFiltroVencimiento(e.target.value)}
-          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+          className="select-filtro"
         >
           <option value="TODOS">Todos los vencimientos</option>
           <option value="VIGENTE">Vigentes</option>
@@ -173,13 +176,15 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
             {loading ? (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                  Cargando insumos...
+                  Cargando ingredientes...
                 </td>
               </tr>
             ) : insumosFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No se encontraron insumos.
+                  {busqueda || filtroUnidad !== 'TODOS' || filtroVencimiento !== 'TODOS'
+                    ? 'No se encontraron ingredientes que coincidan con los filtros.'
+                    : 'No hay ingredientes registrados.'}
                 </td>
               </tr>
             ) : (
@@ -211,7 +216,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                       <button
                         className="btn-icon btn-eliminar"
                         title="Eliminar"
-                        onClick={() => handleEliminar(i.id)}
+                        onClick={() => abrirConfirmacion(i)}
                       >
                         🗑
                       </button>
@@ -223,6 +228,20 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
           </tbody>
         </table>
       </div>
+
+      <ConfirmAlertDialog
+        open={dialogAbierto}
+        title="¿Eliminar ingrediente?"
+        description={`¿Seguro que desea eliminar "${nombreAEliminar}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDestructive={true}
+        onConfirm={ejecutarEliminar}
+        onCancel={() => {
+          setDialogAbierto(false);
+          setIdAEliminar(null);
+        }}
+      />
     </div>
   );
 };

@@ -45,8 +45,9 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
   }, []);
 
   const planesFiltrados = planes.filter((p) => {
-    const term = busqueda.toLowerCase();
+    const term = busqueda.toLowerCase().trim();
     const coincideBusqueda =
+      !term ||
       (p.nombre?.toLowerCase().includes(term) ?? false) ||
       (p.nombre_equipo?.toLowerCase().includes(term) ?? false);
     const coincideFrecuencia =
@@ -58,16 +59,6 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
       (filtroTareas === 'CON_TAREAS' ? cantTareas > 0 : cantTareas === 0);
     return coincideBusqueda && coincideFrecuencia && coincideTareas;
   });
-
-  const campoFiltroStyle: React.CSSProperties = {
-    padding: '10px 12px',
-    border: '1px solid var(--border)',
-    borderRadius: '6px',
-    backgroundColor: 'var(--code-bg)',
-    fontSize: '14px',
-    color: 'var(--text-h)',
-    outline: 'none',
-  };
 
   return (
     <div className="modulo-container">
@@ -84,19 +75,19 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div className="filtros-top-bar">
         <input
           type="text"
-          placeholder="Buscar por nombre de plan o equipo..."
+          className="input-busqueda"
+          placeholder="Buscar por plan o equipo..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          style={{ ...campoFiltroStyle, flex: 1, minWidth: '220px' }}
         />
 
         <select
           value={filtroFrecuencia}
           onChange={(e) => setFiltroFrecuencia(e.target.value)}
-          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+          className="select-filtro"
         >
           <option value="TODOS">Todas las frecuencias</option>
           <option value="DIARIA">Con tareas diarias</option>
@@ -107,7 +98,7 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
         <select
           value={filtroTareas}
           onChange={(e) => setFiltroTareas(e.target.value)}
-          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+          className="select-filtro"
         >
           <option value="TODOS">Todos los planes</option>
           <option value="CON_TAREAS">Con tareas</option>
@@ -135,7 +126,9 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
             ) : planesFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No se encontraron planes.
+                  {busqueda || filtroFrecuencia !== 'TODOS' || filtroTareas !== 'TODOS'
+                    ? 'No se encontraron planes de limpieza que coincidan con los filtros.'
+                    : 'No hay planes registrados.'}
                 </td>
               </tr>
             ) : (

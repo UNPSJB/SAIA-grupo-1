@@ -10,7 +10,7 @@ class Plan_de_Limpieza(ModeloBase):
     __tablename__= "plan_de_limpieza"
 
     id:Mapped[int]=mapped_column(primary_key=True,index=True)
-    nombre: Mapped[str] = mapped_column(String(20), index=True)
+    nombre: Mapped[str] = mapped_column(String(50), index=True)
     fecha_inicio: Mapped[date] = mapped_column(index=True)
     equipo_id:Mapped[int]=mapped_column(ForeignKey("equipos.id"),unique=True)
     equipo:Mapped["src.equipos.models.Equipo"]= relationship("src.equipos.models.Equipo", back_populates="plan_de_Limpieza")
