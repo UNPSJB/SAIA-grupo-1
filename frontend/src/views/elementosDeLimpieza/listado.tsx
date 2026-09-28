@@ -18,6 +18,10 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
   const [elementos, setElementos] = useState<ElementoDeLimpieza[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Estados para filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
+
   const fetchElementos = async () => {
     setLoading(true);
     try {
@@ -65,14 +69,12 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     const fechaLimite = new Date(fechaCambioStr);
     const hoy = new Date();
 
-    // Diferencia en milisegundos convertida a días
     const diffTiempo = fechaLimite.getTime() - hoy.getTime();
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
 
     if (diffDias <= 0) {
       return 'vencido';
-    }else if (diffDias <= 2) {
-      // Si quedan 1 o 2 días, consideramos "próximo a vencer"
+    } else if (diffDias <= 2) {
       return 'proximo';
     }
 
@@ -93,8 +95,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
 
       if (res.ok) {
         const elementoActualizado: ElementoDeLimpieza = await res.json();
-      
-        // Actualizamos la fila en la tabla sin recargar toda la página
         setElementos((prev) =>
           prev.map((elem) => (elem.id === id ? elementoActualizado : elem))
         );
@@ -104,6 +104,28 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     } catch {
       alert('Error al conectar con el servidor.');
     }
+  };
+
+  // Filtrado reactivo en memoria
+  const elementosFiltrados = elementos.filter((elem) => {
+    const term = searchTerm.toLowerCase().trim();
+    const matchNombre = !term || elem.nombre.toLowerCase().includes(term);
+
+    const matchEstado =
+      filtroEstado === 'TODOS' ||
+      (filtroEstado === 'ACTIVO' ? elem.activo : !elem.activo);
+
+    return matchNombre && matchEstado;
+  });
+
+  const campoFiltroStyle: React.CSSProperties = {
+    padding: '10px 14px',
+    border: '1px solid var(--border, #e5e7eb)',
+    borderRadius: '6px',
+    backgroundColor: 'var(--code-bg, #f7f7f5)',
+    fontSize: '14px',
+    color: 'var(--text-h, #1f2937)',
+    outline: 'none',
   };
 
   return (
@@ -119,6 +141,35 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
             + Agregar Elemento
           </button>
         )}
+      </div>
+
+      {/* Barra de Filtros */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '14px',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}
+      >
+        <input
+          type="text"
+          placeholder="Buscar por nombre..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ ...campoFiltroStyle, minWidth: '280px', flex: '1 1 300px' }}
+        />
+
+        <select
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          style={{ ...campoFiltroStyle, cursor: 'pointer', minWidth: '160px' }}
+        >
+          <option value="TODOS">Todos los estados</option>
+          <option value="ACTIVO">Activos</option>
+          <option value="INACTIVO">Inactivos</option>
+        </select>
       </div>
 
       <div className="tabla-wrapper">
@@ -140,103 +191,115 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                   Cargando elementos de limpieza...
                 </td>
               </tr>
-            ) : elementos.length === 0 ? (
+            ) : elementosFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No hay elementos de limpieza registrados.
+                  No se encontraron elementos de limpieza.
                 </td>
               </tr>
             ) : (
-              elementos.map((item) => {
+              elementosFiltrados.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.id}</td>
+                  <td>{item.nombre}</td>
+                  <td>
+                    {item.frecuenciaDeCambio !== null && item.frecuenciaDeCambio !== undefined
+                      ? `${item.frecuenciaDeCambio} días`
+                      : 'Sin especificar'}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span>{formatearFecha(item.fechaCambio)}</span>
 
-                return (
-                  <tr key={item.id}>
-                    <td>{item.id}</td>
-                    <td>{item.nombre}</td>
-                    <td>
-                      {item.frecuenciaDeCambio !== null && item.frecuenciaDeCambio !== undefined
-                        ? `${item.frecuenciaDeCambio} días`
-                        : 'Sin especificar'}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <span>{formatearFecha(item.fechaCambio)}</span>
-
-                        {/* VENCIDO: Rojo */}
-                        {calcularEstadoVencimiento(item.fechaCambio) === 'vencido' && (
-                          <span
-                            title="El elemento ha superado la fecha límite"
-                            style={{
-                              backgroundColor: '#fee2e2',
-                              color: '#dc2626',
-                              border: '1px solid #f87171',
-                              padding: '0.15rem 0.5rem',
-                              borderRadius: '12px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                            }}
-                          >
-                            ● Vencido
-                          </span>
-                        )}
-
-                        {/* PRÓXIMO A VENCER: Amarillo / Ámbar */}
-                        {calcularEstadoVencimiento(item.fechaCambio) === 'proximo' && (
-                          <span
-                            title="Quedan 2 días o menos para el recambio"
-                            style={{
-                              backgroundColor: '#fef3c7',
-                              color: '#d97706',
-                              border: '1px solid #fcd34d',
-                              padding: '0.15rem 0.5rem',
-                              borderRadius: '12px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                            }}
-                          >
-                            ▲ Próximo a vencer
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>{item.activo ? 'Activo' : 'Inactivo'}</td>
-                    <td className="acciones-col">
-                      <div className="acciones-btns">
-                        {item.frecuenciaDeCambio && (
-                          <button
-                            type="button"
-                            className="btn-icon"
-                            title="Efectuar cambio (actualizar fecha)"
-                            onClick={() => handleEfectuarCambio(item.id, item.nombre)}
-                          >
-                            ↻
-                          </button>
-                        )}
-                        <button
-                          className="btn-icon"
-                          title="Ver detalles"
-                          onClick={() => onDetalleClick(item.id)}
+                      {/* VENCIDO */}
+                      {calcularEstadoVencimiento(item.fechaCambio) === 'vencido' && (
+                        <span
+                          title="El elemento ha superado la fecha límite"
+                          style={{
+                            backgroundColor: '#fee2e2',
+                            color: '#dc2626',
+                            border: '1px solid #f87171',
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                          }}
                         >
-                          👁
-                        </button>
-                        <button
-                          className="btn-icon"
-                          title="Editar"
-                          onClick={() => onEditarClick(item.id)}
+                          ● Vencido
+                        </span>
+                      )}
+
+                      {/* PRÓXIMO A VENCER */}
+                      {calcularEstadoVencimiento(item.fechaCambio) === 'proximo' && (
+                        <span
+                          title="Quedan 2 días o menos para el recambio"
+                          style={{
+                            backgroundColor: '#fef3c7',
+                            color: '#d97706',
+                            border: '1px solid #fcd34d',
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                          }}
                         >
-                          ✎
+                          ▲ Próximo a vencer
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <span
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        backgroundColor: item.activo ? '#dcfce7' : '#fee2e2',
+                        color: item.activo ? '#166534' : '#991b1b',
+                      }}
+                    >
+                      {item.activo ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+                  <td className="acciones-col">
+                    <div className="acciones-btns">
+                      {item.activo && item.frecuenciaDeCambio && (
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Efectuar cambio (actualizar fecha)"
+                          onClick={() => handleEfectuarCambio(item.id, item.nombre)}
+                        >
+                          ↻
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+                      )}
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        title="Ver detalles"
+                        onClick={() => onDetalleClick(item.id)}
+                      >
+                        👁
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        title="Editar"
+                        onClick={() => onEditarClick(item.id)}
+                      >
+                        ✎
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
