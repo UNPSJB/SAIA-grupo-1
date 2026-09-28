@@ -25,14 +25,24 @@
 .dashboard-card-header {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 1.25rem;
+  flex-wrap: wrap;
 }
 
 .dashboard-card-header h2 {
   font-size: 1.05rem;
   margin: 0;
   flex: 1;
+  min-width: 180px;
+}
+
+.dashboard-header-controles {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .dashboard-select {
