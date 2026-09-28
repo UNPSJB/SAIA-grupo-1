@@ -1,13 +1,13 @@
 import re
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import List, Literal, Optional
+from typing import Any, List, Literal, Optional
 from src.tareas.models import Frecuencia
 from src.tareas import exceptions
 
 
 class TareaBase(BaseModel):
-    nombre:str=Field(max_length=20)
+    nombre:str=Field(max_length=50)
     descripcion:str=Field(max_length=100)
     frecuencia:Frecuencia
 
@@ -15,7 +15,7 @@ class TareaBase(BaseModel):
                 "frecuencia", mode="before"
             )
     @classmethod
-    def is_valid_frecuencia(cls, v: str) -> str:
+    def is_valid_frecuencia(cls, v: Any) -> Frecuencia:
                 if isinstance(v, Frecuencia):
                     return v
                 
@@ -27,7 +27,7 @@ class TareaBase(BaseModel):
                 raise exceptions.FRECUENCIAInvalida(list(Frecuencia))
 
 class TareaCreate(TareaBase):
-    nombre:str= Field(max_length=20)
+    nombre:str= Field(max_length=50)
     descripcion:str = Field(max_length=100)
     plan_id:int
 
@@ -52,7 +52,7 @@ class TareaCreate(TareaBase):
              raise exceptions.Nombre_Invalido()
 
 class TareaUpdate(TareaBase):
-      nombre:Optional[str]= Field(None,max_length=20)
+      nombre:Optional[str]= Field(None,max_length=50)
       descripcion:Optional[str]=Field(None,max_length=100)
       plan_id:Optional[int]=None
 

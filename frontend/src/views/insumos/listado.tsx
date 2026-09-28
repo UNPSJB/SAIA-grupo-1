@@ -77,13 +77,13 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     <div className="modulo-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Lista de Insumos</h1>
+          <h1>Lista de Ingredientes</h1>
           <div className="subtitulo">01 · Listado</div>
         </div>
 
         {onNuevoClick && (
           <button onClick={onNuevoClick} className="btn-guardar">
-            + Agregar Insumo
+            + Agregar Ingrediente
           </button>
         )}
       </div>
@@ -106,13 +106,13 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
             {loading ? (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                  Cargando insumos...
+                  Cargando ingredientes...
                 </td>
               </tr>
             ) : insumos.length === 0 ? (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No hay insumos registrados.
+                  No hay ingredientes registrados.
                 </td>
               </tr>
             ) : (

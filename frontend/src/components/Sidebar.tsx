@@ -10,7 +10,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
   const items: { id: Modulo; label: string }[] = [
     { id: 'dashboard', label: 'Inicio' },
-    { id: 'insumos', label: 'Insumos' },
+    { id: 'insumos', label: 'Ingredientes' },
     { id: 'equipos', label: 'Equipos' },
     { id: 'personas', label: 'Personas' },
     { id: 'insumos_quimicos', label: 'Químicos Limpieza' },

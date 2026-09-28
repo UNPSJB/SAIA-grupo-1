@@ -20,7 +20,7 @@ class Equipo(ModeloBase):
     __tablename__ = "equipos"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    nombre: Mapped[str] = mapped_column(String(20), index=True)
+    nombre: Mapped[str] = mapped_column(String(50), index=True)
     categoria: Mapped[Categoria] = mapped_column(index=True)
     ubicacion: Mapped[str] = mapped_column(String(50))
     plan_de_calibracion: Mapped[str] = mapped_column(String(100))
