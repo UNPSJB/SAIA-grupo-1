@@ -15,6 +15,7 @@ from src.equipos.models import Equipo, Estado
 from src.personal.models import Personal
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.tareas.models import Frecuencia
+from src.insumos_quimicos.models import InsumoQuimico
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -32,8 +33,6 @@ def _auditar(
     previo=None,
     posterior=None,
 ) -> None:
-    # Se agrega a la sesion sin commit: queda en la misma transaccion que el
-    # cambio auditado.
     registrar_auditoria(
         db,
         AuditoriaCreate(
@@ -149,7 +148,6 @@ def generar_checklist(
 def _auditar_cambios_item(
     db: Session, item: models.ChecklistItem, previos: dict
 ) -> None:
-    # Un registro por cada campo que realmente cambio.
     for campo, previo in previos.items():
         posterior = getattr(item, campo)
         if posterior != previo:
@@ -316,6 +314,39 @@ def completar_tarea(
         logger.warning("Completar tarea %s: responsable legajo %s inactivo", item_id, datos.responsable_legajo)
         raise exceptions.ResponsableInactivo()
 
+    insumos_guardados = []
+    if datos.insumos_utilizados:
+        for insumo_dto in datos.insumos_utilizados:
+            query = select(InsumoQuimico)
+            if insumo_dto.id:
+                query = query.where(InsumoQuimico.id == insumo_dto.id)
+            else:
+                query = query.where(InsumoQuimico.nombre == insumo_dto.nombre)
+
+            quimico: Optional[InsumoQuimico] = db.scalar(query)
+            if not quimico:
+                raise exceptions.InsumoQuimicoNoEncontrado()
+
+            if not bool(getattr(quimico, "activo", True)):
+                raise exceptions.InsumoQuimicoInactivo()
+
+            if insumo_dto.cantidad <= 0:
+                raise exceptions.CantidadConsumoInvalida()
+
+            stock_previo = float(getattr(quimico, "stock_actual", 0.0))
+            nuevo_stock = max(0.0, round(stock_previo - float(insumo_dto.cantidad), 2))
+            setattr(quimico, "stock_actual", nuevo_stock)
+
+            unidad_valor = getattr(quimico, "unidad_medida", None)
+            unidad_str = str(getattr(unidad_valor, "value", unidad_valor or "L"))
+
+            insumos_guardados.append({
+                "id": getattr(quimico, "id", None),
+                "nombre": str(getattr(quimico, "nombre", "")),
+                "cantidad": float(insumo_dto.cantidad),
+                "unidad": unidad_str,
+            })
+
     previos = {
         "estado": item.estado,
         "responsable_legajo": item.responsable_legajo,
@@ -323,20 +354,13 @@ def completar_tarea(
     }
 
     item.responsable_legajo = datos.responsable_legajo
-    if datos.insumos_utilizados:
-        item.insumos_utilizados = json.dumps(
-            [insumo.model_dump() for insumo in datos.insumos_utilizados],
-            ensure_ascii=False,
-        )
-    else:
-        item.insumos_utilizados = "[]"
-
+    item.insumos_utilizados = json.dumps(insumos_guardados, ensure_ascii=False) if insumos_guardados else "[]"
     item.estado = models.EstadoTareaItem.REALIZADO
     item.fecha_hora_fin = datetime.now()
 
     _auditar_cambios_item(db, item, previos)
     db.commit()
-    logger.info("Tarea %s del checklist %s completada por legajo %s", item_id, checklist_id, datos.responsable_legajo)
+    logger.info("Tarea %s del checklist %s completada por legajo %s. Insumos descontados.", item_id, checklist_id, datos.responsable_legajo)
     db.refresh(item)
     return item
 
@@ -353,10 +377,9 @@ def obtener_tarea(
         )
     )
     if not item:
-        logger.warning("Actualizar tarea: item %s no encontrado en checklist %s", item_id, checklist_id)
+        logger.warning("Obtener tarea: item %s no encontrado en checklist %s", item_id, checklist_id)
         raise exceptions.TareaChecklistNoEncontrada()
     return item
-
 
 
 def listar_checklists(
@@ -377,7 +400,8 @@ def listar_checklists(
     if fecha_hasta:
         query = query.where(models.Checklist.fecha <= fecha_hasta)
 
-    checklists = db.scalars(query).all()
+    # Conversión explícita a list para satisfacer el tipo de retorno List[models.Checklist]
+    checklists: List[models.Checklist] = list(db.scalars(query).all())
 
     if estado:
         estado_lower = estado.lower()

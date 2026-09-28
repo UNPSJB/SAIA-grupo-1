@@ -8,9 +8,10 @@ from src.tareas.models import Frecuencia
 
 
 class InsumoUtilizadoPlaceholder(BaseModel):
+    id: Optional[int] = None
     nombre: str = Field(..., min_length=1, max_length=100)
-    cantidad: float = Field(..., gt=0)
-    unidad: Optional[str] = Field("unidades", max_length=30)
+    cantidad: float = Field(..., gt=0, description="La cantidad consumida debe ser mayor a cero")
+    unidad: Optional[str] = Field("L", max_length=30)
 
 
 class CompletarTareaSchema(BaseModel):
@@ -90,3 +91,4 @@ class Checklist(BaseModel):
     items: List[ChecklistItem]
 
     model_config = ConfigDict(from_attributes=True)
+

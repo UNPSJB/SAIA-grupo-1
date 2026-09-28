@@ -5,6 +5,7 @@ export type EstadoTareaItem = 'pendiente' | 'realizado';
 export type EstadoGeneralChecklist = 'pendiente' | 'completado' | 'vencido';
 
 export interface InsumoUtilizado {
+  id?: number;
   nombre: string;
   cantidad: number;
   unidad?: string;

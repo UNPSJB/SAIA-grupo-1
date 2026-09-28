@@ -10,4 +10,6 @@ class ErrorCode:
     FORMATO_IMAGEN_INVALIDO = "El archivo enviado no es una imagen válida."
     CHECKLIST_NO_MODIFICABLE = "El checklist se encuentra completado o vencido y no admite modificaciones."
     RANGO_FECHAS_INVALIDO = "La fecha 'desde' no puede ser posterior a la fecha 'hasta'."
-
+    INSUMO_QUIMICO_INACTIVO = "El insumo químico seleccionado se encuentra inactivo."
+    INSUMO_QUIMICO_NO_ENCONTRADO = "Uno de los insumos químicos seleccionados no existe."
+    CANTIDAD_CONSUMO_INVALIDA = "La cantidad consumida debe ser mayor a cero."

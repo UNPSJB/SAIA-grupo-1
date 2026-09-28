@@ -25,6 +25,11 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
   const [loading, setLoading] = useState(Boolean(checklistId));
   const [personal, setPersonal] = useState<PersonalResumen[]>([]);
 
+  // Insumos químicos activos disponibles en la BD
+  const [quimicosDisponibles, setQuimicosDisponibles] = useState<
+    { id: number; nombre: string; unidad_medida: string; stock_actual: number; activo: boolean }[]
+  >([]);
+
   const [planesAbiertos, setPlanesAbiertos] = useState<Record<string, boolean>>({});
 
   const [tareaSeleccionada, setTareaSeleccionada] = useState<ChecklistItem | null>(null);
@@ -80,35 +85,25 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     let cancelado = false;
 
     const cargarDatos = async () => {
+      // 1. Carga Checklist
       try {
-        const [resChecklist, resPersonal] = await Promise.all([
-          fetch(`${API_URL}/checklist/${checklistId}`),
-          fetch(`${API_URL}/personal/`),
-        ]);
+        const resChecklist = await fetch(`${API_URL}/checklist/${checklistId}`);
+        if (!cancelado && resChecklist.ok) {
+          const data: Checklist = await resChecklist.json();
+          setChecklist(data);
 
-        if (!cancelado) {
-          if (resChecklist.ok) {
-            const data: Checklist = await resChecklist.json();
-            setChecklist(data);
-
-            setPlanesAbiertos((prev) => {
-              const inicial: Record<string, boolean> = { ...prev };
-              data.items.forEach((item) => {
-                if (inicial[item.nombre_plan] === undefined) {
-                  inicial[item.nombre_plan] = true;
-                }
-              });
-              return inicial;
+          setPlanesAbiertos((prev) => {
+            const inicial: Record<string, boolean> = { ...prev };
+            data.items.forEach((item) => {
+              if (inicial[item.nombre_plan] === undefined) {
+                inicial[item.nombre_plan] = true;
+              }
             });
-          } else {
-            setChecklist(null);
-            mostrarError('El checklist solicitado no existe o no pudo ser cargado.');
-          }
-
-          if (resPersonal.ok) {
-            const dataPersonal: PersonalResumen[] = await resPersonal.json();
-            setPersonal(dataPersonal);
-          }
+            return inicial;
+          });
+        } else if (!cancelado) {
+          setChecklist(null);
+          mostrarError('El checklist solicitado no existe o no pudo ser cargado.');
         }
       } catch {
         if (!cancelado) {
@@ -119,6 +114,32 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         if (!cancelado) {
           setLoading(false);
         }
+      }
+
+      // 2. Carga Personal sin barra final
+      try {
+        const resPersonal = await fetch(`${API_URL}/personal`);
+        if (!cancelado && resPersonal.ok) {
+          const dataPersonal: PersonalResumen[] = await resPersonal.json();
+          if (Array.isArray(dataPersonal)) {
+            setPersonal(dataPersonal.filter((p) => p.activo));
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar el listado de personal:', err);
+      }
+
+      // 3. Carga Insumos Químicos Activos
+      try {
+        const resQuimicos = await fetch(`${API_URL}/api/insumos-quimicos`);
+        if (!cancelado && resQuimicos.ok) {
+          const dataQuimicos = await resQuimicos.json();
+          if (Array.isArray(dataQuimicos)) {
+            setQuimicosDisponibles(dataQuimicos.filter((q) => q.activo));
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudieron cargar los insumos químicos:', err);
       }
     };
 
@@ -150,9 +171,15 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
   };
 
   const agregarInsumoFila = () => {
+    const primerQuimico = quimicosDisponibles[0];
     setFormInsumos((prev) => [
       ...prev,
-      { nombre: '', cantidad: 1, unidad: 'unidades' },
+      {
+        id: primerQuimico ? primerQuimico.id : undefined,
+        nombre: primerQuimico ? primerQuimico.nombre : '',
+        cantidad: 0.5,
+        unidad: primerQuimico ? primerQuimico.unidad_medida : 'L',
+      },
     ]);
   };
 
@@ -192,12 +219,12 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
 
     for (const ins of formInsumos) {
       if (!ins.nombre.trim()) {
-        mostrarError('El nombre del insumo no puede estar vacío.', 'Insumo inválido');
+        mostrarError('Debe seleccionar un insumo químico válido.', 'Insumo inválido');
         return;
       }
       if (ins.cantidad <= 0 || isNaN(ins.cantidad)) {
         mostrarError(
-          `La cantidad para "${ins.nombre}" debe ser mayor a 0.`,
+          `La cantidad consumida para "${ins.nombre}" debe ser mayor a 0.`,
           'Cantidad inválida'
         );
         return;
@@ -476,13 +503,13 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           </div>
 
                           <div className="tarea-detalle-dato" style={{ gridColumn: 'span 2' }}>
-                            <span>Insumos de Limpieza (Placeholder)</span>
+                            <span>Insumos Químicos Consumidos</span>
                             {tarea.insumos_utilizados &&
                             tarea.insumos_utilizados.length > 0 ? (
                               <div className="tarea-insumos-lista">
                                 {tarea.insumos_utilizados.map((ins, i) => (
                                   <span key={i} className="insumo-chip">
-                                    {ins.nombre}: {ins.cantidad} {ins.unidad || 'unid.'}
+                                    {ins.nombre}: {ins.cantidad} {ins.unidad || 'L'}
                                   </span>
                                 ))}
                               </div>
@@ -626,36 +653,54 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
 
               <div className="form-group">
                 <label>
-                  Insumos de Limpieza{' '}
-                  <span style={{ fontSize: '0.8rem', color: '#d97706', fontWeight: 500 }}>
-                    (Placeholder)
-                  </span>
+                  Insumos Químicos Consumidos
                 </label>
                 {formInsumos.length === 0 ? (
                   <p style={{ fontSize: '0.85rem', color: 'var(--text)', margin: '0.25rem 0' }}>
-                    No se han registrado insumos de limpieza para esta tarea.
+                    No se han registrado insumos químicos para esta tarea.
                   </p>
                 ) : (
                   <div className="insumos-form-lista">
                     {formInsumos.map((ins, idx) => (
-                      <div key={idx} className="insumo-form-fila">
-                        <input
-                          type="text"
-                          placeholder="Insumo de limpieza (Placeholder)"
-                          value={ins.nombre}
-                          style={{ flex: 2 }}
-                          onChange={(e) =>
-                            actualizarInsumoFila(idx, 'nombre', e.target.value)
-                          }
+                      <div key={idx} className="insumo-form-fila" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <select
+                          value={ins.id || ins.nombre}
+                          style={{ flex: 2, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
+                          onChange={(e) => {
+                            const seleccionado = quimicosDisponibles.find(
+                              (q) => q.id === Number(e.target.value) || q.nombre === e.target.value
+                            );
+                            if (seleccionado) {
+                              setFormInsumos((prev) =>
+                                prev.map((item, i) =>
+                                  i === idx
+                                    ? {
+                                        ...item,
+                                        id: seleccionado.id,
+                                        nombre: seleccionado.nombre,
+                                        unidad: seleccionado.unidad_medida,
+                                      }
+                                    : item
+                                )
+                              );
+                            }
+                          }}
                           required
-                        />
+                        >
+                          {quimicosDisponibles.map((q) => (
+                            <option key={q.id} value={q.id}>
+                              {q.nombre} (Stock: {q.stock_actual} {q.unidad_medida})
+                            </option>
+                          ))}
+                        </select>
+
                         <input
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0.01"
                           placeholder="Cantidad"
                           value={ins.cantidad}
-                          style={{ flex: 1 }}
+                          style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
                           onChange={(e) =>
                             actualizarInsumoFila(
                               idx,
@@ -665,15 +710,11 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           }
                           required
                         />
-                        <input
-                          type="text"
-                          placeholder="Unidad (ml, gr)"
-                          value={ins.unidad || ''}
-                          style={{ flex: 1 }}
-                          onChange={(e) =>
-                            actualizarInsumoFila(idx, 'unidad', e.target.value)
-                          }
-                        />
+
+                        <span style={{ fontSize: '13px', color: '#555', minWidth: '35px' }}>
+                          {ins.unidad}
+                        </span>
+
                         <button
                           type="button"
                           className="btn-remover-insumo"
@@ -691,8 +732,10 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                   type="button"
                   className="btn-agregar-insumo"
                   onClick={agregarInsumoFila}
+                  disabled={quimicosDisponibles.length === 0}
+                  style={{ marginTop: '8px' }}
                 >
-                  + Agregar Insumo
+                  + Agregar Insumo Químico
                 </button>
               </div>
 

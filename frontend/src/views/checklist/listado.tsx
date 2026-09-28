@@ -85,12 +85,9 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     let cancelado = false;
 
     const cargarDatos = async () => {
+      // 1. Cargar Checklists de forma aislada
       try {
-        const [resChecklists, resPersonal] = await Promise.all([
-          fetch(`${API_URL}/checklist/`),
-          fetch(`${API_URL}/personal/`),
-        ]);
-
+        const resChecklists = await fetch(`${API_URL}/checklist/`);
         if (!cancelado) {
           if (resChecklists.ok) {
             const data: Checklist[] = await resChecklists.json();
@@ -103,13 +100,9 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
           } else {
             setChecklists([]);
           }
-
-          if (resPersonal.ok) {
-            const dataPersonal: PersonalResumen[] = await resPersonal.json();
-            setPersonal(dataPersonal.filter((p) => p.activo));
-          }
         }
-      } catch {
+      } catch (err) {
+        console.error('Error al cargar checklists:', err);
         if (!cancelado) {
           setChecklists([]);
           mostrarError('No se pudo conectar con el servidor para cargar las checklists.');
@@ -118,6 +111,19 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         if (!cancelado) {
           setLoading(false);
         }
+      }
+
+      // 2. Cargar Personal de forma tolerante a fallos (sin barra final)
+      try {
+        const resPersonal = await fetch(`${API_URL}/personal`);
+        if (!cancelado && resPersonal.ok) {
+          const dataPersonal: PersonalResumen[] = await resPersonal.json();
+          if (Array.isArray(dataPersonal)) {
+            setPersonal(dataPersonal.filter((p) => p.activo));
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar el listado de personal:', err);
       }
     };
 
@@ -194,7 +200,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
       setGenerando(false);
     }
   };
-
 
   return (
     <div className="checklist-container">
