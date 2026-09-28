@@ -133,7 +133,9 @@ export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Nuevo Elemento de Limpieza</h1>
+        <h1 style={{ lineHeight: '1.25', marginBottom: '6px' }}>
+          Nuevo Elemento de Limpieza
+        </h1>
         <div className="subtitulo">02 · Formulario</div>
       </div>
 

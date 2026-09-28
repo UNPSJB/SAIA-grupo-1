@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza, ElementoDeLimpiezaUpdate } from './tipos';
 import '../../styles/formularioAlta.css';
+import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
 
 interface EditarElementoProps {
   elementoId?: number | null;
@@ -27,6 +28,8 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [advertenciaInput, setAdvertenciaInput] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const [dialogAbierto, setDialogAbierto] = useState(false);
 
   useEffect(() => {
     if (elementoId) {
@@ -60,15 +63,12 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
   }, [elementoId]);
 
   const toggleActivo = () => {
-    const nuevoEstado = !formData.activo;
-    const mensaje = nuevoEstado
-      ? '¿Estás seguro de que deseas ACTIVAR este elemento de limpieza?'
-      : '¿Estás seguro de que deseas DESACTIVAR este elemento de limpieza?';
+    setDialogAbierto(true);
+  };
 
-    const confirmacion = window.confirm(mensaje);
-    if (!confirmacion) return;
-
-    setFormData((prev) => ({ ...prev, activo: nuevoEstado }));
+  const ejecutarToggle = () => {
+    setFormData((prev) => ({ ...prev, activo: !prev.activo }));
+    setDialogAbierto(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,7 +186,9 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Editar Elemento de Limpieza</h1>
+        <h1 style={{ lineHeight: '1.25', marginBottom: '6px' }}>
+          Editar Elemento de Limpieza
+        </h1>
         <div className="subtitulo">ID: {elementoId}</div>
       </div>
 
@@ -270,6 +272,21 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
           </button>
         </div>
       </form>
+
+      <ConfirmAlertDialog
+        open={dialogAbierto}
+        title={formData.activo ? '¿Desactivar elemento?' : '¿Activar elemento?'}
+        description={
+          formData.activo
+            ? `¿Seguro que deseas desactivar "${formData.nombre || 'este elemento'}"?`
+            : `¿Seguro que deseas activar "${formData.nombre || 'este elemento'}"?`
+        }
+        confirmText={formData.activo ? 'Desactivar' : 'Activar'}
+        cancelText="Cancelar"
+        isDestructive={Boolean(formData.activo)}
+        onConfirm={ejecutarToggle}
+        onCancel={() => setDialogAbierto(false)}
+      />
     </div>
   );
 };
