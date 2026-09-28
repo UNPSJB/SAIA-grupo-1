@@ -67,29 +67,41 @@ def main() -> None:
     marcos = crear_personal(db, PersonalCreate(documento="30333444", nombre="Marcos", apellido="Diaz", email="marcos.diaz@ejemplo.com", capacidad="AMBAS"))
     crear_personal(db, PersonalCreate(documento="30444555", nombre="Lucia", apellido="Fernandez", email="lucia.fernandez@ejemplo.com", capacidad="OPERAR"))
 
-    print("Creando insumos...")
+    print("Creando insumos (ingredientes)...")
     crear_insumo(db, InsumoCreate(
-        nombre="Lavandina Comercial 55g/l", lote="POES-LAV-001",
-        fechaRecepcion=hoy - timedelta(days=5), fechaVencimiento=hoy + timedelta(days=45),
-        cantRecibida=100.0, stock=80.0, medida=UnidadMedida.LITROS,
+        nombre="Harina de Trigo 000", lote="ING-HAR-001",
+        fechaRecepcion=hoy - timedelta(days=5), fechaVencimiento=hoy + timedelta(days=120),
+        cantRecibida=100.0, stock=80.0, medida=UnidadMedida.KILOGRAMOS,
     ))
     crear_insumo(db, InsumoCreate(
-        nombre="Detergente Neutro", lote="POES-DET-002",
-        fechaRecepcion=hoy - timedelta(days=10), fechaVencimiento=hoy + timedelta(days=8),
+        nombre="Aceite de Girasol", lote="ING-ACE-002",
+        fechaRecepcion=hoy - timedelta(days=10), fechaVencimiento=hoy + timedelta(days=180),
         cantRecibida=50.0, stock=30.0, medida=UnidadMedida.LITROS,
     ))
     crear_insumo(db, InsumoCreate(
-        nombre="Bobina Papel Secamanos", lote="POES-SEC-003",
-        fechaRecepcion=hoy - timedelta(days=2), fechaVencimiento=None,
-        cantRecibida=200.0, stock=150.0, medida=UnidadMedida.UNIDADES,
+        nombre="Levadura Fresca", lote="ING-LEV-003",
+        fechaRecepcion=hoy - timedelta(days=2), fechaVencimiento=hoy + timedelta(days=25),
+        cantRecibida=5000.0, stock=3500.0, medida=UnidadMedida.GRAMOS,
     ))
     crear_insumo(db, InsumoCreate(
-        nombre="Guantes de Latex", lote="POES-GUA-004",
-        fechaRecepcion=hoy - timedelta(days=20), fechaVencimiento=hoy + timedelta(days=200),
-        cantRecibida=500.0, stock=300.0, medida=UnidadMedida.UNIDADES,
+        nombre="Carne Vacuna (Lomo)", lote="ING-CAR-004",
+        fechaRecepcion=hoy - timedelta(days=3), fechaVencimiento=hoy + timedelta(days=15),
+        cantRecibida=40.0, stock=25.0, medida=UnidadMedida.KILOGRAMOS,
+    ))
+    crear_insumo(db, InsumoCreate(
+        nombre="Sal Fina", lote="ING-SAL-005",
+        fechaRecepcion=hoy - timedelta(days=20), fechaVencimiento=hoy + timedelta(days=365),
+        cantRecibida=30.0, stock=20.0, medida=UnidadMedida.KILOGRAMOS,
+    ))
+    crear_insumo(db, InsumoCreate(
+        nombre="Huevos Frescos", lote="ING-HUE-006",
+        fechaRecepcion=hoy - timedelta(days=1), fechaVencimiento=hoy + timedelta(days=20),
+        cantRecibida=360.0, stock=240.0, medida=UnidadMedida.UNIDADES,
     ))
 
     print("Creando insumos quimicos...")
+    InsumoQuimicoService.create(db, InsumoQuimicoCreate(nombre="Lavandina Comercial 55g/l", tipo=TipoQuimicoEnum.DESINFECTANTE, unidad_medida=UnidadQuimico.LITROS, stock_actual=80.0))
+    InsumoQuimicoService.create(db, InsumoQuimicoCreate(nombre="Detergente Neutro", tipo=TipoQuimicoEnum.DESENGRASANTE, unidad_medida=UnidadQuimico.LITROS, stock_actual=30.0))
     InsumoQuimicoService.create(db, InsumoQuimicoCreate(nombre="Amonio Cuaternario", tipo=TipoQuimicoEnum.DESINFECTANTE, unidad_medida=UnidadQuimico.LITROS, stock_actual=40.0))
     InsumoQuimicoService.create(db, InsumoQuimicoCreate(nombre="Desengrasante Industrial", tipo=TipoQuimicoEnum.DESENGRASANTE, unidad_medida=UnidadQuimico.LITROS, stock_actual=25.0))
     InsumoQuimicoService.create(db, InsumoQuimicoCreate(nombre="Sanitizante Multiuso", tipo=TipoQuimicoEnum.SANITIZANTE, unidad_medida=UnidadQuimico.LITROS, stock_actual=15.0))

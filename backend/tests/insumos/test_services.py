@@ -22,10 +22,10 @@ def test_listar_insumos(session: Session) -> None:
 
 def test_leer_insumo(session: Session) -> None:
     insumo = leer_insumo(session, 1)
-    assert insumo.nombre == "Lavandina concentrada 55g/l"
-    assert insumo.lote == "POES-LAV-001"
+    assert insumo.nombre == "Harina de Trigo 000"
+    assert insumo.lote == "ING-HAR-001"
     assert insumo.stock == 80.0
-    assert insumo.medida == UnidadMedida.LITROS
+    assert insumo.medida == UnidadMedida.KILOGRAMOS
 
     with pytest.raises(exceptions.InsumoNoEncontrado):
         leer_insumo(session, 999)
@@ -34,17 +34,17 @@ def test_leer_insumo(session: Session) -> None:
 def test_crear_insumo(session: Session) -> None:
     hoy = datetime.now()
     nuevo = InsumoCreate(
-        nombre="Alcohol sanitizante 70%",
-        lote="POES-ALC-004",
+        nombre="Sal Fina",
+        lote="ING-SAL-004",
         fechaRecepcion=hoy - timedelta(days=1),
-        fechaVencimiento=hoy + timedelta(days=60),
-        cantRecibida=200.0,
-        stock=150.0,
-        medida=UnidadMedida.LITROS,
+        fechaVencimiento=hoy + timedelta(days=365),
+        cantRecibida=50.0,
+        stock=50.0,
+        medida=UnidadMedida.KILOGRAMOS,
     )
     insumo = crear_insumo(session, nuevo)
     assert insumo.id is not None
-    assert insumo.nombre == "Alcohol sanitizante 70%"
+    assert insumo.nombre == "Sal Fina"
 
     insumos = listar_insumos(session)
     assert len(insumos) == 4
@@ -57,7 +57,7 @@ def test_crear_insumo_nombre_vacio(session: Session) -> None:
             session,
             InsumoCreate(
                 nombre="   ",
-                lote="POES-ERR-005",
+                lote="ING-ERR-005",
                 fechaRecepcion=hoy - timedelta(days=1),
                 fechaVencimiento=hoy + timedelta(days=60),
                 cantRecibida=10.0,
@@ -69,7 +69,7 @@ def test_crear_insumo_nombre_vacio(session: Session) -> None:
 
 def test_modificar_insumo(session: Session) -> None:
     insumo_id = 1
-    nuevo_nombre = "Lavandina sanitizante 60g/l"
+    nuevo_nombre = "Harina de Trigo 0000"
     insumo = modificar_insumo(
         session, insumo_id, InsumoUpdate(nombre=nuevo_nombre)
     )

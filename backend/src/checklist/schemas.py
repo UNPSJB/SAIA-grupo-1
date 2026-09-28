@@ -7,11 +7,14 @@ from src.checklist.models import EstadoGeneralChecklist, EstadoTareaItem
 from src.tareas.models import Frecuencia
 
 
-class InsumoUtilizadoPlaceholder(BaseModel):
+class InsumoQuimicoUtilizado(BaseModel):
     id: Optional[int] = None
     nombre: str = Field(..., min_length=1, max_length=100)
-    cantidad: float = Field(..., gt=0, description="La cantidad consumida debe ser mayor a cero")
+    cantidad: float = Field(..., gt=0)
     unidad: Optional[str] = Field("L", max_length=30)
+
+
+InsumoUtilizadoPlaceholder = InsumoQuimicoUtilizado
 
 
 class CompletarTareaSchema(BaseModel):
@@ -37,6 +40,19 @@ class ChecklistItem(BaseModel):
     fecha_hora_fin: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("frecuencia", mode="before")
+    @classmethod
+    def parse_frecuencia(cls, v: Any) -> Any:
+        if isinstance(v, Frecuencia):
+            return v
+        if isinstance(v, str):
+            val = v.upper()
+            if val == "DIARIO":
+                val = "DIARIA"
+            if val in Frecuencia.__members__:
+                return Frecuencia[val]
+        return v
 
     @field_validator("insumos_utilizados", mode="before")
     @classmethod

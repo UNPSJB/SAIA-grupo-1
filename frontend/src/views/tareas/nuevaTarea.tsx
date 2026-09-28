@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Tarea, TareaConId, TareaForm } from "./tipos";
+import type { TareaConId, TareaForm } from "./tipos";
 import "../../styles/formularioAlta.css";
 
 const TAREA_INICAL:TareaForm ={

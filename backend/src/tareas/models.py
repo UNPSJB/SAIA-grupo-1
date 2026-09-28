@@ -14,7 +14,7 @@ class Tarea(ModeloBase):
     __tablename__="tareas"
 
     id:Mapped[int]=mapped_column(primary_key=True,index=True)
-    nombre:Mapped[str]= mapped_column(String(20),index=True)
+    nombre:Mapped[str]= mapped_column(String(50),index=True)
     descripcion:Mapped[str]= mapped_column(String(100),index=True)
     frecuencia:Mapped[Frecuencia] = mapped_column(index=True)
     plan_id:Mapped[int]=mapped_column(ForeignKey("plan_de_limpieza.id"))

@@ -12,6 +12,9 @@ from src.personal.schemas import PersonalCreate
 from src.insumos.services import crear_insumo
 from src.insumos.schemas import InsumoCreate
 from src.insumos.models import UnidadMedida
+from src.insumos_quimicos.services import InsumoQuimicoService
+from src.insumos_quimicos.schemas import InsumoQuimicoCreate
+from src.insumos_quimicos.constants import TipoQuimicoEnum, UnidadMedidaEnum as UnidadQuimico
 from src.equipos.services import crear_equipo
 from src.equipos.schemas import EquipoCreate
 from src.equipos.models import Categoria, Estado
@@ -80,24 +83,23 @@ def session() -> Generator[Session, None, None]:
     vencimiento_valido = (hoy + timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
     recepcion_valida = (hoy - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Insumos semilla para pruebas de POES y manipulación de alimentos
     insumo_1 = crear_insumo(
         db,
         InsumoCreate(
-            nombre="Lavandina concentrada 55g/l",
-            lote="POES-LAV-001",
+            nombre="Harina de Trigo 000",
+            lote="ING-HAR-001",
             fechaRecepcion=recepcion_valida,
             fechaVencimiento=vencimiento_valido,
             cantRecibida=100.0,
             stock=80.0,
-            medida=UnidadMedida.LITROS,
+            medida=UnidadMedida.KILOGRAMOS,
         ),
     )
     insumo_2 = crear_insumo(
         db,
         InsumoCreate(
-            nombre="Detergente desengrasante alcalino",
-            lote="POES-DET-002",
+            nombre="Aceite de Girasol",
+            lote="ING-ACE-002",
             fechaRecepcion=recepcion_valida,
             fechaVencimiento=vencimiento_valido,
             cantRecibida=50.0,
@@ -108,13 +110,50 @@ def session() -> Generator[Session, None, None]:
     insumo_3 = crear_insumo(
         db,
         InsumoCreate(
-            nombre="Bobina de toallas secamanos",
-            lote="POES-SEC-003",
+            nombre="Levadura Fresca",
+            lote="ING-LEV-003",
             fechaRecepcion=recepcion_valida,
-            fechaVencimiento=None,
-            cantRecibida=50.0,
-            stock=20.0,
-            medida=UnidadMedida.UNIDADES,
+            fechaVencimiento=vencimiento_valido,
+            cantRecibida=2000.0,
+            stock=1500.0,
+            medida=UnidadMedida.GRAMOS,
+        ),
+    )
+
+    InsumoQuimicoService.create(
+        db,
+        InsumoQuimicoCreate(
+            nombre="Lavandina",
+            tipo=TipoQuimicoEnum.DESINFECTANTE,
+            unidad_medida=UnidadQuimico.LITROS,
+            stock_actual=80.0,
+        ),
+    )
+    InsumoQuimicoService.create(
+        db,
+        InsumoQuimicoCreate(
+            nombre="Detergente desengrasante",
+            tipo=TipoQuimicoEnum.DESENGRASANTE,
+            unidad_medida=UnidadQuimico.LITROS,
+            stock_actual=35.0,
+        ),
+    )
+    InsumoQuimicoService.create(
+        db,
+        InsumoQuimicoCreate(
+            nombre="Alcohol 70%",
+            tipo=TipoQuimicoEnum.DESINFECTANTE,
+            unidad_medida=UnidadQuimico.LITROS,
+            stock_actual=50.0,
+        ),
+    )
+    InsumoQuimicoService.create(
+        db,
+        InsumoQuimicoCreate(
+            nombre="Bobina papel",
+            tipo=TipoQuimicoEnum.SANITIZANTE,
+            unidad_medida=UnidadQuimico.UNIDADES,
+            stock_actual=100.0,
         ),
     )
 

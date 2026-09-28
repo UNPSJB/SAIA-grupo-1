@@ -17,7 +17,7 @@ def test_read_insumos(session: Session) -> None:
 def test_read_insumo(session: Session) -> None:
     response = client.get("/insumos/1")
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["nombre"] == "Lavandina concentrada 55g/l"
+    assert response.json()["nombre"] == "Harina de Trigo 000"
 
     response_404 = client.get("/insumos/999")
     assert response_404.status_code == status.HTTP_404_NOT_FOUND
@@ -28,17 +28,17 @@ def test_create_insumo(session: Session) -> None:
     response = client.post(
         "/insumos/",
         json={
-            "nombre": "Alcohol sanitizante 70%",
-            "lote": "POES-ALC-010",
+            "nombre": "Sal Fina",
+            "lote": "ING-SAL-010",
             "fechaRecepcion": (hoy - timedelta(days=1)).isoformat(),
-            "fechaVencimiento": (hoy + timedelta(days=60)).isoformat(),
+            "fechaVencimiento": (hoy + timedelta(days=365)).isoformat(),
             "cantRecibida": 100.0,
             "stock": 100.0,
-            "medida": "litros",
+            "medida": "kilogramos",
         },
     )
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["nombre"] == "Alcohol sanitizante 70%"
+    assert response.json()["nombre"] == "Sal Fina"
 
 
 def test_create_insumo_invalido(session: Session) -> None:
@@ -61,10 +61,10 @@ def test_create_insumo_invalido(session: Session) -> None:
 def test_update_insumo(session: Session) -> None:
     response = client.patch(
         "/insumos/1",
-        json={"nombre": "Lavandina sanitizante 60g/l"},
+        json={"nombre": "Harina de Trigo 0000"},
     )
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["nombre"] == "Lavandina sanitizante 60g/l"
+    assert response.json()["nombre"] == "Harina de Trigo 0000"
 
 
 def test_update_insumo_stock(session: Session) -> None:
