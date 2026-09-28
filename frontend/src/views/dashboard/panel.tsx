@@ -4,7 +4,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -86,25 +85,34 @@ export const Panel: React.FC = () => {
               <option value="mes">Mensual</option>
             </select>
           </div>
-          <div className="dashboard-dona-wrapper">
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie
-                  data={datosDona}
-                  dataKey="value"
-                  innerRadius={65}
-                  outerRadius={95}
-                  paddingAngle={2}
-                  stroke="none"
-                >
-                  <Cell fill={COLOR_HECHAS} />
-                  <Cell fill={COLOR_PENDIENTES} />
-                </Pie>
-                <Tooltip />
-                <Legend verticalAlign="middle" align="right" layout="vertical" />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="dashboard-dona-centro">{cumplimiento_actual.porcentaje}%</div>
+          <div className="dashboard-dona-fila">
+            <div className="dashboard-dona-wrapper">
+              <ResponsiveContainer width={220} height={220}>
+                <PieChart>
+                  <Pie
+                    data={datosDona}
+                    dataKey="value"
+                    innerRadius={65}
+                    outerRadius={95}
+                    paddingAngle={2}
+                    stroke="none"
+                  >
+                    <Cell fill={COLOR_HECHAS} />
+                    <Cell fill={COLOR_PENDIENTES} />
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="dashboard-dona-centro">{cumplimiento_actual.porcentaje}%</div>
+            </div>
+            <div className="dashboard-dona-leyenda">
+              <span className="dashboard-dona-leyenda-item">
+                <i style={{ backgroundColor: COLOR_HECHAS }} /> Hechas
+              </span>
+              <span className="dashboard-dona-leyenda-item">
+                <i style={{ backgroundColor: COLOR_PENDIENTES }} /> Pendientes
+              </span>
+            </div>
           </div>
         </div>
 
