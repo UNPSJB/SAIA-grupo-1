@@ -63,7 +63,6 @@ export const ListadoAuditoria: React.FC = () => {
           <thead>
             <tr>
               <th>Tabla</th>
-              <th>Registro</th>
               <th>Acción</th>
               <th>Campo</th>
               <th>Valor previo</th>
@@ -74,13 +73,13 @@ export const ListadoAuditoria: React.FC = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando auditoría...
                 </td>
               </tr>
             ) : auditorias.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
                   No hay registros de auditoría.
                 </td>
               </tr>
@@ -88,7 +87,6 @@ export const ListadoAuditoria: React.FC = () => {
               auditorias.map((a) => (
                 <tr key={a.id}>
                   <td style={{ fontWeight: 500 }}>{a.tabla}</td>
-                  <td>{a.registro_id}</td>
                   <td>{a.accion}</td>
                   <td>{a.campo ?? "No aplica"}</td>
                   <td>{a.valor_previo ?? "No aplica"}</td>

@@ -46,19 +46,51 @@
   outline: none;
 }
 
+.dashboard-dona-fila {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
 .dashboard-dona-wrapper {
   position: relative;
+  width: 220px;
+  height: 220px;
+  flex-shrink: 0;
 }
 
 .dashboard-dona-centro {
   position: absolute;
   top: 50%;
-  left: 30%;
+  left: 50%;
   transform: translate(-50%, -50%);
   font-size: 1.8rem;
   font-weight: 700;
   color: var(--text-h);
   pointer-events: none;
+}
+
+.dashboard-dona-leyenda {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dashboard-dona-leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-h);
+}
+
+.dashboard-dona-leyenda-item i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
 }
 
 .dashboard-sin-datos {
