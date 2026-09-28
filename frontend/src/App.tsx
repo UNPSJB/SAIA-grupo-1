@@ -8,7 +8,6 @@ import NuevoEquipo from './views/equipos/nuevoEquipo';
 import { ListadoEquipos } from './views/equipos/listado';
 import { DetalleEquipo } from './views/equipos/verDetalle';
 import EditarEquipo from './views/equipos/editarDetalle';
-import EliminarEquipo from './views/equipos/eliminarEquipo';
 import { NuevaPersona } from './views/personas/nuevaPersona';
 import { ListadoPersonas } from './views/personas/listado';
 import { DetallePersona } from './views/personas/verDetalle';
@@ -34,7 +33,7 @@ import { ListadoAuditoria } from './views/auditoria/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
 
 type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
-type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
+type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -144,10 +143,6 @@ function App() {
                 setEquipoSeleccionado(id);
                 setVistaEquipos('editar');
               }}
-              onEliminarClick={(id) => {
-                setEquipoSeleccionado(id);
-                setVistaEquipos('eliminar');
-              }}
             />
           ) : vistaEquipos === 'alta' ? (
             <NuevoEquipo
@@ -159,17 +154,11 @@ function App() {
               equipoId={equipoSeleccionado}
               onCancel={() => setVistaEquipos('listado')}
             />
-          ) : vistaEquipos === 'editar' ? (
+          ) : (
             <EditarEquipo
               equipoId={equipoSeleccionado}
               onSuccess={() => setVistaEquipos('listado')}
               onCancel={() => setVistaEquipos('listado')}
-            />
-          ) : (
-            <EliminarEquipo
-              equipoID={equipoSeleccionado}
-              onCancel={() => setVistaEquipos('listado')}
-              onSucces={() => setVistaEquipos('listado')}
             />
           )
         ) : modulo === 'personas' ? (

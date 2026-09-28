@@ -58,6 +58,7 @@ class EquipoUpdate(EquipoBase):
     ubicacion: Optional[str] = Field( None,max_length=50)
     categoria:Optional[Categoria]=None
     plan_de_calibracion:Optional[str] = Field( None,max_length=100)
+    estado: Optional[Estado] = None
 
 
     @field_validator(

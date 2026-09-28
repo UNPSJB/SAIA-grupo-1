@@ -7,7 +7,6 @@ interface ListadoEquiposProps {
     onNuevoClick?: () => void;
     onDetalleClick?: (id: number) => void;
     onEditarClick?: (id: number) => void;
-    onEliminarClick?: (id: number) => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -16,7 +15,6 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
     onNuevoClick,
     onDetalleClick,
     onEditarClick,
-    onEliminarClick,
 }) => {
     const [equipos, setEquipos] = useState<EquipoConId[]>([]);
     const [loading, setLoading] = useState(true);
@@ -24,7 +22,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
     const [filtroEstado, setFiltroEstado] = useState('TODOS');
     const [filtroCategoria, setFiltroCategoria] = useState('TODOS');
 
-    const [equipoAEliminar, setEquipoAEliminar] = useState<EquipoConId | null>(null);
+    const [equipoAConfirmar, setEquipoAConfirmar] = useState<EquipoConId | null>(null);
     const [dialogAbierto, setDialogAbierto] = useState(false);
 
     useEffect(() => {
@@ -58,29 +56,34 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
     }, []);
 
     const abrirConfirmacion = (eq: EquipoConId) => {
-        if (onEliminarClick) {
-            onEliminarClick(eq.id);
-            return;
-        }
-        setEquipoAEliminar(eq);
+        setEquipoAConfirmar(eq);
         setDialogAbierto(true);
     };
 
-    const ejecutarEliminar = async () => {
-        if (!equipoAEliminar) return;
+    const ejecutarToggle = async () => {
+        if (!equipoAConfirmar) return;
+        const esActivo = equipoAConfirmar.estado.toLowerCase() === 'activo';
+        const accion = esActivo ? 'dar de baja' : 'reactivar';
         try {
-            const res = await fetch(`${API_URL}/equipos/${equipoAEliminar.id}`, { method: 'DELETE' });
+            const url = esActivo
+                ? `${API_URL}/equipos/${equipoAConfirmar.id}`
+                : `${API_URL}/equipos/${equipoAConfirmar.id}/reactivar`;
+            const method = esActivo ? 'DELETE' : 'PATCH';
+            const res = await fetch(url, { method });
             if (res.ok) {
-                setEquipos((prev) => prev.filter((e) => e.id !== equipoAEliminar.id));
+                const nuevoEstado = esActivo ? 'inactivo' : 'activo';
+                setEquipos((prev) =>
+                    prev.map((e) => (e.id === equipoAConfirmar.id ? { ...e, estado: nuevoEstado } : e))
+                );
             } else {
                 const err = await res.json().catch(() => ({}));
-                alert(err.detail || 'No se pudo eliminar el equipo');
+                alert(err.detail || `No se pudo ${accion} el equipo.`);
             }
         } catch {
-            alert('Error de conexión al eliminar el equipo');
+            alert(`Error de conexión al ${accion} el equipo.`);
         } finally {
             setDialogAbierto(false);
-            setEquipoAEliminar(null);
+            setEquipoAConfirmar(null);
         }
     };
 
@@ -200,11 +203,11 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                                                 ✎
                                             </button>
                                             <button
-                                                className="btn-icon btn-eliminar"
-                                                title="Eliminar"
+                                                className={`btn-icon ${i.estado.toLowerCase() === 'activo' ? 'btn-eliminar' : 'btn-reactivar'}`}
+                                                title={i.estado.toLowerCase() === 'activo' ? 'Dar de baja' : 'Reactivar'}
                                                 onClick={() => abrirConfirmacion(i)}
                                             >
-                                                🗑
+                                                {i.estado.toLowerCase() === 'activo' ? '🗑' : '🔄'}
                                             </button>
                                         </div>
                                     </td>
@@ -217,15 +220,19 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
 
             <ConfirmAlertDialog
                 open={dialogAbierto}
-                title="¿Eliminar equipo?"
-                description={`¿Seguro que deseas eliminar el equipo "${equipoAEliminar?.nombre}"? Esta acción no se puede deshacer.`}
-                confirmText="Eliminar"
+                title={equipoAConfirmar?.estado.toLowerCase() === 'activo' ? '¿Dar de baja equipo?' : '¿Reactivar equipo?'}
+                description={
+                    equipoAConfirmar?.estado.toLowerCase() === 'activo'
+                        ? `¿Estás seguro de que deseas desactivar el equipo "${equipoAConfirmar?.nombre}"?`
+                        : `¿Estás seguro de que deseas reactivar el equipo "${equipoAConfirmar?.nombre}"?`
+                }
+                confirmText={equipoAConfirmar?.estado.toLowerCase() === 'activo' ? 'Confirmar Baja' : 'Confirmar Reactivación'}
                 cancelText="Cancelar"
-                isDestructive={true}
-                onConfirm={ejecutarEliminar}
+                isDestructive={equipoAConfirmar?.estado.toLowerCase() === 'activo'}
+                onConfirm={ejecutarToggle}
                 onCancel={() => {
                     setDialogAbierto(false);
-                    setEquipoAEliminar(null);
+                    setEquipoAConfirmar(null);
                 }}
             />
         </div>

@@ -198,9 +198,10 @@ cover/
 *.mo
 *.pot
 
-# Django stuff:
+# Database files
 local_settings.py
 db.sqlite3
+db.sqlite3*
 db.sqlite3-journal
 *.db
 *.db-journal
