@@ -17,6 +17,9 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
 }) => {
   const [planes, setPlanes] = useState<PlanConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroFrecuencia, setFiltroFrecuencia] = useState('TODOS');
+  const [filtroTareas, setFiltroTareas] = useState('TODOS');
 
   useEffect(() => {
     let ignore = false;
@@ -41,6 +44,31 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
     };
   }, []);
 
+  const planesFiltrados = planes.filter((p) => {
+    const term = busqueda.toLowerCase();
+    const coincideBusqueda =
+      (p.nombre?.toLowerCase().includes(term) ?? false) ||
+      (p.nombre_equipo?.toLowerCase().includes(term) ?? false);
+    const coincideFrecuencia =
+      filtroFrecuencia === 'TODOS' ||
+      (p.tareas ?? []).some((t) => t.frecuencia?.toUpperCase() === filtroFrecuencia);
+    const cantTareas = p.tareas?.length ?? 0;
+    const coincideTareas =
+      filtroTareas === 'TODOS' ||
+      (filtroTareas === 'CON_TAREAS' ? cantTareas > 0 : cantTareas === 0);
+    return coincideBusqueda && coincideFrecuencia && coincideTareas;
+  });
+
+  const campoFiltroStyle: React.CSSProperties = {
+    padding: '10px 12px',
+    border: '1px solid var(--border)',
+    borderRadius: '6px',
+    backgroundColor: 'var(--code-bg)',
+    fontSize: '14px',
+    color: 'var(--text-h)',
+    outline: 'none',
+  };
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -56,6 +84,37 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
         )}
       </div>
 
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="Buscar por nombre de plan o equipo..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          style={{ ...campoFiltroStyle, flex: 1, minWidth: '220px' }}
+        />
+
+        <select
+          value={filtroFrecuencia}
+          onChange={(e) => setFiltroFrecuencia(e.target.value)}
+          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+        >
+          <option value="TODOS">Todas las frecuencias</option>
+          <option value="DIARIA">Con tareas diarias</option>
+          <option value="SEMANAL">Con tareas semanales</option>
+          <option value="MENSUAL">Con tareas mensuales</option>
+        </select>
+
+        <select
+          value={filtroTareas}
+          onChange={(e) => setFiltroTareas(e.target.value)}
+          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+        >
+          <option value="TODOS">Todos los planes</option>
+          <option value="CON_TAREAS">Con tareas</option>
+          <option value="SIN_TAREAS">Sin tareas</option>
+        </select>
+      </div>
+
       <div className="tabla-wrapper">
         <table className="tabla-custom">
           <thead>
@@ -69,18 +128,18 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando Planes...
                 </td>
               </tr>
-            ) : planes.length === 0 ? (
+            ) : planesFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No hay Planes registrados.
+                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                  No se encontraron planes.
                 </td>
               </tr>
             ) : (
-              planes.map((p) => (
+              planesFiltrados.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
                   <td>{p.nombre_equipo}</td>

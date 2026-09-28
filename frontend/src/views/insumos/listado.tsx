@@ -33,6 +33,9 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
 }) => {
   const [insumos, setInsumos] = useState<InsumoConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroUnidad, setFiltroUnidad] = useState('TODOS');
+  const [filtroVencimiento, setFiltroVencimiento] = useState('TODOS');
 
   const handleEliminar = async (id?: number) => {
     if (!id) return;
@@ -73,6 +76,35 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     };
   }, []);
 
+  const estadoVencimiento = (fechaVencimiento?: string | null) => {
+    if (!fechaVencimiento) return 'SIN_VENCIMIENTO';
+    const dias = (new Date(fechaVencimiento).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    if (dias < 0) return 'VENCIDO';
+    if (dias <= 15) return 'POR_VENCER';
+    return 'VIGENTE';
+  };
+
+  const insumosFiltrados = insumos.filter((i) => {
+    const term = busqueda.toLowerCase();
+    const coincideBusqueda =
+      (i.nombre?.toLowerCase().includes(term) ?? false) ||
+      (i.lote?.toLowerCase().includes(term) ?? false);
+    const coincideUnidad = filtroUnidad === 'TODOS' || i.medida?.toUpperCase() === filtroUnidad;
+    const coincideVencimiento =
+      filtroVencimiento === 'TODOS' || estadoVencimiento(i.fechaVencimiento) === filtroVencimiento;
+    return coincideBusqueda && coincideUnidad && coincideVencimiento;
+  });
+
+  const campoFiltroStyle: React.CSSProperties = {
+    padding: '10px 12px',
+    border: '1px solid var(--border)',
+    borderRadius: '6px',
+    backgroundColor: 'var(--code-bg)',
+    fontSize: '14px',
+    color: 'var(--text-h)',
+    outline: 'none',
+  };
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -86,6 +118,41 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
             + Agregar Insumo
           </button>
         )}
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="Buscar por nombre o lote..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          style={{ ...campoFiltroStyle, flex: 1, minWidth: '220px' }}
+        />
+
+        <select
+          value={filtroUnidad}
+          onChange={(e) => setFiltroUnidad(e.target.value)}
+          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+        >
+          <option value="TODOS">Todas las unidades</option>
+          <option value="KILOGRAMOS">Kilogramos</option>
+          <option value="GRAMOS">Gramos</option>
+          <option value="LITROS">Litros</option>
+          <option value="MILILITROS">Mililitros</option>
+          <option value="UNIDADES">Unidades</option>
+        </select>
+
+        <select
+          value={filtroVencimiento}
+          onChange={(e) => setFiltroVencimiento(e.target.value)}
+          style={{ ...campoFiltroStyle, cursor: 'pointer' }}
+        >
+          <option value="TODOS">Todos los vencimientos</option>
+          <option value="VIGENTE">Vigentes</option>
+          <option value="POR_VENCER">Por vencer (15 días)</option>
+          <option value="VENCIDO">Vencidos</option>
+          <option value="SIN_VENCIMIENTO">Sin vencimiento</option>
+        </select>
       </div>
 
       <div className="tabla-wrapper">
@@ -109,14 +176,14 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                   Cargando insumos...
                 </td>
               </tr>
-            ) : insumos.length === 0 ? (
+            ) : insumosFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No hay insumos registrados.
+                  No se encontraron insumos.
                 </td>
               </tr>
             ) : (
-              insumos.map((i) => (
+              insumosFiltrados.map((i) => (
                 <tr key={i.id}>
                   <td style={{ fontWeight: 500 }}>{i.nombre}</td>
                   <td>{i.lote}</td>
