@@ -152,26 +152,6 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 }
 
 useEffect(() => {
-        if (planlimpiezaID) {
-            const fetchPlanLimp = async () => {
-                try {
-                    const res = await fetch(`${API_URL}/plan_De_limpieza/${planlimpiezaID}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        setPlanLimp(data);
-                    }
-                } catch {
-                    alert('El plan de limpieza no existe.');
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            fetchPlanLimp();
-        }
-    }, [planlimpiezaID]);
-
-useEffect(() => {
         const fetchEquipos = async () => {
             try {
                 const res = await fetch(`${API_URL}/equipos/`);
@@ -328,6 +308,7 @@ return (
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button
+                        type="button"
                         className="btn-icon btn-ver"
                         title="Ver detalles"
                         onClick={() => {setModelVer(true); setTareaSeleccionada(t.id)}}
@@ -335,6 +316,7 @@ return (
                         👁
                       </button>
                       <button
+                        type="button"
                         className="btn-icon btn-editar"
                         title="Editar"
                         onClick={() => {setModalEditar(true); setTareaSeleccionada(t.id)}}
