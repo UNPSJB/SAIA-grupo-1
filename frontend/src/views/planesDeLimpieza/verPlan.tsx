@@ -34,7 +34,6 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
     const [planLimpieza, setPlanLimp] = useState<PlanConId | null>(null);
     const [loading, setLoading] = useState(true);
     const [modalAbierto,setModal]=useState(false);
-    const [modalEditar,setModalEditar]=useState(false);
     const [modalVerTarea, setModelVer] = useState(false);
     const [tareaSeleccionada, setTareaSeleccionada]=useState <number | null>(null);
     
@@ -58,7 +57,7 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
         fetchPlanLimp();
     }, [fetchPlanLimp]);
 
-    const handleEliminarTarea = async (id?: number) => {
+    /*const handleEliminarTarea = async (id?: number) => {
     if (!id) return;
     if (!window.confirm('¿Seguro que desea eliminar esta tarea?')) return;
 
@@ -72,7 +71,7 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
     } catch {
       alert('Error de conexión al eliminar la tarea');
     }
-  };
+  };*/
 
     return (
     <div className="plan-container invertir-css">
@@ -140,18 +139,6 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
                 </div>
       </div>)}
 
-      {modalEditar &&(
-        <div className="modal-abierto">\
-        <div className="modal-content">
-          <EditarTarea
-          tareaID={tareaSeleccionada}
-          planID={planLimpieza.id}
-          onSuccess={() =>{setModalEditar(false); fetchPlanLimp()}}
-          onCancel={() => setModalEditar(false)}
-          />
-          </div>
-          </div>)}
-
           {modalVerTarea && (
             <div className="modal-abierto">
               <div className="modal-content">
@@ -200,20 +187,6 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
                         onClick={() => {setModelVer(true); setTareaSeleccionada(t.id)}}
                       >
                         👁
-                      </button>
-                      <button
-                        className="btn-icon btn-editar"
-                        title="Editar"
-                        onClick={() => {setModalEditar(true); setTareaSeleccionada(t.id)}}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        className="btn-icon btn-eliminar"
-                        title="Eliminar"
-                        onClick={() => handleEliminarTarea(t.id)}
-                      >
-                        🗑
                       </button>
                     </div>
 

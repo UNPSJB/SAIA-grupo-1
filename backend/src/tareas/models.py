@@ -15,7 +15,7 @@ class Tarea(ModeloBase):
 
     id:Mapped[int]=mapped_column(primary_key=True,index=True)
     nombre:Mapped[str]= mapped_column(String(20),index=True)
-    descripcion:Mapped[str]= mapped_column(String(100),index=True)
+    descripcion:Mapped[str]= mapped_column(index=True)
     frecuencia:Mapped[Frecuencia] = mapped_column(index=True)
     plan_id:Mapped[int]=mapped_column(ForeignKey("plan_de_limpieza.id"))
 
