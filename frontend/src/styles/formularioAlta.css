@@ -312,12 +312,6 @@ dialog .btn-guardar{
   transition: opacity 0.2s;
 }
 
-.invertir-css{
-  background-color: #1e1e2f; 
-    color: #e2e8f0;           
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
 .form-group td{
   font-size:2rem
 }
