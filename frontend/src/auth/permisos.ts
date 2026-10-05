@@ -1,7 +1,7 @@
 import type { Modulo } from '../components/Sidebar';
 
-/** Lo único que ve un operador: el checklist del día. El resto es del administrador. */
-const MODULOS_DEL_OPERADOR: readonly Modulo[] = ['checklist'];
+/** Lo único que ve un operador: el checklist del día y sus incidentes. El resto es del administrador. */
+const MODULOS_DEL_OPERADOR: readonly Modulo[] = ['checklist', 'incidentes'];
 
 export const puedeVerModulo = (modulo: Modulo, esAdministrador: boolean): boolean =>
   esAdministrador || MODULOS_DEL_OPERADOR.includes(modulo);
