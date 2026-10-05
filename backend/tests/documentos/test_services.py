@@ -1,4 +1,5 @@
 import io
+from datetime import date, timedelta
 from fastapi import UploadFile
 import pytest
 from sqlalchemy.orm import Session
@@ -39,9 +40,10 @@ def test_crear_documento_con_version_valida(session: Session):
 
     v = doc.version_actual
     assert v is not None
-    assert v.version == "1.0"
+    assert v.version == 1
     assert v.archivado is False
-    assert v.responsable_legajo == admin.legajo
+    assert v.es_vigente is True
+    assert v.fecha_vigencia == date.today()
     assert v.archivo_nombre_original == "manual_bpm.pdf"
 
 def test_multiples_documentos_mismo_tipo_activos(session: Session):
@@ -117,18 +119,97 @@ def test_subir_nueva_version_archiva_solo_version_previa_del_mismo_documento(ses
     session.refresh(doc1)
     session.refresh(doc2)
 
-    assert nueva_v_doc1.version == "2.0"
+    assert nueva_v_doc1.version == 2
     assert nueva_v_doc1.archivado is False
     assert len(doc1.versiones) == 2
 
-    v1_doc1 = [v for v in doc1.versiones if v.version == "1.0"][0]
+    v1_doc1 = [v for v in doc1.versiones if v.version == 1][0]
     assert v1_doc1.archivado is True
 
-    assert doc1.version_actual.version == "2.0"
-
     assert len(doc2.versiones) == 1
-    assert doc2.version_actual.version == "1.0"
+    assert doc2.version_actual.version == 1
     assert doc2.version_actual.archivado is False
+
+def test_marcar_version_vigente_criterios_completos(session: Session):
+    admin1 = crear_personal(session, PersonalCreate(
+        documento=34343434,
+        nombre="Guillermo",
+        apellido="Admin",
+        email="guille.admin@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+    ))
+
+    admin2 = crear_personal(session, PersonalCreate(
+        documento=35353535,
+        nombre="Susana",
+        apellido="Admin",
+        email="susana.admin@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+    ))
+
+    doc = services.crear_documento(
+        db=session,
+        titulo="Manual BPM Planta",
+        tipo=TipoDocumento.MANUAL_BPM,
+        version="1.0",
+        responsable_legajo=admin1.legajo,
+        file=_crear_archivo_pdf_fake("bpm_v1.pdf"),
+    )
+
+    v1 = doc.version_actual
+    assert v1.version == 1
+    assert v1.es_vigente is True
+
+    v2 = services.subir_nueva_version(
+        db=session,
+        documento_id=doc.id,
+        version="2.0",
+        responsable_legajo=admin1.legajo,
+        file=_crear_archivo_pdf_fake("bpm_v2.pdf"),
+    )
+    assert v2.es_vigente is False
+    session.refresh(doc)
+    assert doc.version_vigente.version == 1
+
+    fecha_entrada_vigencia = date.today() + timedelta(days=5)
+    v2_vigente = services.marcar_version_vigente(
+        db=session,
+        documento_id=doc.id,
+        version_id=v2.id,
+        fecha_vigencia=fecha_entrada_vigencia,
+        responsable_legajo=admin2.legajo,
+    )
+
+    session.refresh(doc)
+    session.refresh(v1)
+    session.refresh(v2)
+
+    assert v2.es_vigente is True
+    assert v2.fecha_vigencia == fecha_entrada_vigencia
+
+    assert v1.es_vigente is False
+
+    assert doc.version_vigente.version == 2
+    assert doc.version_vigente.id == v2.id
+
+    versiones_vigentes = [v for v in doc.versiones if v.es_vigente]
+    assert len(versiones_vigentes) == 1
+
+    from src.auditoria.services import listar_auditorias
+    from src.auditoria.models import AccionAuditoria
+    auditorias = listar_auditorias(session, tabla="documentos", registro_id=doc.id)
+    assert len(auditorias) >= 2
+    creacion = auditorias[0]
+    assert creacion.accion == AccionAuditoria.CREAR
+    assert creacion.campo == "version_vigente"
+    assert "v1" in creacion.valor_posterior
+    modificacion = auditorias[-1]
+    assert modificacion.accion == AccionAuditoria.MODIFICAR
+    assert modificacion.campo == "version_vigente"
+    assert modificacion.valor_previo == "v1"
+    assert "v2" in modificacion.valor_posterior
+    assert str(fecha_entrada_vigencia) in modificacion.valor_posterior
+    assert str(admin2.legajo) in modificacion.valor_posterior
 
 def test_version_duplicada_mismo_documento_falla(session: Session):
     admin = crear_personal(session, PersonalCreate(
@@ -157,13 +238,21 @@ def test_version_duplicada_mismo_documento_falla(session: Session):
             file=_crear_archivo_pdf_fake(),
         )
 
-def test_permiso_solo_administrador_puede_subir(session: Session):
+def test_permiso_solo_administrador_puede_subir_y_marcar_vigente(session: Session):
     operador = crear_personal(session, PersonalCreate(
         documento=55555555,
         nombre="Pedro",
         apellido="Operador",
         email="pedro.op@test.com",
         capacidad=Capacidades.OPERAR,
+    ))
+
+    admin = crear_personal(session, PersonalCreate(
+        documento=56565656,
+        nombre="Tomas",
+        apellido="Admin",
+        email="tomas.ad@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
     ))
 
     with pytest.raises(exceptions.SoloAdministradorPuedeSubir):
@@ -174,6 +263,25 @@ def test_permiso_solo_administrador_puede_subir(session: Session):
             version="1.0",
             responsable_legajo=operador.legajo,
             file=_crear_archivo_pdf_fake(),
+        )
+
+    doc = services.crear_documento(
+        db=session,
+        titulo="Receta Permitida",
+        tipo=TipoDocumento.RECETA,
+        version="1.0",
+        responsable_legajo=admin.legajo,
+        file=_crear_archivo_pdf_fake(),
+    )
+    v1 = doc.version_actual
+
+    with pytest.raises(exceptions.SoloAdministradorPuedeSubir):
+        services.marcar_version_vigente(
+            db=session,
+            documento_id=doc.id,
+            version_id=v1.id,
+            fecha_vigencia=date.today(),
+            responsable_legajo=operador.legajo,
         )
 
 def test_validacion_archivo_no_pdf(session: Session):
@@ -217,3 +325,38 @@ def test_validacion_archivo_no_pdf(session: Session):
             responsable_legajo=admin.legajo,
             file=archivo_vacio,
         )
+
+def test_versionado_automatico_creacion_e_incremento(session: Session):
+    admin = crear_personal(session, PersonalCreate(
+        documento=77711122,
+        nombre="Valeria",
+        apellido="Admin",
+        email="valeria.admin@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+    ))
+
+    doc = services.crear_documento(
+        db=session,
+        titulo="Manual BPM Calidad",
+        tipo=TipoDocumento.MANUAL_BPM,
+        file=_crear_archivo_pdf_fake("manual_bpm.pdf"),
+        responsable_legajo=admin.legajo,
+    )
+    assert doc.version_actual.version == 1
+
+    v2 = services.subir_nueva_version(
+        db=session,
+        documento_id=doc.id,
+        file=_crear_archivo_pdf_fake("manual_bpm_v2.pdf"),
+        responsable_legajo=admin.legajo,
+    )
+    assert v2.version == 2
+
+    v3 = services.subir_nueva_version(
+        db=session,
+        documento_id=doc.id,
+        file=_crear_archivo_pdf_fake("manual_bpm_v3.pdf"),
+        responsable_legajo=admin.legajo,
+    )
+    assert v3.version == 3
+

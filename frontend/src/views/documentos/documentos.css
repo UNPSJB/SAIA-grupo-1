@@ -1,48 +1,3 @@
-.badge-tipo {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.badge-tipo.manual_bpm {
-  background-color: rgba(99, 102, 241, 0.15);
-  color: #4f46e5;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-}
-
-.badge-tipo.ficha_tecnica {
-  background-color: rgba(14, 165, 233, 0.15);
-  color: #0284c7;
-  border: 1px solid rgba(14, 165, 233, 0.3);
-}
-
-.badge-tipo.procedimiento {
-  background-color: rgba(168, 85, 247, 0.15);
-  color: #9333ea;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-}
-
-.badge-tipo.receta {
-  background-color: rgba(234, 88, 12, 0.15);
-  color: #c2410c;
-  border: 1px solid rgba(234, 88, 12, 0.3);
-}
-
-.badge-version {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background-color: #2e1065;
-  color: #d8b4fe;
-  font-family: monospace;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -106,118 +61,15 @@
   gap: 1.2rem;
 }
 
-.modo-selector-tabs {
-  display: flex;
-  gap: 0.5rem;
-  background-color: #f8fafc;
-  padding: 4px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.modo-tab {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-align: center;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  background: transparent;
-  color: #64748b;
-  transition: all 0.15s ease-in-out;
-}
-
-.modo-tab.activo {
-  background-color: #ffffff;
-  color: #6b21a8;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.alerta-confirmacion-archivado {
-  background-color: #faf5ff;
-  border: 1px solid #d8b4fe;
-  border-left: 4px solid #9333ea;
+.alerta-confirmacion-vigente {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-left: 4px solid #10b981;
   padding: 0.85rem 1rem;
   border-radius: 6px;
   font-size: 0.85rem;
-  color: #581c87;
+  color: #065f46;
   line-height: 1.45;
-}
-
-.alerta-coincidencia {
-  background-color: #fffbeb;
-  border: 1px solid #fde68a;
-  border-left: 4px solid #f59e0b;
-  padding: 0.85rem 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #92400e;
-  line-height: 1.45;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.alerta-coincidencia-acciones {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
-}
-
-.btn-mini-confirmar {
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid #d97706;
-  background-color: #fef3c7;
-  color: #b45309;
-}
-
-.btn-mini-confirmar:hover {
-  background-color: #fde68a;
-}
-
-.file-input-wrapper {
-  border: 2px dashed #cbd5e1;
-  border-radius: 8px;
-  padding: 1.25rem;
-  text-align: center;
-  background-color: #f8fafc;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.file-input-wrapper:hover {
-  border-color: #9333ea;
-}
-
-.file-input-wrapper input[type="file"] {
-  display: none;
-}
-
-.file-input-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  color: #475569;
-  font-size: 0.88rem;
-  cursor: pointer;
-}
-
-.file-input-icono {
-  font-size: 1.8rem;
-  color: #9333ea;
-}
-
-.archivo-seleccionado-info {
-  margin-top: 6px;
-  font-weight: 600;
-  color: #0f172a;
 }
 
 .modal-footer {
@@ -229,4 +81,16 @@
   background-color: #fafafa;
   border-bottom-left-radius: 14px;
   border-bottom-right-radius: 14px;
+}
+
+.btn-icon.btn-vigente:hover {
+  background-color: #059669;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+.btn-icon.btn-subir-version:hover {
+  background-color: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
 }
