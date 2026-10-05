@@ -4,6 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Enum as SQLEnum, Boolean
 from src.models import ModeloBase
 from src.personal.schemas import Capacidades
+from src.certificado.models import Certificado
 
 
 class Personal(ModeloBase):

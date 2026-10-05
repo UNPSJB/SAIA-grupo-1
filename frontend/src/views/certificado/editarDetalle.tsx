@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Certificado, CertificadoUpdate } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface EditarCertificadoProps {
   certificadoId?: number | null;
@@ -31,7 +32,7 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
     if (certificadoId) {
       const fetchCertificado = async () => {
         try {
-          const res = await fetch(`${API_URL}/certificados/${certificadoId}`);
+          const res = await apiFetch(`/certificados/${certificadoId}`);
           if (res.ok) {
             const data: Certificado = await res.json();
             setFormData({
@@ -114,7 +115,7 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
         foto_url: formData.foto_url?.trim() ? formData.foto_url.trim() : null,
       };
 
-      const res = await fetch(`${API_URL}/certificados/${certificadoId}`, {
+      const res = await apiFetch(`/certificados/${certificadoId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

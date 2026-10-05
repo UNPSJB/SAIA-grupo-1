@@ -76,4 +76,7 @@ app.include_router(auditoria_router, dependencies=SOLO_ADMIN)
 app.include_router(planLimpieza_router, dependencies=SOLO_ADMIN)
 app.include_router(tarea_router, dependencies=SOLO_ADMIN)
 app.include_router(checklist_router)
-app.include_router(dashboard_router)
+app.include_router(dashboard_router, dependencies=SOLO_ADMIN)
+app.include_router(certificado_router, dependencies=SOLO_ADMIN)
+# /autenticacion/login es público; /autenticacion/me se protege dentro de su router
+app.include_router(autenticacion_router, prefix="/autenticacion", tags=["Autenticación"])

@@ -34,12 +34,13 @@ import { Panel as PanelDashboard } from './views/dashboard/panel';
 import { Login } from './views/auth/login';
 import { useAuth } from './auth/useAuth';
 import { moduloInicial, puedeVerModulo } from './auth/permisos';
-import { ListadoCertificados } from './views/certificado/listado';
+import { ListadoCertificados } from './views/certificado/listado'
+import { ListadoCertificadosPorPersona } from './views/certificado/listadoPorPersona';
 import { NuevoCertificado } from './views/certificado/nuevoCertificado';
 import { EditarCertificado } from './views/certificado/editarDetalle';
 import { DetalleCertificado } from './views/certificado/verDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'vencimientos' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar' | 'certificados' | 'nuevo_certificado' | 'editar_certificado' | 'detalle_certificado';
@@ -112,6 +113,13 @@ function Aplicacion() {
   const volverAListadoQuimicos = () => {
     setQuimicoSeleccionado(null);
     setVistaInsumosQuimicos('listado');
+  };
+
+  const irACertificadosDePersona = (legajo: number, nombreCompleto: string) => {
+    setLegajoSeleccionado(legajo);
+    setNombrePersonaSeleccionada(nombreCompleto);
+    setVistaPersonas('certificados');
+    setModulo('personas');
   };
 
   return (
@@ -211,7 +219,7 @@ function Aplicacion() {
               onCancel={() => setVistaPersonas('listado')}
             />
           ) : vistaPersonas === 'certificados' && legajoSeleccionado !== null ? (
-            <ListadoCertificados
+            <ListadoCertificadosPorPersona
               legajoPersona={legajoSeleccionado}
               nombrePersona={nombrePersonaSeleccionada}
               onNuevoClick={() => setVistaPersonas('nuevo_certificado')}
@@ -350,6 +358,10 @@ function Aplicacion() {
               onVolver={() => setVistaChecklist('listado')}
             />
           )
+        ) :modulo === 'vencimientos'? (
+          <ListadoCertificados 
+            onVerPersona={irACertificadosDePersona}
+          />
         ) : null}
       </div>
     </div>

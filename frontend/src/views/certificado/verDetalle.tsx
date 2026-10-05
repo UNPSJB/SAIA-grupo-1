@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface DetalleCertificadoProps {
   onCancel?: () => void;
@@ -36,7 +37,7 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
     if (certificadoId) {
       const fetchCertificado = async () => {
         try {
-          const res = await fetch(`${API_URL}/certificados/${certificadoId}`);
+          const res = await apiFetch(`/certificados/${certificadoId}`);
           if (res.ok) {
             const data: Certificado = await res.json();
             setCertificado(data);

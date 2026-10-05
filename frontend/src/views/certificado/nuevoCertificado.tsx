@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { CertificadoCreate } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface NuevoCertificadoProps {
   legajoPersona: number;
@@ -102,7 +103,7 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
         legajo_persona: legajoPersona,
       };
 
-      const response = await fetch(`${API_URL}/certificados/`, {
+      const response = await apiFetch(`/certificados/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

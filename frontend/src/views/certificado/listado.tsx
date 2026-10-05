@@ -1,54 +1,69 @@
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
-import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { apiFetch } from '../../api/client';
 import '../../styles/formularioAlta.css';
 
-interface ListadoCertificadosProps {
-  legajoPersona: number;
-  nombrePersona?: string;
-  onNuevoClick: () => void;
-  onDetalleClick: (id: number) => void;
-  onEditarClick: (id: number) => void;
-  onVolver: () => void;
+interface PersonalInfo {
+  legajo: number;
+  nombre: string;
+  apellido: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+interface ListadoCertificadosProps {
+  onVerPersona?: (legajo: number, nombreCompleto: string) => void;
+}
+
+type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia';
+type FiltroEstado = 'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA';
 
 export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
-  legajoPersona,
-  nombrePersona,
-  onNuevoClick,
-  onDetalleClick,
-  onEditarClick,
-  onVolver,
+  onVerPersona,
 }) => {
   const [certificados, setCertificados] = useState<Certificado[]>([]);
+  const [personalMap, setPersonalMap] = useState<Record<number, PersonalInfo>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [certificadoAEliminar, setCertificadoAEliminar] = useState<{ id: number; tipo: string } | null>(null);
-
-  const fetchCertificados = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/certificados/?legajo_persona=${legajoPersona}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCertificados(data);
-      } else {
-        setCertificados([]);
-      }
-    } catch {
-      setCertificados([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('TODOS');
 
   useEffect(() => {
-    fetchCertificados();
-  }, [legajoPersona]);
+    const cargarDatos = async () => {
+      setLoading(true);
+      try {
+        const [resCerts, resPers] = await Promise.all([
+          apiFetch('/certificados/'),
+          apiFetch('/personal/'),
+        ]);
+
+        const dataCerts: Certificado[] = resCerts.ok ? await resCerts.json() : [];
+        const dataPers: PersonalInfo[] = resPers.ok ? await resPers.json() : [];
+
+        // Diccionario de personal por legajo
+        const dict: Record<number, PersonalInfo> = {};
+        if (Array.isArray(dataPers)) {
+          dataPers.forEach((p) => {
+            dict[p.legajo] = p;
+          });
+        }
+        setPersonalMap(dict);
+
+        // Ordenar por urgencia cronológica
+        if (Array.isArray(dataCerts)) {
+          const ordenados = [...dataCerts].sort((a, b) => {
+            const dateA = a.fechaVencimiento ? new Date(a.fechaVencimiento).getTime() : Infinity;
+            const dateB = b.fechaVencimiento ? new Date(b.fechaVencimiento).getTime() : Infinity;
+            return dateA - dateB;
+          });
+          setCertificados(ordenados);
+        }
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatos();
+  }, []);
 
   const formatearFecha = (fechaStr?: string | null) => {
     if (!fechaStr) return 'Sin fecha';
@@ -66,198 +81,197 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
     }
   };
 
-  type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia';
-
-  const calcularEstadoVencimiento = (fechaStr?: string | null): EstadoVencimiento => {
-    if (!fechaStr) return 'al_dia';
+  const calcularEstadoVencimiento = (fechaStr?: string | null): { estado: EstadoVencimiento; diffDias: number } => {
+    if (!fechaStr) return { estado: 'al_dia', diffDias: 999 };
     const fechaLimite = new Date(fechaStr);
     const hoy = new Date();
-
     const diffTiempo = fechaLimite.getTime() - hoy.getTime();
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
 
-    if (diffDias <= 0) return 'vencido';
-    if (diffDias <= 7) return 'proximo';
-    return 'al_dia';
-  };
-
-  const abrirConfirmacionEliminar = (id: number, tipo: string) => {
-    setCertificadoAEliminar({ id, tipo });
-    setDialogOpen(true);
-  };
-
-  const ejecutarEliminar = async () => {
-    if (!certificadoAEliminar) return;
-    const { id } = certificadoAEliminar;
-    setDialogOpen(false);
-    setCertificadoAEliminar(null);
-
-    try {
-      const res = await fetch(`${API_URL}/certificados/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setCertificados((prev) => prev.filter((c) => c.id !== id));
-      } else {
-        alert('No se pudo eliminar el certificado.');
-      }
-    } catch {
-      alert('Error al conectar con el servidor.');
-    }
+    if (diffDias <= 0) return { estado: 'vencido', diffDias };
+    if (diffDias <= 7) return { estado: 'proximo', diffDias };
+    return { estado: 'al_dia', diffDias };
   };
 
   const certificadosFiltrados = certificados.filter((c) => {
+    const { estado } = calcularEstadoVencimiento(c.fechaVencimiento);
+
+    if (filtroEstado === 'VENCIDOS' && estado !== 'vencido') return false;
+    if (filtroEstado === 'PROXIMOS' && estado !== 'proximo') return false;
+    if (filtroEstado === 'AL_DIA' && estado !== 'al_dia') return false;
+
     const term = searchTerm.toLowerCase().trim();
-    return !term || c.tipo.toLowerCase().includes(term);
+    if (!term) return true;
+
+    const persona = personalMap[c.legajo_persona];
+    const nombrePersona = persona ? `${persona.nombre} ${persona.apellido}`.toLowerCase() : '';
+    const legajoStr = String(c.legajo_persona);
+    const tipoStr = c.tipo.toLowerCase();
+
+    return (
+      tipoStr.includes(term) ||
+      nombrePersona.includes(term) ||
+      legajoStr.includes(term)
+    );
   });
 
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Certificados de Personal</h1>
+          <h1 style={{ lineHeight: '1.2' }}>Vencimientos de Personal</h1>
           <div className="subtitulo">
-            {nombrePersona ? `${nombrePersona} (Legajo #${legajoPersona})` : `Legajo #${legajoPersona}`}
+            Listado consolidado ordenado por urgencia
           </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={onVolver} className="btn-cancelar">
-            ← Volver a Personal
-          </button>
-          {onNuevoClick && (
-            <button onClick={onNuevoClick} className="btn-guardar">
-              + Agregar Certificado
-            </button>
-          )}
         </div>
       </div>
 
+      {/* Barra de Filtros idéntica a la vista de Personal */}
       <div className="filtros-top-bar">
         <input
           type="text"
           className="input-busqueda"
-          placeholder="Buscar por tipo de certificado..."
+          placeholder="Buscar por empleado, legajo o tipo de certificado..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+
+        <select
+          className="select-filtro"
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value as FiltroEstado)}
+        >
+          <option value="TODOS">Todos los estados</option>
+          <option value="VENCIDOS">Vencidos</option>
+          <option value="PROXIMOS">Próximos a vencer (≤ 7 días)</option>
+          <option value="AL_DIA">Al día</option>
+        </select>
       </div>
 
       <div className="tabla-wrapper">
         <table className="tabla-custom">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Tipo</th>
-              <th>Fecha de Vencimiento</th>
+              <th>Urgencia</th>
+              <th>Vencimiento</th>
+              <th>Personal</th>
+              <th>Legajo</th>
+              <th>Certificado</th>
               <th>Archivo</th>
-              <th className="acciones-col">Acciones</th>
+              {onVerPersona && <th className="acciones-col">Acción</th>}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
-                  Cargando certificados...
+                <td colSpan={onVerPersona ? 7 : 6} style={{ textAlign: 'center', padding: '2rem' }}>
+                  Cargando vencimientos...
                 </td>
               </tr>
             ) : certificadosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
-                  No se encontraron certificados para este personal.
+                <td colSpan={onVerPersona ? 7 : 6} style={{ textAlign: 'center', padding: '2rem' }}>
+                  No se encontraron vencimientos para mostrar.
                 </td>
               </tr>
             ) : (
-              certificadosFiltrados.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.id}</td>
-                  <td><strong>{item.tipo}</strong></td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span>{formatearFecha(item.fechaVencimiento)}</span>
+              certificadosFiltrados.map((item) => {
+                const persona = personalMap[item.legajo_persona];
+                const nombreCompleto = persona ? `${persona.apellido}, ${persona.nombre}` : '';
+                const { estado, diffDias } = calcularEstadoVencimiento(item.fechaVencimiento);
 
-                      {calcularEstadoVencimiento(item.fechaVencimiento) === 'vencido' && (
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      {estado === 'vencido' && (
                         <span
                           style={{
                             backgroundColor: '#fee2e2',
                             color: '#dc2626',
                             border: '1px solid #f87171',
-                            padding: '0.15rem 0.5rem',
+                            padding: '0.2rem 0.6rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',
-                            fontWeight: 600,
+                            fontWeight: 700,
                           }}
                         >
-                          ● Vencido
+                          ● Vencido ({Math.abs(diffDias)} d)
                         </span>
                       )}
 
-                      {calcularEstadoVencimiento(item.fechaVencimiento) === 'proximo' && (
+                      {estado === 'proximo' && (
                         <span
                           style={{
                             backgroundColor: '#fef3c7',
                             color: '#d97706',
                             border: '1px solid #fcd34d',
-                            padding: '0.15rem 0.5rem',
+                            padding: '0.2rem 0.6rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                          }}
+                        >
+                          ▲ Vence en {diffDias} d
+                        </span>
+                      )}
+
+                      {estado === 'al_dia' && (
+                        <span
+                          style={{
+                            backgroundColor: '#ecfdf5',
+                            color: '#059669',
+                            border: '1px solid #a7f3d0',
+                            padding: '0.2rem 0.6rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',
                             fontWeight: 600,
                           }}
                         >
-                          ▲ Próximo a vencer
+                          ✓ Al día
                         </span>
                       )}
-                    </div>
-                  </td>
-                  <td>{item.foto_url || 'Sin archivo'}</td>
-                  <td className="acciones-col">
-                    <div className="acciones-btns">
-                      <button
-                        type="button"
-                        className="btn-icon btn-ver"
-                        title="Ver detalles"
-                        onClick={() => onDetalleClick(item.id)}
-                      >
-                        👁
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-icon btn-editar"
-                        title="Editar"
-                        onClick={() => onEditarClick(item.id)}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-icon btn-eliminar"
-                        title="Eliminar"
-                        onClick={() => abrirConfirmacionEliminar(item.id, item.tipo)}
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td>
+                      <strong>{formatearFecha(item.fechaVencimiento)}</strong>
+                    </td>
+                    <td>
+                      {nombreCompleto ? (
+                        <strong>{nombreCompleto}</strong>
+                      ) : (
+                        <span style={{ color: '#9ca3af' }}>Cargando...</span>
+                      )}
+                    </td>
+                    <td>#{item.legajo_persona}</td>
+                    <td>{item.tipo}</td>
+                    <td>{item.foto_url || 'Sin archivo'}</td>
+                    {onVerPersona && (
+                      <td className="acciones-col">
+                        <button
+                          type="button"
+                          className="btn-guardar"
+                          style={{
+                            fontSize: '11px',
+                            padding: '5px 10px',
+                            whiteSpace: 'nowrap',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                          }}
+                          title="Gestionar en el perfil de la persona"
+                          onClick={() => onVerPersona(item.legajo_persona, nombreCompleto)}
+                        >
+                          Gestionar ↗
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
-
-      <ConfirmAlertDialog
-        open={dialogOpen}
-        title="Confirmar Eliminación"
-        description={`¿Seguro que deseas eliminar el certificado "${certificadoAEliminar?.tipo}"? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        isDestructive={true}
-        onConfirm={ejecutarEliminar}
-        onCancel={() => {
-          setDialogOpen(false);
-          setCertificadoAEliminar(null);
-        }}
-      />
     </div>
   );
 };
+
+export default ListadoCertificados;

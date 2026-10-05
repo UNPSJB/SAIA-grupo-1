@@ -25,6 +25,7 @@ from src.models import ModeloBase
 
 from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate
+from src.autenticacion.services import asegurar_admin_dev
 
 from src.insumos.services import crear_insumo
 from src.insumos.schemas import InsumoCreate
@@ -136,6 +137,7 @@ def main() -> None:
     marcos = crear_personal(db, PersonalCreate(documento="30333444", nombre="Marcos", apellido="Diaz", email="marcos.diaz@ejemplo.com", capacidad="AMBAS", contrasenia="Clave1234"))
     lucia = crear_personal(db, PersonalCreate(documento="30444555", nombre="Lucia", apellido="Fernandez", email="lucia.fernandez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
     sofia = crear_personal(db, PersonalCreate(documento="30555666", nombre="Sofia", apellido="Martinez", email="sofia.martinez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
+    asegurar_admin_dev(db)
 
     print("Creando insumos (materias primas)...")
     for nombre, lote, dias_recepcion, dias_venc, cant, stock, medida in INSUMOS:
