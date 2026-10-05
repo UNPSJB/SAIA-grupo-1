@@ -1,16 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import type { PlanConId } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface ListadoPlanesProps {
   onNuevoClick?: () => void;
   onDetalleClick?: (id: number) => void;
   onEditarClick?: (id: number) => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
+}export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
@@ -25,7 +22,7 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
     let ignore = false;
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/plan_De_limpieza/`);
+        const res = await apiFetch(`/plan_De_limpieza/`);
         if (res.ok) {
           const data = await res.json();
           if (!ignore) setPlanes(data);

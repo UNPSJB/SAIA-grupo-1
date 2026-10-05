@@ -2,6 +2,9 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from . import models, schemas
+import re
+import unicodedata 
+from src.autenticacion.services import hashear_contrasenia
 
 def listar_personal(db: Session):
     return db.query(models.Personal).all()
@@ -14,6 +17,22 @@ def obtener_personal_por_legajo(db: Session, legajo: int):
             detail="Persona no encontrada."
         )
     return persona
+
+def _normalizar(texto: str) -> str:  #Esta funcion convierte el texto a minuscula, elimina tildes y solo deja letras y numeros
+    sin_tildes = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]", "", sin_tildes.lower())
+
+def generar_usuario(db: Session, nombre: str, apellido: str) -> str:
+    # Inicial del primer nombre + apellido completo (sin espacios ni tildes)
+    primer_nombre = _normalizar(nombre.split()[0]) #Normalizo el nombre y luego el apellido
+    base = f"{primer_nombre}.{_normalizar(apellido)}"
+
+    candidato = base
+    contador = 2
+    while db.query(models.Personal).filter(models.Personal.usuario == candidato).first():
+        candidato = f"{base}{contador}"
+        contador += 1
+    return candidato
 
 def crear_personal(db: Session, persona: schemas.PersonalCreate):
     existe_doc = db.query(models.Personal).filter(models.Personal.documento == persona.documento).first()
@@ -29,15 +48,18 @@ def crear_personal(db: Session, persona: schemas.PersonalCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"El correo electrónico {persona.email} ya está registrado."
         )
+    usuario = generar_usuario(db, persona.nombre, persona.apellido)
 
     try:
         nuevo = models.Personal(
+            usuario=usuario,
             nombre=persona.nombre,
             apellido=persona.apellido,
             documento=persona.documento,
             email=persona.email,
             activo=persona.activo,
             capacidad=persona.capacidad,
+            contrasenia_hash=hashear_contrasenia(persona.contrasenia),
         )
         db.add(nuevo)
         db.commit()
@@ -60,6 +82,9 @@ def actualizar_personal(db: Session, legajo: int, datos: schemas.PersonalUpdate)
 
     datos_dict = datos.model_dump(exclude_unset=True)
     datos_dict.pop("telefono", None)
+    contrasenia = datos_dict.pop("contrasenia", None)
+    if contrasenia:
+        datos_dict["contrasenia_hash"] = hashear_contrasenia(contrasenia)
 
     if "documento" in datos_dict and datos_dict["documento"] is not None:
         doc_duplicado = db.query(models.Personal).filter(

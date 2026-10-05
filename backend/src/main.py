@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.database import engine
 from src.models import ModeloBase
 
@@ -19,7 +20,6 @@ from src.tareas.router import router as tarea_router
 from src.auditoria.router import router as auditoria_router
 from src.checklist.router import router as checklist_router
 from src.dashboard.router import router as dashboard_router
-from src.certificado.router import router as certificado_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 
@@ -46,22 +46,27 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Permisos por router (ver src/autenticacion/dependencies.py):
+#  - SOLO_ADMIN: todo el router exige capacidad ADMINISTRAR o AMBAS.
+#  - SESION: alcanza con estar logueado; el router decide el resto endpoint por endpoint
+#    (insumos_quimicos y checklist, que los operadores también usan).
+SOLO_ADMIN = [Depends(requiere_admin)]
+SESION = [Depends(get_usuario_actual)]
+
 # asociamos los routers a nuestra app
-app.include_router(insumos_router, prefix="/insumos", tags=["Insumos"])
-app.include_router(equipos_router, prefix="/equipos", tags=["Equipos"])
-app.include_router(personal_router, prefix="/personal", tags=["Personal"])
-app.include_router(elementoDeLimpieza_router)
-app.include_router(insumos_quimicos_router)
-app.include_router(auditoria_router)
-app.include_router(planLimpieza_router)
-app.include_router(tarea_router)
+app.include_router(insumos_router, prefix="/insumos", tags=["Insumos"], dependencies=SOLO_ADMIN)
+app.include_router(equipos_router, prefix="/equipos", tags=["Equipos"], dependencies=SOLO_ADMIN)
+app.include_router(personal_router, prefix="/personal", tags=["Personal"], dependencies=SOLO_ADMIN)
+app.include_router(elementoDeLimpieza_router, dependencies=SOLO_ADMIN)
+app.include_router(insumos_quimicos_router, dependencies=SESION)
+app.include_router(auditoria_router, dependencies=SOLO_ADMIN)
+app.include_router(planLimpieza_router, dependencies=SOLO_ADMIN)
+app.include_router(tarea_router, dependencies=SOLO_ADMIN)
 app.include_router(checklist_router)
 app.include_router(dashboard_router)
-app.include_router(certificado_router)

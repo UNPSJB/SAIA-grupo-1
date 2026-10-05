@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import type { Persona } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from "../../components/ui/alert-dialog";
+import { apiFetch } from '../../api/client';
 
 export interface ListadoPersonasProps {
   onNuevoClick: () => void;
@@ -27,7 +28,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
 
   const cargarPersonas = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/personal/", {
+      const res = await apiFetch("/personal/", {
         method: "GET",
         headers: { "Accept": "application/json" },
       });
@@ -59,7 +60,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     const accion = estadoActual ? "dar de baja" : "reactivar";
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/personal/${identificador}`, {
+      const res = await apiFetch(`/personal/${identificador}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ activo: !estadoActual }),
@@ -87,6 +88,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
       (p.nombre && p.nombre.toLowerCase().includes(term)) ||
       (p.apellido && p.apellido.toLowerCase().includes(term)) ||
       docStr.includes(term) ||
+      (p.usuario && p.usuario.toLowerCase().includes(term)) ||
       (p.email && p.email.toLowerCase().includes(term));
 
     const matchCapacidad =
@@ -149,6 +151,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
             <tr>
               <th>DNI</th>
               <th>Nombre Completo</th>
+              <th>Usuario</th>
               <th>Correo Electrónico</th>
               <th>Capacidad</th>
               <th>Estado</th>
@@ -158,13 +161,13 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
                   Cargando personas...
                 </td>
               </tr>
             ) : personasFiltradas.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
                   {searchTerm || filtroCapacidad !== "TODOS" || filtroEstado !== "TODOS"
                     ? "No se encontraron personas con los filtros seleccionados."
                     : "No hay personas registradas."}
@@ -177,6 +180,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                   <tr key={identificador}>
                     <td>{p.documento ?? p.dni}</td>
                     <td>{`${p.nombre ?? ""} ${p.apellido ?? ""}`.trim()}</td>
+                    <td>{p.usuario}</td>
                     <td className="col-correo">{p.email}</td>
                     <td>
                       {p.capacidad === "OPERAR"

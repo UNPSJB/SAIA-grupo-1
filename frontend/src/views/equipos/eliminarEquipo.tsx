@@ -1,15 +1,13 @@
 import { useEffect,useRef,useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface EliminarEquipoProps{
     equipoID?:number | null;
     onCancel?: () => void;
     onSucces?: ()=> void;
-}
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-export default function EliminarEquipo({equipoID,onCancel,onSucces}:EliminarEquipoProps){
+}export default function EliminarEquipo({equipoID,onCancel,onSucces}:EliminarEquipoProps){
 
     const[equipo,setEquipo]= useState<EquipoConId | null>(null);
     const[loading, setLoading]= useState(true);
@@ -21,7 +19,7 @@ const handleEliminar = async (id?: number) => {
         if (!id) return;
 
         try {
-            const res = await fetch(`${API_URL}/equipos/${id}`, { method: 'DELETE' });
+            const res = await apiFetch(`/equipos/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 setEquipo(null);
                 dialog.current?.showModal();// invoca el mensaje de eliminacion exitosa
@@ -40,7 +38,7 @@ const handleEliminar = async (id?: number) => {
         const fetchEquipo= async() => {
 
             try {
-                const res=  await fetch(`${API_URL}/equipos/${equipoID}`);
+                const res=  await apiFetch(`/equipos/${equipoID}`);
                 if(res.ok){
                   const data=  await res.json(); 
                   setEquipo(data);
