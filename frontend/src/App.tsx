@@ -31,8 +31,9 @@ import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
+import { ListadoDocumentos } from './views/documentos/listado';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -284,6 +285,8 @@ function App() {
           ) : null
         ) : modulo === 'auditoria' ? (
           <ListadoAuditoria />
+        ) : modulo === 'documentos' ? (
+          <ListadoDocumentos />
         ) : modulo === 'checklist' ? (
           vistaChecklist === 'listado' ? (
             <ListadoChecklists

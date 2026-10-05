@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria' | 'documentos';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -17,6 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
     { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza' },
     { id: 'planDeLimpieza', label: 'Plan de Limpieza' },
     { id: 'checklist', label: 'Checklists' },
+    { id: 'documentos', label: 'Documentos' },
     { id: 'auditoria', label: 'Auditoría' },
   ];
 
