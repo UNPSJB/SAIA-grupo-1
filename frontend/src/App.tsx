@@ -31,6 +31,13 @@ import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
+import { Login } from './views/auth/login';
+import { useAuth } from './auth/useAuth';
+import { moduloInicial, puedeVerModulo } from './auth/permisos';
+import { ListadoCertificados } from './views/certificado/listado';
+import { NuevoCertificado } from './views/certificado/nuevoCertificado';
+import { EditarCertificado } from './views/certificado/editarDetalle';
+import { DetalleCertificado } from './views/certificado/verDetalle';
 
 type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
