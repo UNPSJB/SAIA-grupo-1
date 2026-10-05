@@ -8,8 +8,10 @@ from src.personal.schemas import Personal as PersonalSchema
 from . import schemas, services
 from .dependencies import get_usuario_actual
 
-router = APIRouter()
-
+router = APIRouter(
+    prefix="/autenticacion",
+    tags=["Autenticación"],
+)
 
 @router.post("/login", response_model=schemas.TokenResponse)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):

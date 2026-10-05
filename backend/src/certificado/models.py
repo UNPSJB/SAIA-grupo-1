@@ -3,7 +3,11 @@ from src.models import ModeloBase
 from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey
 from typing import Optional
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional 
 
+if TYPE_CHECKING:
+    from src.personal.models import Personal
+    
 class Certificado(ModeloBase):
     __tablename__ = "certificados"
 

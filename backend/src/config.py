@@ -1,28 +1,31 @@
-import logging
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # Definimos las variables con sus tipos y valores por defecto (opcional)
-    DB_URL: str
-    DB_URL_TEST: str
+    # Variables de entorno y rutas
     ENV: str = "DEV"
-    ROOT_PATH_DEVELOPMENT: str = ""
-    ROOT_PATH_PRODUCTION: str = ""
+    ROOT_PATH_DEV: str = ""
+    ROOT_PATH_PROD: str = ""
+
+    # Base de datos
+    DB_URL: str = "sqlite:///./app.db"
+    DB_URL_TEST: str = "sqlite:///./test.db"
+
+    # Logger y alertas
     LOG_LEVEL: str = "INFO"
-    JWT_SECRET: str
+    DIAS_ALERTA_VENCIMIENTO: int = 15
+
+    # Autenticación y JWT
+    JWT_SECRET: str = "clave_secreta_super_segura_para_desarrollo_12345"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 60 # Tiempo de expiracion del token en minutos TODO
+    JWT_EXPIRE_MINUTES: int = 60  # <-- Nombre exacto que requiere services.py
 
-
-    # Configuración para que lea automáticamente el archivo .env
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore",  # Ignora otras variables que estén en el .env y no definamos en este archivo
+        extra="ignore"
     )
 
 
-# Instancia global que reutilizaremos en el proyecto
+# Instancia global
 settings = Settings()
