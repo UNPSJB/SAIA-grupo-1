@@ -8,12 +8,11 @@ class Certificado(ModeloBase):
     __tablename__ = "certificados"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    tipo: Mapped[str] = mapped_column(String(30))
-    fechaCreacion: Mapped[datetime] = mapped_column(DateTime)
-    fechaVencimiento: Mapped[datetime] = mapped_column(DateTime, index=True)
+    tipo: Mapped[str] = mapped_column(String(30), nullable=False)
+    fechaVencimiento: Mapped[datetime] = mapped_column(DateTime, index=True, nullable=False)
 
     foto_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    id_persona: Mapped[int] = mapped_column(ForeignKey("personal.id"))
+    legajo_persona: Mapped[int] = mapped_column(ForeignKey("personal.legajo"), nullable=False)
 
     persona: Mapped["Personal"] = relationship(back_populates="certificados")

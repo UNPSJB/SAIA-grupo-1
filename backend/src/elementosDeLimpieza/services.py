@@ -3,7 +3,7 @@ from typing import List, Literal, Optional
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from src.elementosDeLimpieza.models import ElementoDeLimpieza
-from src.elementosDeLimpieza import schemas, exceptions
+from src.elementosDeLimpieza import schemas, exceptions, models
 from datetime import datetime, timedelta
 
 #CRUD de Elementos de Limpieza
@@ -63,9 +63,6 @@ def eliminar_elementoDeLimpieza(db: Session, elementoDeLimpieza_id: int) -> sche
             db.refresh(db_elementoDeLimpieza)
     
     return db_elementoDeLimpieza
-
-from datetime import datetime, timedelta
-from src.elementosDeLimpieza.models import ElementoDeLimpieza
 
 def registrar_cambio_fecha(db: Session, elemento_id: int) -> ElementoDeLimpieza:
     elemento = obtener_elementoDeLimpieza(db, elemento_id)

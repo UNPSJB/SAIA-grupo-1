@@ -9,3 +9,9 @@ class TipoExiste(BadRequest):
 
 class TipoVacio(BadRequest):
     DETAIL = ErrorCode.TIPO_VACIO
+
+class FechaVencimientoInvalida(BadRequest):
+    DETAIL = ErrorCode.FECHA_VENCIMIENTO_INVALIDA
+
+class PersonaNoExiste(NotFound):
+    DETAIL = ErrorCode.PERSONA_NO_EXISTE

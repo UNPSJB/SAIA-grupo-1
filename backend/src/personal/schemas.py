@@ -12,7 +12,6 @@ class PersonaBase(BaseModel):
     apellido: str = Field(..., min_length=2, max_length=100)
     documento: int = Field(...)
     email: EmailStr = Field(...)
-    telefono: Optional[str] = Field(None, max_length=20)
     activo: bool = Field(default=True)
     capacidad: Capacidades = Field(default=Capacidades.OPERAR)
 
@@ -24,7 +23,6 @@ class PersonalUpdate(BaseModel):
     apellido: Optional[str] = None
     documento: Optional[int] = None
     email: Optional[EmailStr] = None
-    telefono: Optional[str] = None
     activo: Optional[bool] = None
     capacidad: Optional[Capacidades] = None
 

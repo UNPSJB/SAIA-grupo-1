@@ -19,6 +19,7 @@ from src.tareas.router import router as tarea_router
 from src.auditoria.router import router as auditoria_router
 from src.checklist.router import router as checklist_router
 from src.dashboard.router import router as dashboard_router
+from src.certificado.router import router as certificado_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 
@@ -63,3 +64,4 @@ app.include_router(planLimpieza_router)
 app.include_router(tarea_router)
 app.include_router(checklist_router)
 app.include_router(dashboard_router)
+app.include_router(certificado_router)
