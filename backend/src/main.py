@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
-from src.database import engine
+from src.autenticacion.services import asegurar_admin_dev
+from src.database import engine, SessionLocal
 from src.models import ModeloBase
 
 # Importamos la configuración validada por Pydantic
@@ -34,6 +35,10 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    if ENV == "DEV":
+        # Usuario admin/admin compartido por el equipo (cada integrante tiene su propia base)
+        with SessionLocal() as db:
+            asegurar_admin_dev(db)
     yield
 
 
