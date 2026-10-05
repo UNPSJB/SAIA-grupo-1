@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { InsumoForm } from "./tipos";
 import "../../styles/formularioAlta.css";
+import { apiFetch } from '../../api/client';
 
 const UNIDADES = ["kilogramos", "gramos", "litros", "mililitros", "unidades"];
 
@@ -12,11 +13,7 @@ const INSUMO_INICIAL: InsumoForm = {
   cantRecibida: "",
   stock: "",
   medida: "",
-};
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-const HOY = new Date().toISOString().split("T")[0];
+};const HOY = new Date().toISOString().split("T")[0];
 
 const getMinVencimiento = () => {
   const d = new Date();
@@ -103,7 +100,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
     };
 
     try {
-      const res = await fetch(`${API_URL}/insumos/`, {
+      const res = await apiFetch(`/insumos/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

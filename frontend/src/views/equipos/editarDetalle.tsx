@@ -1,6 +1,7 @@
 import React, { useEffect,useRef,useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 
 const CATEGORIAS= ["conservamiento","sanamiento","mantenimiento","desinfeccion"];
@@ -11,10 +12,7 @@ const EQUIPO_INICIAL :EquipoConId={
         ubicacion: "",
         plan_de_calibracion: "",
         estado:"activo"
-    };
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-interface EditarEquipoProps {
+    };interface EditarEquipoProps {
     equipoId: number | null;
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -77,7 +75,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
     setLoading(true);
 
     try {
-        const res= await fetch(`${API_URL}/equipos/${equipoId}`, {
+        const res= await apiFetch(`/equipos/${equipoId}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -115,7 +113,7 @@ useEffect(() => {
         if (equipoId) {
             const fetchEquipo = async () => {
                 try {
-                    const res = await fetch(`${API_URL}/equipos/${equipoId}`);
+                    const res = await apiFetch(`/equipos/${equipoId}`);
                     if (res.ok) {
                         const data = await res.json();
                         setEquipo(data);

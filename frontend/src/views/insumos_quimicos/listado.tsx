@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoQuimico } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { apiFetch } from '../../api/client';
 
 interface Props {
   onNuevo: () => void;
@@ -25,7 +26,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
     try {
       setCargando(true);
       setError(null);
-      const res = await fetch('http://localhost:8000/api/insumos-quimicos');
+      const res = await apiFetch('/api/insumos-quimicos');
       if (!res.ok) throw new Error('Error al cargar insumos químicos');
       const data = await res.json();
       setInsumos(data);
@@ -48,7 +49,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
   const ejecutarToggle = async () => {
     if (!quimicoAConfirmar) return;
     try {
-      await fetch(`http://localhost:8000/api/insumos-quimicos/${quimicoAConfirmar.id}/toggle`, { method: 'PATCH' });
+      await apiFetch(`/api/insumos-quimicos/${quimicoAConfirmar.id}/toggle`, { method: 'PATCH' });
       cargarDatos();
     } catch (err) {
       console.error(err);

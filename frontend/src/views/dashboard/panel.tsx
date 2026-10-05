@@ -12,11 +12,8 @@ import {
   YAxis,
 } from 'recharts';
 import type { ConsumoInsumo, CumplimientoResumen, Periodo } from './tipos';
-import '../../styles/dashboard.css';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-const COLOR_HECHAS = '#aa3bff';
+import { apiFetch } from '../../api/client';
+import '../../styles/dashboard.css';const COLOR_HECHAS = '#aa3bff';
 const COLOR_PENDIENTES = '#d98c1f';
 const COLOR_VENCIDAS = '#dc2626';
 const COLOR_VACIO = '#e5e7eb';
@@ -48,7 +45,7 @@ export const Panel: React.FC = () => {
     const cargarCumplimiento = async () => {
       setLoadingCumplimiento(true);
       try {
-        const res = await fetch(`${API_URL}/dashboard/cumplimiento?periodo=${periodoCumplimiento}`);
+        const res = await apiFetch(`/dashboard/cumplimiento?periodo=${periodoCumplimiento}`);
         if (!cancelado && res.ok) {
           setCumplimiento(await res.json());
         }
@@ -70,8 +67,7 @@ export const Panel: React.FC = () => {
     const cargarInsumos = async () => {
       setLoadingInsumos(true);
       try {
-        const res = await fetch(
-          `${API_URL}/dashboard/consumo-insumos?periodo=${periodoInsumos}&unidad=${encodeURIComponent(unidadInsumos)}`
+        const res = await apiFetch(`/dashboard/consumo-insumos?periodo=${periodoInsumos}&unidad=${encodeURIComponent(unidadInsumos)}`
         );
         if (!cancelado && res.ok) {
           const data = await res.json();

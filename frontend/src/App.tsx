@@ -35,6 +35,9 @@ import { ListadoDocumentos } from './views/documentos/listado';
 import { DetalleDocumento } from './views/documentos/verDetalle';
 import NuevoDocumento from './views/documentos/nuevoDocumento';
 import NuevaVersion from './views/documentos/nuevaVersion';
+import { Login } from './views/auth/login';
+import { useAuth } from './auth/useAuth';
+import { moduloInicial, puedeVerModulo } from './auth/permisos';
 
 type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -46,8 +49,11 @@ type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 
-function App() {
-  const [modulo, setModulo] = useState<Modulo>('dashboard');
+function Aplicacion() {
+  const { esAdministrador } = useAuth();
+  const [moduloElegido, setModulo] = useState<Modulo>(moduloInicial(esAdministrador));
+  // el backend ya rechaza lo que el rol no puede ver; acá evitamos mostrar pantallas rotas
+  const modulo = puedeVerModulo(moduloElegido, esAdministrador) ? moduloElegido : moduloInicial(esAdministrador);
 
   
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
@@ -341,6 +347,12 @@ function App() {
       </div>
     </div>
   );
+}
+
+function App() {
+  const { usuario, cargando } = useAuth();
+  if (cargando) return null;
+  return usuario ? <Aplicacion /> : <Login />;
 }
 
 export default App;

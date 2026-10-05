@@ -2,16 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { apiFetch } from '../../api/client';
 
 interface ListadoInsumosProps {
   onNuevoClick?: () => void;
   onVerClick?: (insumo: InsumoConId) => void;
   onEditarClick?: (insumo: InsumoConId) => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-const formatDate = (dateStr?: string | null) => {
+}const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return "No aplica";
   try {
     const d = new Date(dateStr);
@@ -51,7 +48,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
   const ejecutarEliminar = async () => {
     if (!idAEliminar) return;
     try {
-      const res = await fetch(`${API_URL}/insumos/${idAEliminar}`, { method: 'DELETE' });
+      const res = await apiFetch(`/insumos/${idAEliminar}`, { method: 'DELETE' });
       if (res.ok) {
         setInsumos((prev) => prev.filter((i) => i.id !== idAEliminar));
       } else {
@@ -69,7 +66,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     let ignore = false;
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/insumos/`);
+        const res = await apiFetch(`/insumos/`);
         if (res.ok) {
           const data = await res.json();
           if (!ignore) setInsumos(data);

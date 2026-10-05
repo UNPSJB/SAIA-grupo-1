@@ -19,6 +19,7 @@ def test_crear_documento_con_version_valida(session: Session):
         apellido="Admin",
         email="carlos.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     archivo = _crear_archivo_pdf_fake("manual_bpm.pdf")
@@ -53,6 +54,7 @@ def test_multiples_documentos_mismo_tipo_activos(session: Session):
         apellido="Admin",
         email="laura.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     doc1 = services.crear_documento(
@@ -88,6 +90,7 @@ def test_subir_nueva_version_archiva_solo_version_previa_del_mismo_documento(ses
         apellido="Ambas",
         email="elena.ambas@test.com",
         capacidad=Capacidades.AMBAS,
+        contrasenia="Clave1234",
     ))
 
     doc1 = services.crear_documento(
@@ -137,6 +140,7 @@ def test_marcar_version_vigente_criterios_completos(session: Session):
         apellido="Admin",
         email="guille.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     admin2 = crear_personal(session, PersonalCreate(
@@ -145,6 +149,7 @@ def test_marcar_version_vigente_criterios_completos(session: Session):
         apellido="Admin",
         email="susana.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     doc = services.crear_documento(
@@ -218,6 +223,7 @@ def test_version_duplicada_mismo_documento_falla(session: Session):
         apellido="Admin",
         email="mario.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     doc = services.crear_documento(
@@ -245,6 +251,7 @@ def test_permiso_solo_administrador_puede_subir_y_marcar_vigente(session: Sessio
         apellido="Operador",
         email="pedro.op@test.com",
         capacidad=Capacidades.OPERAR,
+        contrasenia="Clave1234",
     ))
 
     admin = crear_personal(session, PersonalCreate(
@@ -253,6 +260,7 @@ def test_permiso_solo_administrador_puede_subir_y_marcar_vigente(session: Sessio
         apellido="Admin",
         email="tomas.ad@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     with pytest.raises(exceptions.SoloAdministradorPuedeSubir):
@@ -291,6 +299,7 @@ def test_validacion_archivo_no_pdf(session: Session):
         apellido="Admin",
         email="silvia.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     archivo_txt = UploadFile(file=io.BytesIO(b"texto plano"), filename="documento.txt")
@@ -333,6 +342,7 @@ def test_versionado_automatico_creacion_e_incremento(session: Session):
         apellido="Admin",
         email="valeria.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     doc = services.crear_documento(

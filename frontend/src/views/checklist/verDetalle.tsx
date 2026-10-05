@@ -3,28 +3,25 @@ import type {
   Checklist,
   ChecklistItem,
   InsumoUtilizado,
-  PersonalResumen,
   CompletarTareaPayload,
 } from './tipos';
 import { parsearPasos } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
+import { apiFetch, API_URL } from '../../api/client';
+import { useAuth } from '../../auth/useAuth';
 
 interface DetalleChecklistProps {
   checklistId: number | null;
   onVolver: () => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
+}export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
   checklistId,
   onVolver,
 }) => {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [loading, setLoading] = useState(Boolean(checklistId));
-  const [personal, setPersonal] = useState<PersonalResumen[]>([]);
+  const { usuario, esOperador } = useAuth();
 
   // Insumos químicos activos disponibles en la BD
   const [quimicosDisponibles, setQuimicosDisponibles] = useState<
@@ -35,7 +32,6 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
 
   const [tareaSeleccionada, setTareaSeleccionada] = useState<ChecklistItem | null>(null);
   const [modalTareaAbierto, setModalTareaAbierto] = useState(false);
-  const [formResponsable, setFormResponsable] = useState<number | ''>('');
   const [modalArchivoImagen, setModalArchivoImagen] = useState<File | null>(null);
   const [formInsumos, setFormInsumos] = useState<InsumoUtilizado[]>([]);
   const [guardandoTarea, setGuardandoTarea] = useState(false);
@@ -68,7 +64,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     if (!checklistId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/checklist/${checklistId}`);
+      const res = await apiFetch(`/checklist/${checklistId}`);
       if (res.ok) {
         const data: Checklist = await res.json();
         setChecklist(data);
@@ -88,7 +84,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     const cargarDatos = async () => {
       // 1. Carga Checklist
       try {
-        const resChecklist = await fetch(`${API_URL}/checklist/${checklistId}`);
+        const resChecklist = await apiFetch(`/checklist/${checklistId}`);
         if (!cancelado && resChecklist.ok) {
           const data: Checklist = await resChecklist.json();
           setChecklist(data);
@@ -117,22 +113,9 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         }
       }
 
-      // 2. Carga Personal sin barra final
+      // 2. Carga Insumos Químicos Activos
       try {
-        const resPersonal = await fetch(`${API_URL}/personal`);
-        if (!cancelado && resPersonal.ok) {
-          const dataPersonal: PersonalResumen[] = await resPersonal.json();
-          if (Array.isArray(dataPersonal)) {
-            setPersonal(dataPersonal.filter((p) => p.activo));
-          }
-        }
-      } catch (err) {
-        console.warn('No se pudo cargar el listado de personal:', err);
-      }
-
-      // 3. Carga Insumos Químicos Activos
-      try {
-        const resQuimicos = await fetch(`${API_URL}/api/insumos-quimicos`);
+        const resQuimicos = await apiFetch(`/api/insumos-quimicos`);
         if (!cancelado && resQuimicos.ok) {
           const dataQuimicos = await resQuimicos.json();
           if (Array.isArray(dataQuimicos)) {
@@ -162,7 +145,6 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     if (checklist?.estado !== 'pendiente') return;
     if (tarea.estado === 'realizado') return;
     setTareaSeleccionada(tarea);
-    setFormResponsable(tarea.responsable_legajo ?? '');
     setModalArchivoImagen(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setFormInsumos(
@@ -210,14 +192,6 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       return;
     }
 
-    if (!formResponsable) {
-      mostrarError(
-        'Debe asignar un responsable para marcar la tarea como realizada.',
-        'Dato requerido'
-      );
-      return;
-    }
-
     for (const ins of formInsumos) {
       if (!ins.nombre.trim()) {
         mostrarError('Debe seleccionar un insumo químico válido.', 'Insumo inválido');
@@ -237,8 +211,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       if (modalArchivoImagen) {
         const formData = new FormData();
         formData.append('file', modalArchivoImagen);
-        const resImg = await fetch(
-          `${API_URL}/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/imagen`,
+        const resImg = await apiFetch(`/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/imagen`,
           {
             method: 'POST',
             body: formData,
@@ -256,12 +229,12 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       }
 
       const payload: CompletarTareaPayload = {
-        responsable_legajo: Number(formResponsable),
+        // el servidor toma la autoría de la sesión; se envía porque el schema todavía lo exige
+        responsable_legajo: usuario?.legajo ?? 0,
         insumos_utilizados: formInsumos,
       };
 
-      const res = await fetch(
-        `${API_URL}/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/completar`,
+      const res = await apiFetch(`/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/completar`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -466,7 +439,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             </div>
                           </div>
 
-                          {checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (
+                          {esOperador && checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (
                             <button
                               className="btn-guardar"
                               style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
@@ -595,28 +568,13 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
 
             <form onSubmit={handleGuardarTarea}>
               <div className="form-group">
-                <label htmlFor="tarea-responsable">
-                  Responsable *
-                </label>
-                <select
-                  id="tarea-responsable"
-                  value={formResponsable}
-                  onChange={(e) =>
-                    setFormResponsable(
-                      e.target.value ? Number(e.target.value) : ''
-                    )
-                  }
-                  required
-                >
-                  <option value="">-- Seleccionar personal activo --</option>
-                  {personal
-                    .filter((p) => p.activo)
-                    .map((p) => (
-                      <option key={p.legajo} value={p.legajo}>
-                        {p.apellido}, {p.nombre} (Legajo: {p.legajo})
-                      </option>
-                    ))}
-                </select>
+                <label>Responsable</label>
+                <p style={{ margin: '0.25rem 0 0', fontWeight: 600 }}>
+                  {usuario ? `${usuario.apellido}, ${usuario.nombre}` : ''}
+                </p>
+                <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'var(--text)' }}>
+                  La tarea queda registrada a tu nombre.
+                </p>
               </div>
 
               <div className="form-group">

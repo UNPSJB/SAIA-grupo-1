@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { TareaConId, TareaForm } from "./tipos";
 import "../../styles/formularioAlta.css";
+import { apiFetch } from '../../api/client';
 
 const TAREA_INICAL:TareaForm ={
     nombre:"",
@@ -9,12 +10,7 @@ const TAREA_INICAL:TareaForm ={
     frecuencia:""
 } 
 
-const FRECUENCIA = ["diaria","semanal","mensual"]
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-
-interface NuevaTareaProps {
+const FRECUENCIA = ["diaria","semanal","mensual"]interface NuevaTareaProps {
     planID?:number | null;
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -91,7 +87,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
 
     try {
-        const res= await fetch(`${API_URL}/tareas/`, {
+        const res= await apiFetch(`/tareas/`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

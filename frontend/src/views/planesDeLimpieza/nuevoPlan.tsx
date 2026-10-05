@@ -4,17 +4,14 @@ import type { EquipoConId } from '../equipos/tipos';
 import "../../styles/formularioAlta.css";
 import type { TareaConId } from "../tareas/tipos";
 import NuevaTarea from "../tareas/nuevaTarea";
+import { apiFetch } from '../../api/client';
 
 const PLAN_INICAL:PlanForm ={
     nombre:"",
     equipo_id:"",
     fecha_inicio:"",
     tareas:[]
-} 
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-const HOY = new Date().toISOString().split("T")[0];
+} const HOY = new Date().toISOString().split("T")[0];
 
 interface NuevoPlanDeLimpizaProps {
     onSuccess?: () => void;
@@ -82,7 +79,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
 
     try {
-        const res= await fetch(`${API_URL}/plan_De_limpieza/`, {
+        const res= await apiFetch(`/plan_De_limpieza/`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -122,7 +119,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 useEffect(() => {
         const fetchEquipos = async () => {
             try {
-                const res = await fetch(`${API_URL}/equipos/`);
+                const res = await apiFetch(`/equipos/`);
                 if (res.ok) {
                     const data = await res.json();
                     setEquipos(data);

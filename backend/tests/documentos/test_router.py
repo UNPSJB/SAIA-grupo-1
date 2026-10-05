@@ -17,6 +17,7 @@ def test_api_crear_documento_y_listar(session: Session):
         apellido="Admin",
         email="valeria.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     pdf_bytes = b"%PDF-1.4 contenido de prueba"
@@ -49,6 +50,7 @@ def test_api_subir_nueva_version(session: Session):
         apellido="Admin",
         email="martin.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     files_v1 = {"archivo": ("receta_v1.pdf", io.BytesIO(b"%PDF-1.4 v1"), "application/pdf")}
@@ -91,6 +93,7 @@ def test_api_marcar_version_vigente_y_trazabilidad(session: Session):
         apellido="Admin",
         email="lorena.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     files_v1 = {"archivo": ("receta_v1.pdf", io.BytesIO(b"%PDF-1.4 v1"), "application/pdf")}
@@ -155,6 +158,7 @@ def test_api_descargar_archivo_pdf(session: Session):
         apellido="Admin",
         email="clara.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     pdf_bytes = b"%PDF-1.4 contenido binario especial"
@@ -184,6 +188,7 @@ def test_api_operador_rechazado_con_403(session: Session):
         apellido="Operador",
         email="lucas.op@test.com",
         capacidad=Capacidades.OPERAR,
+        contrasenia="Clave1234",
     ))
 
     admin = crear_personal(session, PersonalCreate(
@@ -192,6 +197,7 @@ def test_api_operador_rechazado_con_403(session: Session):
         apellido="Admin",
         email="javier.ad@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     files = {"archivo": ("doc.pdf", io.BytesIO(b"%PDF-1.4 test"), "application/pdf")}
@@ -235,6 +241,7 @@ def test_api_versionado_automatico_sin_campo_version(session: Session):
         apellido="Admin",
         email="carla.admin@test.com",
         capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
     ))
 
     files_v1 = {"archivo": ("doc_v1.pdf", io.BytesIO(b"%PDF-1.4 test v1"), "application/pdf")}

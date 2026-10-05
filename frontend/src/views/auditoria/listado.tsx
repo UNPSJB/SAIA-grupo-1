@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Auditoria } from "./tipos";
-import '../../styles/formularioAlta.css';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-const formatDate = (dateStr?: string | null) => {
+import { apiFetch } from '../../api/client';
+import '../../styles/formularioAlta.css';const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return "No aplica";
   try {
     const d = new Date(dateStr);
@@ -46,7 +43,7 @@ export const ListadoAuditoria: React.FC = () => {
     let ignore = false;
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/auditoria/`);
+        const res = await apiFetch(`/auditoria/`);
         if (res.ok) {
           const data = await res.json();
           if (!ignore) setAuditorias(data);

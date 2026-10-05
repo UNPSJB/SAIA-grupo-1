@@ -16,3 +16,7 @@ class Personal(ModeloBase):
     email: Mapped[str] = mapped_column(unique=True, index=True)
     capacidad : Mapped[Capacidades] = mapped_column(SQLEnum(Capacidades), default=Capacidades.OPERAR, nullable=False)
     activo : Mapped[bool] = mapped_column(Boolean, default=True)
+    usuario: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    contrasenia_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+
