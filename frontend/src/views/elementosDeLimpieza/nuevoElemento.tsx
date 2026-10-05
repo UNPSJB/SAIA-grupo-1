@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import type { ElementoDeLimpiezaCreate } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface NuevoElementoLimpiezaProps {
   onSuccess?: () => void;
   onCancel?: () => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
+}export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
   onSuccess,
   onCancel,
 }) => {
@@ -95,7 +92,7 @@ export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
         frecuenciaDeCambio: formData.frecuenciaDeCambio,
       };
 
-      const response = await fetch(`${API_URL}/elementosDeLimpieza/`, {
+      const response = await apiFetch(`/elementosDeLimpieza/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
