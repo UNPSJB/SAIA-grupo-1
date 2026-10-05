@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { InsumoQuimico, TipoQuimico, UnidadMedida } from './tipos';
 import { OPCIONES_TIPO, OPCIONES_UNIDAD } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface Props {
   insumo: InsumoQuimico;
@@ -42,7 +43,7 @@ export const EditarDetalle: React.FC<Props> = ({ insumo, onVolver, onActualizado
 
     try {
       setCargando(true);
-      const res = await fetch(`http://localhost:8000/api/insumos-quimicos/${insumo.id}`, {
+      const res = await apiFetch(`/api/insumos-quimicos/${insumo.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

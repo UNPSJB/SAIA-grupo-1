@@ -1,12 +1,9 @@
 import { useState } from "react";
 import type { InsumoConId } from "./tipos";
 import "../../styles/formularioAlta.css";
+import { apiFetch } from '../../api/client';
 
-const UNIDADES = ["kilogramos", "gramos", "litros", "mililitros", "unidades"];
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-const getMinVencimiento = () => {
+const UNIDADES = ["kilogramos", "gramos", "litros", "mililitros", "unidades"];const getMinVencimiento = () => {
   const d = new Date();
   d.setDate(d.getDate() + 7);
   return d.toISOString().split("T")[0];
@@ -116,7 +113,7 @@ export default function EditarInsumo({ insumo, onSuccess, onCancel }: EditarInsu
     };
 
     try {
-      const res = await fetch(`${API_URL}/insumos/${insumo.id}`, {
+      const res = await apiFetch(`/insumos/${insumo.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

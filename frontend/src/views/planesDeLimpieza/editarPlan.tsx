@@ -7,16 +7,13 @@ import { VerTarea } from "../tareas/verTarea";
 import NuevaTarea from "../tareas/nuevaTarea";
 import type { TareaConId } from "../tareas/tipos";
 import { ConfirmAlertDialog } from "../../components/ui/alert-dialog";
+import { apiFetch } from '../../api/client';
 
 const PLAN_INICAL:PlanConId ={
     id:0,
     equipo_id:0,
     nombre:"",
-} 
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-const formatDate = (dateStr?: string | null) => {
+} const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return "No aplica";
   try {
     const d = new Date(dateStr);
@@ -56,7 +53,7 @@ export default function EditarPlanDeLimpieza({planlimpiezaID,onSuccess, onCancel
     const fetchPlanLimp = useCallback(async () => {
             if (!planlimpiezaID) return;
             try {
-                const res = await fetch(`${API_URL}/plan_De_limpieza/${planlimpiezaID}`);
+                const res = await apiFetch(`/plan_De_limpieza/${planlimpiezaID}`);
                 if (res.ok) {
                     const data = await res.json();
                     setPlanLimp(data);
@@ -115,7 +112,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
 
     try {
-        const res= await fetch(`${API_URL}/plan_De_limpieza/${planlimpiezaID}`, {
+        const res= await apiFetch(`/plan_De_limpieza/${planlimpiezaID}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -154,7 +151,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 useEffect(() => {
         const fetchEquipos = async () => {
             try {
-                const res = await fetch(`${API_URL}/equipos/`);
+                const res = await apiFetch(`/equipos/`);
                 if (res.ok) {
                     const data = await res.json();
                     setEquipos(data);
@@ -171,7 +168,7 @@ useEffect(() => {
     if (!window.confirm('¿Seguro que desea eliminar esta tarea?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/tareas/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/tareas/${id}`, { method: 'DELETE' });
       if (res.ok) {
          await fetchPlanLimp();
       } else {
@@ -198,8 +195,7 @@ const ejecutarBajaTarea = async () => {
     if (!tareaAConfirmar) return;
 
     try {
-        const res = await fetch(
-            `${API_URL}/tareas/${tareaAConfirmar.id}`,
+        const res = await apiFetch(`/tareas/${tareaAConfirmar.id}`,
             {
                 method: "DELETE",
             }

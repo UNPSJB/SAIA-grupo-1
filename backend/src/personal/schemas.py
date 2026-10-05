@@ -17,7 +17,7 @@ class PersonaBase(BaseModel):
     capacidad: Capacidades = Field(default=Capacidades.OPERAR)
 
 class PersonalCreate(PersonaBase):
-    pass
+    contrasenia: str = Field(..., min_length=8, max_length=72)
 
 class PersonalUpdate(BaseModel):
     nombre: Optional[str] = None
@@ -27,10 +27,12 @@ class PersonalUpdate(BaseModel):
     telefono: Optional[str] = None
     activo: Optional[bool] = None
     capacidad: Optional[Capacidades] = None
+    contrasenia: Optional[str] = Field(None, min_length=8, max_length=72)
+
 
 class Personal(PersonaBase):
     legajo: int
-
+    usuario: str
     model_config = ConfigDict(from_attributes=True)
 
 PersonaResponse = Personal

@@ -2,16 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza, ElementoDeLimpiezaUpdate } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { apiFetch } from '../../api/client';
 
 interface EditarElementoProps {
   elementoId?: number | null;
   onSuccess?: () => void;
   onCancel?: () => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
+}export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
   elementoId,
   onSuccess,
   onCancel,
@@ -35,7 +32,7 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
     if (elementoId) {
       const fetchElemento = async () => {
         try {
-          const res = await fetch(`${API_URL}/elementosDeLimpieza/${elementoId}`);
+          const res = await apiFetch(`/elementosDeLimpieza/${elementoId}`);
           if (res.ok) {
             const data: ElementoDeLimpieza = await res.json();
             setFormData({
@@ -145,7 +142,7 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
         activo: formData.activo,
       };
 
-      const res = await fetch(`${API_URL}/elementosDeLimpieza/${elementoId}`, {
+      const res = await apiFetch(`/elementosDeLimpieza/${elementoId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
