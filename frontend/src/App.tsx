@@ -31,8 +31,9 @@ import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
+import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria' | 'vencimientos';;
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -298,6 +299,12 @@ function App() {
               onVolver={() => setVistaChecklist('listado')}
             />
           )
+        ) : modulo === 'vencimientos' ? (
+          <VistaConsolidadaVencimiento
+            onNavegar={(vista) => {
+              cambiarModulo(vista as Modulo);
+            }}
+          />
         ) : null}
       </div>
     </div>
