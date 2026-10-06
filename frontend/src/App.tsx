@@ -31,19 +31,31 @@ import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
+import { Login } from './views/auth/login';
+import { useAuth } from './auth/useAuth';
+import { moduloInicial, puedeVerModulo } from './auth/permisos';
+import { ListadoCertificados } from './views/certificado/listado';
+import { NuevoCertificado } from './views/certificado/nuevoCertificado';
+import { EditarCertificado } from './views/certificado/editarDetalle';
+import { DetalleCertificado } from './views/certificado/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria' | 'vencimientos';;
+
+
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria' | 'vencimientos';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
-type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar' | 'certificados' | 'nuevo_certificado' | 'editar_certificado' | 'detalle_certificado';
 type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
 
-function App() {
-  const [modulo, setModulo] = useState<Modulo>('dashboard');
+function Aplicacion() {
+  const { esAdministrador } = useAuth();
+  const [moduloElegido, setModulo] = useState<Modulo>(moduloInicial(esAdministrador));
+  // el backend ya rechaza lo que el rol no puede ver; acá evitamos mostrar pantallas rotas
+  const modulo = puedeVerModulo(moduloElegido, esAdministrador) ? moduloElegido : moduloInicial(esAdministrador);
 
   
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
@@ -56,6 +68,10 @@ function App() {
   
   const [vistaPersonas, setVistaPersonas] = useState<VistaPersonas>('listado');
   const [legajoSeleccionado, setLegajoSeleccionado] = useState<number | null>(null);
+
+  const [nombrePersonaSeleccionada, setNombrePersonaSeleccionada] = useState<string>('');
+  const [certificadoSeleccionado, setCertificadoSeleccionado] = useState<number | null>(null);
+
   const [vistaElementos, setVistaElementos] = useState<VistaElementos>('listado');
   const [elementoSeleccionado, setElementoSeleccionado] = useState<number | null>(null);
 
@@ -78,6 +94,23 @@ function App() {
     setVistaElementos('listado');
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
+    setCertificadoSeleccionado(null);
+  };
+
+  // Desde la vista consolidada: salta a la pantalla del registro que vence
+  const irAlRegistroDeVencimiento = (v: any ) => {
+    if (v.tipo === 'personal') {
+      // `responsable` viene como "Apellido, Nombre"; en el resto de la app se muestra "Nombre Apellido"
+      const [apellido, nombre] = (v.responsable ?? '').split(', ');
+      setModulo('personas');
+      setLegajoSeleccionado(v.referencia_id);
+      setNombrePersonaSeleccionada(nombre ? `${nombre} ${apellido}` : (v.responsable ?? ''));
+      setVistaPersonas('certificados');
+    } else if (v.tipo === 'equipo') {
+      setModulo('equipos');
+      setEquipoSeleccionado(v.referencia_id);
+      setVistaEquipos('detalle');
+    }
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -107,6 +140,8 @@ function App() {
   <div style={{ flex: 1, padding: '40px 60px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}>
         {modulo === 'dashboard' ? (
           <PanelDashboard />
+        ) : modulo === 'vencimientos' ? (
+          <VistaConsolidadaVencimiento onIrAlRegistro = {irAlRegistroDeVencimiento} />
         ) : modulo === 'insumos' ? (
           vistaInsumos === 'listado' ? (
             <ListadoInsumos
@@ -174,8 +209,10 @@ function App() {
                 setLegajoSeleccionado(legajo);
                 setVistaPersonas('editar');
               }}
-              onVerCertificados={(legajo: number) => {
-                console.log('Ver certificados del legajo:', legajo);
+              onVerCertificados={(legajo, nombreCompleto) => { // 👈 AGREGAR ESTO
+                setLegajoSeleccionado(legajo);
+                setNombrePersonaSeleccionada(nombreCompleto);
+                setVistaPersonas('certificados');
               }}
             />
           ) : vistaPersonas === 'alta' ? (
@@ -188,13 +225,45 @@ function App() {
               personaLegajo={legajoSeleccionado}
               onCancel={() => setVistaPersonas('listado')}
             />
-          ) : (
+          ) : vistaPersonas === 'editar'? (
             <EditarPersona
               personaLegajo={legajoSeleccionado}
               onSuccess={() => setVistaPersonas('listado')}
               onCancel={() => setVistaPersonas('listado')}
             />
-          )
+          ) : vistaPersonas === 'certificados' && legajoSeleccionado !== null ? (
+            <ListadoCertificados
+              legajoPersona={legajoSeleccionado}
+              nombrePersona={nombrePersonaSeleccionada}
+              onNuevoClick={() => setVistaPersonas('nuevo_certificado')}
+              onDetalleClick={(id) => {
+                setCertificadoSeleccionado(id);
+                setVistaPersonas('detalle_certificado');
+              }}
+              onEditarClick={(id) => {
+                setCertificadoSeleccionado(id);
+                setVistaPersonas('editar_certificado');
+              }}
+              onVolver={() => setVistaPersonas('listado')}
+            />
+          ) : vistaPersonas === 'nuevo_certificado' && legajoSeleccionado !== null ? (
+            <NuevoCertificado
+              legajoPersona={legajoSeleccionado}
+              onSuccess={() => setVistaPersonas('certificados')}
+              onCancel={() => setVistaPersonas('certificados')}
+            />
+          ) : vistaPersonas === 'editar_certificado' && certificadoSeleccionado !== null ? (
+            <EditarCertificado
+              certificadoId={certificadoSeleccionado}
+              onSuccess={() => setVistaPersonas('certificados')}
+              onCancel={() => setVistaPersonas('certificados')}
+            />
+          ) : vistaPersonas === 'detalle_certificado' && certificadoSeleccionado !== null ? (
+            <DetalleCertificado
+              certificadoId={certificadoSeleccionado}
+              onCancel={() => setVistaPersonas('certificados')}
+            />
+          ) : null
         ) : modulo === 'insumos_quimicos' ? (
           vistaInsumosQuimicos === 'listado' ? (
             <ListadoInsumosQuimicos
@@ -302,16 +371,16 @@ function App() {
               onVolver={() => setVistaChecklist('listado')}
             />
           )
-        ) : modulo === 'vencimientos' ? (
-          <VistaConsolidadaVencimiento
-            onNavegar={(vista) => {
-              cambiarModulo(vista as Modulo);
-            }}
-          />
         ) : null}
       </div>
     </div>
   );
+}
+
+function App() {
+  const { usuario, cargando } = useAuth();
+  if (cargando) return null;
+  return usuario ? <Aplicacion /> : <Login />;
 }
 
 export default App;
