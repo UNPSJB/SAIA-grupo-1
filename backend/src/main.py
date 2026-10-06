@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from src.database import engine
+from fastapi import Depends, FastAPI
+from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
+from src.autenticacion.services import asegurar_admin_dev
+from src.database import engine, SessionLocal
 from src.models import ModeloBase
 
 # Importamos la configuración validada por Pydantic
@@ -20,6 +22,8 @@ from src.auditoria.router import router as auditoria_router
 from src.checklist.router import router as checklist_router
 from src.plan_de_calibracion.router import router as plan_de_calibracion_router
 from src.dashboard.router import router as dashboard_router
+from src.autenticacion.router import router as autenticacion_router
+from src.incidentes.router import router as incidentes_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 
@@ -32,6 +36,10 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    if ENV == "DEV":
+        # Usuario admin/admin compartido por el equipo (cada integrante tiene su propia base)
+        with SessionLocal() as db:
+            asegurar_admin_dev(db)
     yield
 
 
@@ -46,22 +54,32 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Permisos por router (ver src/autenticacion/dependencies.py):
+#  - SOLO_ADMIN: todo el router exige capacidad ADMINISTRAR o AMBAS.
+#  - SESION: alcanza con estar logueado; el router decide el resto endpoint por endpoint
+#    (insumos_quimicos y checklist, que los operadores también usan).
+SOLO_ADMIN = [Depends(requiere_admin)]
+SESION = [Depends(get_usuario_actual)]
+
 # asociamos los routers a nuestra app
-app.include_router(insumos_router, prefix="/insumos", tags=["Insumos"])
-app.include_router(equipos_router, prefix="/equipos", tags=["Equipos"])
-app.include_router(personal_router, prefix="/personal", tags=["Personal"])
-app.include_router(elementoDeLimpieza_router)
-app.include_router(insumos_quimicos_router)
-app.include_router(auditoria_router)
-app.include_router(planLimpieza_router)
-app.include_router(tarea_router)
+app.include_router(insumos_router, prefix="/insumos", tags=["Insumos"], dependencies=SOLO_ADMIN)
+app.include_router(equipos_router, prefix="/equipos", tags=["Equipos"], dependencies=SOLO_ADMIN)
+app.include_router(personal_router, prefix="/personal", tags=["Personal"], dependencies=SOLO_ADMIN)
+app.include_router(elementoDeLimpieza_router, dependencies=SOLO_ADMIN)
+app.include_router(insumos_quimicos_router, dependencies=SESION)
+app.include_router(auditoria_router, dependencies=SOLO_ADMIN)
+app.include_router(planLimpieza_router, dependencies=SOLO_ADMIN)
+app.include_router(tarea_router, dependencies=SOLO_ADMIN)
 app.include_router(checklist_router)
-app.include_router(dashboard_router)
+app.include_router(dashboard_router, dependencies=SOLO_ADMIN)
+# cada endpoint de incidentes define su rol (el operador crea; el admin edita, cambia estado y elimina)
+app.include_router(incidentes_router, dependencies=SESION)
+# /autenticacion/login es público; /autenticacion/me se protege dentro de su router
+app.include_router(autenticacion_router, prefix="/autenticacion", tags=["Autenticación"])
 app.include_router(plan_de_calibracion_router)

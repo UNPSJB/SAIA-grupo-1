@@ -2,16 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { apiFetch } from '../../api/client';
 
 interface ListadoEquiposProps {
     onNuevoClick?: () => void;
     onDetalleClick?: (id: number) => void;
     onEditarClick?: (id: number) => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
+}export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
     onNuevoClick,
     onDetalleClick,
     onEditarClick,
@@ -29,7 +26,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
         let cancelado = false;
         const fetchEquipos = async () => {
             try {
-                const res = await fetch(`${API_URL}/equipos/`);
+                const res = await apiFetch(`/equipos/`);
                 if (!cancelado) {
                     if (res.ok) {
                         const data = await res.json();
@@ -66,10 +63,10 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
         const accion = esActivo ? 'dar de baja' : 'reactivar';
         try {
             const url = esActivo
-                ? `${API_URL}/equipos/${equipoAConfirmar.id}`
-                : `${API_URL}/equipos/${equipoAConfirmar.id}/reactivar`;
+                ? `/equipos/${equipoAConfirmar.id}`
+                : `/equipos/${equipoAConfirmar.id}/reactivar`;
             const method = esActivo ? 'DELETE' : 'PATCH';
-            const res = await fetch(url, { method });
+            const res = await apiFetch(url, { method });
             if (res.ok) {
                 const nuevoEstado = esActivo ? 'inactivo' : 'activo';
                 setEquipos((prev) =>

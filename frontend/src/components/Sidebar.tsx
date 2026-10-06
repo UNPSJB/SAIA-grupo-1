@@ -1,6 +1,8 @@
 import React from 'react';
+import { useAuth } from '../auth/useAuth';
+import { puedeVerModulo } from '../auth/permisos';
 
-export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria' | 'planDeCalibracion';
+export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -8,7 +10,9 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
-  const items: { id: Modulo; label: string }[] = [
+  const { usuario, esAdministrador, logout } = useAuth();
+
+  const todos: { id: Modulo; label: string }[] = [
     { id: 'dashboard', label: 'Inicio' },
     { id: 'insumos', label: 'Ingredientes' },
     { id: 'equipos', label: 'Equipos' },
@@ -17,9 +21,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
     { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza' },
     { id: 'planDeLimpieza', label: 'Plan de Limpieza' },
     { id: 'checklist', label: 'Checklists' },
+    { id: 'incidentes', label: 'Incidentes' },
     { id: 'auditoria', label: 'Auditoría' },
     { id: 'planDeCalibracion', label: 'Plan de Calibración' },
   ];
+  const items = todos.filter((item) => puedeVerModulo(item.id, esAdministrador));
 
   return (
     <aside
@@ -60,6 +66,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
           </button>
         );
       })}
+
+      {usuario && (
+        <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #1e202e' }}>
+          <div style={{ padding: '0 16px 10px', color: '#8f92a3', fontSize: '13px', lineHeight: 1.4 }}>
+            <div style={{ color: '#c9cbd8', fontWeight: 600 }}>
+              {usuario.nombre} {usuario.apellido}
+            </div>
+            <div>{usuario.usuario}</div>
+          </div>
+          <button
+            onClick={logout}
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: 'transparent',
+              color: '#8f92a3',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      )}
     </aside>
   );
 };

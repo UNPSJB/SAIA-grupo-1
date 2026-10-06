@@ -1,6 +1,7 @@
 import {useRef, useState} from "react"
 import type {Equipo} from "./tipos"
 import "../../styles/formularioAlta.css"
+import { apiFetch } from '../../api/client';
 
 const CATEGORIAS= ["conservamiento","sanamiento","mantenimiento","desinfeccion"];
 const EQUIPO_INICIAL :Equipo={
@@ -9,10 +10,6 @@ const EQUIPO_INICIAL :Equipo={
         ubicacion: "",
         estado:"activo"
     };
-
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
 interface NuevoEquipoProps {
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -83,7 +80,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
 
     try {
-        const res= await fetch(`${API_URL}/equipos/`, {
+        const res= await apiFetch(`/equipos/`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

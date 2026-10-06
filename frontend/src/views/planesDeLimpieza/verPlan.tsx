@@ -3,16 +3,12 @@ import type { PlanConId } from "./tipos";
 import type { TareaConId } from '../tareas/tipos';
 import '../../styles/formularioAlta.css';
 import { VerTarea } from '../tareas/verTarea';
+import { apiFetch } from '../../api/client';
 
 interface DetallePlanLimpiezaProps {
     onCancel?: () => void;
     planlimpiezaID?: number | null;
-}
-
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-const formatDate = (dateStr?: string | null) => {
+}const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return "No aplica";
   try {
     const d = new Date(dateStr);
@@ -38,7 +34,7 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
     const fetchPlanLimp = useCallback(async () => {
         if (!planlimpiezaID) return;
         try {
-            const res = await fetch(`${API_URL}/plan_De_limpieza/${planlimpiezaID}`);
+            const res = await apiFetch(`/plan_De_limpieza/${planlimpiezaID}`);
             if (res.ok) {
                 const data = await res.json();
                 setPlanLimp(data);
@@ -59,7 +55,7 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
     if (!window.confirm('¿Seguro que desea eliminar esta tarea?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/tareas/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/tareas/${id}`, { method: 'DELETE' });
       if (res.ok) {
          await fetchPlanLimp();
       } else {

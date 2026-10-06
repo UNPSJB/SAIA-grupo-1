@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { Persona, PersonaActualizar } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 export interface EditarPersonaProps {
   personaLegajo: number | null;
@@ -19,7 +20,9 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
     documento: "",
     email: "",
     capacidad: "OPERAR",
+    contrasenia: "",
   });
+  const [usuarioAsignado, setUsuarioAsignado] = useState("");
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +32,7 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
   useEffect(() => {
     if (!personaLegajo) return;
 
-    fetch(`http://127.0.0.1:8000/personal/${personaLegajo}`, {
+    apiFetch(`/personal/${personaLegajo}`, {
       headers: { "Accept": "application/json" }
     })
       .then((res) => {
@@ -43,7 +46,9 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
           documento: data.documento ?? data.dni ?? "",
           email: data.email,
           capacidad: data.capacidad || "OPERAR",
+          contrasenia: "",
         });
+        setUsuarioAsignado(data.usuario);
       })
       .catch((err) => {
         console.error(err);
@@ -71,6 +76,11 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
         if (!value.trim()) error = "El correo es obligatorio.";
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = "Correo inválido.";
         break;
+      case "contrasenia":
+        // opcional: vacío = no se cambia la contraseña actual
+        if (value && value.length < 8) error = "Mínimo 8 caracteres.";
+        else if (value && value.length > 72) error = "Máximo 72 caracteres.";
+        break;
       default:
         break;
     }
@@ -93,12 +103,15 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
     validateField("apellido", formData.apellido);
     validateField("documento", formData.documento);
     validateField("email", formData.email);
+    validateField("contrasenia", formData.contrasenia ?? "");
 
+    const contrasenia = formData.contrasenia ?? "";
     if (
       !formData.nombre ||
       !formData.apellido ||
       !formData.documento ||
       !formData.email ||
+      (contrasenia !== "" && (contrasenia.length < 8 || contrasenia.length > 72)) ||
       Object.values(errors).some((err) => err !== "")
     ) {
       return;
@@ -112,9 +125,11 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
         documento: parseInt(String(formData.documento), 10),
         email: formData.email?.trim(),
         capacidad: formData.capacidad,
+        // solo se manda si se escribió una nueva: si no, el servidor deja la actual
+        ...(contrasenia ? { contrasenia } : {}),
       };
 
-      const res = await fetch(`http://127.0.0.1:8000/personal/${personaLegajo}`, {
+      const res = await apiFetch(`/personal/${personaLegajo}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(payload),
@@ -156,6 +171,11 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
       {apiError && <div className="alerta-error">{apiError}</div>}
 
       <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="usuario">Usuario</label>
+          <input id="usuario" value={usuarioAsignado} disabled />
+        </div>
+
         <div className="form-group">
           <label htmlFor="nombre">Nombre</label>
           <input
@@ -206,6 +226,20 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
             onChange={handleChange}
           />
           {errors.email && <span className="campo-error">{errors.email}</span>}
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="contrasenia">Nueva contraseña (opcional)</label>
+          <input
+            id="contrasenia"
+            type="password"
+            name="contrasenia"
+            placeholder="Dejalo vacío para no cambiarla"
+            autoComplete="new-password"
+            value={formData.contrasenia}
+            onChange={handleChange}
+          />
+          {errors.contrasenia && <span className="campo-error">{errors.contrasenia}</span>}
         </div>
 
         <div className="form-group">
