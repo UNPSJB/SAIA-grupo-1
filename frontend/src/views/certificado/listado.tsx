@@ -89,7 +89,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
 
     if (diffDias <= 0) return { estado: 'vencido', diffDias };
-    if (diffDias <= 7) return { estado: 'proximo', diffDias };
+    if (diffDias <= 15) return { estado: 'proximo', diffDias };
     return { estado: 'al_dia', diffDias };
   };
 
@@ -182,7 +182,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
 
                 return (
                   <tr key={item.id}>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
                       {estado === 'vencido' && (
                         <span
                           style={{
@@ -193,6 +193,8 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                             borderRadius: '12px',
                             fontSize: '0.75rem',
                             fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                            display: 'inline-block',
                           }}
                         >
                           ● Vencido ({Math.abs(diffDias)} d)
@@ -209,9 +211,11 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                             borderRadius: '12px',
                             fontSize: '0.75rem',
                             fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                            display: 'inline-block',
                           }}
                         >
-                          ▲ Vence en {diffDias} d
+                          ▲ Vence en {diffDias} dias
                         </span>
                       )}
 
@@ -225,6 +229,8 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                             borderRadius: '12px',
                             fontSize: '0.75rem',
                             fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                            display: 'inline-block',
                           }}
                         >
                           ✓ Al día

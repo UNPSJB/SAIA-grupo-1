@@ -78,7 +78,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
 
     if (diffDias <= 0) return 'vencido';
-    if (diffDias <= 7) return 'proximo';
+    if (diffDias <= 15) return 'proximo';
     return 'al_dia';
   };
 
