@@ -20,18 +20,23 @@ STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 def es_administrador(persona: Personal) -> bool:
     return persona.capacidad in (Capacidades.ADMINISTRAR, Capacidades.AMBAS)
 
+def obtener_descripcion_personal(persona) -> str:
+    if not persona:
+        return "Desconocido"
+    legajo = getattr(persona, "legajo", "")
+    nombre = getattr(persona, "nombre", "")
+    apellido = getattr(persona, "apellido", "")
+    usuario = getattr(persona, "usuario", None)
+    desc = f"{legajo} - {nombre} {apellido}".strip()
+    if usuario:
+        desc += f" (@{usuario})"
+    return desc
+
 def verificar_permiso_administrador(
     db: Session,
     responsable_legajo: Optional[int] = None,
     usuario: Optional[Personal] = None,
 ) -> Personal:
-    if usuario is not None:
-        if not usuario.activo:
-            raise exceptions.ResponsableInactivo()
-        if not es_administrador(usuario):
-            raise exceptions.SoloAdministradorPuedeSubir()
-        return usuario
-
     if responsable_legajo is not None:
         persona = db.scalar(select(Personal).where(Personal.legajo == responsable_legajo))
         if not persona:
@@ -41,6 +46,19 @@ def verificar_permiso_administrador(
         if not es_administrador(persona):
             raise exceptions.SoloAdministradorPuedeSubir()
         return persona
+
+    if usuario is not None:
+        if not getattr(usuario, "activo", True):
+            raise exceptions.ResponsableInactivo()
+        if not es_administrador(usuario):
+            raise exceptions.SoloAdministradorPuedeSubir()
+        if isinstance(usuario, Personal):
+            return usuario
+        if hasattr(usuario, "legajo"):
+            persona_db = db.scalar(select(Personal).where(Personal.legajo == usuario.legajo))
+            if persona_db:
+                return persona_db
+        return usuario
 
     persona = db.scalar(
         select(Personal).where(
@@ -147,7 +165,7 @@ def crear_documento(
     db.add(primera_version)
     db.flush()
 
-    responsable_desc = f"{persona.legajo} - {persona.nombre} {persona.apellido}".strip()
+    responsable_desc = obtener_descripcion_personal(persona)
     registrar_auditoria(
         db,
         AuditoriaCreate(
@@ -176,7 +194,7 @@ def subir_nueva_version(
         file = version
         version = None
 
-    verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
+    persona = verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
 
     doc = db.scalar(select(Documento).where(Documento.id == documento_id, Documento.activo == True))
     if not doc:
@@ -221,6 +239,19 @@ def subir_nueva_version(
         fecha_vigencia=None,
     )
     db.add(nueva_version)
+    responsable_desc = obtener_descripcion_personal(persona)
+    registrar_auditoria(
+        db,
+        AuditoriaCreate(
+            tabla="documentos",
+            registro_id=documento_id,
+            accion=AccionAuditoria.MODIFICAR,
+            campo="nueva_version",
+            valor_previo=f"v{max([v.version for v in versiones_previas])}" if versiones_previas else None,
+            valor_posterior=f"v{nueva_version.version} (usuario: {responsable_desc})",
+        ),
+        commit=False,
+    )
     db.commit()
     db.refresh(nueva_version)
     return nueva_version
@@ -265,7 +296,7 @@ def marcar_version_vigente(
     version_destino.fecha_vigencia = fecha_vigencia
 
     previo = f"v{version_anterior.version}" if version_anterior else None
-    responsable_desc = f"{persona.legajo} - {persona.nombre} {persona.apellido}".strip()
+    responsable_desc = obtener_descripcion_personal(persona)
     registrar_auditoria(
         db,
         AuditoriaCreate(

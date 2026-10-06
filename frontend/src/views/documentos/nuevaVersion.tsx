@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { DocumentoDetalle, TipoDocumento, VersionItem } from "./tipos";
+import { apiFetch } from "../../api/client";
 import "../../styles/formularioAlta.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const getTipoLabel = (tipo?: TipoDocumento) => {
   if (!tipo) return "";
@@ -44,15 +44,9 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
       setLoading(true);
       setErrorMsg(null);
       try {
-        const headers: Record<string, string> = {};
-        const token = localStorage.getItem("saia_token");
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-
         const [resDoc, resVersiones] = await Promise.all([
-          fetch(`${API_URL}/documentos/${documentoId}`, { headers }),
-          fetch(`${API_URL}/documentos/${documentoId}/versiones`, { headers }),
+          apiFetch(`/documentos/${documentoId}`),
+          apiFetch(`/documentos/${documentoId}/versiones`),
         ]);
 
         if (resDoc.ok) {
@@ -120,15 +114,8 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
     setGuardando(true);
 
     try {
-      const headers: Record<string, string> = {};
-      const token = localStorage.getItem("saia_token");
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(`${API_URL}/documentos/${documentoId}/versiones`, {
+      const res = await apiFetch(`/documentos/${documentoId}/versiones`, {
         method: "POST",
-        headers,
         body: formData,
       });
 

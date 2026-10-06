@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import type { DocumentoListItem, TipoDocumento } from "./tipos";
 import { ModalMarcarVigente } from "./modalMarcarVigente";
 import { DetalleDocumento } from "./verDetalle";
+import { apiFetch } from "../../api/client";
 import "../../styles/formularioAlta.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const formatearFecha = (dateStr?: string | null) => {
   if (!dateStr) return "-";
@@ -60,12 +60,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
 
   const cargarDatos = async () => {
     try {
-      const headers: Record<string, string> = {};
-      const token = localStorage.getItem("saia_token");
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const resDocs = await fetch(`${API_URL}/documentos`, { headers });
+      const resDocs = await apiFetch("/documentos");
       if (resDocs.ok) {
         const dataDocs = await resDocs.json();
         setDocumentos(dataDocs);

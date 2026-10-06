@@ -12,31 +12,15 @@ from src.personal.schemas import Capacidades
 from src.documentos import exceptions, schemas, services
 from src.documentos.constants import TipoDocumento
 
+from src.autenticacion.dependencies import requiere_admin
+
 router = APIRouter(prefix="/documentos", tags=["Documentos Versionados"])
 
 def obtener_usuario_actual(
     request: Request,
     db: Session = Depends(get_db),
+    usuario_auth: Personal = Depends(requiere_admin),
 ) -> Personal:
-    auth = request.headers.get("Authorization")
-    if auth and auth.startswith("Bearer "):
-        token = auth[7:]
-        try:
-            parts = token.split(".")
-            if len(parts) == 3:
-                padded = parts[1] + "=" * ((4 - len(parts[1]) % 4) % 4)
-                payload = json.loads(base64.urlsafe_b64decode(padded))
-                legajo = int(payload.get("sub"))
-                persona = db.scalar(select(Personal).where(Personal.legajo == legajo))
-                if persona and persona.activo:
-                    if persona.capacidad not in (Capacidades.ADMINISTRAR, Capacidades.AMBAS):
-                        raise exceptions.SoloAdministradorPuedeSubir()
-                    return persona
-        except (exceptions.SoloAdministradorPuedeSubir, exceptions.PermissionDenied):
-            raise
-        except Exception:
-            pass
-
     legajo_header = request.headers.get("X-User-Legajo")
     if legajo_header:
         persona = db.scalar(select(Personal).where(Personal.legajo == int(legajo_header)))
@@ -47,16 +31,15 @@ def obtener_usuario_actual(
                 raise exceptions.SoloAdministradorPuedeSubir()
             return persona
 
-    persona = db.scalar(
-        select(Personal).where(
-            Personal.activo == True,
-            Personal.capacidad.in_([Capacidades.ADMINISTRAR, Capacidades.AMBAS]),
-        )
-    )
-    if persona:
-        return persona
+    if isinstance(usuario_auth, Personal):
+        return usuario_auth
 
-    raise exceptions.SoloAdministradorPuedeSubir()
+    if hasattr(usuario_auth, "legajo"):
+        persona = db.scalar(select(Personal).where(Personal.legajo == usuario_auth.legajo))
+        if persona:
+            return persona
+
+    return usuario_auth
 
 @router.post(
     "",

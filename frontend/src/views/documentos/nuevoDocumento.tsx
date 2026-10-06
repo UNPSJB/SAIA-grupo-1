@@ -1,8 +1,8 @@
 import React, { useRef, useState } from "react";
 import type { TipoDocumento } from "./tipos";
+import { apiFetch } from "../../api/client";
 import "../../styles/formularioAlta.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface NuevoDocumentoProps {
   onSuccess?: () => void;
@@ -60,15 +60,8 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
     setLoading(true);
 
     try {
-      const headers: Record<string, string> = {};
-      const token = localStorage.getItem("saia_token");
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(`${API_URL}/documentos`, {
+      const res = await apiFetch("/documentos", {
         method: "POST",
-        headers,
         body: formData,
       });
 

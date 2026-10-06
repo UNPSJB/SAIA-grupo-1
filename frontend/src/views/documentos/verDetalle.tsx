@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { DocumentoDetalle, TipoDocumento } from "./tipos";
+import { apiFetch } from "../../api/client";
 import "../../styles/formularioAlta.css";
 import "./documentos.css";
 
@@ -8,7 +9,6 @@ interface DetalleDocumentoProps {
   onVolver: () => void;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const formatearFecha = (fechaStr?: string | null) => {
   if (!fechaStr) return "Sin fecha";
@@ -56,13 +56,7 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
       setLoading(true);
       setError(null);
       try {
-        const headers: Record<string, string> = {};
-        const token = localStorage.getItem("saia_token");
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-
-        const res = await fetch(`${API_URL}/documentos/${documentoId}`, { headers });
+        const res = await apiFetch(`/documentos/${documentoId}`);
         if (!res.ok) {
           throw new Error("No se pudo cargar la información del documento.");
         }
@@ -80,9 +74,25 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
 
   const versionParaDescarga = documento?.version_vigente || documento?.version_actual;
 
-  const handleDescargar = () => {
+  const handleDescargar = async () => {
     if (!versionParaDescarga) return;
-    window.open(`${API_URL}/documentos/archivo/${versionParaDescarga.id}`, "_blank");
+    try {
+      const res = await apiFetch(`/documentos/archivo/${versionParaDescarga.id}`);
+      if (!res.ok) {
+        throw new Error("No se pudo descargar el archivo.");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = versionParaDescarga.archivo_nombre_original || "documento.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.message || "Error al descargar el archivo.");
+    }
   };
 
   return (

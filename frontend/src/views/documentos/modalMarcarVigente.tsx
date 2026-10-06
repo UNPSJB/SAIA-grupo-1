@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import type { DocumentoListItem, VersionItem } from "./tipos";
+import { apiFetch } from "../../api/client";
 import "./documentos.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface ModalMarcarVigenteProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
     const cargarVersiones = async () => {
       setLoadingVersiones(true);
       try {
-        const res = await fetch(`${API_URL}/documentos/${documento.id}/versiones`);
+        const res = await apiFetch(`/documentos/${documento.id}/versiones`);
         if (res.ok) {
           const data: VersionItem[] = await res.json();
           setVersiones(data);
@@ -74,19 +74,13 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
 
     setEnviando(true);
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      const token = localStorage.getItem("saia_token");
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const res = await fetch(
-        `${API_URL}/documentos/${documento.id}/versiones/${versionId}/vigente`,
+      const res = await apiFetch(
+        `/documentos/${documento.id}/versiones/${versionId}/vigente`,
         {
           method: "POST",
-          headers,
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             fecha_vigencia: fechaVigencia,
           }),
