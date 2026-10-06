@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../auth/useAuth';
 import { puedeVerModulo } from '../auth/permisos';
 
-export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria'  | 'vencimientos';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -22,6 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
     { id: 'planDeLimpieza', label: 'Plan de Limpieza' },
     { id: 'checklist', label: 'Checklists' },
     { id: 'auditoria', label: 'Auditoría' },
+    { id: 'vencimientos', label: 'Vencimientos'}
   ];
   const items = todos.filter((item) => puedeVerModulo(item.id, esAdministrador));
 
