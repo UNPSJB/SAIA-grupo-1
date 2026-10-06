@@ -23,7 +23,7 @@ class Equipo(ModeloBase):
     nombre: Mapped[str] = mapped_column(String(50), index=True)
     categoria: Mapped[Categoria] = mapped_column(index=True)
     ubicacion: Mapped[str] = mapped_column(String(50))
-    plan_de_calibracion: Mapped[str] = mapped_column(String(100))
+    plan_de_calibracion: Mapped["src.plan_de_calibracion.models.Plan_de_Calibracion"] = relationship("src.plan_de_calibracion.models.Plan_de_Calibracion", back_populates="equipo")
     estado: Mapped[Estado] = mapped_column(index=True)
 
     plan_de_Limpieza: Mapped[Optional["src.plan_De_limpieza.models.Plan_de_Limpieza"]]= relationship("src.plan_De_limpieza.models.Plan_de_Limpieza",back_populates="equipo",uselist=False)

@@ -1,0 +1,8 @@
+class ErrorCode:
+    NOMBRE_VACIO="El Nombre no puede estar vacio"
+    NOMBRE_ERROR="El nombre debe tener mas de un caracter"
+    FECHA_ERROR="LA FECHA NO DEBE SER VACIA"
+    FECHA_ANTERIOR="LA FECHA NO PUEDE SER ANTERIOR A LA FECHA ACTUAL"
+    PERIODICIDAD_ERROR="LA PERIODICIDAD DEBE SER MAYOR A 0"
+    NOSE_ENCONTRO_PLAN="NO SE ENCONTRO EL PLAN DE CALIBRACION"
+    DESCRIPCION_VACIA="La descripcion no puede estar vacia"

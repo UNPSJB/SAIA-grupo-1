@@ -1,3 +1,4 @@
+import type { PlanDeCalibracion } from '../planDeCalibracion/tipos';
 import type {PlanDelimpieza} from '../planesDeLimpieza/tipos'
 
 export interface Equipo {
@@ -5,7 +6,7 @@ export interface Equipo {
   categoria:string;
   ubicacion: string;
   plan_de_Limpieza?: PlanDelimpieza;
-  plan_de_calibracion: string;
+  plan_de_calibracion?: PlanDeCalibracion;
   estado:string;
 }
 

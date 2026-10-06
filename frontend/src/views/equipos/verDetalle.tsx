@@ -97,7 +97,7 @@ export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId
                     id="plan_de_calibracion"
                     name="plan_de_calibracion"
                     type="text"
-                    value={equipo.plan_de_calibracion} 
+                    value={equipo.plan_de_calibracion?.nombre} 
                     disabled
                 />
             </div>

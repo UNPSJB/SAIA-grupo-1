@@ -114,16 +114,6 @@ const handleEliminar = async (id?: number) => {
                 />
             </div>
 
-            <div className="form-group">
-                <label htmlFor="plan_de_calibracion">Plan de Calibración</label>
-                <input
-                    id="plan_de_calibracion"
-                    name="plan_de_calibracion"
-                    type="text"
-                    value={equipo.plan_de_calibracion} 
-                    disabled
-                />
-            </div>
         </form>
         ) : (
                      <div style={{ textAlign: 'center', padding: '2rem' }}>

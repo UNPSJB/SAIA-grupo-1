@@ -7,7 +7,6 @@ const EQUIPO_INICIAL :Equipo={
         nombre: "",
         categoria: "",
         ubicacion: "",
-        plan_de_calibracion: "",
         estado:"activo"
     };
 
@@ -77,7 +76,6 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         nombre: equipo.nombre.trim(),
         categoria: equipo.categoria,
         ubicacion: equipo.ubicacion.trim(),
-        plan_de_calibracion: equipo.plan_de_calibracion.trim(),
         estado:"activo"
     }
 
@@ -182,18 +180,6 @@ return(
                 />
             </div>
 
-
-            <div className="form-group">
-                <label htmlFor="plan_de_calibracion">Plan de Calibración</label>
-                <input
-                    id="plan_de_calibracion"
-                    name="plan_de_calibracion"
-                    type="text"
-                    value={equipo.plan_de_calibracion}
-                    onChange={handleChange}
-                    required    
-                />
-            </div>
             
             
             <div className="form-acciones">
