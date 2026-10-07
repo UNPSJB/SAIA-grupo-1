@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
+from sqlalchemy import inspect, text
 from src.database import engine
 from src.models import ModeloBase
 
@@ -31,9 +32,18 @@ ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
 
 setup_logging()
 
+def _agregar_columnas_nuevas():
+    """create_all no modifica tablas que ya existen: agrega a mano las columnas incorporadas después."""
+    inspector = inspect(engine)
+    if "responsable_legajo" not in {c["name"] for c in inspector.get_columns("tareas")}:
+        with engine.begin() as conexion:
+            conexion.execute(text("ALTER TABLE tareas ADD COLUMN responsable_legajo INTEGER REFERENCES personal(legajo)"))
+
+
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    _agregar_columnas_nuevas()
     yield
 
 

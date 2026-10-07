@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { TareaConId} from "./tipos";
 import { apiFetch } from '../../api/client';
-import "../../styles/formularioAlta.css";interface VerTareaProps {
+import "../../styles/formularioAlta.css";
+interface VerTareaProps {
     tareaID:number | null;
     onCancel?: () => void;
 
@@ -72,6 +73,16 @@ return (
                 >
                 </input>
             </div>
+
+        <div className="form-group">
+          <label htmlFor="responsable">Responsable:</label>
+          <input
+            id="responsable"
+            name="responsable"
+            value={tarea.nombre_responsable ?? "Sin asignar"}
+            disabled
+          />
+        </div>
 
         </div>
 

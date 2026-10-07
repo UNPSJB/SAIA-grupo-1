@@ -205,6 +205,7 @@ def session() -> Generator[Session, None, None]:
             descripcion="Desinfectar estantes con alcohol al 70",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_semilla.id,
+            responsable_legajo=persona_1.legajo,
         ),
     )
 
@@ -215,6 +216,7 @@ def session() -> Generator[Session, None, None]:
             descripcion="Descongelar y lavar burletes",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_semilla.id,
+            responsable_legajo=persona_1.legajo,
         ),
     )
 

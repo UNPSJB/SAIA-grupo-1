@@ -20,3 +20,9 @@ class FRECUENCIAInvalida(ValueError):
 
 class DescripcionInvalidad(BadRequest):
     DETAIL=ErrorCode.TAREA_CON_CARACTERES_RAROS
+
+class ResponsableNoEncontrado(BadRequest):
+    DETAIL=ErrorCode.RESPONSABLE_NO_ENCONTRADO
+
+class ResponsableInactivo(BadRequest):
+    DETAIL=ErrorCode.RESPONSABLE_INACTIVO

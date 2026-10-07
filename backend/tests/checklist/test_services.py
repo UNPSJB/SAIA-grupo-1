@@ -39,7 +39,7 @@ def test_generar_checklist_automatico(session: Session) -> None:
         assert item.nombre_plan == "PlanFreezer"
         assert item.nombre_tarea in ["Desinfeccion", "Descongelar"]
         assert item.frecuencia in [Frecuencia.DIARIA, Frecuencia.SEMANAL]
-        assert item.responsable_legajo is None
+        assert item.responsable_legajo == 1
         assert item.fecha_hora_fin is None
 
 
@@ -343,6 +343,7 @@ def test_generar_tareas_cuando_se_saltean_dias(session: Session) -> None:
         descripcion="Procedimiento semanal",
         frecuencia=Frecuencia.SEMANAL,
         plan_id=plan.id,
+        responsable_legajo=1,
     )
     session.add(tarea_semanal)
     session.commit()

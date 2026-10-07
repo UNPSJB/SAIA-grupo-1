@@ -439,7 +439,7 @@ interface DetalleChecklistProps {
                             </div>
                           </div>
 
-                          {esOperador && checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (
+                          {esOperador && checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (tarea.responsable_legajo == null || tarea.responsable_legajo === usuario?.legajo) && (
                             <button
                               className="btn-guardar"
                               style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}

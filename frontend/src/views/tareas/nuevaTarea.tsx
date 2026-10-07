@@ -2,15 +2,18 @@ import { useState } from "react";
 import type { TareaConId, TareaForm } from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
+import { useResponsables } from "./useResponsables";
 
 const TAREA_INICAL:TareaForm ={
     nombre:"",
     descripcion:"",
     plan_id:"",
-    frecuencia:""
+    frecuencia:"",
+    responsable_legajo:""
 } 
 
-const FRECUENCIA = ["diaria","semanal","mensual"]interface NuevaTareaProps {
+const FRECUENCIA = ["diaria","semanal","mensual"]
+interface NuevaTareaProps {
     planID?:number | null;
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -24,6 +27,7 @@ export default function NuevaTarea({onAgregarLocal,planID,onSuccess, onCancel}: 
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const responsables = useResponsables();
 
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -42,8 +46,18 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
     }
 
+    if (!tarea.responsable_legajo) {
+      setErrorMsg("Debe asignar un responsable a la tarea.");
+      return;
+    }
+
     if (!planID) {
-          onAgregarLocal?.(tarea as TareaConId);
+          const responsable = responsables.find((p) => p.legajo === Number(tarea.responsable_legajo));
+          onAgregarLocal?.({
+            ...tarea,
+            responsable_legajo: Number(tarea.responsable_legajo),
+            nombre_responsable: responsable ? `${responsable.nombre} ${responsable.apellido}` : null,
+          } as TareaConId);
           onSuccess?.();
           return;
     }
@@ -80,7 +94,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         nombre: tarea.nombre.trim(),
         descripcion:tarea.descripcion.trim(),
         plan_id:planID,
-        frecuencia:tarea.frecuencia
+        frecuencia:tarea.frecuencia,
+        responsable_legajo:Number(tarea.responsable_legajo)
     }
 
     setLoading(true);
@@ -187,6 +202,23 @@ return (
                 </select>
             </div>
 
+        <div className="form-group">
+          <label htmlFor="responsable_legajo">Responsable</label>
+          <select
+            id="responsable_legajo"
+            name="responsable_legajo"
+            value={tarea.responsable_legajo}
+            onChange={handleChange}
+            required
+          >
+            <option value="" disabled>Seleccione un usuario activo</option>
+            {responsables.map((p) => (
+              <option key={p.legajo} value={p.legajo}>
+                {p.apellido}, {p.nombre} (Legajo: {p.legajo})
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
