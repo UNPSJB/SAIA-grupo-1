@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import '../../styles/formularioAlta.css';
 import type { PlanDeCalibracionForm } from './tipos';
 import type { EquipoConId } from '../equipos/tipos';
+import { apiFetch } from '../../api/client';
 
 
 const PLANCalibracion_INICIAL : PlanDeCalibracionForm = {
@@ -11,7 +12,6 @@ const PLANCalibracion_INICIAL : PlanDeCalibracionForm = {
      periodicidad_De_cambio: "",
      descripcion: ""
 };
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 
 const HOY = new Date().toISOString().split("T")[0];
@@ -103,7 +103,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
     setLoading(true);
 
     try {
-        const res = await fetch(`${API_URL}/plan_de_calibracion`, {
+        const res = await apiFetch(`/plan_de_calibracion/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -143,7 +143,7 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 useEffect(() => {
         const fetchEquipos = async () => {
             try {
-                const res = await fetch(`${API_URL}/equipos/`);
+                const res = await apiFetch(`/equipos/`);
                 if (res.ok) {
                     const data = await res.json();
                     setEquipos(data);

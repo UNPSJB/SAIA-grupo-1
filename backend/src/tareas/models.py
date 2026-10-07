@@ -18,9 +18,15 @@ class Tarea(ModeloBase):
     descripcion:Mapped[str]= mapped_column(index=True)
     frecuencia:Mapped[Frecuencia] = mapped_column(index=True)
     plan_id:Mapped[int]=mapped_column(ForeignKey("plan_de_limpieza.id"))
+    personal_id:Mapped[int] = mapped_column(ForeignKey("personal.legajo"))
+    personal:Mapped["src.personal.models.Personal"]=relationship("src.personal.models.Personal",back_populates="tarea")
 
     plan_de_limpieza:Mapped["src.plan_De_limpieza.models.Plan_de_Limpieza"]= relationship("src.plan_De_limpieza.models.Plan_de_Limpieza", back_populates="tareas")
 
     @property
     def nombre_plan(self):
         return self.plan_de_limpieza.nombre
+
+    @property
+    def nombre_personal(self):
+        return self.personal.nombre

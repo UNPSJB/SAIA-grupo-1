@@ -2,16 +2,19 @@ import { useEffect, useState } from "react";
 import type { TareaConId} from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
+import type { Persona } from "../personas/tipos";
 
 const TAREA_INICIAL:TareaConId ={
     id:0,
     nombre:"",
     descripcion:"",
     plan_id:0,
-    frecuencia:""
+    frecuencia:"",
+    personal_id:0
 } 
 
-const FRECUENCIA = ["diaria","semanal","mensual"]interface EditarTareaProps {
+const FRECUENCIA = ["diaria","semanal","mensual"]
+interface EditarTareaProps {
     tareaID:number | null;
     planID:number | null;
     onSuccess?: () => void;
@@ -25,6 +28,7 @@ export default function EditarTarea({tareaID, planID,onSuccess, onCancel}: Edita
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [personas,setPersonas]= useState<Persona[]> ([])
 
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -75,7 +79,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         nombre: tarea.nombre.trim(),
         descripcion:tarea.descripcion.trim(),
         plan_id:planID,
-        frecuencia:tarea.frecuencia
+        frecuencia:tarea.frecuencia,
+        personal_id:Number(tarea.personal_id)
     }
 
     setLoading(true);
@@ -144,6 +149,22 @@ function handleCancelar() {
     setSuccessMsg(null);
     onCancel?.();
 }
+
+useEffect(() => {
+        const fetchPersonas = async () => {
+            try {
+                const res = await apiFetch(`/personal/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setPersonas(data);
+                }
+            } catch {
+                setPersonas([]);
+            }
+        };
+        fetchPersonas();
+    }, []);
+
 return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
@@ -169,17 +190,6 @@ return (
         </div>
 
         <div className="form-group">
-          <label htmlFor="descripcion">Procedimiento</label>
-          <textarea
-            id="descripcion"
-            name="descripcion"
-            placeholder="Introduce los pasos del procedimiento"
-            value={tarea.descripcion}
-            onChange={handleChange}
-            rows={4}
-          />
-        </div>
-        <div className="form-group">
                 <label htmlFor="frecuencia">Frecuencia:</label>
                 <select
                     id="frecuencia"
@@ -195,6 +205,31 @@ return (
                     ))}
                 </select>
             </div>
+
+
+            <div className="form-group">
+          <label htmlFor="personal_id">Personal a Cargo</label>
+          <select id="personal_id" name="personal_id" value={tarea.personal_id} onChange={handleChange} required>
+            <option value="" disabled>Seleccione un Personal</option>
+            {personas.map((persona) => (
+              <option key={persona.legajo} value={persona.legajo}>
+                {persona.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="descripcion">Procedimiento</label>
+          <textarea
+            id="descripcion"
+            name="descripcion"
+            placeholder="Introduce los pasos del procedimiento"
+            value={tarea.descripcion}
+            onChange={handleChange}
+            rows={4}
+          />
+        </div>
 
 
         <div className="form-acciones">

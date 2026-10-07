@@ -18,5 +18,6 @@ class Personal(ModeloBase):
     activo : Mapped[bool] = mapped_column(Boolean, default=True)
     usuario: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     contrasenia_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tarea:Mapped["src.tareas.models.Tarea"] = relationship("src.tareas.models.Tarea" , back_populates="personal")
 
 

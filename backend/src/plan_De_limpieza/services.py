@@ -15,6 +15,8 @@ def crear_plan(db: Session, plan: schemas.PlanDeLimpiezaCreate) -> schemas.PlanD
     datos_plan = plan.model_dump()
     tareas_data = datos_plan.pop("tareas", [])
 
+    
+
     _plan = Plan_de_Limpieza(**datos_plan)
     db.add(_plan)
     db.flush()  

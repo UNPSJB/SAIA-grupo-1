@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TareaConId, TareaForm } from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
+import type { Persona } from "../personas/tipos";
 
 const TAREA_INICAL:TareaForm ={
     nombre:"",
     descripcion:"",
     plan_id:"",
+    personal_id:"",
     frecuencia:""
 } 
 
-const FRECUENCIA = ["diaria","semanal","mensual"]interface NuevaTareaProps {
+const FRECUENCIA = ["diaria","semanal","mensual"]
+interface NuevaTareaProps {
     planID?:number | null;
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -24,6 +27,7 @@ export default function NuevaTarea({onAgregarLocal,planID,onSuccess, onCancel}: 
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [personas,setPersonas]= useState<Persona[]>([]);
 
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -80,7 +84,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         nombre: tarea.nombre.trim(),
         descripcion:tarea.descripcion.trim(),
         plan_id:planID,
-        frecuencia:tarea.frecuencia
+        frecuencia:tarea.frecuencia,
+        personal_id:Number(tarea.personal_id)
     }
 
     setLoading(true);
@@ -123,6 +128,21 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
    
 }
 
+useEffect(() => {
+        const fetchPersonas = async () => {
+            try {
+                const res = await apiFetch(`/personal/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setPersonas(data);
+                }
+            } catch {
+                setPersonas([]);
+            }
+        };
+        fetchPersonas();
+    }, []);
+
 
 
 
@@ -132,6 +152,7 @@ function handleCancelar() {
     setSuccessMsg(null);
     onCancel?.();
 }
+
 return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
@@ -158,18 +179,6 @@ return (
         </div>
 
         <div className="form-group">
-          <label htmlFor="descripcion">Procedimiento</label>
-          <textarea
-            id="descripcion"
-            name="descripcion"
-            placeholder="Introduce los pasos del procedimiento"
-            value={tarea.descripcion}
-            onChange={handleChange}
-            rows={4}
-            required
-          />
-        </div>
-        <div className="form-group">
                 <label htmlFor="frecuencia">Frecuencia:</label>
                 <select
                     id="frecuencia"
@@ -186,6 +195,34 @@ return (
                     ))}
                 </select>
             </div>
+
+            <div className="form-group">
+          <label htmlFor="personal_id">Personal a Cargo</label>
+          <select id="personal_id" name="personal_id" value={tarea.personal_id} onChange={handleChange} required>
+            <option value="" disabled>Seleccione un Personal</option>
+            {personas.map((persona) => (
+              <option key={persona.legajo} value={persona.legajo}>
+                {persona.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+
+
+        <div className="form-group">
+          <label htmlFor="descripcion">Procedimiento</label>
+          <textarea
+            className="descripcion"
+            id="descripcion"
+            name="descripcion"
+            placeholder="Introduce los pasos del procedimiento"
+            value={tarea.descripcion}
+            onChange={handleChange}
+            rows={4}
+            required
+          />
+        </div>
 
 
         <div className="form-acciones">

@@ -1,3 +1,5 @@
+import type { Tarea } from "../tareas/tipos";
+
 export interface Persona {
   legajo: number;
   /** lo genera el servidor al crear la persona (nombre.apellido); no se edita */
@@ -9,6 +11,7 @@ export interface Persona {
   email: string;
   activo: boolean;
   capacidad: "OPERAR" | "ADMINISTRAR" | "AMBAS";
+  tarea?:Tarea;
 }
 
 export interface PersonaCrear {
