@@ -78,6 +78,34 @@ async def cambiar_estado_endpoint(
     return services.cambiar_estado(db, incidente_id, datos.estado)
 
 
+@router.post(
+    "/{incidente_id}/cerrar",
+    response_model=schemas.Incidente,
+    dependencies=[Depends(requiere_admin)],
+)
+async def cerrar_incidente_endpoint(
+    incidente_id: int,
+    datos: schemas.IncidenteCerrar,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
+):
+    return services.cerrar_incidente(db, usuario, incidente_id, datos.accion_correctiva)
+
+
+@router.post(
+    "/{incidente_id}/reabrir",
+    response_model=schemas.Incidente,
+    dependencies=[Depends(requiere_admin)],
+)
+async def reabrir_incidente_endpoint(
+    incidente_id: int,
+    datos: schemas.IncidenteReabrir,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
+):
+    return services.reabrir_incidente(db, usuario, incidente_id, datos.motivo)
+
+
 @router.delete(
     "/{incidente_id}",
     status_code=status.HTTP_204_NO_CONTENT,

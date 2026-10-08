@@ -21,9 +21,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
     { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza' },
     { id: 'planDeLimpieza', label: 'Plan de Limpieza' },
     { id: 'checklist', label: 'Checklists' },
-    { id: 'incidentes', label: 'Incidentes' },
     { id: 'auditoria', label: 'Auditoría' },
     { id: 'planDeCalibracion', label: 'Plan de Calibración' },
+    { id: 'incidentes', label: esAdministrador ? 'Incidentes' : 'Reportar Incidente' },
   ];
   const items = todos.filter((item) => puedeVerModulo(item.id, esAdministrador));
 

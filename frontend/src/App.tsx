@@ -30,6 +30,7 @@ import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
 import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
+import { ListadoIncidentes } from './views/incidentes/listado';
 import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
 import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibracion';
 import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
@@ -301,7 +302,11 @@ function Aplicacion() {
         ) : modulo === 'auditoria' ? (
           <ListadoAuditoria />
         ) : modulo === 'incidentes' ? (
-          <NuevoIncidente />
+          esAdministrador ? (
+            <ListadoIncidentes />
+          ) : (
+            <NuevoIncidente />
+          )
         ) : modulo === 'checklist' ? (
           vistaChecklist === 'listado' ? (
             <ListadoChecklists
