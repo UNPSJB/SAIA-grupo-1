@@ -75,11 +75,11 @@ return (
             </div>
 
         <div className="form-group">
-          <label htmlFor="responsable">Responsable:</label>
+          <label htmlFor="responsable">Personal a Cargo:</label>
           <input
             id="responsable"
             name="responsable"
-            value={tarea.nombre_responsable ?? "Sin asignar"}
+            value={tarea.nombre_personal ?? "Sin asignar"}
             disabled
           />
         </div>

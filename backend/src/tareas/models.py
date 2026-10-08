@@ -1,5 +1,4 @@
 from enum import StrEnum, auto
-from typing import Optional
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,17 +19,15 @@ class Tarea(ModeloBase):
     frecuencia:Mapped[Frecuencia] = mapped_column(index=True)
     plan_id:Mapped[int]=mapped_column(ForeignKey("plan_de_limpieza.id"))
     # quien tiene asignada la tarea: es a quien le aparece al generar su checklist
-    responsable_legajo:Mapped[Optional[int]]=mapped_column(ForeignKey("personal.legajo"), nullable=True, index=True)
+    personal_id:Mapped[int] = mapped_column(ForeignKey("personal.legajo"), index=True)
+    personal:Mapped["src.personal.models.Personal"]=relationship("src.personal.models.Personal",back_populates="tareas")
 
     plan_de_limpieza:Mapped["src.plan_De_limpieza.models.Plan_de_Limpieza"]= relationship("src.plan_De_limpieza.models.Plan_de_Limpieza", back_populates="tareas")
-    responsable:Mapped[Optional["src.personal.models.Personal"]]= relationship("src.personal.models.Personal", lazy="joined")
-
-    @property
-    def nombre_responsable(self):
-        if self.responsable:
-            return f"{self.responsable.nombre} {self.responsable.apellido}"
-        return None
 
     @property
     def nombre_plan(self):
         return self.plan_de_limpieza.nombre
+
+    @property
+    def nombre_personal(self):
+        return f"{self.personal.nombre} {self.personal.apellido}"

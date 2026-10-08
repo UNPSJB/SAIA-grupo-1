@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import type { Persona } from '../personas/tipos';
 
-/** Usuarios activos del sistema: los únicos que pueden quedar como responsables de una tarea. */
-export function useResponsables(): Persona[] {
-  const [responsables, setResponsables] = useState<Persona[]>([]);
+/** Usuarios activos del sistema: los únicos que pueden quedar a cargo de una tarea. */
+export function usePersonalActivo(): Persona[] {
+  const [personal, setPersonal] = useState<Persona[]>([]);
 
   useEffect(() => {
     let cancelado = false;
@@ -12,7 +12,7 @@ export function useResponsables(): Persona[] {
       .then(async (res) => {
         if (!cancelado && res.ok) {
           const personas: Persona[] = await res.json();
-          setResponsables(personas.filter((p) => p.activo));
+          setPersonal(personas.filter((p) => p.activo));
         }
       })
       .catch(() => {
@@ -23,5 +23,5 @@ export function useResponsables(): Persona[] {
     };
   }, []);
 
-  return responsables;
+  return personal;
 }

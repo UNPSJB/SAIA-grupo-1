@@ -185,7 +185,7 @@ def main() -> None:
             descripcion="Paso 1. Retirar temporalmente alimentos del estante. Paso 2. Pulverizar Alcohol Isopropilico 70 Spray a 20 cm de distancia. Paso 3. Dejar actuar durante 5 minutos para eliminar carga microbiana. Paso 4. Secar con paño descartable y restablecer la mercaderia.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_heladera.id,
-            responsable_legajo=juan.legajo,
+            personal_id=juan.legajo,
         ),
     )
     t_heladera_semanal = crear_tarea(
@@ -195,7 +195,7 @@ def main() -> None:
             descripcion="Paso 1. Desconectar la unidad electrica. Paso 2. Trasladar productos a camara auxiliar. Paso 3. Retirar rejillas y lavar en bacha con Detergente Neutro Espumante diluido. Paso 4. Enjuagar con agua caliente a 60°. Paso 5. Aplicar Sanitizante Clorado Liquido en paredes y dejar secar.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_heladera.id,
-            responsable_legajo=juan.legajo,
+            personal_id=juan.legajo,
         ),
     )
 
@@ -206,7 +206,7 @@ def main() -> None:
             descripcion="Paso 1. Limpiar manija exterior y panel con Toallitas Desinfectantes con Alcohol. Paso 2. Rociar marco con Alcohol Isopropilico 70 Spray. Paso 3. Dejar evaporar al aire sin frotar con trapo sucio.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_freezer.id,
-            responsable_legajo=lucia.legajo,
+            personal_id=lucia.legajo,
         ),
     )
     t_freezer_mensual = crear_tarea(
@@ -216,7 +216,7 @@ def main() -> None:
             descripcion="Paso 1. Inspeccionar burletes de goma imantada. Paso 2. Lavar con Detergente Neutro Espumante tibio usando esponja suave. Paso 3. Secar minuciosamente los pliegues para evitar moho. Paso 4. Pulverizar solucion de Amonio Cuaternario 5ta Generacion y cerrar hermeticamente.",
             frecuencia=Frecuencia.MENSUAL,
             plan_id=plan_freezer.id,
-            responsable_legajo=lucia.legajo,
+            personal_id=lucia.legajo,
         ),
     )
 
@@ -227,7 +227,7 @@ def main() -> None:
             descripcion="Paso 1. Barrer residuos solidos hacia la salida. Paso 2. Preparar solucion de Lavandina Concentrada 55g al 1 por ciento en balde con agua fria. Paso 3. Fregar con cepillo duro desde el fondo hacia el desague. Paso 4. Dejar actuar 10 minutos y escurrir.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_camara.id,
-            responsable_legajo=marcos.legajo,
+            personal_id=marcos.legajo,
         ),
     )
     t_camara_semanal = crear_tarea(
@@ -237,7 +237,7 @@ def main() -> None:
             descripcion="Paso 1. Despejar bandejas de cada nivel. Paso 2. Preparar solucion de Amonio Cuaternario 5ta Generacion a razon de 5 ml por litro de agua. Paso 3. Pulverizar sobre todos los perfiles de acero inoxidable. Paso 4. Respetar 10 minutos de contacto antes de reubicar insumos.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_camara.id,
-            responsable_legajo=marcos.legajo,
+            personal_id=marcos.legajo,
         ),
     )
 
@@ -248,7 +248,7 @@ def main() -> None:
             descripcion="Paso 1. Cortar energia electrica y accionar parada de emergencia. Paso 2. Retirar restos secos de harina y masa con espatula plastica. Paso 3. Disolver 150 gramos de Detergente en Polvo Enzimatico en agua tibia a 45°. Paso 4. Cepillar batea y gancho espiral. Paso 5. Enjuagar con abundante agua potable y rociar con Alcohol Isopropilico 70 Spray.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_amasadora.id,
-            responsable_legajo=sofia.legajo,
+            personal_id=sofia.legajo,
         ),
     )
     t_amasadora_semanal = crear_tarea(
@@ -258,7 +258,7 @@ def main() -> None:
             descripcion="Paso 1. Verificar motor apagado. Paso 2. Aplicar Desengrasante Alcalino Pesado con trapo humedo sobre carcasa externa. Paso 3. Retirar gratitud acumulada frotando en movimientos circulares. Paso 4. Repasar con paño humedo limpio y secar.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_amasadora.id,
-            responsable_legajo=sofia.legajo,
+            personal_id=sofia.legajo,
         ),
     )
 
@@ -269,7 +269,7 @@ def main() -> None:
             descripcion="Paso 1. Pulverizar Limpiavidrios Antiestatico sobre el cristal exterior e interior. Paso 2. Limpiar con papel tissue descartable. Paso 3. Repasar la goma selladora con Detergente Neutro Espumante y secar suavemente.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_horno.id,
-            responsable_legajo=juan.legajo,
+            personal_id=juan.legajo,
         ),
     )
     t_horno_semanal = crear_tarea(
@@ -279,7 +279,7 @@ def main() -> None:
             descripcion="Paso 1. Esperar a que el horno baje a temperatura tibia menor a 50°. Paso 2. Colocar guantes y proteccion ocular. Paso 3. Pulverizar Desengrasante Alcalino Pesado en paredes, turbina y techo interno. Paso 4. Dejar actuar 15 minutos para emulsionar grasas. Paso 5. Fregar con fibra abrasiva y enjuagar 3 veces con agua limpia.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_horno.id,
-            responsable_legajo=juan.legajo,
+            personal_id=juan.legajo,
         ),
     )
 

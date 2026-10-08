@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from src.tareas.models import Tarea
-from src.tareas.services import validar_responsable
+from src.tareas.services import validar_personal
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.plan_De_limpieza import schemas, exceptions
 
@@ -16,7 +16,9 @@ def crear_plan(db: Session, plan: schemas.PlanDeLimpiezaCreate) -> schemas.PlanD
     datos_plan = plan.model_dump()
     tareas_data = datos_plan.pop("tareas", [])
     for t in tareas_data:
-        validar_responsable(db, t["responsable_legajo"])
+        validar_personal(db, t["personal_id"])
+
+    
 
     _plan = Plan_de_Limpieza(**datos_plan)
     db.add(_plan)

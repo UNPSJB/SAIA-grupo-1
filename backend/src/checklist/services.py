@@ -147,7 +147,7 @@ def generar_checklist(
     for plan in planes:
         for tarea in plan.tareas:
             # cada persona genera su checklist solo con las tareas que tiene asignadas
-            if tarea.responsable_legajo != datos.responsable_legajo:
+            if tarea.personal_id != datos.responsable_legajo:
                 continue
             if tarea_corresponde_a_fecha(
                 tarea.frecuencia,
@@ -164,7 +164,7 @@ def generar_checklist(
                     descripcion_tarea=tarea.descripcion,
                     frecuencia=tarea.frecuencia,
                     estado=models.EstadoTareaItem.PENDIENTE,
-                    responsable_legajo=tarea.responsable_legajo,
+                    responsable_legajo=tarea.personal_id,
                 )
                 items_a_crear.append(item)
 

@@ -1,15 +1,17 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Literal, Optional
+from src.plan_de_calibracion.schemas import PlanDeCalibracion
 from src.plan_De_limpieza.schemas import PlanDeLimpieza
 from src.equipos.models import Categoria
 from src.equipos.models import Estado
 from src.equipos import exceptions
+
+
 class EquipoBase(BaseModel):
     nombre: str = Field(max_length=50)
     ubicacion: str = Field(max_length=50)
     categoria: Categoria
     estado:Estado
-    plan_de_calibracion: str = Field(min_length=1, max_length=100)
 
     @field_validator(
             "categoria", mode="before"
@@ -57,7 +59,6 @@ class EquipoUpdate(EquipoBase):
     nombre: Optional[str] = Field(None, max_length=50)  
     ubicacion: Optional[str] = Field( None,max_length=50)
     categoria:Optional[Categoria]=None
-    plan_de_calibracion:Optional[str] = Field( None,max_length=100)
     estado: Optional[Estado] = None
 
 
@@ -109,4 +110,5 @@ class EquipoUpdate(EquipoBase):
 class Equipo(EquipoBase):
     id:int
     plan_de_Limpieza: Optional[PlanDeLimpieza] = None
+    plan_de_calibracion: Optional[PlanDeCalibracion] = None
     model_config = ConfigDict(from_attributes=True)

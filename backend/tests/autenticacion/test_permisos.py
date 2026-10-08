@@ -123,7 +123,7 @@ def test_el_operador_genera_solo_su_propio_checklist(usuarios: Dict[str, Persona
 
 def test_el_checklist_solo_trae_las_tareas_del_responsable(session: Session, usuarios: Dict[str, Personal]) -> None:
     tarea = session.get(Tarea, 2)
-    tarea.responsable_legajo = usuarios["ambos"].legajo
+    tarea.personal_id = usuarios["ambos"].legajo
     session.commit()
 
     del_operador = _generar_checklist_de_hoy(usuarios["administrador"])
@@ -179,17 +179,17 @@ def test_el_responsable_de_la_tarea_debe_ser_un_usuario_activo(session: Session,
     datos = {"nombre": "Tarea nueva", "descripcion": "Paso 1 limpiar", "frecuencia": "diaria", "plan_id": 1}
     cabeceras = headers(usuarios["administrador"])
 
-    assert client.post("/tareas/", json={**datos, "responsable_legajo": 9999}, headers=cabeceras).status_code == 400
+    assert client.post("/tareas/", json={**datos, "personal_id": 9999}, headers=cabeceras).status_code == 400
     assert client.post("/tareas/", json=datos, headers=cabeceras).status_code == 422
 
     usuarios["ambos"].activo = False
     session.commit()
-    assert client.post("/tareas/", json={**datos, "responsable_legajo": usuarios["ambos"].legajo},
+    assert client.post("/tareas/", json={**datos, "personal_id": usuarios["ambos"].legajo},
                        headers=cabeceras).status_code == 400
 
-    ok = client.post("/tareas/", json={**datos, "responsable_legajo": usuarios["operador"].legajo}, headers=cabeceras)
+    ok = client.post("/tareas/", json={**datos, "personal_id": usuarios["operador"].legajo}, headers=cabeceras)
     assert ok.status_code == 200
-    assert ok.json()["responsable_legajo"] == usuarios["operador"].legajo
+    assert ok.json()["personal_id"] == usuarios["operador"].legajo
 
 
 def test_la_autoria_de_la_tarea_sale_del_token(usuarios: Dict[str, Personal]) -> None:
@@ -223,7 +223,7 @@ def test_un_administrador_puro_no_puede_operar(usuarios: Dict[str, Personal]) ->
 
 def test_el_rol_ambos_puede_operar(session: Session, usuarios: Dict[str, Personal]) -> None:
     for tarea in session.query(Tarea).all():
-        tarea.responsable_legajo = usuarios["ambos"].legajo
+        tarea.personal_id = usuarios["ambos"].legajo
     session.commit()
     checklist = _generar_checklist_de_hoy(usuarios["ambos"], usuarios["ambos"].legajo)
     tarea = checklist["items"][0]["id"]

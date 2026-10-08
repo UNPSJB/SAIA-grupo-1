@@ -21,8 +21,8 @@ class FRECUENCIAInvalida(ValueError):
 class DescripcionInvalidad(BadRequest):
     DETAIL=ErrorCode.TAREA_CON_CARACTERES_RAROS
 
-class ResponsableNoEncontrado(BadRequest):
-    DETAIL=ErrorCode.RESPONSABLE_NO_ENCONTRADO
+class PersonalNoEncontrado(BadRequest):
+    DETAIL=ErrorCode.PERSONAL_NO_ENCONTRADO
 
-class ResponsableInactivo(BadRequest):
-    DETAIL=ErrorCode.RESPONSABLE_INACTIVO
+class PersonalInactivo(BadRequest):
+    DETAIL=ErrorCode.PERSONAL_INACTIVO

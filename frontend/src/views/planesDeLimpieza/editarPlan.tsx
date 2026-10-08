@@ -280,7 +280,7 @@ return (
                             <th>Nombre</th>
                             <th>Procedimiento</th>
                             <th>Frecuencia</th>
-                            <th>Responsable</th>
+                            <th>Personal a Cargo</th>
                             <th className="acciones-col">Acciones</th>
                           </tr>
                         </thead>
@@ -303,7 +303,7 @@ return (
                   <td style={{ fontWeight: 500 }}>{t.nombre}</td>
                   <td>{t.descripcion}</td>
                   <td>{t.frecuencia}</td>
-                  <td>{t.nombre_responsable ?? 'Sin asignar'}</td>
+                  <td>{t.nombre_personal ?? 'Sin asignar'}</td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button

@@ -1,3 +1,4 @@
+
 export interface Persona {
   legajo: number;
   /** lo genera el servidor al crear la persona (nombre.apellido); no se edita */
@@ -9,6 +10,7 @@ export interface Persona {
   email: string;
   activo: boolean;
   capacidad: "OPERAR" | "ADMINISTRAR" | "AMBAS";
+  tareas?:{ id:number; nombre:string }[];
 }
 
 export interface PersonaCrear {

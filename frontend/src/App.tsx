@@ -30,12 +30,17 @@ import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
 import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
+import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
+import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibracion';
+import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
 import { Login } from './views/auth/login';
 import { useAuth } from './auth/useAuth';
 import { moduloInicial, puedeVerModulo } from './auth/permisos';
+import { EditarPlanDeCalibracion } from './views/planDeCalibracion/editarPlanDeCalibracion';
+import { VerPlanDeCalibracion } from './views/planDeCalibracion/verPlanDeCalibracion';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -43,6 +48,7 @@ type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
+type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador } = useAuth();
@@ -74,6 +80,9 @@ function Aplicacion() {
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
 
+  const [vistaPlanCalibracion, setVistaPlanCalibracion] = useState<VistaPlanCalibracion>('listado');
+  const [planCalibracionSeleccionado, setPlanCalibracionSeleccionado] = useState<number | null>(null);
+
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaEquipos('listado');
@@ -83,6 +92,7 @@ function Aplicacion() {
     setVistaElementos('listado');
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
+    setVistaPlanCalibracion('listado');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -290,6 +300,8 @@ function Aplicacion() {
           ) : null
         ) : modulo === 'auditoria' ? (
           <ListadoAuditoria />
+        ) : modulo === 'incidentes' ? (
+          <NuevoIncidente />
         ) : modulo === 'checklist' ? (
           vistaChecklist === 'listado' ? (
             <ListadoChecklists
@@ -304,7 +316,37 @@ function Aplicacion() {
               onVolver={() => setVistaChecklist('listado')}
             />
           )
-        ) : null}
+        ) : modulo === 'planDeCalibracion' ? (
+          vistaPlanCalibracion === 'listado' ? (
+            <ListadoPlanesCalibracion
+              onNuevoClick={() => setVistaPlanCalibracion('alta')}
+              onDetalleClick={(id) => {
+                setPlanCalibracionSeleccionado(id);
+                setVistaPlanCalibracion('detalle');
+              }}
+              onEditarClick={(id) => {
+                setPlanCalibracionSeleccionado(id);
+                setVistaPlanCalibracion('editar');
+              }}
+            />
+          ) : vistaPlanCalibracion === 'alta' ? (
+            <NuevoPlanDeCalibracion           
+              onSuccess={() => setVistaPlanCalibracion('listado')}
+              onCancel={() => setVistaPlanCalibracion('listado')}
+            />
+          ) : vistaPlanCalibracion === 'editar' ? (
+            <EditarPlanDeCalibracion
+              planId={planCalibracionSeleccionado}
+              onSuccess={() => setVistaPlanCalibracion('listado')}
+              onCancel={() => setVistaPlanCalibracion('listado')}
+            />
+          ) : vistaPlanCalibracion === 'detalle' ? (
+            <VerPlanDeCalibracion
+              onCancel={() => setVistaPlanCalibracion('listado')}
+              planCalibracionID={planCalibracionSeleccionado}
+            />
+          ) : null
+        ) : null}  
       </div>
     </div>
   );

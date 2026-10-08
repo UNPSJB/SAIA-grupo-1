@@ -210,7 +210,7 @@ return (
                     <th>Nombre</th>
                     <th>Procedimiento</th>
                     <th>Frecuencia</th>
-                            <th>Responsable</th>
+                            <th>Personal a Cargo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -232,7 +232,7 @@ return (
                         <td style={{ fontWeight: 500 }}>{t.nombre}</td>
                         <td>{t.descripcion}</td>
                         <td>{t.frecuencia}</td>
-                  <td>{t.nombre_responsable ?? 'Sin asignar'}</td>
+                  <td>{t.nombre_personal ?? 'Sin asignar'}</td>
                       </tr>
       
                       

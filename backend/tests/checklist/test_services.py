@@ -343,7 +343,7 @@ def test_generar_tareas_cuando_se_saltean_dias(session: Session) -> None:
         descripcion="Procedimiento semanal",
         frecuencia=Frecuencia.SEMANAL,
         plan_id=plan.id,
-        responsable_legajo=1,
+        personal_id=1,
     )
     session.add(tarea_semanal)
     session.commit()
