@@ -23,6 +23,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.database import SessionLocal, engine
 from src.models import ModeloBase
 
+# registra todos los modelos (Equipo referencia a los de calibracion e incidentes)
+import src.plan_de_calibracion.models  # noqa: F401
+import src.incidentes.models  # noqa: F401
+
 from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate
 
