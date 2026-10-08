@@ -6,9 +6,19 @@ from fastapi import UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from src.auditoria import schemas as schemas_auditoria
+from src.auditoria.models import AccionAuditoria
+from src.auditoria.services import registrar_auditoria
 from src.autenticacion.dependencies import es_administrador
 from src.incidentes import exceptions, models
-from src.incidentes.constants import DESCRIPCION_MAX, FIRMAS_IMAGEN, FOTO_MAX_BYTES, EstadoIncidente
+from src.incidentes.constants import (
+    ACCION_CORRECTIVA_MAX,
+    DESCRIPCION_MAX,
+    FIRMAS_IMAGEN,
+    FOTO_MAX_BYTES,
+    MOTIVO_REAPERTURA_MAX,
+    EstadoIncidente,
+)
 from src.personal.models import Personal
 
 IMAGENES_DIR = Path(__file__).resolve().parent / "imagenes"
@@ -22,6 +32,29 @@ def _normalizar_descripcion(descripcion: str) -> str:
     if len(descripcion) > DESCRIPCION_MAX:
         raise exceptions.DescripcionDemasiadoLarga()
     return descripcion
+
+
+def _normalizar_accion_correctiva(accion: str) -> str:
+    accion = (accion or "").strip()
+    if not accion:
+        raise exceptions.AccionCorrectivaVacia()
+    if len(accion) > ACCION_CORRECTIVA_MAX:
+        raise exceptions.AccionCorrectivaDemasiadoLarga()
+    return accion
+
+
+def _normalizar_motivo_reapertura(motivo: str) -> str:
+    motivo = (motivo or "").strip()
+    if not motivo:
+        raise exceptions.MotivoReaperturaVacio()
+    if len(motivo) > MOTIVO_REAPERTURA_MAX:
+        raise exceptions.MotivoReaperturaDemasiadoLargo()
+    return motivo
+
+
+def _es_cerrado(estado: EstadoIncidente | str) -> bool:
+    val = estado.value if hasattr(estado, "value") else str(estado).lower()
+    return val in (EstadoIncidente.CERRADO.value, EstadoIncidente.RESUELTO.value, "cerrado", "resuelto")
 
 
 def _leer_foto(foto: Optional[UploadFile]) -> Optional[tuple[bytes, str]]:
@@ -136,7 +169,88 @@ def editar_descripcion(db: Session, incidente_id: int, descripcion: str) -> mode
 
 def cambiar_estado(db: Session, incidente_id: int, estado: EstadoIncidente) -> models.Incidente:
     incidente = _obtener(db, incidente_id)
+    estado_previo = incidente.estado.value if hasattr(incidente.estado, "value") else str(incidente.estado)
     incidente.estado = estado
+
+    registrar_auditoria(
+        db,
+        schemas_auditoria.AuditoriaCreate(
+            tabla="incidentes",
+            registro_id=incidente.id,
+            accion=AccionAuditoria.MODIFICAR,
+            campo="estado",
+            valor_previo=estado_previo,
+            valor_posterior=estado.value if hasattr(estado, "value") else str(estado),
+        ),
+        commit=False,
+    )
+
+    db.commit()
+    db.refresh(incidente)
+    return incidente
+
+
+def cerrar_incidente(
+    db: Session, usuario: Personal, incidente_id: int, accion_correctiva: str
+) -> models.Incidente:
+    incidente = _obtener(db, incidente_id)
+    if _es_cerrado(incidente.estado):
+        raise exceptions.IncidenteYaCerrado()
+
+    texto_accion = _normalizar_accion_correctiva(accion_correctiva)
+    estado_previo = incidente.estado.value if hasattr(incidente.estado, "value") else str(incidente.estado)
+
+    incidente.accion_correctiva = texto_accion
+    incidente.cerrado_el = datetime.now()
+    incidente.resuelto_por_id = usuario.legajo
+    incidente.estado = EstadoIncidente.CERRADO
+
+    # Log de auditoría
+    registrar_auditoria(
+        db,
+        schemas_auditoria.AuditoriaCreate(
+            tabla="incidentes",
+            registro_id=incidente.id,
+            accion=AccionAuditoria.MODIFICAR,
+            campo="estado",
+            valor_previo=estado_previo,
+            valor_posterior=EstadoIncidente.CERRADO.value,
+        ),
+        commit=False,
+    )
+
+    db.commit()
+    db.refresh(incidente)
+    return incidente
+
+
+def reabrir_incidente(
+    db: Session, usuario: Personal, incidente_id: int, motivo: str
+) -> models.Incidente:
+    incidente = _obtener(db, incidente_id)
+    if not _es_cerrado(incidente.estado) and incidente.estado != EstadoIncidente.DESCARTADO:
+        raise exceptions.IncidenteNoCerrado()
+
+    texto_motivo = _normalizar_motivo_reapertura(motivo)
+    estado_previo = incidente.estado.value if hasattr(incidente.estado, "value") else str(incidente.estado)
+
+    incidente.motivo_reapertura = texto_motivo
+    incidente.estado = EstadoIncidente.REABIERTO
+
+    # Log de auditoría con la reapertura y el motivo
+    registrar_auditoria(
+        db,
+        schemas_auditoria.AuditoriaCreate(
+            tabla="incidentes",
+            registro_id=incidente.id,
+            accion=AccionAuditoria.MODIFICAR,
+            campo="estado",
+            valor_previo=estado_previo,
+            valor_posterior=EstadoIncidente.REABIERTO.value,
+        ),
+        commit=False,
+    )
+
     db.commit()
     db.refresh(incidente)
     return incidente

@@ -15,6 +15,30 @@ class DescripcionDemasiadoLarga(UnprocessableContent):
     DETAIL = ErrorCode.DESCRIPCION_DEMASIADO_LARGA
 
 
+class AccionCorrectivaVacia(UnprocessableContent):
+    DETAIL = ErrorCode.ACCION_CORRECTIVA_VACIA
+
+
+class AccionCorrectivaDemasiadoLarga(UnprocessableContent):
+    DETAIL = ErrorCode.ACCION_CORRECTIVA_DEMASIADO_LARGA
+
+
+class MotivoReaperturaVacio(UnprocessableContent):
+    DETAIL = ErrorCode.MOTIVO_REAPERTURA_VACIO
+
+
+class MotivoReaperturaDemasiadoLargo(UnprocessableContent):
+    DETAIL = ErrorCode.MOTIVO_REAPERTURA_DEMASIADO_LARGO
+
+
+class IncidenteYaCerrado(BadRequest):
+    DETAIL = ErrorCode.INCIDENTE_YA_CERRADO
+
+
+class IncidenteNoCerrado(BadRequest):
+    DETAIL = ErrorCode.INCIDENTE_NO_CERRADO
+
+
 class FormatoImagenInvalido(UnprocessableContent):
     DETAIL = ErrorCode.FORMATO_IMAGEN_INVALIDO
 
