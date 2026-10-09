@@ -4,14 +4,12 @@ import { parsearPasos } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
+import { apiFetch } from '../../api/client';
+import { useAuth } from '../../auth/useAuth';
 
 interface ListadoChecklistsProps {
   onDetalleClick: (id: number) => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-const obtenerFechaLocalHoy = (): string => {
+}const obtenerFechaLocalHoy = (): string => {
   const ahora = new Date();
   const anio = ahora.getFullYear();
   const mes = String(ahora.getMonth() + 1).padStart(2, '0');
@@ -22,6 +20,8 @@ const obtenerFechaLocalHoy = (): string => {
 export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   onDetalleClick,
 }) => {
+  // El operador solo ve el checklist del día; generar y consultar el historial es del administrador.
+  const { esAdministrador } = useAuth();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,7 +66,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
       if (hasta) params.append('fecha_hasta', hasta);
       if (estado) params.append('estado', estado);
       const query = params.toString() ? `?${params.toString()}` : '';
-      const res = await fetch(`${API_URL}/checklist/${query}`);
+      const res = await apiFetch(`/checklist/${query}`);
       if (res.ok) {
         const data = await res.json();
         setChecklists(data);
@@ -89,7 +89,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     const cargarDatos = async () => {
       // 1. Cargar Checklists de forma aislada
       try {
-        const resChecklists = await fetch(`${API_URL}/checklist/`);
+        const resChecklists = await apiFetch(`/checklist/`);
         if (!cancelado) {
           if (resChecklists.ok) {
             const data: Checklist[] = await resChecklists.json();
@@ -115,9 +115,10 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         }
       }
 
-      // 2. Cargar Personal de forma tolerante a fallos (sin barra final)
+      // 2. Cargar Personal (solo lo usa el administrador para elegir responsable al generar)
+      if (!esAdministrador) return;
       try {
-        const resPersonal = await fetch(`${API_URL}/personal`);
+        const resPersonal = await apiFetch(`/personal`);
         if (!cancelado && resPersonal.ok) {
           const dataPersonal: PersonalResumen[] = await resPersonal.json();
           if (Array.isArray(dataPersonal)) {
@@ -134,7 +135,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [esAdministrador]);
 
   const hoy = obtenerFechaLocalHoy();
 
@@ -171,7 +172,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
 
     setGenerando(true);
     try {
-      const res = await fetch(`${API_URL}/checklist/generar`, {
+      const res = await apiFetch(`/checklist/generar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -210,8 +211,10 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     <div className="checklist-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Historial de Checklists</h1>
-          <div className="subtitulo">01 · Historial y Seguimiento</div>
+          <h1>{esAdministrador ? 'Historial de Checklists' : 'Checklist del Día'}</h1>
+          <div className="subtitulo">
+            {esAdministrador ? '01 · Historial y Seguimiento' : '01 · Tareas de hoy'}
+          </div>
         </div>
 
         <div className="top-bar-acciones">
@@ -223,7 +226,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             >
               📅 Ver Checklist del Día
             </button>
-          ) : (
+          ) : esAdministrador ? (
             <button
               onClick={() => setModalGenerar(true)}
               className="btn-guardar"
@@ -231,10 +234,11 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             >
               + Generar Checklist del Día
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
+      {esAdministrador && (
       <form onSubmit={handleFiltrar} className="filtros-historial">
         <div className="filtros-rango-campos">
           <div className="filtro-campo-grupo">
@@ -286,6 +290,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
           )}
         </div>
       </form>
+      )}
 
       <div className="tabla-wrapper">
         <table className="tabla-custom">
@@ -311,7 +316,9 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                 <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem' }}>
                   {fechaDesde || fechaHasta || estadoFiltro
                     ? 'No se encontraron checklists registrados con los filtros seleccionados.'
-                    : 'No se encontraron checklists registrados.'}
+                    : esAdministrador
+                    ? 'No se encontraron checklists registrados.'
+                    : 'Todavía no hay un checklist generado para hoy. Consultá con un administrador.'}
                 </td>
               </tr>
             ) : (

@@ -3,12 +3,14 @@ from typing import Generator
 from datetime import datetime, timedelta
 from sqlalchemy import StaticPool, create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
+from types import SimpleNamespace
 from src.main import app
+from src.autenticacion.dependencies import get_usuario_actual
 from src.database import get_db
 from src.config import settings
 from src.models import ModeloBase
 from src.personal.services import crear_personal
-from src.personal.schemas import PersonalCreate
+from src.personal.schemas import PersonalCreate, Capacidades
 from src.insumos.services import crear_insumo
 from src.insumos.schemas import InsumoCreate
 from src.insumos.models import UnidadMedida
@@ -48,6 +50,12 @@ def override_get_db():
 # forzamos a fastapi para que utilice la db para testing.
 app.dependency_overrides[get_db] = override_get_db
 
+# Por defecto, los tests corren como un usuario con capacidad AMBAS (legajo 1, Juan Perez),
+# asi no tienen que loguearse. Los tests de autenticacion/permisos usan la fixture
+# `autenticacion_real` (tests/autenticacion) que saca este override y usa tokens de verdad.
+USUARIO_DE_PRUEBA = SimpleNamespace(legajo=1, capacidad=Capacidades.AMBAS, activo=True)
+app.dependency_overrides[get_usuario_actual] = lambda: USUARIO_DE_PRUEBA
+
 
 @pytest.fixture
 def session() -> Generator[Session, None, None]:
@@ -67,6 +75,7 @@ def session() -> Generator[Session, None, None]:
             nombre="Juan",
             apellido="Perez",
             email="juan.perez@gmail.com",
+            contrasenia="Clave1234",
         ),
     )
     persona_2 = crear_personal(
@@ -76,6 +85,7 @@ def session() -> Generator[Session, None, None]:
             nombre="Ana",
             apellido="Dominguez",
             email="ana.dominguez@gmail.com",
+            contrasenia="Clave1234",
         ),
     )
 

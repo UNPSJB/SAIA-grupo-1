@@ -1,15 +1,12 @@
 import React, { useEffect,useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface DetalleEquipoProps {
     onCancel?: () => void;
     equipoId?: number | null;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId }) => {
+}export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId }) => {
     const [equipo, setEquipo] = useState<EquipoConId | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -17,7 +14,7 @@ export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId
         if (equipoId) {
             const fetchEquipo = async () => {
                 try {
-                    const res = await fetch(`${API_URL}/equipos/${equipoId}`);
+                    const res = await apiFetch(`/equipos/${equipoId}`);
                     if (res.ok) {
                         const data = await res.json();
                         setEquipo(data);

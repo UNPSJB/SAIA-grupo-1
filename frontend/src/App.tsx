@@ -30,9 +30,13 @@ import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
 import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
+import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
+import { Login } from './views/auth/login';
+import { useAuth } from './auth/useAuth';
+import { moduloInicial, puedeVerModulo } from './auth/permisos';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -41,8 +45,11 @@ type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
 
-function App() {
-  const [modulo, setModulo] = useState<Modulo>('dashboard');
+function Aplicacion() {
+  const { esAdministrador } = useAuth();
+  const [moduloElegido, setModulo] = useState<Modulo>(moduloInicial(esAdministrador));
+  // el backend ya rechaza lo que el rol no puede ver; acá evitamos mostrar pantallas rotas
+  const modulo = puedeVerModulo(moduloElegido, esAdministrador) ? moduloElegido : moduloInicial(esAdministrador);
 
   
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
@@ -284,6 +291,8 @@ function App() {
           ) : null
         ) : modulo === 'auditoria' ? (
           <ListadoAuditoria />
+        ) : modulo === 'incidentes' ? (
+          <NuevoIncidente />
         ) : modulo === 'checklist' ? (
           vistaChecklist === 'listado' ? (
             <ListadoChecklists
@@ -302,6 +311,12 @@ function App() {
       </div>
     </div>
   );
+}
+
+function App() {
+  const { usuario, cargando } = useAuth();
+  if (cargando) return null;
+  return usuario ? <Aplicacion /> : <Login />;
 }
 
 export default App;

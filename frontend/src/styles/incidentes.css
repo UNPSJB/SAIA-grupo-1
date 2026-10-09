@@ -1,0 +1,65 @@
+.incidentes-container .form-group textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 0.75rem 1rem;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: var(--text-h);
+  outline: none;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.incidentes-container .form-group textarea:focus {
+  border-color: var(--accent);
+  background-color: var(--bg);
+}
+
+.contador-caracteres {
+  align-self: flex-end;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.contador-caracteres.excedido {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.ayuda-campo {
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.foto-vista-previa {
+  position: relative;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+.foto-vista-previa img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.foto-vista-previa .btn-quitar-foto {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+}

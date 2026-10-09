@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { Persona } from "./tipos";
+import { apiFetch } from "../../api/client";
 import '../../styles/formularioAlta.css';
 
 export interface DetallePersonaProps {
@@ -22,9 +23,7 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({
       return;
     }
 
-    const url = `http://127.0.0.1:8000/personal/${personaLegajo}`;
-
-    fetch(url, {
+    apiFetch(`/personal/${personaLegajo}`, {
       headers: { "Accept": "application/json" }
     })
       .then((res) => {
@@ -58,6 +57,11 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({
           <div className="form-group">
             <label htmlFor="legajo">Legajo</label>
             <input id="legajo" value={persona.legajo} disabled />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="usuario">Usuario</label>
+            <input id="usuario" value={persona.usuario} disabled />
           </div>
 
           <div className="form-group">
