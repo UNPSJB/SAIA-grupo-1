@@ -48,6 +48,7 @@ SOLO_ADMIN = [
     ("POST", "/checklist/generar"),
     ("GET", "/documentos"),
     ("POST", "/documentos"),
+    ("GET", "/documentos/1/historial"),
 ]
 
 # Endpoints que piden estar logueado, sin importar el rol.

@@ -11,7 +11,6 @@ from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.documentos import exceptions, schemas, services
 from src.documentos.constants import TipoDocumento
-
 from src.autenticacion.dependencies import requiere_admin
 
 router = APIRouter(prefix="/documentos", tags=["Documentos Versionados"])
@@ -40,6 +39,26 @@ def obtener_usuario_actual(
             return persona
 
     return usuario_auth
+
+def _serializar_version(v) -> Optional[schemas.VersionDocumentoResponse]:
+    if not v:
+        return None
+    return schemas.VersionDocumentoResponse(
+        id=v.id,
+        documento_id=v.documento_id,
+        version=v.version,
+        archivo_nombre_original=v.archivo_nombre_original,
+        tamanio_bytes=v.tamanio_bytes,
+        tamanio_formateado=v.tamanio_formateado,
+        archivado=v.archivado,
+        es_vigente=v.es_vigente,
+        fecha_vigencia=v.fecha_vigencia,
+        fecha_archivo=v.fecha_archivo,
+        usuario=v.usuario,
+        creado_el=v.creado_el,
+        url_descarga=f"/documentos/archivo/{v.id}",
+        url_previsualizacion=f"/documentos/archivo/{v.id}?inline=true",
+    )
 
 @router.post(
     "",
@@ -77,30 +96,8 @@ def crear_documento_endpoint(
         descripcion=doc.descripcion,
         activo=doc.activo,
         creado_el=doc.creado_el,
-        version_actual=schemas.VersionDocumentoResponse(
-            id=v_actual.id,
-            documento_id=v_actual.documento_id,
-            version=v_actual.version,
-            archivo_nombre_original=v_actual.archivo_nombre_original,
-            tamanio_bytes=v_actual.tamanio_bytes,
-            archivado=v_actual.archivado,
-            es_vigente=v_actual.es_vigente,
-            fecha_vigencia=v_actual.fecha_vigencia,
-            creado_el=v_actual.creado_el,
-            url_descarga=f"/documentos/archivo/{v_actual.id}",
-        ) if v_actual else None,
-        version_vigente=schemas.VersionDocumentoResponse(
-            id=v_vigente.id,
-            documento_id=v_vigente.documento_id,
-            version=v_vigente.version,
-            archivo_nombre_original=v_vigente.archivo_nombre_original,
-            tamanio_bytes=v_vigente.tamanio_bytes,
-            archivado=v_vigente.archivado,
-            es_vigente=v_vigente.es_vigente,
-            fecha_vigencia=v_vigente.fecha_vigencia,
-            creado_el=v_vigente.creado_el,
-            url_descarga=f"/documentos/archivo/{v_vigente.id}",
-        ) if v_vigente else None,
+        version_actual=_serializar_version(v_actual),
+        version_vigente=_serializar_version(v_vigente),
         total_versiones=len(doc.versiones),
     )
 
@@ -125,18 +122,7 @@ def subir_nueva_version_endpoint(
         usuario=usuario,
         responsable_legajo=responsable_legajo,
     )
-    return schemas.VersionDocumentoResponse(
-        id=v.id,
-        documento_id=v.documento_id,
-        version=v.version,
-        archivo_nombre_original=v.archivo_nombre_original,
-        tamanio_bytes=v.tamanio_bytes,
-        archivado=v.archivado,
-        es_vigente=v.es_vigente,
-        fecha_vigencia=v.fecha_vigencia,
-        creado_el=v.creado_el,
-        url_descarga=f"/documentos/archivo/{v.id}",
-    )
+    return _serializar_version(v)
 
 @router.post(
     "/{documento_id}/versiones/{version_id}/vigente",
@@ -145,29 +131,19 @@ def subir_nueva_version_endpoint(
 def marcar_version_vigente_endpoint(
     documento_id: int,
     version_id: int,
-    datos: schemas.MarcarVigenteRequest,
+    datos: Optional[schemas.MarcarVigenteRequest] = None,
     db: Session = Depends(get_db),
     usuario: Personal = Depends(obtener_usuario_actual),
 ):
+    fecha_v = datos.fecha_vigencia if (datos and datos.fecha_vigencia) else date.today()
     v = services.marcar_version_vigente(
         db=db,
         documento_id=documento_id,
         version_id=version_id,
-        fecha_vigencia=datos.fecha_vigencia,
+        fecha_vigencia=fecha_v,
         usuario=usuario,
     )
-    return schemas.VersionDocumentoResponse(
-        id=v.id,
-        documento_id=v.documento_id,
-        version=v.version,
-        archivo_nombre_original=v.archivo_nombre_original,
-        tamanio_bytes=v.tamanio_bytes,
-        archivado=v.archivado,
-        es_vigente=v.es_vigente,
-        fecha_vigencia=v.fecha_vigencia,
-        creado_el=v.creado_el,
-        url_descarga=f"/documentos/archivo/{v.id}",
-    )
+    return _serializar_version(v)
 
 @router.get(
     "",
@@ -194,9 +170,12 @@ def listar_documentos_endpoint(
                 version_actual_id=v.id if v else None,
                 fecha_subida_actual=v.creado_el if v else None,
                 archivo_nombre_original=v.archivo_nombre_original if v else None,
+                tamanio_bytes=v.tamanio_bytes if v else None,
+                tamanio_formateado=v.tamanio_formateado if v else None,
+                usuario=v.usuario if v else None,
                 es_vigente=v.es_vigente if v else False,
                 fecha_vigencia=v.fecha_vigencia if v else None,
-                total_versiones=len(d.versiones),
+                total_versiones=len(set(v.version for v in d.versiones)),
             )
         )
     return items
@@ -219,31 +198,9 @@ def obtener_documento_endpoint(
         descripcion=doc.descripcion,
         activo=doc.activo,
         creado_el=doc.creado_el,
-        version_actual=schemas.VersionDocumentoResponse(
-            id=v_actual.id,
-            documento_id=v_actual.documento_id,
-            version=v_actual.version,
-            archivo_nombre_original=v_actual.archivo_nombre_original,
-            tamanio_bytes=v_actual.tamanio_bytes,
-            archivado=v_actual.archivado,
-            es_vigente=v_actual.es_vigente,
-            fecha_vigencia=v_actual.fecha_vigencia,
-            creado_el=v_actual.creado_el,
-            url_descarga=f"/documentos/archivo/{v_actual.id}",
-        ) if v_actual else None,
-        version_vigente=schemas.VersionDocumentoResponse(
-            id=v_vigente.id,
-            documento_id=v_vigente.documento_id,
-            version=v_vigente.version,
-            archivo_nombre_original=v_vigente.archivo_nombre_original,
-            tamanio_bytes=v_vigente.tamanio_bytes,
-            archivado=v_vigente.archivado,
-            es_vigente=v_vigente.es_vigente,
-            fecha_vigencia=v_vigente.fecha_vigencia,
-            creado_el=v_vigente.creado_el,
-            url_descarga=f"/documentos/archivo/{v_vigente.id}",
-        ) if v_vigente else None,
-        total_versiones=len(doc.versiones),
+        version_actual=_serializar_version(v_actual),
+        version_vigente=_serializar_version(v_vigente),
+        total_versiones=len(set(v.version for v in doc.versiones)),
     )
 
 @router.get(
@@ -255,18 +212,34 @@ def listar_versiones_endpoint(
     db: Session = Depends(get_db),
 ):
     versiones = services.listar_versiones_documento(db, documento_id)
+    return [_serializar_version(v) for v in versiones]
+
+@router.get(
+    "/{documento_id}/historial",
+    response_model=List[schemas.VersionHistorialItem],
+)
+def consultar_historial_versiones_endpoint(
+    documento_id: int,
+    orden: str = Query("asc", pattern="^(asc|desc)$"),
+    db: Session = Depends(get_db),
+):
+    versiones = services.listar_historial_documento(db, documento_id, orden=orden)
     return [
-        schemas.VersionDocumentoResponse(
+        schemas.VersionHistorialItem(
             id=v.id,
             documento_id=v.documento_id,
             version=v.version,
             archivo_nombre_original=v.archivo_nombre_original,
             tamanio_bytes=v.tamanio_bytes,
+            tamanio_formateado=v.tamanio_formateado,
             archivado=v.archivado,
             es_vigente=v.es_vigente,
             fecha_vigencia=v.fecha_vigencia,
+            fecha_archivo=v.fecha_archivo,
+            usuario=v.usuario,
             creado_el=v.creado_el,
             url_descarga=f"/documentos/archivo/{v.id}",
+            url_previsualizacion=f"/documentos/archivo/{v.id}?inline=true",
         )
         for v in versiones
     ]
@@ -277,11 +250,31 @@ def listar_versiones_endpoint(
 )
 def descargar_archivo_endpoint(
     version_id: int,
+    inline: bool = Query(False),
     db: Session = Depends(get_db),
 ):
     ruta, nombre_original = services.obtener_archivo_version(db, version_id)
+    if inline:
+        headers = {"Content-Disposition": f'inline; filename="{nombre_original}"'}
+        return FileResponse(
+            path=ruta,
+            media_type="application/pdf",
+            headers=headers,
+        )
     return FileResponse(
         path=ruta,
         media_type="application/pdf",
         filename=nombre_original,
     )
+
+@router.get(
+    "/{documento_id}/versiones/{version_id}/archivo",
+    response_class=FileResponse,
+)
+def descargar_archivo_version_endpoint(
+    documento_id: int,
+    version_id: int,
+    inline: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    return descargar_archivo_endpoint(version_id=version_id, inline=inline, db=db)

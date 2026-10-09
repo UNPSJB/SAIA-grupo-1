@@ -165,7 +165,7 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
         </div>
 
         <div className="form-group">
-          <label htmlFor="archivo">Archivo PDF</label>
+          <label htmlFor="archivo">Archivo PDF {archivo && `(${(archivo.size / 1024).toFixed(1)} KB)`}</label>
           <input
             id="archivo"
             type="file"

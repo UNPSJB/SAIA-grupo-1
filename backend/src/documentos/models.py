@@ -4,6 +4,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Enu
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 from src.documentos.constants import TipoDocumento
+from src.personal.models import Personal
 
 class Documento(ModeloBase):
     __tablename__ = "documentos"
@@ -49,6 +50,9 @@ class VersionDocumento(ModeloBase):
     archivado: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
     es_vigente: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
     fecha_vigencia: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    fecha_archivo: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    creado_por_legajo: Mapped[Optional[int]] = mapped_column(ForeignKey("personal.legajo"), nullable=True, index=True)
+    creado_por_usuario: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     creado_el: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
 
     documento: Mapped["Documento"] = relationship(
@@ -56,4 +60,26 @@ class VersionDocumento(ModeloBase):
         back_populates="versiones",
         foreign_keys=[documento_id],
     )
+    creado_por: Mapped[Optional["Personal"]] = relationship(
+        "Personal",
+        foreign_keys=[creado_por_legajo],
+    )
 
+    @property
+    def usuario(self) -> str:
+        if self.creado_por:
+            u = getattr(self.creado_por, "usuario", None)
+            if u:
+                return u
+            return f"{self.creado_por.nombre} {self.creado_por.apellido}".strip()
+        if self.creado_por_usuario:
+            return self.creado_por_usuario
+        return "admin"
+
+    @property
+    def tamanio_formateado(self) -> str:
+        if self.tamanio_bytes < 1024:
+            return f"{self.tamanio_bytes} B"
+        elif self.tamanio_bytes < 1024 * 1024:
+            return f"{self.tamanio_bytes / 1024:.1f} KB"
+        return f"{self.tamanio_bytes / (1024 * 1024):.2f} MB"

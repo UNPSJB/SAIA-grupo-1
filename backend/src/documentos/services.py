@@ -152,6 +152,7 @@ def crear_documento(
     )
 
     fecha_v = fecha_vigencia or date.today()
+    nom_usuario = getattr(persona, "usuario", None) or f"{getattr(persona, 'nombre', '')} {getattr(persona, 'apellido', '')}".strip() or "admin"
     primera_version = VersionDocumento(
         documento_id=nuevo_doc.id,
         version=version_int,
@@ -161,6 +162,9 @@ def crear_documento(
         archivado=False,
         es_vigente=True,
         fecha_vigencia=fecha_v,
+        fecha_archivo=None,
+        creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
+        creado_por_usuario=nom_usuario,
     )
     db.add(primera_version)
     db.flush()
@@ -225,9 +229,16 @@ def subir_nueva_version(
         file, documento_id, version_int
     )
 
-    for v in versiones_previas:
-        v.archivado = True
+    prev_vigente = next((v for v in versiones_previas if v.es_vigente), None)
+    hoy = date.today()
 
+    for v in versiones_previas:
+        v.es_vigente = False
+        v.archivado = True
+        if not v.fecha_archivo:
+            v.fecha_archivo = hoy
+
+    nom_usuario = getattr(persona, "usuario", None) or f"{getattr(persona, 'nombre', '')} {getattr(persona, 'apellido', '')}".strip() or "admin"
     nueva_version = VersionDocumento(
         documento_id=documento_id,
         version=version_int,
@@ -235,20 +246,24 @@ def subir_nueva_version(
         archivo_nombre_original=archivo_original,
         tamanio_bytes=tamanio,
         archivado=False,
-        es_vigente=False,
-        fecha_vigencia=None,
+        es_vigente=True,
+        fecha_vigencia=hoy,
+        fecha_archivo=None,
+        creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
+        creado_por_usuario=nom_usuario,
     )
     db.add(nueva_version)
     responsable_desc = obtener_descripcion_personal(persona)
+    previo = f"v{prev_vigente.version}" if prev_vigente else None
     registrar_auditoria(
         db,
         AuditoriaCreate(
             tabla="documentos",
             registro_id=documento_id,
             accion=AccionAuditoria.MODIFICAR,
-            campo="nueva_version",
-            valor_previo=f"v{max([v.version for v in versiones_previas])}" if versiones_previas else None,
-            valor_posterior=f"v{nueva_version.version} (usuario: {responsable_desc})",
+            campo="version_vigente",
+            valor_previo=previo,
+            valor_posterior=f"v{nueva_version.version} (vigencia: {hoy}, usuario: {responsable_desc})",
         ),
         commit=False,
     )
@@ -260,10 +275,12 @@ def marcar_version_vigente(
     db: Session,
     documento_id: int,
     version_id: int,
-    fecha_vigencia: date,
+    fecha_vigencia: Optional[date] = None,
     usuario: Optional[Personal] = None,
     responsable_legajo: Optional[int] = None,
 ) -> VersionDocumento:
+    if fecha_vigencia is None:
+        fecha_vigencia = date.today()
     persona = verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
 
     doc = db.scalar(select(Documento).where(Documento.id == documento_id, Documento.activo == True))
@@ -286,14 +303,36 @@ def marcar_version_vigente(
         )
     )
 
+    if version_destino.es_vigente:
+        return version_destino
+
     versiones = db.scalars(
         select(VersionDocumento).where(VersionDocumento.documento_id == documento_id)
     ).all()
     for v in versiones:
-        v.es_vigente = False
+        if v.es_vigente:
+            v.es_vigente = False
+            v.archivado = True
+            v.fecha_archivo = fecha_vigencia
+        elif not v.fecha_archivo:
+            v.fecha_archivo = fecha_vigencia
 
-    version_destino.es_vigente = True
-    version_destino.fecha_vigencia = fecha_vigencia
+    nom_usuario = getattr(persona, "usuario", None) or f"{getattr(persona, 'nombre', '')} {getattr(persona, 'apellido', '')}".strip() or "admin"
+    nueva_entrada_vigente = VersionDocumento(
+        documento_id=documento_id,
+        version=version_destino.version,
+        archivo_nombre=version_destino.archivo_nombre,
+        archivo_nombre_original=version_destino.archivo_nombre_original,
+        tamanio_bytes=version_destino.tamanio_bytes,
+        archivado=False,
+        es_vigente=True,
+        fecha_vigencia=fecha_vigencia,
+        fecha_archivo=None,
+        creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
+        creado_por_usuario=nom_usuario,
+    )
+    db.add(nueva_entrada_vigente)
+    db.flush()
 
     previo = f"v{version_anterior.version}" if version_anterior else None
     responsable_desc = obtener_descripcion_personal(persona)
@@ -305,13 +344,13 @@ def marcar_version_vigente(
             accion=AccionAuditoria.MODIFICAR,
             campo="version_vigente",
             valor_previo=previo,
-            valor_posterior=f"v{version_destino.version} (vigencia: {fecha_vigencia}, usuario: {responsable_desc})",
+            valor_posterior=f"v{nueva_entrada_vigente.version} (vigencia: {fecha_vigencia}, usuario: {responsable_desc})",
         ),
         commit=False,
     )
     db.commit()
-    db.refresh(version_destino)
-    return version_destino
+    db.refresh(nueva_entrada_vigente)
+    return nueva_entrada_vigente
 
 def listar_documentos(
     db: Session,
@@ -340,6 +379,26 @@ def listar_versiones_documento(db: Session, documento_id: int) -> List[VersionDo
         .where(VersionDocumento.documento_id == documento_id)
         .order_by(VersionDocumento.id.desc())
     )
+    todas = list(db.scalars(query).all())
+    versiones_unicas = {}
+    for v in todas:
+        if v.version not in versiones_unicas:
+            versiones_unicas[v.version] = v
+        elif v.es_vigente:
+            versiones_unicas[v.version] = v
+    return sorted(versiones_unicas.values(), key=lambda x: x.version, reverse=True)
+
+def listar_historial_documento(
+    db: Session,
+    documento_id: int,
+    orden: str = "asc",
+) -> List[VersionDocumento]:
+    obtener_documento(db, documento_id)
+    query = select(VersionDocumento).where(VersionDocumento.documento_id == documento_id)
+    if orden.lower() == "desc":
+        query = query.order_by(VersionDocumento.id.desc())
+    else:
+        query = query.order_by(VersionDocumento.id.asc())
     return list(db.scalars(query).all())
 
 def obtener_archivo_version(db: Session, version_id: int) -> Tuple[Path, str]:

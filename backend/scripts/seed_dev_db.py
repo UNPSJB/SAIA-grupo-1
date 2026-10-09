@@ -51,6 +51,8 @@ from src.tareas.models import Frecuencia
 from src.checklist.services import generar_checklist, completar_tarea
 from src.checklist.schemas import ChecklistGenerar, CompletarTareaSchema, InsumoUtilizadoPlaceholder
 from src.checklist.models import Checklist, ChecklistItem, EstadoTareaItem
+from src.documentos.models import Documento, VersionDocumento
+from src.auditoria.models import Auditoria
 
 
 # (nombre, lote, dias desde recepcion, dias hasta vencimiento o None, cantidad recibida, stock, medida)
@@ -393,6 +395,45 @@ def main() -> None:
         )
 
     id_checklist_hoy = checklist_hoy.id
+
+    import io
+    from fastapi import UploadFile
+    from src.documentos.services import crear_documento, subir_nueva_version
+    from src.documentos.constants import TipoDocumento
+
+    print("Creando documentos versionados de ejemplo...")
+    pdf1 = UploadFile(file=io.BytesIO(b"%PDF-1.4 Manual de Buenas Practicas v1"), filename="manual_bpm_v1.pdf")
+    doc_bpm = crear_documento(
+        db,
+        titulo="Manual de Buenas Practicas de Manufactura",
+        tipo=TipoDocumento.MANUAL_BPM,
+        version="1.0",
+        file=pdf1,
+        descripcion="Procedimientos operativos y sanitarios de produccion",
+        fecha_vigencia=date.today() - timedelta(days=90),
+        responsable_legajo=ana.legajo,
+    )
+    pdf2 = UploadFile(file=io.BytesIO(b"%PDF-1.4 Manual de Buenas Practicas v2"), filename="manual_bpm_v2.pdf")
+    subir_nueva_version(
+        db,
+        documento_id=doc_bpm.id,
+        version="2.0",
+        file=pdf2,
+        responsable_legajo=ana.legajo,
+    )
+
+    pdf_receta = UploadFile(file=io.BytesIO(b"%PDF-1.4 Receta Estandar Medialunas"), filename="receta_medialunas.pdf")
+    crear_documento(
+        db,
+        titulo="Receta Estandar: Medialunas de Manteca",
+        tipo=TipoDocumento.RECETA,
+        version="1.0",
+        file=pdf_receta,
+        descripcion="Formulacion oficial para panificados",
+        fecha_vigencia=date.today() - timedelta(days=30),
+        responsable_legajo=marcos.legajo,
+    )
+
     db.close()
     print("\nListo. Base alimentada exitosamente:")
     print(f"  - 5 personas, {len(INSUMOS)} insumos (materias primas), {len(INSUMOS_QUIMICOS)} insumos quimicos con unidades variadas (L, ML, KG, G, UN)")
