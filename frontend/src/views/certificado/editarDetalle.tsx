@@ -27,6 +27,7 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [advertenciaInput, setAdvertenciaInput] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [archivo, setArchivo] = useState<File | null>(null);
 
   useEffect(() => {
     if (certificadoId) {
@@ -80,6 +81,25 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleArchivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErrorMsg(null);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      const extensionesValidas = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+
+      if (!extension || !extensionesValidas.includes(extension)) {
+        setErrorMsg('Formato de archivo no válido. Solo se admiten JPG, PNG, WEBP o PDF.');
+        setArchivo(null);
+        e.target.value = '';
+        return;
+      }
+      setArchivo(file);
+    } else {
+      setArchivo(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!certificadoId) return;
@@ -94,31 +114,36 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
       return;
     }
 
-    if (formData.fechaVencimiento) {
-      const fechaIngresada = new Date(`${formData.fechaVencimiento}T00:00:00`);
-      const fechaMinima = new Date();
-      fechaMinima.setDate(fechaMinima.getDate() + 7);
-      fechaMinima.setHours(0, 0, 0, 0);
+    if (!formData.fechaVencimiento) {
+      setErrorMsg('Debe indicar una fecha de vencimiento.');
+      return;
+    }
 
-      if (fechaIngresada < fechaMinima) {
-        setErrorMsg('La fecha de vencimiento no puede ser anterior a dentro de 7 días.');
-        return;
-      }
+    const fechaIngresada = new Date(`${formData.fechaVencimiento}T00:00:00`);
+    const fechaMinima = new Date();
+    fechaMinima.setDate(fechaMinima.getDate() + 7);
+    fechaMinima.setHours(0, 0, 0, 0);
+
+    if (fechaIngresada < fechaMinima) {
+      setErrorMsg('La fecha de vencimiento no puede ser anterior a dentro de 7 días.');
+      return;
     }
 
     setLoading(true);
 
     try {
-      const payload = {
-        tipo: tipoLimpio,
-        fechaVencimiento: formData.fechaVencimiento ? `${formData.fechaVencimiento}T00:00:00` : undefined,
-        foto_url: formData.foto_url?.trim() ? formData.foto_url.trim() : null,
-      };
+      const formPayload = new FormData();
+      formPayload.append('tipo', tipoLimpio);
+      formPayload.append('fechaVencimiento', formData.fechaVencimiento);
 
+      if (archivo) {
+        formPayload.append('archivo', archivo);
+      }
+
+      // Al mandar FormData con apiFetch, no se define cabecera 'Content-Type'
       const res = await apiFetch(`/certificados/${certificadoId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: formPayload,
       });
 
       if (!res.ok) {
@@ -193,25 +218,34 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
         </div>
 
         <div className="form-group">
-          <label htmlFor="foto_url">Ruta o Archivo Comprobante</label>
+          <label htmlFor="archivo">Comprobante Adjunto (Foto o PDF)</label>
           <input
-            id="foto_url"
-            name="foto_url"
-            type="text"
-            value={formData.foto_url || ''}
-            onChange={handleChange}
+            id="archivo"
+            name="archivo"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            onChange={handleArchivoChange}
           />
+          {archivo ? (
+            <div style={{ fontSize: '13px', color: '#059669', marginTop: '6px', fontWeight: 500 }}>
+              ✓ Archivo nuevo adjunto: {archivo.name} ({(archivo.size / 1024).toFixed(1)} KB)
+            </div>
+          ) : formData.foto_url ? (
+            <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '6px' }}>
+              Archivo actual: {formData.foto_url.split('/').pop()} (Si no seleccionás nada nuevo, se conserva)
+            </div>
+          ) : null}
         </div>
 
         <div className="form-acciones">
           <button
             type="submit"
             className="btn-guardar"
-            disabled={loading || !formData.tipo?.trim()}
+            disabled={loading || !formData.tipo?.trim() || !formData.fechaVencimiento}
           >
             {loading ? 'Guardando...' : 'Guardar Cambios'}
           </button>
-          <button type="button" className="btn-cancelar" onClick={onCancel}>
+          <button type="button" className="btn-cancelar" onClick={onCancel} disabled={loading}>
             Cancelar
           </button>
         </div>

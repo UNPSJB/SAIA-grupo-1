@@ -107,6 +107,35 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     }
   };
 
+  const renderEnlaceArchivo = (fotoUrl?: string | null) => {
+    if (!fotoUrl) {
+      return <span style={{ color: '#9ca3af' }}>Sin archivo</span>;
+    }
+
+    const urlCompleta = fotoUrl.startsWith('http') ? fotoUrl : `${API_URL}${fotoUrl}`;
+    const esPdf = fotoUrl.toLowerCase().endsWith('.pdf');
+
+    return (
+      <a
+        href={urlCompleta}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: '#2563eb',
+          fontWeight: 600,
+          textDecoration: 'none',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          whiteSpace: 'nowrap',
+        }}
+        title="Abrir comprobante en nueva pestaña"
+      >
+        {esPdf ? 'Ver PDF' : 'Ver imagen'} ↗
+      </a>
+    );
+  };
+
   const certificadosFiltrados = certificados.filter((c) => {
     const term = searchTerm.toLowerCase().trim();
     return !term || c.tipo.toLowerCase().includes(term);
@@ -116,7 +145,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     <div className="modulo-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Certificados de Personal</h1>
+          <h1 style={{ lineHeight: '1.25', margin: '0 0 6px 0' }}>Certificados de Personal</h1>
           <div className="subtitulo">
             {nombrePersona ? `${nombrePersona} (Legajo #${legajoPersona})` : `Legajo #${legajoPersona}`}
           </div>
@@ -174,7 +203,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                   <td>{item.id}</td>
                   <td><strong>{item.tipo}</strong></td>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
                       <span>{formatearFecha(item.fechaVencimiento)}</span>
 
                       {calcularEstadoVencimiento(item.fechaVencimiento) === 'vencido' && (
@@ -187,6 +216,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                             borderRadius: '12px',
                             fontSize: '0.75rem',
                             fontWeight: 600,
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           ● Vencido
@@ -203,6 +233,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                             borderRadius: '12px',
                             fontSize: '0.75rem',
                             fontWeight: 600,
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           ▲ Próximo a vencer
@@ -210,7 +241,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                       )}
                     </div>
                   </td>
-                  <td>{item.foto_url || 'Sin archivo'}</td>
+                  <td>{renderEnlaceArchivo(item.foto_url)}</td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button

@@ -16,6 +16,8 @@ interface ListadoCertificadosProps {
 type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia';
 type FiltroEstado = 'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
   onVerPersona,
 }) => {
@@ -93,6 +95,35 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
     return { estado: 'al_dia', diffDias };
   };
 
+  const renderEnlaceArchivo = (fotoUrl?: string | null) => {
+    if (!fotoUrl) {
+      return <span style={{ color: '#9ca3af' }}>Sin archivo</span>;
+    }
+
+    const urlCompleta = fotoUrl.startsWith('http') ? fotoUrl : `${API_URL}${fotoUrl}`;
+    const esPdf = fotoUrl.toLowerCase().endsWith('.pdf');
+
+    return (
+      <a
+        href={urlCompleta}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: '#2563eb',
+          fontWeight: 600,
+          textDecoration: 'none',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          whiteSpace: 'nowrap',
+        }}
+        title="Abrir comprobante"
+      >
+        {esPdf ? 'Ver PDF' : 'Ver foto'} ↗
+      </a>
+    );
+  };
+
   const certificadosFiltrados = certificados.filter((c) => {
     const { estado } = calcularEstadoVencimiento(c.fechaVencimiento);
 
@@ -126,7 +157,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         </div>
       </div>
 
-      {/* Barra de Filtros idéntica a la vista de Personal */}
+      {/* Barra de Filtros */}
       <div className="filtros-top-bar">
         <input
           type="text"
@@ -143,7 +174,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         >
           <option value="TODOS">Todos los estados</option>
           <option value="VENCIDOS">Vencidos</option>
-          <option value="PROXIMOS">Próximos a vencer (≤ 7 días)</option>
+          <option value="PROXIMOS">Próximos a vencer (≤ 15 días)</option>
           <option value="AL_DIA">Al día</option>
         </select>
       </div>
@@ -158,19 +189,19 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
               <th>Legajo</th>
               <th>Certificado</th>
               <th>Archivo</th>
-              {onVerPersona && <th className="acciones-col">Acción</th>}
+              <th className="acciones-col">Acción</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={onVerPersona ? 7 : 6} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando vencimientos...
                 </td>
               </tr>
             ) : certificadosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={onVerPersona ? 7 : 6} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
                   No se encontraron vencimientos para mostrar.
                 </td>
               </tr>
@@ -249,26 +280,30 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                     </td>
                     <td>#{item.legajo_persona}</td>
                     <td>{item.tipo}</td>
-                    <td>{item.foto_url || 'Sin archivo'}</td>
-                    {onVerPersona && (
-                      <td className="acciones-col">
-                        <button
-                          type="button"
-                          className="btn-guardar"
-                          style={{
-                            fontSize: '11px',
-                            padding: '5px 10px',
-                            whiteSpace: 'nowrap',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                          }}
-                          title="Gestionar en el perfil de la persona"
-                          onClick={() => onVerPersona(item.legajo_persona, nombreCompleto)}
-                        >
-                          Gestionar ↗
-                        </button>
-                      </td>
-                    )}
+                    <td>{renderEnlaceArchivo(item.foto_url)}</td>
+                    <td className="acciones-col">
+                      <button
+                        type="button"
+                        className="btn-guardar"
+                        style={{
+                          fontSize: '11px',
+                          padding: '5px 10px',
+                          whiteSpace: 'nowrap',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                        }}
+                        title="Gestionar en el perfil de la persona"
+                        onClick={() => {
+                          if (onVerPersona) {
+                            onVerPersona(item.legajo_persona, nombreCompleto);
+                          } else {
+                            window.location.hash = `#/personal`;
+                          }
+                        }}
+                      >
+                        Gestionar ↗
+                      </button>
+                    </td>
                   </tr>
                 );
               })

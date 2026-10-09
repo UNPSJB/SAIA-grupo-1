@@ -23,6 +23,7 @@ from src.checklist.router import router as checklist_router
 from src.dashboard.router import router as dashboard_router
 from src.autenticacion.router import router as autenticacion_router
 from src.certificado.router import router as certificado_router
+from src.certificado.router import archivos_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 
@@ -78,5 +79,6 @@ app.include_router(tarea_router, dependencies=SOLO_ADMIN)
 app.include_router(checklist_router)
 app.include_router(dashboard_router, dependencies=SOLO_ADMIN)
 app.include_router(certificado_router, dependencies=SOLO_ADMIN)
+app.include_router(archivos_router) #Router publico para ver los archivos dentro de los certificados
 # /autenticacion/login es público; /autenticacion/me se protege dentro de su router
 app.include_router(autenticacion_router, prefix="/autenticacion", tags=["Autenticación"])

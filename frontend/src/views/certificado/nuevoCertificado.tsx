@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import type { CertificadoCreate } from './tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -9,38 +8,38 @@ interface NuevoCertificadoProps {
   onCancel?: () => void;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
   legajoPersona,
   onSuccess,
   onCancel,
 }) => {
-  const [formData, setFormData] = useState<CertificadoCreate>({
-    tipo: '',
-    fechaVencimiento: '',
-    foto_url: '',
-    legajo_persona: legajoPersona,
-  });
+  const [tipo, setTipo] = useState('');
+  const [fechaVencimiento, setFechaVencimiento] = useState('');
+  const [archivo, setArchivo] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [advertenciaInput, setAdvertenciaInput] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const handleTipoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
     setAdvertenciaInput(null);
     setErrorMsg(null);
 
-    if (name === 'tipo') {
-      if (value.length > 30) {
-        setAdvertenciaInput('El tipo no puede tener más de 30 caracteres.');
-        return;
-      }
+    if (value.length > 30) {
+      setAdvertenciaInput('El tipo no puede tener más de 30 caracteres.');
+      return;
     }
+    setTipo(value);
+  };
 
-    if (name === 'fechaVencimiento' && value) {
+  const handleFechaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    setAdvertenciaInput(null);
+    setErrorMsg(null);
+
+    if (value) {
       const fechaIngresada = new Date(`${value}T00:00:00`);
       const fechaMinima = new Date();
       fechaMinima.setDate(fechaMinima.getDate() + 7);
@@ -50,13 +49,31 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
         setAdvertenciaInput('La fecha de vencimiento debe ser al menos dentro de 7 días.');
       }
     }
-
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFechaVencimiento(value);
   };
 
   const handleBlurTipo = () => {
-    if (!formData.tipo.trim()) {
+    if (!tipo.trim()) {
       setAdvertenciaInput('El tipo de certificado es obligatorio.');
+    }
+  };
+
+  const handleArchivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErrorMsg(null);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      const extensionesValidas = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+
+      if (!extension || !extensionesValidas.includes(extension)) {
+        setErrorMsg('Formato de archivo no válido. Solo se admiten JPG, PNG, WEBP o PDF.');
+        setArchivo(null);
+        e.target.value = '';
+        return;
+      }
+      setArchivo(file);
+    } else {
+      setArchivo(null);
     }
   };
 
@@ -66,7 +83,7 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
     setAdvertenciaInput(null);
     setSuccessMsg(null);
 
-    const tipoLimpio = formData.tipo.trim();
+    const tipoLimpio = tipo.trim();
 
     if (!tipoLimpio) {
       setErrorMsg('El tipo de certificado no puede estar vacío.');
@@ -78,12 +95,12 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
       return;
     }
 
-    if (!formData.fechaVencimiento) {
+    if (!fechaVencimiento) {
       setErrorMsg('Debe indicar una fecha de vencimiento.');
       return;
     }
 
-    const fechaIngresada = new Date(`${formData.fechaVencimiento}T00:00:00`);
+    const fechaIngresada = new Date(`${fechaVencimiento}T00:00:00`);
     const fechaMinima = new Date();
     fechaMinima.setDate(fechaMinima.getDate() + 7);
     fechaMinima.setHours(0, 0, 0, 0);
@@ -96,20 +113,18 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
     setLoading(true);
 
     try {
-      const payload = {
-        tipo: tipoLimpio,
-        fechaVencimiento: `${formData.fechaVencimiento}T00:00:00`,
-        foto_url: formData.foto_url?.trim() ? formData.foto_url.trim() : null,
-        legajo_persona: legajoPersona,
-      };
+      const formData = new FormData();
+      formData.append('tipo', tipoLimpio);
+      formData.append('fechaVencimiento', fechaVencimiento);
+      formData.append('legajo_persona', String(legajoPersona));
 
-      const response = await apiFetch(`/certificados/`, {
+      if (archivo) {
+        formData.append('archivo', archivo);
+      }
+
+      const response = await apiFetch('/certificados/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       const data = await response.json().catch(() => ({}));
@@ -139,7 +154,7 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
         <h1 style={{ lineHeight: '1.25', marginBottom: '6px' }}>Nuevo Certificado</h1>
-        <div className="subtitulo">Legajo: {legajoPersona}</div>
+        <div className="subtitulo">Legajo: #{legajoPersona}</div>
       </div>
 
       {advertenciaInput && <div className="alerta-error">{advertenciaInput}</div>}
@@ -156,8 +171,8 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
             name="tipo"
             type="text"
             placeholder="Ej: Carnet Manipulador, Curso Seg..."
-            value={formData.tipo}
-            onChange={handleChange}
+            value={tipo}
+            onChange={handleTipoChange}
             onBlur={handleBlurTipo}
             maxLength={30}
             required
@@ -172,34 +187,38 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
             id="fechaVencimiento"
             name="fechaVencimiento"
             type="date"
-            value={formData.fechaVencimiento}
-            onChange={handleChange}
+            value={fechaVencimiento}
+            onChange={handleFechaChange}
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="foto_url">Ruta o Archivo Comprobante (Opcional)</label>
+          <label htmlFor="archivo">Comprobante Adjunto (Foto o PDF)</label>
           <input
-            id="foto_url"
-            name="foto_url"
-            type="text"
-            placeholder="Ej: /archivos/comprobante.pdf"
-            value={formData.foto_url || ''}
-            onChange={handleChange}
+            id="archivo"
+            name="archivo"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            onChange={handleArchivoChange}
           />
+          {archivo && (
+            <div style={{ fontSize: '13px', color: '#059669', marginTop: '6px', fontWeight: 500 }}>
+              ✓ Archivo adjunto: {archivo.name} ({(archivo.size / 1024).toFixed(1)} KB)
+            </div>
+          )}
         </div>
 
         <div className="form-acciones">
           <button
             type="submit"
             className="btn-guardar"
-            disabled={loading || !formData.tipo.trim() || !formData.fechaVencimiento}
+            disabled={loading || !tipo.trim() || !fechaVencimiento}
           >
             {loading ? 'Guardando...' : 'Guardar'}
           </button>
           {onCancel && (
-            <button type="button" onClick={onCancel} className="btn-cancelar">
+            <button type="button" onClick={onCancel} className="btn-cancelar" disabled={loading}>
               Cancelar
             </button>
           )}
