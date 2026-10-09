@@ -4,15 +4,8 @@ from datetime import datetime, timedelta
 from src.certificado import exceptions
 
 class CertificadoBase(BaseModel):
-    tipo: str = Field(max_length=30)
+    id_tipo: int = Field(ge=0)
     fechaVencimiento: datetime
-
-    @field_validator("tipo")
-    @classmethod
-    def validar_tipo_no_vacio(cls, v: str) -> str:
-        if not v.strip():
-            raise exceptions.TipoVacio()
-        return v.strip()
     
 class CertificadoCreate(CertificadoBase):
     foto_url: Optional[str] = None
@@ -25,7 +18,7 @@ class CertificadoCreate(CertificadoBase):
             # Si viene con zona horaria, se la quitamos para poder comparar
             fecha_comparar = v.replace(tzinfo=None) if v.tzinfo is not None else v
                 
-            manana = (datetime.now() + timedelta(days=7)).replace(
+            manana = (datetime.now() + timedelta(days=15)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
                 
@@ -35,7 +28,7 @@ class CertificadoCreate(CertificadoBase):
         return v
 
 class CertificadoUpdate(CertificadoBase):
-    tipo: Optional[str] = None
+    id_tipo: Optional[int] = None
     fechaVencimiento: Optional[datetime] = None
     foto_url: Optional[str] = None
 
@@ -46,7 +39,7 @@ class CertificadoUpdate(CertificadoBase):
             # Si viene con zona horaria, se la quitamos para poder comparar
             fecha_comparar = v.replace(tzinfo=None) if v.tzinfo is not None else v
                 
-            manana = (datetime.now() + timedelta(days=7)).replace(
+            manana = (datetime.now() + timedelta(days=15)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
                 
@@ -59,5 +52,7 @@ class Certificado(CertificadoBase):
     id: int
     legajo_persona: int
     foto_url: Optional[str] = None
+
+    tipo: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

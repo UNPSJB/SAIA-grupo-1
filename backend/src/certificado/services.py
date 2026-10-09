@@ -59,7 +59,7 @@ def obtener_archivo_certificado(nombre_archivo: str) -> FileResponse:
 
 def crear_certificado(
     db: Session,
-    tipo: str,
+    id_tipo: int,
     fechaVencimiento: date,
     legajo_persona: int,
     archivo: Optional[UploadFile] = None,
@@ -75,7 +75,7 @@ def crear_certificado(
     ruta_guardada = guardar_archivo_certificado(archivo)
 
   _certificado = Certificado(
-      tipo=tipo,
+      id_tipo=id_tipo,
       fechaVencimiento=fechaVencimiento,
       legajo_persona=legajo_persona,
       foto_url=ruta_guardada,
@@ -83,6 +83,10 @@ def crear_certificado(
   db.add(_certificado)
   db.commit()
   db.refresh(_certificado)
+
+  if getattr(_certificado, "tipo_relacion", None):
+    _certificado.tipo = _certificado.tipo_relacion.nombre
+
   return _certificado
 
 
@@ -90,7 +94,13 @@ def listar_certificados(db: Session, legajo_persona: Optional[int] = None) -> Li
   c = select(Certificado)
   if legajo_persona is not None:
     c = c.where(Certificado.legajo_persona == legajo_persona)
-  return db.scalars(c).all()
+  certificados = db.scalars(c).all()
+
+  for cert in certificados:
+    if getattr(cert, "tipo_relacion", None):
+      cert.tipo = cert.tipo_relacion.nombre
+
+  return certificados
 
 
 def obtener_certificado(db: Session, certificado_id: int) -> Certificado:
@@ -99,20 +109,24 @@ def obtener_certificado(db: Session, certificado_id: int) -> Certificado:
   )
   if db_certificado is None:
     raise exceptions.CertificadoNoEncontrado()
+
+  if getattr(db_certificado, "tipo_relacion", None):
+    db_certificado.tipo = db_certificado.tipo_relacion.nombre
+
   return db_certificado
 
 
 def editar_certificado(
     db: Session,
     certificado_id: int,
-    tipo: str,
+    id_tipo: int,
     fechaVencimiento: date,
     archivo: Optional[UploadFile] = None,
 ) -> Certificado:
   db_certificado = obtener_certificado(db, certificado_id)
 
   datos_actualizar = {
-      "tipo": tipo,
+      "id_tipo": id_tipo,
       "fechaVencimiento": fechaVencimiento,
   }
 
@@ -134,6 +148,9 @@ def editar_certificado(
   )
   db.commit()
   db.refresh(db_certificado)
+
+  if getattr(db_certificado, "tipo_relacion", None):
+    db_certificado.tipo = db_certificado.tipo_relacion.nombre
 
   return db_certificado
 
