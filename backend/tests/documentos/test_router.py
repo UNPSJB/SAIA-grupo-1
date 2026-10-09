@@ -153,6 +153,15 @@ def test_api_marcar_version_vigente_y_trazabilidad(session: Session):
     assert len(auditorias) >= 2
     assert any(a["accion"].upper() == "MODIFICAR" and a["campo"] == "version_vigente" and "1" in a["valor_posterior"] for a in auditorias)
 
+    res_hist = client.get(f"/documentos/{doc_id}/historial")
+    assert res_hist.status_code == status.HTTP_200_OK
+    items_hist = res_hist.json()
+    assert len(items_hist) == 3
+    assert items_hist[0]["version"] == 1
+    assert items_hist[1]["version"] == 2
+    assert items_hist[2]["version"] == 1
+    assert items_hist[2]["es_vigente"] is True
+
 def test_api_descargar_archivo_pdf(session: Session):
     admin = crear_personal(session, PersonalCreate(
         documento=99999999,

@@ -231,18 +231,16 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <button
                 type="button"
-                className="btn-guardar"
+                className="btn-secundario"
                 onClick={() => setModalHistorialAbierto(true)}
-                style={{ backgroundColor: "#0284c7", borderColor: "#0284c7" }}
               >
-                📜 Ver Historial de Versiones
+                ↺ Historial de Versiones
               </button>
 
               <button
                 type="button"
-                className="btn-guardar"
+                className="btn-secundario"
                 onClick={() => setModalVigenteAbierto(true)}
-                style={{ backgroundColor: "#059669", borderColor: "#059669" }}
               >
                 ✓ Cambiar Versión Vigente
               </button>
@@ -252,7 +250,6 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
                   type="button"
                   className="btn-guardar"
                   onClick={handleDescargar}
-                  style={{ backgroundColor: "#2563eb", borderColor: "#2563eb" }}
                 >
                   ⬇ Descargar Documento ({pesoStr})
                 </button>

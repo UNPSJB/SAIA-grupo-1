@@ -23,6 +23,11 @@
   border: 1px solid #e2e8f0;
 }
 
+.modal-caja.modal-caja-amplia {
+  max-width: 860px;
+  width: 95%;
+}
+
 .modal-header {
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid #f1f5f9;
@@ -61,17 +66,6 @@
   gap: 1.2rem;
 }
 
-.alerta-confirmacion-vigente {
-  background-color: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  border-left: 4px solid #10b981;
-  padding: 0.85rem 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #065f46;
-  line-height: 1.45;
-}
-
 .modal-footer {
   padding: 1rem 1.5rem;
   border-top: 1px solid #f1f5f9;
@@ -83,14 +77,52 @@
   border-bottom-right-radius: 14px;
 }
 
+.btn-secundario {
+  background-color: var(--code-bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-secundario:hover {
+  background-color: var(--border);
+  color: var(--text-h);
+}
+
 .btn-icon.btn-vigente:hover {
   background-color: #059669;
   color: #ffffff;
   border-color: #059669;
 }
 
+.btn-icon.btn-marcar-vigente:hover {
+  background-color: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+}
+
 .btn-icon.btn-subir-version:hover {
   background-color: #4f46e5;
   color: #ffffff;
   border-color: #4f46e5;
+}
+
+.btn-icon.btn-historial:hover {
+  background-color: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.btn-icon.btn-descargar:hover {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
 }

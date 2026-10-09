@@ -196,19 +196,27 @@ def test_marcar_version_vigente_criterios_completos(session: Session):
     session.refresh(v1)
     session.refresh(v2)
 
-    assert v1.es_vigente is True
-    assert v1.fecha_vigencia == fecha_entrada_vigencia
-    assert v1.fecha_archivo is None
+    assert v1_vigente.es_vigente is True
+    assert v1_vigente.version == 1
+    assert v1_vigente.fecha_vigencia == fecha_entrada_vigencia
+    assert v1_vigente.fecha_archivo is None
 
     assert v2.es_vigente is False
     assert v2.archivado is True
     assert v2.fecha_archivo == fecha_entrada_vigencia
 
     assert doc.version_vigente.version == 1
-    assert doc.version_vigente.id == v1.id
+    assert doc.version_vigente.id == v1_vigente.id
 
     versiones_vigentes = [v for v in doc.versiones if v.es_vigente]
     assert len(versiones_vigentes) == 1
+
+    versiones_historial = services.listar_historial_documento(session, doc.id)
+    assert len(versiones_historial) == 3
+    assert versiones_historial[0].version == 1
+    assert versiones_historial[1].version == 2
+    assert versiones_historial[2].version == 1
+    assert versiones_historial[2].id == v1_vigente.id
 
     from src.auditoria.services import listar_auditorias
     from src.auditoria.models import AccionAuditoria

@@ -73,4 +73,4 @@ class DocumentoListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class MarcarVigenteRequest(BaseModel):
-    fecha_vigencia: date
+    fecha_vigencia: Optional[date] = None

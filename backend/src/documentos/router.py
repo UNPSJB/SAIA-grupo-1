@@ -131,15 +131,16 @@ def subir_nueva_version_endpoint(
 def marcar_version_vigente_endpoint(
     documento_id: int,
     version_id: int,
-    datos: schemas.MarcarVigenteRequest,
+    datos: Optional[schemas.MarcarVigenteRequest] = None,
     db: Session = Depends(get_db),
     usuario: Personal = Depends(obtener_usuario_actual),
 ):
+    fecha_v = datos.fecha_vigencia if (datos and datos.fecha_vigencia) else date.today()
     v = services.marcar_version_vigente(
         db=db,
         documento_id=documento_id,
         version_id=version_id,
-        fecha_vigencia=datos.fecha_vigencia,
+        fecha_vigencia=fecha_v,
         usuario=usuario,
     )
     return _serializar_version(v)
@@ -174,7 +175,7 @@ def listar_documentos_endpoint(
                 usuario=v.usuario if v else None,
                 es_vigente=v.es_vigente if v else False,
                 fecha_vigencia=v.fecha_vigencia if v else None,
-                total_versiones=len(d.versiones),
+                total_versiones=len(set(v.version for v in d.versiones)),
             )
         )
     return items
@@ -199,7 +200,7 @@ def obtener_documento_endpoint(
         creado_el=doc.creado_el,
         version_actual=_serializar_version(v_actual),
         version_vigente=_serializar_version(v_vigente),
-        total_versiones=len(doc.versiones),
+        total_versiones=len(set(v.version for v in doc.versiones)),
     )
 
 @router.get(

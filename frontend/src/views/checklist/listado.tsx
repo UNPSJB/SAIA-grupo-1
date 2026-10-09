@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import type { Checklist, PersonalResumen } from './tipos';
-import { parsearPasos } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
@@ -406,16 +405,11 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                                     {item.descripcion_tarea && (
                                       <div className="tarea-procedimiento-box">
                                         <div className="tarea-procedimiento-header">
-                                          <span className="tarea-procedimiento-tag">📋 Procedimiento / Instrucciones:</span>
+                                          <span className="tarea-procedimiento-tag">Procedimiento / Instrucciones:</span>
                                         </div>
-                                        <div className="tarea-procedimiento-pasos">
-                                          {parsearPasos(item.descripcion_tarea).map((paso, idx) => (
-                                            <div key={idx} className="paso-item">
-                                              {paso.numero && <span className="paso-numero-badge">{paso.numero}</span>}
-                                              <span className="paso-texto">{paso.texto}</span>
-                                            </div>
-                                          ))}
-                                        </div>
+                                        <p className="tarea-procedimiento-texto">
+                                          {item.descripcion_tarea}
+                                        </p>
                                       </div>
                                     )}
                                   </div>

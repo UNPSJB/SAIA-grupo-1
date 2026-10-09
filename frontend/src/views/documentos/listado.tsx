@@ -214,12 +214,11 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                       </button>
                       <button
                         type="button"
-                        className="btn-icon"
-                        style={{ backgroundColor: "#0284c7", color: "#ffffff", borderColor: "#0284c7" }}
+                        className="btn-icon btn-historial"
                         title="Ver historial de versiones"
                         onClick={() => abrirHistorial(doc)}
                       >
-                        📜
+                        ↺
                       </button>
                     </div>
                   </td>

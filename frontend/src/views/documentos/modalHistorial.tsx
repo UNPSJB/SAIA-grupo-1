@@ -224,8 +224,7 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
                             </button>
                             <button
                               type="button"
-                              className="btn-icon"
-                              style={{ backgroundColor: "#2563eb", color: "#ffffff", borderColor: "#2563eb" }}
+                              className="btn-icon btn-descargar"
                               title={`Descargar archivo (${pesoStr})`}
                               onClick={() => handleDescargar(v)}
                             >
