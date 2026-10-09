@@ -78,5 +78,5 @@ app.include_router(tarea_router, dependencies=SOLO_ADMIN)
 app.include_router(checklist_router)
 app.include_router(dashboard_router, dependencies=SOLO_ADMIN)
 app.include_router(autenticacion_router, prefix="/autenticacion", tags=["Autenticación"])
-app.include_router(documentos_router, dependencies=SOLO_ADMIN)
+app.include_router(documentos_router, dependencies=SESION)
 

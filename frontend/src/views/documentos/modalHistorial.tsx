@@ -96,7 +96,9 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
       if (!res.ok) {
         throw new Error("No se pudo previsualizar el archivo.");
       }
-      const blob = await res.blob();
+      const rawBlob = await res.blob();
+      const contentType = res.headers.get("content-type") || "application/pdf";
+      const blob = new Blob([rawBlob], { type: contentType });
       const fileUrl = window.URL.createObjectURL(blob);
       window.open(fileUrl, "_blank");
     } catch (err: unknown) {

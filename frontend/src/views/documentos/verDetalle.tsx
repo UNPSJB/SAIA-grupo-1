@@ -3,6 +3,7 @@ import type { DocumentoDetalle, TipoDocumento, DocumentoListItem } from "./tipos
 import { ModalMarcarVigente } from "./modalMarcarVigente";
 import { ModalHistorialVersiones } from "./modalHistorial";
 import { apiFetch } from "../../api/client";
+import { useAuth } from "../../auth/useAuth";
 import "../../styles/formularioAlta.css";
 import "./documentos.css";
 
@@ -54,6 +55,7 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
   documentoId,
   onVolver,
 }) => {
+  const { esAdministrador } = useAuth();
   const [documento, setDocumento] = useState<DocumentoDetalle | null>(null);
   const [loading, setLoading] = useState(Boolean(documentoId));
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +111,57 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
     }
   };
 
+  const [visorUrl, setVisorUrl] = useState<string | null>(null);
+  const [cargandoVisor, setCargandoVisor] = useState(false);
+
+  useEffect(() => {
+    if (!versionParaDescarga?.id) {
+      setVisorUrl(null);
+      return;
+    }
+    let urlCreada: string | null = null;
+    const cargarVisor = async () => {
+      setCargandoVisor(true);
+      try {
+        const res = await apiFetch(`/documentos/archivo/${versionParaDescarga.id}?inline=true`);
+        if (res.ok) {
+          const rawBlob = await res.blob();
+          const contentType = res.headers.get("content-type") || "application/pdf";
+          const blob = new Blob([rawBlob], { type: contentType });
+          urlCreada = window.URL.createObjectURL(blob);
+          setVisorUrl(urlCreada);
+        }
+      } catch {
+        setVisorUrl(null);
+      } finally {
+        setCargandoVisor(false);
+      }
+    };
+    cargarVisor();
+    return () => {
+      if (urlCreada) {
+        window.URL.revokeObjectURL(urlCreada);
+      }
+    };
+  }, [versionParaDescarga?.id]);
+
+  const handlePrevisualizar = async () => {
+    if (!versionParaDescarga) return;
+    try {
+      const res = await apiFetch(`/documentos/archivo/${versionParaDescarga.id}?inline=true`);
+      if (!res.ok) {
+        throw new Error("No se pudo previsualizar el archivo.");
+      }
+      const rawBlob = await res.blob();
+      const contentType = res.headers.get("content-type") || "application/pdf";
+      const blob = new Blob([rawBlob], { type: contentType });
+      const fileUrl = window.URL.createObjectURL(blob);
+      window.open(fileUrl, "_blank");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al abrir previsualización.");
+    }
+  };
+
   const docParaModalVigente: DocumentoListItem | null = documento
     ? {
         id: documento.id,
@@ -128,9 +181,9 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
     : null;
 
   return (
-    <div className="modulo-container formulario-box">
+    <div className="modulo-container formulario-box-documento">
       <div className="modulo-header">
-        <h1>Detalle de Documento</h1>
+        <h1>{esAdministrador ? "Detalle de Documento" : "Consulta de Versión Vigente"}</h1>
         <div className="subtitulo">
           {documento ? `${getTipoLabel(documento.tipo)}: ${documento.titulo}` : `Documento #${documentoId}`}
         </div>
@@ -223,6 +276,49 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
             </div>
           )}
 
+          {versionParaDescarga && (
+            <div className="form-group" style={{ marginTop: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                <label htmlFor="visor-doc-frame" style={{ fontWeight: 700, fontSize: "0.95rem" }}>
+                  Visor de Documento Vigente
+                </label>
+                <button
+                  type="button"
+                  className="btn-secundario"
+                  style={{ padding: "0.25rem 0.6rem", fontSize: "0.85rem" }}
+                  onClick={handlePrevisualizar}
+                >
+                  ↗ Abrir en pestaña nueva
+                </button>
+              </div>
+              <div
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  height: "500px",
+                  backgroundColor: "#f8fafc",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {cargandoVisor ? (
+                  <div style={{ color: "#64748b" }}>Cargando visor del documento...</div>
+                ) : visorUrl ? (
+                  <iframe
+                    id="visor-doc-frame"
+                    src={visorUrl}
+                    title={versionParaDescarga.archivo_nombre_original || "Documento vigente"}
+                    style={{ width: "100%", height: "100%", border: "none" }}
+                  />
+                ) : (
+                  <div style={{ color: "#64748b" }}>No se pudo cargar la vista previa en el visor.</div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="form-acciones" style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "space-between", marginTop: "2rem" }}>
             <button type="button" className="btn-cancelar" onClick={onVolver}>
               Volver
@@ -237,22 +333,33 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
                 ↺ Historial de Versiones
               </button>
 
-              <button
-                type="button"
-                className="btn-secundario"
-                onClick={() => setModalVigenteAbierto(true)}
-              >
-                ✓ Cambiar Versión Vigente
-              </button>
-
-              {versionParaDescarga && (
+              {esAdministrador && (
                 <button
                   type="button"
-                  className="btn-guardar"
-                  onClick={handleDescargar}
+                  className="btn-secundario"
+                  onClick={() => setModalVigenteAbierto(true)}
                 >
-                  ⬇ Descargar Documento ({pesoStr})
+                  ✓ Cambiar Versión Vigente
                 </button>
+              )}
+
+              {versionParaDescarga && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-secundario"
+                    onClick={handlePrevisualizar}
+                  >
+                    👁 Previsualizar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-guardar"
+                    onClick={handleDescargar}
+                  >
+                    ⬇ Descargar Documento ({pesoStr})
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -261,14 +368,16 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
         <div style={{ textAlign: "center", padding: "2rem" }}>El documento no existe.</div>
       )}
 
-      <ModalMarcarVigente
-        isOpen={modalVigenteAbierto}
-        onClose={() => setModalVigenteAbierto(false)}
-        onSuccess={() => {
-          cargar();
-        }}
-        documento={docParaModalVigente}
-      />
+      {esAdministrador && (
+        <ModalMarcarVigente
+          isOpen={modalVigenteAbierto}
+          onClose={() => setModalVigenteAbierto(false)}
+          onSuccess={() => {
+            cargar();
+          }}
+          documento={docParaModalVigente}
+        />
+      )}
 
       <ModalHistorialVersiones
         isOpen={modalHistorialAbierto}

@@ -379,3 +379,46 @@ def test_api_descargar_archivo_archivado_e_inline(session: Session):
     res_alias = client.get(f"/documentos/{doc_id}/versiones/{v1_id}/archivo")
     assert res_alias.status_code == status.HTTP_200_OK
     assert res_alias.content == pdf_v1
+
+def test_api_consultar_version_vigente_por_defecto(session: Session):
+    admin = crear_personal(session, PersonalCreate(
+        documento=77712345,
+        nombre="Lucia",
+        apellido="Admin",
+        email="lucia.admin@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
+    ))
+
+    pdf_v1 = b"%PDF-1.4 v1"
+    files_v1 = {"archivo": ("doc_v1.pdf", io.BytesIO(pdf_v1), "application/pdf")}
+    res_crear = client.post(
+        "/documentos",
+        data={
+            "titulo": "Procedimiento Limpieza Hornos",
+            "tipo": TipoDocumento.PROCEDIMIENTO.value,
+            "version": "1",
+            "responsable_legajo": str(admin.legajo),
+        },
+        files=files_v1,
+    )
+    doc_id = res_crear.json()["id"]
+
+    pdf_v2 = b"%PDF-1.4 v2"
+    files_v2 = {"archivo": ("doc_v2.pdf", io.BytesIO(pdf_v2), "application/pdf")}
+    client.post(
+        f"/documentos/{doc_id}/versiones",
+        files=files_v2,
+        headers={"X-User-Legajo": str(admin.legajo)},
+    )
+
+    res_vigente = client.get(f"/documentos/{doc_id}/vigente")
+    assert res_vigente.status_code == status.HTTP_200_OK
+    vigente_data = res_vigente.json()
+    assert vigente_data["version"] == 2
+    assert vigente_data["es_vigente"] is True
+    assert vigente_data["archivo_nombre_original"] == "doc_v2.pdf"
+
+    res_doc = client.get(f"/documentos/{doc_id}")
+    assert res_doc.status_code == status.HTTP_200_OK
+    assert res_doc.json()["version_vigente"]["version"] == 2
