@@ -35,3 +35,24 @@ class Incidente(BaseModel):
     motivo_reapertura: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MetricasAntiguedad(BaseModel):
+    menos_24h: int
+    entre_24h_y_72h: int
+    mas_72h: int
+
+
+class IncidentesMetricas(BaseModel):
+    total_abiertos: int
+    por_antiguedad: MetricasAntiguedad
+    por_estado: dict[str, int]
+    mas_antiguo_horas: Optional[float] = None
+    mas_antiguo_id: Optional[int] = None
+
+
+class IncidenteAbierto(Incidente):
+    horas_abierto: float
+    dias_abierto: int
+    nivel_urgencia: str
+

@@ -34,6 +34,28 @@ async def listar_incidentes_endpoint(
     return services.listar_incidentes(db, usuario, desde, hasta, estado, reportado_por_id)
 
 
+@router.get(
+    "/abiertos",
+    response_model=List[schemas.IncidenteAbierto],
+    dependencies=[Depends(requiere_admin)],
+)
+async def listar_incidentes_abiertos_endpoint(
+    db: Session = Depends(get_db),
+):
+    return services.listar_incidentes_abiertos(db)
+
+
+@router.get(
+    "/abiertos/metricas",
+    response_model=schemas.IncidentesMetricas,
+    dependencies=[Depends(requiere_admin)],
+)
+async def obtener_metricas_abiertos_endpoint(
+    db: Session = Depends(get_db),
+):
+    return services.obtener_metricas_incidentes_abiertos(db)
+
+
 @router.get("/{incidente_id}", response_model=schemas.Incidente)
 async def obtener_incidente_endpoint(
     incidente_id: int,

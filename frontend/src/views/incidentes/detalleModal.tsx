@@ -16,12 +16,14 @@ interface DetalleIncidenteModalProps {
   incidente: Incidente | null;
   onClose: () => void;
   onEstadoActualizado?: (incidenteActualizado: Incidente) => void;
+  iniciarConCierreDirecto?: boolean;
 }
 
 export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
   incidente: incidenteProp,
   onClose,
   onEstadoActualizado,
+  iniciarConCierreDirecto = false,
 }) => {
   const { esAdministrador } = useAuth();
   const [incidente, setIncidente] = useState<Incidente | null>(incidenteProp);
@@ -34,8 +36,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
   const [errorEstado, setErrorEstado] = useState<string | null>(null);
   const [exitoEstado, setExitoEstado] = useState<string | null>(null);
 
-  // Estados de formularios HDU #39 (Acción Correctiva y Reapertura)
-  const [mostrandoFormCierre, setMostrandoFormCierre] = useState(false);
+  const [mostrandoFormCierre, setMostrandoFormCierre] = useState(Boolean(iniciarConCierreDirecto));
   const [accionCorrectiva, setAccionCorrectiva] = useState('');
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
 
@@ -256,7 +257,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
               </div>
             </div>
 
-            {/* Visualización de Acción Correctiva Registrada (HDU #39) */}
+            {}
             {incidente.accion_correctiva && (
               <div className="bloque-accion-correctiva">
                 <div className="bloque-accion-titulo">
@@ -284,7 +285,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
               </div>
             )}
 
-            {/* Panel de Gestión para Administradores (HDU #37 / HDU #39) */}
+            {}
             {esAdministrador && (
               <div className="incidente-acciones-estado">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -301,7 +302,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                 {errorEstado && <div className="alerta-error">{errorEstado}</div>}
                 {exitoEstado && <div className="alerta-exito">{exitoEstado}</div>}
 
-                {/* Formulario de Cierre con Acción Correctiva */}
+                {}
                 {mostrandoFormCierre ? (
                   <form onSubmit={handleCerrarConAccion} className="form-accion-correctiva">
                     <div style={{ fontWeight: 600, color: '#15803d', fontSize: '13.5px' }}>
@@ -347,7 +348,6 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                     </div>
                   </form>
                 ) : mostrandoFormReapertura ? (
-                  /* Formulario de Reapertura con Motivo Obligatorio */
                   <form onSubmit={handleReabrirConMotivo} className="form-reapertura">
                     <div style={{ fontWeight: 600, color: '#c2410c', fontSize: '13.5px' }}>
                       Reapertura del Incidente
@@ -392,7 +392,6 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                     </div>
                   </form>
                 ) : (
-                  /* Botones principales de acción */
                   <div className="incidente-botones-estado">
                     {esAbierto ? (
                       <>

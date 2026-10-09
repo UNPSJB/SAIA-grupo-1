@@ -31,6 +31,7 @@ import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { ListadoIncidentes } from './views/incidentes/listado';
+import { IncidentesAbiertos } from './views/incidentes/incidentesAbiertos';
 import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
 import { Login } from './views/auth/login';
@@ -75,6 +76,7 @@ function Aplicacion() {
 
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
+  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial'>('abiertos');
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
@@ -85,6 +87,7 @@ function Aplicacion() {
     setVistaElementos('listado');
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
+    setVistaIncidentesAdmin('abiertos');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -294,7 +297,15 @@ function Aplicacion() {
           <ListadoAuditoria />
         ) : modulo === 'incidentes' ? (
           esAdministrador ? (
-            <ListadoIncidentes />
+            vistaIncidentesAdmin === 'abiertos' ? (
+              <IncidentesAbiertos
+                onVerHistorialCompleto={() => setVistaIncidentesAdmin('historial')}
+              />
+            ) : (
+              <ListadoIncidentes
+                onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+              />
+            )
           ) : (
             <NuevoIncidente />
           )

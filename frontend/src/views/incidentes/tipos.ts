@@ -80,3 +80,35 @@ export const mensajeDeError = (detalle: unknown, porDefecto: string): string => 
   }
   return porDefecto;
 };
+
+export type NivelUrgencia = 'RECIENTE' | 'ATENCION' | 'CRITICO';
+
+export interface IncidenteAbierto extends Incidente {
+  horas_abierto: number;
+  dias_abierto: number;
+  nivel_urgencia: NivelUrgencia;
+}
+
+export interface MetricasAntiguedad {
+  menos_24h: number;
+  entre_24h_y_72h: number;
+  mas_72h: number;
+}
+
+export interface IncidentesMetricas {
+  total_abiertos: number;
+  por_antiguedad: MetricasAntiguedad;
+  por_estado: Record<string, number>;
+  mas_antiguo_horas?: number | null;
+  mas_antiguo_id?: number | null;
+}
+
+export const formatearAntiguedad = (horas: number): string => {
+  if (horas < 1) return 'Menos de 1 h';
+  if (horas < 24) return `${Math.floor(horas)} h`;
+  const dias = Math.floor(horas / 24);
+  const horasRestantes = Math.floor(horas % 24);
+  if (horasRestantes === 0) return `${dias} d`;
+  return `${dias} d ${horasRestantes} h`;
+};
+

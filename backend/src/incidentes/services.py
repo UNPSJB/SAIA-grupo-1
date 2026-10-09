@@ -10,7 +10,7 @@ from src.auditoria import schemas as schemas_auditoria
 from src.auditoria.models import AccionAuditoria
 from src.auditoria.services import registrar_auditoria
 from src.autenticacion.dependencies import es_administrador
-from src.incidentes import exceptions, models
+from src.incidentes import exceptions, models, schemas
 from src.incidentes.constants import (
     ACCION_CORRECTIVA_MAX,
     DESCRIPCION_MAX,
@@ -205,7 +205,6 @@ def cerrar_incidente(
     incidente.resuelto_por_id = usuario.legajo
     incidente.estado = EstadoIncidente.CERRADO
 
-    # Log de auditoría
     registrar_auditoria(
         db,
         schemas_auditoria.AuditoriaCreate(
@@ -235,9 +234,9 @@ def reabrir_incidente(
     estado_previo = incidente.estado.value if hasattr(incidente.estado, "value") else str(incidente.estado)
 
     incidente.motivo_reapertura = texto_motivo
+    incidente.cerrado_el = None
     incidente.estado = EstadoIncidente.REABIERTO
 
-    # Log de auditoría con la reapertura y el motivo
     registrar_auditoria(
         db,
         schemas_auditoria.AuditoriaCreate(
@@ -272,3 +271,75 @@ def obtener_foto(db: Session, usuario: Personal, incidente_id: int) -> FileRespo
     if not ruta.is_file() or IMAGENES_DIR.resolve() not in ruta.parents:
         raise exceptions.FotoNoEncontrada()
     return FileResponse(ruta)
+
+
+def calcular_antiguedad_y_urgencia(creado_el: datetime) -> tuple[float, int, str]:
+    delta = datetime.now() - creado_el
+    horas = round(max(0.0, delta.total_seconds() / 3600.0), 1)
+    dias = int(horas // 24)
+    if horas >= 72.0:
+        nivel = "CRITICO"
+    elif horas >= 24.0:
+        nivel = "ATENCION"
+    else:
+        nivel = "RECIENTE"
+    return horas, dias, nivel
+
+
+def listar_incidentes_abiertos(db: Session) -> List[schemas.IncidenteAbierto]:
+    consulta = (
+        select(models.Incidente)
+        .where(
+            models.Incidente.estado.in_([
+                EstadoIncidente.PENDIENTE,
+                EstadoIncidente.EN_REVISION,
+                EstadoIncidente.REABIERTO,
+            ]),
+            models.Incidente.cerrado_el.is_(None),
+        )
+        .order_by(models.Incidente.creado_el.asc(), models.Incidente.id.asc())
+    )
+    filas = list(db.scalars(consulta).all())
+    resultado: List[schemas.IncidenteAbierto] = []
+    for inc in filas:
+        horas, dias, nivel = calcular_antiguedad_y_urgencia(inc.creado_el)
+        datos = schemas.Incidente.model_validate(inc).model_dump()
+        datos["horas_abierto"] = horas
+        datos["dias_abierto"] = dias
+        datos["nivel_urgencia"] = nivel
+        resultado.append(schemas.IncidenteAbierto(**datos))
+    return resultado
+
+
+def obtener_metricas_incidentes_abiertos(db: Session) -> schemas.IncidentesMetricas:
+    abiertos = listar_incidentes_abiertos(db)
+    total = len(abiertos)
+
+    menos_24h = sum(1 for i in abiertos if i.horas_abierto < 24.0)
+    entre_24h_y_72h = sum(1 for i in abiertos if 24.0 <= i.horas_abierto < 72.0)
+    mas_72h = sum(1 for i in abiertos if i.horas_abierto >= 72.0)
+
+    por_estado = {
+        EstadoIncidente.PENDIENTE.value: 0,
+        EstadoIncidente.EN_REVISION.value: 0,
+        EstadoIncidente.REABIERTO.value: 0,
+    }
+    for i in abiertos:
+        val = i.estado.value if hasattr(i.estado, "value") else str(i.estado)
+        por_estado[val] = por_estado.get(val, 0) + 1
+
+    mas_antiguo_horas = abiertos[0].horas_abierto if abiertos else None
+    mas_antiguo_id = abiertos[0].id if abiertos else None
+
+    return schemas.IncidentesMetricas(
+        total_abiertos=total,
+        por_antiguedad=schemas.MetricasAntiguedad(
+            menos_24h=menos_24h,
+            entre_24h_y_72h=entre_24h_y_72h,
+            mas_72h=mas_72h,
+        ),
+        por_estado=por_estado,
+        mas_antiguo_horas=mas_antiguo_horas,
+        mas_antiguo_id=mas_antiguo_id,
+    )
+

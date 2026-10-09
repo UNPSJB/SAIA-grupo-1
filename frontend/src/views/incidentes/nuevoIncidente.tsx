@@ -171,14 +171,6 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
   return (
     <div className="incidente-form-card">
       <div className="incidente-form-header">
-        <div className="incidente-tag-operativo">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 9v4" />
-            <path d="M12 17h.01" />
-            <path d="M3.6 15h16.8a2 2 0 0 0 1.73-3L13.73 4a2 2 0 0 0-3.46 0L1.87 12a2 2 0 0 0 1.73 3Z" />
-          </svg>
-          HDU #38 · Registro Operativo en Planta
-        </div>
         <h1>Registrar Incidente</h1>
         <p>
           Deje constancia inmediata de cualquier desperfecto, desvío o hallazgo en planta para su posterior evaluación y seguimiento.
