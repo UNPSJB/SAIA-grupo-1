@@ -1,0 +1,144 @@
+import React, {useEffect,useState } from 'react';
+import type { PlanDeCalibracionConId } from "./tipos";
+import '../../styles/formularioAlta.css';
+
+interface DetallePlanCalibracionProps {
+    onCancel?: () => void;
+    planCalibracionID?: number | null;
+}
+
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return "No aplica";
+  try {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime())
+      ? dateStr
+      : d.toLocaleDateString("es-AR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+  } catch {
+    return dateStr;
+  }
+};
+
+export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({ onCancel, planCalibracionID }) => {
+    const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId | null>(null);
+    const [loading, setLoading] = useState(true);
+    
+
+    useEffect(() => {
+            if (planCalibracionID) {
+                const fetchPlanCalibracion = async () => {
+                    try {
+                        const res = await fetch(`${API_URL}/plan_de_calibracion/${planCalibracionID}/`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            setPlanCalibracion(data);
+                        }
+                    } catch {
+                        alert('El plan de calibración no existe.');
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+    
+                fetchPlanCalibracion();
+            }
+        }, [planCalibracionID]);
+
+    return (
+    <div className="plan-container invertir-css">
+        <div className="modulo-header">
+            <h1>Plan de calibración</h1>
+        </div>
+
+            {loading ? (
+                        <tr>
+                            <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
+                                Cargando plan de calibración...
+                            </td>
+                        </tr>
+        ) : planCalibracion ? (
+        <div >
+
+          <div className="form-group">
+          <label htmlFor="fecha_mantenimiento">Fecha de Mantenimiento</label>
+          <td>{formatDate(planCalibracion.fecha_mantenimiento)}</td>
+        </div>
+
+        <div className="form-group">
+            <label htmlFor="fecha_vencimiento">Fecha de Vencimiento</label>
+            <td>{formatDate(planCalibracion.fecha_vencimiento)}</td>
+        </div>
+        
+            <div className="form-group">
+                <label htmlFor="nombre">PLAN</label>
+                <input
+                    id="nombre"
+                    name="nombre"
+                    type="text"
+                    value={planCalibracion.nombre}
+                    disabled 
+                />
+            </div>
+            <div className="form-group">
+                <label htmlFor="equipo">EQUIPO</label>
+                <input
+                    id="equipo"
+                    name="equipo"
+                    value={planCalibracion.nombre_equipo}
+                    disabled
+                >
+                </input>
+            </div>
+
+
+          <div className="form-group">
+          <label htmlFor="descripcion">Descripción</label>
+          <textarea
+            className="descripcion"
+            id="descripcion"
+            name="descripcion"
+            value={planCalibracion.descripcion}
+            style={{
+               height: "auto",
+                overflow: "hidden",
+             }}
+            ref={(el) => {
+                    if (el) {
+                       el.style.height = "auto";
+                       el.style.height = `${el.scrollHeight}px`;
+                       }
+                     }}
+            disabled
+          />
+        </div>
+
+        </div>
+        ) : (
+                <tr>
+                     <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
+                             El plan no existe.
+                        </td>
+                </tr>
+                )    
+                
+                }
+
+                <div className="form-acciones">
+                <button type="button"  className="btn-cancelar" onClick={onCancel}>
+                    Volver
+                </button>
+            </div>
+        
+    </div>
+    
+        
+)
+
+};

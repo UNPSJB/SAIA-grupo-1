@@ -2,16 +2,19 @@ import { useEffect, useState } from "react";
 import type { TareaConId} from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
+import { usePersonalActivo } from "./usePersonalActivo";
 
 const TAREA_INICIAL:TareaConId ={
     id:0,
     nombre:"",
     descripcion:"",
     plan_id:0,
-    frecuencia:""
+    frecuencia:"",
+    personal_id:""
 } 
 
-const FRECUENCIA = ["diaria","semanal","mensual"]interface EditarTareaProps {
+const FRECUENCIA = ["diaria","semanal","mensual"]
+interface EditarTareaProps {
     tareaID:number | null;
     planID:number | null;
     onSuccess?: () => void;
@@ -25,6 +28,7 @@ export default function EditarTarea({tareaID, planID,onSuccess, onCancel}: Edita
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const personas = usePersonalActivo();
 
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -55,6 +59,11 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
       return;
     }
 
+    if (!tarea.personal_id) {
+      setErrorMsg("Debe asignar el personal a cargo de la tarea.");
+      return;
+    }
+
     if (tarea.nombre.trim().length < 4) {
     setErrorMsg("El nombre debe tener al menos 4 caracteres.");
     return;
@@ -75,7 +84,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         nombre: tarea.nombre.trim(),
         descripcion:tarea.descripcion.trim(),
         plan_id:planID,
-        frecuencia:tarea.frecuencia
+        frecuencia:tarea.frecuencia,
+        personal_id:Number(tarea.personal_id)
     }
 
     setLoading(true);
@@ -125,7 +135,7 @@ useEffect(() => {
                     const res = await apiFetch(`/tareas/${tareaID}`);
                     if (res.ok) {
                         const data = await res.json();
-                        setTarea(data);
+                        setTarea({ ...data, personal_id: data.personal_id ?? "" });
                     }
                 } catch {
                     alert('La tarea no existe.');
@@ -169,6 +179,24 @@ return (
         </div>
 
         <div className="form-group">
+          <label htmlFor="personal_id">Personal a Cargo</label>
+          <select
+            id="personal_id"
+            name="personal_id"
+            value={tarea.personal_id}
+            onChange={handleChange}
+            required
+          >
+            <option value="" disabled>Seleccione un usuario activo</option>
+            {personas.map((p) => (
+              <option key={p.legajo} value={p.legajo}>
+                {p.apellido}, {p.nombre} (Legajo: {p.legajo})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
           <label htmlFor="descripcion">Procedimiento</label>
           <textarea
             id="descripcion"
@@ -195,7 +223,6 @@ return (
                     ))}
                 </select>
             </div>
-
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>

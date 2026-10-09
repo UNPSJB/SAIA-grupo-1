@@ -146,6 +146,9 @@ def generar_checklist(
 
     for plan in planes:
         for tarea in plan.tareas:
+            # cada persona genera su checklist solo con las tareas que tiene asignadas
+            if tarea.personal_id != datos.responsable_legajo:
+                continue
             if tarea_corresponde_a_fecha(
                 tarea.frecuencia,
                 plan.fecha_inicio,
@@ -161,6 +164,7 @@ def generar_checklist(
                     descripcion_tarea=tarea.descripcion,
                     frecuencia=tarea.frecuencia,
                     estado=models.EstadoTareaItem.PENDIENTE,
+                    responsable_legajo=tarea.personal_id,
                 )
                 items_a_crear.append(item)
 
@@ -440,6 +444,7 @@ def listar_checklists(
     fecha_desde: Optional[date] = None,
     fecha_hasta: Optional[date] = None,
     estado: Optional[str] = None,
+    responsable_legajo: Optional[int] = None,
 ) -> List[models.Checklist]:
     if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
         raise exceptions.RangoFechasInvalido()
@@ -451,6 +456,8 @@ def listar_checklists(
         query = query.where(models.Checklist.fecha >= fecha_desde)
     if fecha_hasta:
         query = query.where(models.Checklist.fecha <= fecha_hasta)
+    if responsable_legajo is not None:
+        query = query.where(models.Checklist.responsable_legajo == responsable_legajo)
 
     checklists: List[models.Checklist] = list(db.scalars(query).all())
 

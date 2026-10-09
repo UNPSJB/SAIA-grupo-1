@@ -7,7 +7,8 @@ interface EliminarEquipoProps{
     equipoID?:number | null;
     onCancel?: () => void;
     onSucces?: ()=> void;
-}export default function EliminarEquipo({equipoID,onCancel,onSucces}:EliminarEquipoProps){
+}
+export default function EliminarEquipo({equipoID,onCancel,onSucces}:EliminarEquipoProps){
 
     const[equipo,setEquipo]= useState<EquipoConId | null>(null);
     const[loading, setLoading]= useState(true);
@@ -112,16 +113,6 @@ const handleEliminar = async (id?: number) => {
                 />
             </div>
 
-            <div className="form-group">
-                <label htmlFor="plan_de_calibracion">Plan de Calibración</label>
-                <input
-                    id="plan_de_calibracion"
-                    name="plan_de_calibracion"
-                    type="text"
-                    value={equipo.plan_de_calibracion} 
-                    disabled
-                />
-            </div>
         </form>
         ) : (
                      <div style={{ textAlign: 'center', padding: '2rem' }}>

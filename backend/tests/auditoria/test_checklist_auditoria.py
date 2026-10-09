@@ -47,7 +47,8 @@ def test_completar_tarea_audita_cambios(session: Session) -> None:
     por_campo = {r.campo: r for r in registros}
     assert por_campo["estado"].valor_previo == "pendiente"
     assert por_campo["estado"].valor_posterior == "realizado"
-    assert por_campo["responsable_legajo"].valor_posterior == "1"
+    # el responsable viene asignado desde la tarea: completarla no lo modifica
+    assert "responsable_legajo" not in por_campo
     assert all(r.accion == AccionAuditoria.MODIFICAR for r in registros)
 
 

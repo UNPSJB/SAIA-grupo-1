@@ -2,15 +2,18 @@ import { useState } from "react";
 import type { TareaConId, TareaForm } from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
+import { usePersonalActivo } from "./usePersonalActivo";
 
 const TAREA_INICAL:TareaForm ={
     nombre:"",
     descripcion:"",
     plan_id:"",
-    frecuencia:""
+    frecuencia:"",
+    personal_id:""
 } 
 
-const FRECUENCIA = ["diaria","semanal","mensual"]interface NuevaTareaProps {
+const FRECUENCIA = ["diaria","semanal","mensual"]
+interface NuevaTareaProps {
     planID?:number | null;
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -24,6 +27,7 @@ export default function NuevaTarea({onAgregarLocal,planID,onSuccess, onCancel}: 
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const personas = usePersonalActivo();
 
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -42,8 +46,18 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
     }
 
+    if (!tarea.personal_id) {
+      setErrorMsg("Debe asignar el personal a cargo de la tarea.");
+      return;
+    }
+
     if (!planID) {
-          onAgregarLocal?.(tarea as TareaConId);
+          const asignado = personas.find((p) => p.legajo === Number(tarea.personal_id));
+          onAgregarLocal?.({
+            ...tarea,
+            personal_id: Number(tarea.personal_id),
+            nombre_personal: asignado ? `${asignado.nombre} ${asignado.apellido}` : null,
+          } as TareaConId);
           onSuccess?.();
           return;
     }
@@ -80,7 +94,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         nombre: tarea.nombre.trim(),
         descripcion:tarea.descripcion.trim(),
         plan_id:planID,
-        frecuencia:tarea.frecuencia
+        frecuencia:tarea.frecuencia,
+        personal_id:Number(tarea.personal_id)
     }
 
     setLoading(true);
@@ -158,6 +173,24 @@ return (
         </div>
 
         <div className="form-group">
+          <label htmlFor="personal_id">Personal a Cargo</label>
+          <select
+            id="personal_id"
+            name="personal_id"
+            value={tarea.personal_id}
+            onChange={handleChange}
+            required
+          >
+            <option value="" disabled>Seleccione un usuario activo</option>
+            {personas.map((p) => (
+              <option key={p.legajo} value={p.legajo}>
+                {p.apellido}, {p.nombre} (Legajo: {p.legajo})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
           <label htmlFor="descripcion">Procedimiento</label>
           <textarea
             id="descripcion"
@@ -186,7 +219,6 @@ return (
                     ))}
                 </select>
             </div>
-
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>

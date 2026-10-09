@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from src.config import settings
 from src.personal.models import Personal
+from src.personal.schemas import Capacidades
 from .exceptions import CredencialesInvalidas, UsuarioInactivo
 
 _hasher = PasswordHash.recommended()
@@ -44,3 +45,22 @@ def crear_token(persona: Personal) -> str:
         "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def asegurar_admin_dev(db: Session) -> None:
+    """Crea el usuario admin/admin si no existe, para que todo el equipo pueda
+    ingresar con las mismas credenciales aunque cada uno tenga su propia base.
+    Solo se usa en desarrollo (ver lifespan en main.py)."""
+    if db.query(Personal).filter(Personal.usuario == "admin").first():
+        return
+    db.add(Personal(
+        usuario="admin",
+        nombre="Admin",
+        apellido="Admin",
+        documento=0,
+        email="admin@saia.com",
+        capacidad=Capacidades.AMBAS,
+        activo=True,
+        contrasenia_hash=hashear_contrasenia("admin"),
+    ))
+    db.commit()

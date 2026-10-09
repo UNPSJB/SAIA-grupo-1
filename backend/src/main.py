@@ -1,7 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
-from src.database import engine
+from src.autenticacion.services import asegurar_admin_dev
+from src.database import engine, SessionLocal
 from src.models import ModeloBase
 
 # Importamos la configuración validada por Pydantic
@@ -19,6 +20,7 @@ from src.plan_De_limpieza.router import router as planLimpieza_router
 from src.tareas.router import router as tarea_router
 from src.auditoria.router import router as auditoria_router
 from src.checklist.router import router as checklist_router
+from src.plan_de_calibracion.router import router as plan_de_calibracion_router
 from src.dashboard.router import router as dashboard_router
 from src.autenticacion.router import router as autenticacion_router
 from src.incidentes.router import router as incidentes_router
@@ -34,6 +36,10 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    if ENV == "DEV":
+        # Usuario admin/admin compartido por el equipo (cada integrante tiene su propia base)
+        with SessionLocal() as db:
+            asegurar_admin_dev(db)
     yield
 
 
@@ -76,3 +82,4 @@ app.include_router(dashboard_router, dependencies=SOLO_ADMIN)
 app.include_router(incidentes_router, dependencies=SESION)
 # /autenticacion/login es público; /autenticacion/me se protege dentro de su router
 app.include_router(autenticacion_router, prefix="/autenticacion", tags=["Autenticación"])
+app.include_router(plan_de_calibracion_router)

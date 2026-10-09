@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 class Capacidades(str, Enum):
@@ -30,9 +30,16 @@ class PersonalUpdate(BaseModel):
     contrasenia: Optional[str] = Field(None, min_length=8, max_length=72)
 
 
+class TareaAsignada(BaseModel):
+    id: int
+    nombre: str
+    model_config = ConfigDict(from_attributes=True)
+
+
 class Personal(PersonaBase):
     legajo: int
     usuario: str
+    tareas: List[TareaAsignada] = []
     model_config = ConfigDict(from_attributes=True)
 
 PersonaResponse = Personal

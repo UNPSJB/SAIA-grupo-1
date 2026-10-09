@@ -11,7 +11,8 @@ const PLAN_INICAL:PlanForm ={
     equipo_id:"",
     fecha_inicio:"",
     tareas:[]
-} const HOY = new Date().toISOString().split("T")[0];
+} 
+const HOY = new Date().toISOString().split("T")[0];
 
 interface NuevoPlanDeLimpizaProps {
     onSuccess?: () => void;
@@ -209,18 +210,19 @@ return (
                     <th>Nombre</th>
                     <th>Procedimiento</th>
                     <th>Frecuencia</th>
+                            <th>Personal a Cargo</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
                         Cargando Tareas...
                       </td>
                     </tr>
                   ) :tareas?.length === 0 ? (
                     <tr>
-                      <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
                         No hay Tareas registradas.
                       </td>
                     </tr>
@@ -230,6 +232,7 @@ return (
                         <td style={{ fontWeight: 500 }}>{t.nombre}</td>
                         <td>{t.descripcion}</td>
                         <td>{t.frecuencia}</td>
+                  <td>{t.nombre_personal ?? 'Sin asignar'}</td>
                       </tr>
       
                       

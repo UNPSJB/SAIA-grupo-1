@@ -6,7 +6,8 @@ import { apiFetch } from '../../api/client';
 interface DetalleEquipoProps {
     onCancel?: () => void;
     equipoId?: number | null;
-}export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId }) => {
+}
+export const DetalleEquipo: React.FC<DetalleEquipoProps> = ({ onCancel, equipoId }) => {
     const [equipo, setEquipo] = useState<EquipoConId | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -94,7 +95,7 @@ interface DetalleEquipoProps {
                     id="plan_de_calibracion"
                     name="plan_de_calibracion"
                     type="text"
-                    value={equipo.plan_de_calibracion} 
+                    value={equipo.plan_de_calibracion?.nombre} 
                     disabled
                 />
             </div>

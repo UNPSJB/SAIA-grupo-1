@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from src.checklist.models import Checklist
 from src.personal.models import Personal
+from src.tareas.models import Tarea
 from tests.autenticacion.conftest import headers
 from tests.database import app
 
@@ -45,7 +46,6 @@ SOLO_ADMIN = [
     ("POST", "/api/insumos-quimicos"),
     ("PUT", "/api/insumos-quimicos/1"),
     ("PATCH", "/api/insumos-quimicos/1/toggle"),
-    ("POST", "/checklist/generar"),
 ]
 
 # Endpoints que piden estar logueado, sin importar el rol.
@@ -98,49 +98,98 @@ def test_la_imagen_de_evidencia_no_pide_token(usuarios: Dict[str, Personal]) -> 
 # ---------------------------------------------------------------- checklist por rol
 
 
-def _generar_checklist_de_hoy(admin: Personal) -> dict:
-    respuesta = client.post("/checklist/generar", json={"responsable_legajo": 1}, headers=headers(admin))
+def _generar_checklist_de_hoy(admin: Personal, legajo: int = 1) -> dict:
+    respuesta = client.post("/checklist/generar", json={"responsable_legajo": legajo}, headers=headers(admin))
     assert respuesta.status_code == status.HTTP_201_CREATED
     return respuesta.json()
 
 
-def test_el_operador_no_puede_generar_checklist(usuarios: Dict[str, Personal]) -> None:
-    respuesta = client.post("/checklist/generar", json={"responsable_legajo": 1},
-                            headers=headers(usuarios["operador"]))
-    assert respuesta.status_code == status.HTTP_403_FORBIDDEN
+def test_generar_checklist_pide_estar_logueado(usuarios: Dict[str, Personal]) -> None:
+    assert _pedir("POST", "/checklist/generar").status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_el_operador_ve_el_checklist_del_dia(usuarios: Dict[str, Personal]) -> None:
-    checklist = _generar_checklist_de_hoy(usuarios["administrador"])
-    cabeceras = headers(usuarios["operador"])
+def test_el_operador_genera_solo_su_propio_checklist(usuarios: Dict[str, Personal]) -> None:
+    operador = usuarios["operador"]
+    cabeceras = headers(operador)
 
-    assert any(c["id"] == checklist["id"] for c in client.get("/checklist/", headers=cabeceras).json())
-    detalle = client.get(f"/checklist/{checklist['id']}", headers=cabeceras)
-    assert detalle.status_code == status.HTTP_200_OK
-    tarea = checklist["items"][0]["id"]
-    assert client.get(f"/checklist/{checklist['id']}/tareas/{tarea}", headers=cabeceras).status_code == 200
+    ajeno = client.post("/checklist/generar", json={"responsable_legajo": usuarios["ambos"].legajo}, headers=cabeceras)
+    assert ajeno.status_code == status.HTTP_403_FORBIDDEN
+
+    propio = client.post("/checklist/generar", json={"responsable_legajo": operador.legajo}, headers=cabeceras)
+    assert propio.status_code == status.HTTP_201_CREATED
+    # solo trae las tareas que tiene asignadas
+    assert all(t["responsable_legajo"] == operador.legajo for t in propio.json()["items"])
 
 
-def test_el_operador_no_ve_el_historial(session: Session, usuarios: Dict[str, Personal]) -> None:
-    checklist = _generar_checklist_de_hoy(usuarios["administrador"])
+def test_el_checklist_solo_trae_las_tareas_del_responsable(session: Session, usuarios: Dict[str, Personal]) -> None:
+    tarea = session.get(Tarea, 2)
+    tarea.personal_id = usuarios["ambos"].legajo
+    session.commit()
+
+    del_operador = _generar_checklist_de_hoy(usuarios["administrador"])
+    assert [t["nombre_tarea"] for t in del_operador["items"]] == ["Desinfeccion"]
+
+    del_otro = client.post("/checklist/generar", json={"responsable_legajo": usuarios["ambos"].legajo},
+                           headers=headers(usuarios["administrador"])).json()
+    assert [t["nombre_tarea"] for t in del_otro["items"]] == ["Descongelar"]
+
+
+def test_el_operador_ve_solo_sus_checklists_con_su_historial(session: Session, usuarios: Dict[str, Personal]) -> None:
+    propio = _generar_checklist_de_hoy(usuarios["administrador"])
+    ajeno = client.post("/checklist/generar", json={"responsable_legajo": usuarios["ambos"].legajo},
+                        headers=headers(usuarios["administrador"]))
+    # el checklist del otro no tiene tareas (todas son del operador): se lo asignamos a mano
+    assert ajeno.status_code == status.HTTP_400_BAD_REQUEST
     ayer = date.today() - timedelta(days=1)
-    session.get(Checklist, checklist["id"]).fecha = ayer
+    session.get(Checklist, propio["id"]).fecha = ayer
+    session.commit()
+    otro = Checklist(fecha=date.today(), responsable_legajo=usuarios["ambos"].legajo)
+    session.add(otro)
     session.commit()
 
     operador = headers(usuarios["operador"])
     administrador = headers(usuarios["administrador"])
 
-    # el detalle del historial esta vedado para el operador
-    assert client.get(f"/checklist/{checklist['id']}", headers=operador).status_code == status.HTTP_403_FORBIDDEN
-    # el listado ignora los filtros de fecha: siempre devuelve solo el dia de hoy
-    pedido = client.get(f"/checklist/?fecha={ayer.isoformat()}", headers=operador)
-    assert pedido.status_code == status.HTTP_200_OK
-    assert all(c["fecha"] == date.today().isoformat() for c in pedido.json())
+    # el operador ve su checklist de ayer (historial) y no el del otro
+    ids = [c["id"] for c in client.get("/checklist/", headers=operador).json()]
+    assert propio["id"] in ids and otro.id not in ids
+    assert client.get(f"/checklist/{propio['id']}", headers=operador).status_code == status.HTTP_200_OK
+    assert client.get(f"/checklist/{otro.id}", headers=operador).status_code == status.HTTP_403_FORBIDDEN
+    # los filtros de fecha valen tambien para el operador
+    assert propio["id"] not in [c["id"] for c in client.get(f"/checklist/?fecha={date.today().isoformat()}", headers=operador).json()]
 
-    # el administrador si ve el historial
-    assert client.get(f"/checklist/{checklist['id']}", headers=administrador).status_code == status.HTTP_200_OK
-    historial = client.get(f"/checklist/?fecha={ayer.isoformat()}", headers=administrador).json()
-    assert any(c["id"] == checklist["id"] for c in historial)
+    # el administrador ve el de todos
+    ids_admin = [c["id"] for c in client.get("/checklist/", headers=administrador).json()]
+    assert propio["id"] in ids_admin and otro.id in ids_admin
+
+
+def test_nadie_completa_una_tarea_asignada_a_otro(session: Session, usuarios: Dict[str, Personal]) -> None:
+    checklist = _generar_checklist_de_hoy(usuarios["administrador"])
+    item = checklist["items"][0]["id"]
+    # un usuario AMBAS ve todos los checklists, pero la tarea es del operador
+    respuesta = client.post(
+        f"/checklist/{checklist['id']}/tareas/{item}/completar",
+        json={"responsable_legajo": usuarios["ambos"].legajo},
+        headers=headers(usuarios["ambos"]),
+    )
+    assert respuesta.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_el_responsable_de_la_tarea_debe_ser_un_usuario_activo(session: Session, usuarios: Dict[str, Personal]) -> None:
+    datos = {"nombre": "Tarea nueva", "descripcion": "Paso 1 limpiar", "frecuencia": "diaria", "plan_id": 1}
+    cabeceras = headers(usuarios["administrador"])
+
+    assert client.post("/tareas/", json={**datos, "personal_id": 9999}, headers=cabeceras).status_code == 400
+    assert client.post("/tareas/", json=datos, headers=cabeceras).status_code == 422
+
+    usuarios["ambos"].activo = False
+    session.commit()
+    assert client.post("/tareas/", json={**datos, "personal_id": usuarios["ambos"].legajo},
+                       headers=cabeceras).status_code == 400
+
+    ok = client.post("/tareas/", json={**datos, "personal_id": usuarios["operador"].legajo}, headers=cabeceras)
+    assert ok.status_code == 200
+    assert ok.json()["personal_id"] == usuarios["operador"].legajo
 
 
 def test_la_autoria_de_la_tarea_sale_del_token(usuarios: Dict[str, Personal]) -> None:
@@ -172,8 +221,11 @@ def test_un_administrador_puro_no_puede_operar(usuarios: Dict[str, Personal]) ->
     assert subir.status_code == status.HTTP_403_FORBIDDEN
 
 
-def test_el_rol_ambos_puede_operar(usuarios: Dict[str, Personal]) -> None:
-    checklist = _generar_checklist_de_hoy(usuarios["ambos"])
+def test_el_rol_ambos_puede_operar(session: Session, usuarios: Dict[str, Personal]) -> None:
+    for tarea in session.query(Tarea).all():
+        tarea.personal_id = usuarios["ambos"].legajo
+    session.commit()
+    checklist = _generar_checklist_de_hoy(usuarios["ambos"], usuarios["ambos"].legajo)
     tarea = checklist["items"][0]["id"]
     respuesta = client.post(
         f"/checklist/{checklist['id']}/tareas/{tarea}/completar",
