@@ -39,8 +39,11 @@ import { ListadoCertificadosPorPersona } from './views/certificado/listadoPorPer
 import { NuevoCertificado } from './views/certificado/nuevoCertificado';
 import { EditarCertificado } from './views/certificado/editarDetalle';
 import { DetalleCertificado } from './views/certificado/verDetalle';
+import { ListadoTiposCertificados } from './views/tipoCertificado/listado';
+import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertificado';
+import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'vencimientos' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar' | 'certificados' | 'nuevo_certificado' | 'editar_certificado' | 'detalle_certificado';
@@ -48,6 +51,7 @@ type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
+type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 
 function Aplicacion() {
   const { esAdministrador } = useAuth();
@@ -83,6 +87,9 @@ function Aplicacion() {
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
 
+  const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
+  const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
+
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaEquipos('listado');
@@ -93,6 +100,7 @@ function Aplicacion() {
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
     setCertificadoSeleccionado(null);
+    setVistaTipoCertificado('listado');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -362,6 +370,26 @@ function Aplicacion() {
           <ListadoCertificados 
             onVerPersona={irACertificadosDePersona}
           />
+        ) : modulo === 'tipoCertificado'?(
+          vistaTipoCertificado === 'listado' ? (
+            <ListadoTiposCertificados
+              onNuevoClick={() => setVistaTipoCertificado('alta')}
+              onDetalleClick={(id) => {
+                setTipoCertificadoSeleccionado(id);
+                setVistaTipoCertificado('detalle');
+              }}
+            />
+          ) : vistaTipoCertificado === 'alta' ? (
+            <NuevoTipoCertificado
+              onSuccess={() => setVistaTipoCertificado('listado')}
+              onCancel={() => setVistaTipoCertificado('listado')}
+            />
+          ) : vistaTipoCertificado === 'detalle' ? (
+            <DetalleTipoCertificado
+              tipoId={tipoCertificadoSeleccionado}
+              onCancel={() => setVistaTipoCertificado('listado')}
+            />
+          ) : null
         ) : null}
       </div>
     </div>

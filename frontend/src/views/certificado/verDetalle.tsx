@@ -73,7 +73,7 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
 
           <div className="form-group">
             <label htmlFor="tipo">Tipo</label>
-            <input id="tipo" type="text" value={certificado.tipo} disabled />
+            <input id="tipo" type="text" value={certificado.tipo || 'Sin tipo'} disabled />
           </div>
 
           <div className="form-group">
@@ -93,12 +93,54 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
 
           <div className="form-group">
             <label htmlFor="foto_url">Archivo / Comprobante</label>
-            <input
-              id="foto_url"
-              type="text"
-              value={certificado.foto_url || 'Sin archivo adjunto'}
-              disabled
-            />
+            {certificado.foto_url ? (
+              <div style={{ position: 'relative', width: '100%' }}>
+                {/* Input deshabilitado para garantizar dimensiones, borde y fondo exactos */}
+                <input
+                  id="foto_url"
+                  type="text"
+                  value=""
+                  disabled
+                  style={{ width: '100%', margin: 0 }}
+                />
+                {/* Enlace posicionado exactamente encima del texto del input */}
+                <a
+                  href={`${API_URL}${certificado.foto_url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '12px',
+                    transform: 'translateY(-50%)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    color: '#2563eb',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  <span>
+                    {certificado.foto_url.toLowerCase().endsWith('.pdf')
+                      ? 'Ver documento'
+                      : 'Ver imagen'}
+                  </span>
+                  <span style={{ fontSize: '0.95rem', lineHeight: 1 }}>↗</span>
+                </a>
+              </div>
+            ) : (
+              <input
+                id="foto_url"
+                type="text"
+                value="Sin archivo adjunto"
+                disabled
+              />
+            )}
           </div>
         </form>
       ) : (

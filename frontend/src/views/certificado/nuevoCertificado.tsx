@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+
+interface TipoCertificadoOption {
+  id: number;
+  nombre: string;
+}
 
 interface NuevoCertificadoProps {
   legajoPersona: number;
@@ -13,7 +18,9 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
   onSuccess,
   onCancel,
 }) => {
-  const [tipo, setTipo] = useState('');
+  const [tipos, setTipos] = useState<TipoCertificadoOption[]>([]);
+  const [loadingTipos, setLoadingTipos] = useState(true);
+  const [idTipo, setIdTipo] = useState<string>('');
   const [fechaVencimiento, setFechaVencimiento] = useState('');
   const [archivo, setArchivo] = useState<File | null>(null);
 
@@ -22,16 +29,31 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
   const [advertenciaInput, setAdvertenciaInput] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const handleTipoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+  useEffect(() => {
+    const cargarTipos = async () => {
+      setLoadingTipos(true);
+      try {
+        const res = await apiFetch('/certificados/tipos/');
+        if (res.ok) {
+          const data: TipoCertificadoOption[] = await res.json();
+          setTipos(data);
+        } else {
+          setErrorMsg('No se pudieron obtener los tipos de certificados.');
+        }
+      } catch {
+        setErrorMsg('Error al conectar con el servidor para cargar tipos.');
+      } finally {
+        setLoadingTipos(false);
+      }
+    };
+
+    cargarTipos();
+  }, []);
+
+  const handleIdTipoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setAdvertenciaInput(null);
     setErrorMsg(null);
-
-    if (value.length > 30) {
-      setAdvertenciaInput('El tipo no puede tener más de 30 caracteres.');
-      return;
-    }
-    setTipo(value);
+    setIdTipo(e.target.value);
   };
 
   const handleFechaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,19 +64,19 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
     if (value) {
       const fechaIngresada = new Date(`${value}T00:00:00`);
       const fechaMinima = new Date();
-      fechaMinima.setDate(fechaMinima.getDate() + 7);
+      fechaMinima.setDate(fechaMinima.getDate() + 15);
       fechaMinima.setHours(0, 0, 0, 0);
 
       if (fechaIngresada < fechaMinima) {
-        setAdvertenciaInput('La fecha de vencimiento debe ser al menos dentro de 7 días.');
+        setAdvertenciaInput('La fecha de vencimiento debe ser al menos dentro de 15 días.');
       }
     }
     setFechaVencimiento(value);
   };
 
   const handleBlurTipo = () => {
-    if (!tipo.trim()) {
-      setAdvertenciaInput('El tipo de certificado es obligatorio.');
+    if (!idTipo) {
+      setAdvertenciaInput('Debe seleccionar un tipo de certificado.');
     }
   };
 
@@ -83,15 +105,8 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
     setAdvertenciaInput(null);
     setSuccessMsg(null);
 
-    const tipoLimpio = tipo.trim();
-
-    if (!tipoLimpio) {
-      setErrorMsg('El tipo de certificado no puede estar vacío.');
-      return;
-    }
-
-    if (tipoLimpio.length > 30) {
-      setErrorMsg('El tipo de certificado no puede superar los 30 caracteres.');
+    if (!idTipo) {
+      setErrorMsg('Debe seleccionar un tipo de certificado.');
       return;
     }
 
@@ -102,11 +117,11 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
 
     const fechaIngresada = new Date(`${fechaVencimiento}T00:00:00`);
     const fechaMinima = new Date();
-    fechaMinima.setDate(fechaMinima.getDate() + 7);
+    fechaMinima.setDate(fechaMinima.getDate() + 15);
     fechaMinima.setHours(0, 0, 0, 0);
 
     if (fechaIngresada < fechaMinima) {
-      setErrorMsg('La fecha de vencimiento no puede ser anterior a dentro de 7 días.');
+      setErrorMsg('La fecha de vencimiento no puede ser anterior a dentro de 15 días.');
       return;
     }
 
@@ -114,7 +129,7 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
 
     try {
       const formData = new FormData();
-      formData.append('tipo', tipoLimpio);
+      formData.append('id_tipo', idTipo);
       formData.append('fechaVencimiento', fechaVencimiento);
       formData.append('legajo_persona', String(legajoPersona));
 
@@ -163,20 +178,27 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="form-group">
-          <label htmlFor="tipo">
+          <label htmlFor="id_tipo">
             Tipo de Certificado <span style={{ color: '#dc2626' }}>*</span>
           </label>
-          <input
-            id="tipo"
-            name="tipo"
-            type="text"
-            placeholder="Ej: Carnet Manipulador, Curso Seg..."
-            value={tipo}
-            onChange={handleTipoChange}
+          <select
+            id="id_tipo"
+            name="id_tipo"
+            value={idTipo}
+            onChange={handleIdTipoChange}
             onBlur={handleBlurTipo}
-            maxLength={30}
+            disabled={loadingTipos}
             required
-          />
+          >
+            <option value="">
+              {loadingTipos ? 'Cargando tipos disponibles...' : 'Seleccione un tipo...'}
+            </option>
+            {tipos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">
@@ -213,7 +235,7 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
           <button
             type="submit"
             className="btn-guardar"
-            disabled={loading || !tipo.trim() || !fechaVencimiento}
+            disabled={loading || !idTipo || !fechaVencimiento}
           >
             {loading ? 'Guardando...' : 'Guardar'}
           </button>

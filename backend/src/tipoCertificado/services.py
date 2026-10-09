@@ -1,17 +1,24 @@
 from typing import List
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select, update, func
 from sqlalchemy.orm import Session
 from src.tipoCertificado import exceptions, schemas
 from src.tipoCertificado.models import TipoCertificado
 from src.certificado.models import Certificado
 
 def crear_tipo_certificado(db: Session, nombre: str) -> TipoCertificado:
-  nombre_limpio = nombre.strip()
+  nombre_limpio = " ".join(nombre.split())
   if not nombre_limpio:
-    raise exceptions.NombreVacio()
+    raise exceptions.TipoVacio()
 
+  # String sin espacios y en minúsculas para comparar
+  nombre_sin_espacios = nombre_limpio.replace(" ", "").lower()
+
+  # En la base comparamos quitando todos los espacios y pasando a minúsculas
   existente = db.scalar(
-      select(TipoCertificado).where(TipoCertificado.nombre == nombre_limpio)
+      select(TipoCertificado).where(
+          func.lower(func.replace(TipoCertificado.nombre, " ", ""))
+          == nombre_sin_espacios
+      )
   )
   if existente:
     raise exceptions.TipoCertificadoYaExiste()

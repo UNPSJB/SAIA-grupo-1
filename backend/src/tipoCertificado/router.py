@@ -3,8 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, Form
 from sqlalchemy.orm import Session
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
-from src.certificado import schemas  # o desde donde tengas schemas y services de tipo
-from src.certificado import services_tipo as services  # ajustá la ruta a tu service de tipos
+from src.tipoCertificado import schemas, services
 from src.database import get_db
 
 router = APIRouter(prefix="/certificados/tipos", tags=["tipos_certificados"])

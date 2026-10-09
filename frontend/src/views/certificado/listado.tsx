@@ -119,7 +119,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         }}
         title="Abrir comprobante"
       >
-        {esPdf ? 'Ver PDF' : 'Ver foto'} ↗
+        {esPdf ? 'Ver PDF' : 'Ver imagen'} ↗
       </a>
     );
   };

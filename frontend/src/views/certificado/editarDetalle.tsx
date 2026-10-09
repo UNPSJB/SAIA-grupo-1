@@ -70,11 +70,11 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
     if (name === 'fechaVencimiento' && value) {
       const fechaIngresada = new Date(`${value}T00:00:00`);
       const fechaMinima = new Date();
-      fechaMinima.setDate(fechaMinima.getDate() + 7);
+      fechaMinima.setDate(fechaMinima.getDate() + 15);
       fechaMinima.setHours(0, 0, 0, 0);
 
       if (fechaIngresada < fechaMinima) {
-        setAdvertenciaInput('La fecha de vencimiento debe ser al menos dentro de 7 días.');
+        setAdvertenciaInput('La fecha de vencimiento debe ser al menos dentro de 15 días.');
       }
     }
 
@@ -121,11 +121,11 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
 
     const fechaIngresada = new Date(`${formData.fechaVencimiento}T00:00:00`);
     const fechaMinima = new Date();
-    fechaMinima.setDate(fechaMinima.getDate() + 7);
+    fechaMinima.setDate(fechaMinima.getDate() + 15);
     fechaMinima.setHours(0, 0, 0, 0);
 
     if (fechaIngresada < fechaMinima) {
-      setErrorMsg('La fecha de vencimiento no puede ser anterior a dentro de 7 días.');
+      setErrorMsg('La fecha de vencimiento no puede ser anterior a dentro de 15 días.');
       return;
     }
 
