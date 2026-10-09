@@ -8,6 +8,9 @@ import NuevoEquipo from './views/equipos/nuevoEquipo';
 import { ListadoEquipos } from './views/equipos/listado';
 import { DetalleEquipo } from './views/equipos/verDetalle';
 import EditarEquipo from './views/equipos/editarDetalle';
+import { ListadoSectores } from './views/sectores/listado';
+import { NuevoSector } from './views/sectores/nuevoSector';
+import { EditarSector } from './views/sectores/editarSector';
 import { NuevaPersona } from './views/personas/nuevaPersona';
 import { ListadoPersonas } from './views/personas/listado';
 import { DetallePersona } from './views/personas/verDetalle';
@@ -36,7 +39,8 @@ import { Login } from './views/auth/login';
 import { useAuth } from './auth/useAuth';
 import { moduloInicial, puedeVerModulo } from './auth/permisos';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria';
+type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -54,6 +58,9 @@ function Aplicacion() {
   
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
   const [equipoSeleccionado, setEquipoSeleccionado] = useState<number | null>(null);
+
+  const [vistaSectores, setVistaSectores] = useState<VistaSectores>('listado');
+  const [sectorSeleccionado, setSectorSeleccionado] = useState<number | null>(null);
 
   
   const [vistaInsumos, setVistaInsumos] = useState<VistaInsumos>('listado');
@@ -78,6 +85,7 @@ function Aplicacion() {
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaEquipos('listado');
+    setVistaSectores('listado');
     setVistaInsumos('listado');
     setVistaPersonas('listado');
     setVistaInsumosQuimicos('listado');
@@ -166,6 +174,27 @@ function Aplicacion() {
               equipoId={equipoSeleccionado}
               onSuccess={() => setVistaEquipos('listado')}
               onCancel={() => setVistaEquipos('listado')}
+            />
+          )
+        ) : modulo === 'sectores' ? (
+          vistaSectores === 'listado' ? (
+            <ListadoSectores
+              onNuevoClick={() => setVistaSectores('alta')}
+              onEditarClick={(id) => {
+                setSectorSeleccionado(id);
+                setVistaSectores('editar');
+              }}
+            />
+          ) : vistaSectores === 'alta' ? (
+            <NuevoSector
+              onSuccess={() => setVistaSectores('listado')}
+              onCancel={() => setVistaSectores('listado')}
+            />
+          ) : (
+            <EditarSector
+              sectorId={sectorSeleccionado}
+              onSuccess={() => setVistaSectores('listado')}
+              onCancel={() => setVistaSectores('listado')}
             />
           )
         ) : modulo === 'personas' ? (

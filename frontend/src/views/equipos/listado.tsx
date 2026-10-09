@@ -8,7 +8,9 @@ interface ListadoEquiposProps {
     onNuevoClick?: () => void;
     onDetalleClick?: (id: number) => void;
     onEditarClick?: (id: number) => void;
-}export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
+}
+
+export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
     onNuevoClick,
     onDetalleClick,
     onEditarClick,
@@ -90,7 +92,7 @@ interface ListadoEquiposProps {
         const term = busqueda.toLowerCase().trim();
         const matchBusqueda = !term ||
             eq.nombre.toLowerCase().includes(term) ||
-            (eq.ubicacion && eq.ubicacion.toLowerCase().includes(term)) ||
+            (eq.ubicacion?.nombre && eq.ubicacion.nombre.toLowerCase().includes(term)) ||
             (eq.categoria && eq.categoria.toLowerCase().includes(term)) ||
             (eq.plan_de_Limpieza?.nombre && eq.plan_de_Limpieza.nombre.toLowerCase().includes(term));
 
@@ -104,13 +106,13 @@ interface ListadoEquiposProps {
         <div className="modulo-container">
             <div className="listado-top-bar">
                 <div className="modulo-header">
-                    <h1>Listado de Equipos</h1>
+                    <h1>Lista de Equipos</h1>
                     <div className="subtitulo">01 · Listado</div>
                 </div>
 
                 {onNuevoClick && (
                     <button onClick={onNuevoClick} className="btn-guardar">
-                        + Agregar Equipo
+                        + Registrar Equipo
                     </button>
                 )}
             </div>
@@ -151,6 +153,7 @@ interface ListadoEquiposProps {
                     <thead>
                         <tr>
                             <th>Nombre</th>
+                            <th>Ubicación</th>
                             <th>Categoría</th>
                             <th>Plan de Limpieza</th>
                             <th>Estado</th>
@@ -160,13 +163,13 @@ interface ListadoEquiposProps {
                     <tbody>
                         {loading ? (
                             <tr>
-                                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
                                     Cargando equipos...
                                 </td>
                             </tr>
                         ) : equiposFiltrados.length === 0 ? (
                             <tr>
-                                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
                                     {busqueda || filtroEstado !== 'TODOS' || filtroCategoria !== 'TODOS'
                                         ? 'No se encontraron equipos que coincidan con los filtros.'
                                         : 'No hay equipos registrados.'}
@@ -176,6 +179,7 @@ interface ListadoEquiposProps {
                             equiposFiltrados.map((i) => (
                                 <tr key={i.id}>
                                     <td style={{ fontWeight: 500 }}>{i.nombre}</td>
+                                    <td>{i.ubicacion?.nombre || '-'}</td>
                                     <td>{i.categoria}</td>
                                     <td>{i.plan_de_Limpieza?.nombre || 'Sin plan asignado'}</td>
                                     <td>

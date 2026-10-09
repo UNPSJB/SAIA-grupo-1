@@ -82,3 +82,20 @@ def test_editar_plan_fecha_inicio(session: Session) -> None:
             PlanDeLimpiezaUpdate(fecha_inicio=fecha_futura),
         )
 
+
+def test_crear_plan_sector_valido(session: Session) -> None:
+    hoy = date.today()
+    plan = crear_plan(
+        session,
+        PlanDeLimpiezaCreate(
+            nombre="PlanSectorCocina",
+            fecha_inicio=hoy,
+            sector_id=1,
+        ),
+    )
+    assert plan.id is not None
+    assert plan.sector_id == 1
+    assert plan.nombre_sector == "Cocina"
+    assert plan.equipo_id is None
+
+

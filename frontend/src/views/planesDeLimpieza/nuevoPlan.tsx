@@ -1,52 +1,51 @@
 import { useEffect, useState } from "react";
 import type { PlanForm } from "./tipos";
 import type { EquipoConId } from '../equipos/tipos';
+import type { Sector } from '../sectores/tipos';
 import "../../styles/formularioAlta.css";
 import type { TareaConId } from "../tareas/tipos";
 import NuevaTarea from "../tareas/nuevaTarea";
 import { apiFetch } from '../../api/client';
 
-const PLAN_INICAL:PlanForm ={
-    nombre:"",
-    equipo_id:"",
-    fecha_inicio:"",
-    tareas:[]
-} const HOY = new Date().toISOString().split("T")[0];
+const PLAN_INICIAL: PlanForm = {
+  nombre: "",
+  tipo_objetivo: "equipo",
+  equipo_id: "",
+  sector_id: "",
+  fecha_inicio: "",
+  tareas: [],
+};
+
+const HOY = new Date().toISOString().split("T")[0];
 
 interface NuevoPlanDeLimpizaProps {
-    onSuccess?: () => void;
-    onCancel?: () => void;
-
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
+export default function NuevoPlanDeLimpieza({ onSuccess, onCancel }: NuevoPlanDeLimpizaProps) {
+  const [planLimpieza, setPlanLimp] = useState<PlanForm>(PLAN_INICIAL);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [equipos, setEquipos] = useState<EquipoConId[]>([]);
+  const [sectores, setSectores] = useState<Sector[]>([]);
+  const [tareas, setTareas] = useState<TareaConId[]>([]);
+  const [modalAbierto, setModalAbierto] = useState(false);
 
-export default function NuevoPlanDeLimpieza({onSuccess, onCancel}: NuevoPlanDeLimpizaProps){
-    const [planLimpieza, setPlanLimp] = useState<PlanForm>(PLAN_INICAL);
-    const [loading, setLoading] = useState(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
-    const [equipos,setEquipos]= useState<EquipoConId[]>([]);
-    const [tareas,setTareas]= useState<TareaConId[]> ([]);
-    const [modalAbierto,setModalAbierto]= useState(false);
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+    setPlanLimp({ ...planLimpieza, [e.target.name]: e.target.value });
+  }
 
-
-function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setPlanLimp({...planLimpieza, [e.target.name]: e.target.value})
-}
-
-async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
+  async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    function soloLetrasYNumeros(nombre:string): boolean{
-
-        const patron=/^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s]+$/;
-        return patron.test(nombre);
-
+    function soloLetrasYNumeros(nombre: string): boolean {
+      const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s]+$/;
+      return patron.test(nombre);
     }
-
-
 
     if (!planLimpieza.nombre.trim()) {
       setErrorMsg("El nombre del plan no puede estar vacío.");
@@ -54,41 +53,51 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
     }
 
     if (planLimpieza.nombre.trim().length < 4) {
-    setErrorMsg("El nombre debe tener al menos 4 caracteres.");
-    return;
+      setErrorMsg("El nombre debe tener al menos 4 caracteres.");
+      return;
     }
 
-    if(!soloLetrasYNumeros(planLimpieza.nombre)){
+    if (!soloLetrasYNumeros(planLimpieza.nombre)) {
       setErrorMsg("No se permiten caracteres especiales en el nombre.");
       return;
     }
 
-    if(planLimpieza.fecha_inicio > HOY){
-
+    if (planLimpieza.fecha_inicio > HOY) {
       setErrorMsg("La fecha no puede ser mayor a la fecha actual");
+      return;
     }
 
-    const payload={
-        nombre: planLimpieza.nombre.trim(),
-        equipo_id:Number(planLimpieza.equipo_id),
-        fecha_inicio:planLimpieza.fecha_inicio,
-        tareas: tareas
+    if (planLimpieza.tipo_objetivo === "equipo" && !planLimpieza.equipo_id) {
+      setErrorMsg("Debe seleccionar un equipo.");
+      return;
     }
+
+    if (planLimpieza.tipo_objetivo === "sector" && !planLimpieza.sector_id) {
+      setErrorMsg("Debe seleccionar un sector.");
+      return;
+    }
+
+    const payload = {
+      nombre: planLimpieza.nombre.trim(),
+      fecha_inicio: planLimpieza.fecha_inicio,
+      tareas: tareas,
+      ...(planLimpieza.tipo_objetivo === "equipo"
+        ? { equipo_id: Number(planLimpieza.equipo_id) }
+        : { sector_id: Number(planLimpieza.sector_id) }),
+    };
 
     setLoading(true);
 
-
     try {
-        const res= await apiFetch(`/plan_De_limpieza/`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-        });
+      const res = await apiFetch(`/plan_De_limpieza/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-
-        if (!res.ok) {
+      if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         let mensaje = "Error al guardar el plan.";
         if (typeof errorData.detail === "string") {
@@ -101,45 +110,51 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         throw new Error(mensaje);
       }
 
-    setSuccessMsg("Plan de Limpieza dado de alta exitosamente");
-    setPlanLimp(PLAN_INICAL);
-    setTareas([]);
-    onSuccess?.();
-
-
-
-    }catch (err: unknown) {
-        setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
-    }finally {
-        setLoading(false);
+      setSuccessMsg("Plan de Limpieza dado de alta exitosamente");
+      setPlanLimp(PLAN_INICIAL);
+      setTareas([]);
+      onSuccess?.();
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
+    } finally {
+      setLoading(false);
     }
-   
-}
+  }
 
-useEffect(() => {
-        const fetchEquipos = async () => {
-            try {
-                const res = await apiFetch(`/equipos/`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setEquipos(data);
-                }
-            } catch {
-                setEquipos([]);
-            }
-        };
-        fetchEquipos();
-    }, []);
+  useEffect(() => {
+    let cancelado = false;
+    const fetchData = async () => {
+      try {
+        const [resEq, resSec] = await Promise.all([
+          apiFetch(`/equipos/`),
+          apiFetch(`/sectores/`),
+        ]);
+        if (!cancelado) {
+          if (resEq.ok) setEquipos(await resEq.json());
+          if (resSec.ok) setSectores(await resSec.json());
+        }
+      } catch {
+        if (!cancelado) {
+          setEquipos([]);
+          setSectores([]);
+        }
+      }
+    };
+    fetchData();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
-
-function handleCancelar() {
-    setPlanLimp(PLAN_INICAL);
+  function handleCancelar() {
+    setPlanLimp(PLAN_INICIAL);
     setTareas([]);
     setErrorMsg(null);
     setSuccessMsg(null);
     onCancel?.();
-}
-return (
+  }
+
+  return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
         <h1>Nuevo Plan De Limpieza</h1>
@@ -150,7 +165,6 @@ return (
       {successMsg && <div className="alerta-exito">{successMsg}</div>}
 
       <form onSubmit={handleGuardar}>
-
         <div className="form-group">
           <label htmlFor="fecha_inicio">Fecha del Plan</label>
           <input
@@ -163,7 +177,6 @@ return (
             required
           />
         </div>
-
 
         <div className="form-group">
           <label htmlFor="nombre">Nombre</label>
@@ -179,65 +192,101 @@ return (
         </div>
 
         <div className="form-group">
-          <label htmlFor="equipo_id">Equipo ID</label>
-          <select id="equipo_id" name="equipo_id" value={planLimpieza.equipo_id} onChange={handleChange} required>
-            <option value="" disabled>Seleccione un equipo</option>
-            {equipos.map((equipo) => (
-              <option key={equipo.id} value={equipo.id}>
-                {equipo.nombre}
-              </option>
-            ))}
+          <label htmlFor="tipo_objetivo">Asignar Plan a:</label>
+          <select
+            id="tipo_objetivo"
+            name="tipo_objetivo"
+            value={planLimpieza.tipo_objetivo}
+            onChange={handleChange}
+          >
+            <option value="equipo">Equipo</option>
+            <option value="sector">Sector</option>
           </select>
         </div>
 
+        {planLimpieza.tipo_objetivo === "equipo" ? (
+          <div className="form-group">
+            <label htmlFor="equipo_id">Equipo</label>
+            <select
+              id="equipo_id"
+              name="equipo_id"
+              value={planLimpieza.equipo_id}
+              onChange={handleChange}
+              required
+            >
+              <option value="" disabled>Seleccione un equipo</option>
+              {equipos.map((equipo) => (
+                <option key={equipo.id} value={equipo.id}>
+                  {equipo.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="form-group">
+            <label htmlFor="sector_id">Sector</label>
+            <select
+              id="sector_id"
+              name="sector_id"
+              value={planLimpieza.sector_id}
+              onChange={handleChange}
+              required
+            >
+              <option value="" disabled>Seleccione un sector</option>
+              {sectores.map((sector) => (
+                <option key={sector.id} value={sector.id}>
+                  {sector.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="listado-top-bar">
-                   <div className="modulo-header">
-                   <h2>Tareas</h2>
-              </div>
-      
-              <div className="accion-agregar">
-                  <button type="button" className="btn-agregar" onClick={()=>setModalAbierto(true)}>
-                      +Agregar Tarea
-                  </button>
-                  </div>
-            </div>
-      
-            <div className="tabla-wrapper">
-              <table className="tabla-custom">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Procedimiento</th>
-                    <th>Frecuencia</th>
+          <div className="modulo-header">
+            <h2>Tareas</h2>
+          </div>
+          <div className="accion-agregar">
+            <button type="button" className="btn-agregar" onClick={() => setModalAbierto(true)}>
+              +Agregar Tarea
+            </button>
+          </div>
+        </div>
+
+        <div className="tabla-wrapper">
+          <table className="tabla-custom">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Procedimiento</th>
+                <th>Frecuencia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                    Cargando Tareas...
+                  </td>
+                </tr>
+              ) : tareas?.length === 0 ? (
+                <tr>
+                  <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                    No hay Tareas registradas.
+                  </td>
+                </tr>
+              ) : (
+                tareas?.map((t: TareaConId) => (
+                  <tr key={t.id}>
+                    <td style={{ fontWeight: 500 }}>{t.nombre}</td>
+                    <td>{t.descripcion}</td>
+                    <td>{t.frecuencia}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
-                        Cargando Tareas...
-                      </td>
-                    </tr>
-                  ) :tareas?.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
-                        No hay Tareas registradas.
-                      </td>
-                    </tr>
-                  ) : (
-                    tareas?.map((t: TareaConId) => (
-                      <tr key={t.id}>
-                        <td style={{ fontWeight: 500 }}>{t.nombre}</td>
-                        <td>{t.descripcion}</td>
-                        <td>{t.frecuencia}</td>
-                      </tr>
-      
-                      
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
@@ -249,20 +298,17 @@ return (
         </div>
       </form>
 
-      
-            {modalAbierto &&(
-      
-                    <div className="modal-abierto">
-                      <div className="modal-content">
-                        <NuevaTarea
-                        onSuccess={()=> setModalAbierto(false)}
-                        onCancel={() => setModalAbierto(false)}
-                        onAgregarLocal={(nuevaTarea) => {setTareas(prev =>[...prev,nuevaTarea])}}
-                        />
-      
-                      </div>
-            </div>)}
-      
+      {modalAbierto && (
+        <div className="modal-abierto">
+          <div className="modal-content">
+            <NuevaTarea
+              onSuccess={() => setModalAbierto(false)}
+              onCancel={() => setModalAbierto(false)}
+              onAgregarLocal={(nuevaTarea) => { setTareas(prev => [...prev, nuevaTarea]); }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

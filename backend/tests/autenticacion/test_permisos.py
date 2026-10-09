@@ -46,6 +46,11 @@ SOLO_ADMIN = [
     ("PUT", "/api/insumos-quimicos/1"),
     ("PATCH", "/api/insumos-quimicos/1/toggle"),
     ("POST", "/checklist/generar"),
+    ("GET", "/sectores/"),
+    ("POST", "/sectores/"),
+    ("GET", "/sectores/1"),
+    ("PUT", "/sectores/1"),
+    ("DELETE", "/sectores/1"),
 ]
 
 # Endpoints que piden estar logueado, sin importar el rol.

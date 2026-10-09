@@ -1,164 +1,150 @@
-import { useEffect,useRef,useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
-interface EliminarEquipoProps{
-    equipoID?:number | null;
-    onCancel?: () => void;
-    onSucces?: ()=> void;
-}export default function EliminarEquipo({equipoID,onCancel,onSucces}:EliminarEquipoProps){
+interface EliminarEquipoProps {
+  equipoID?: number | null;
+  onCancel?: () => void;
+  onSucces?: () => void;
+}
 
-    const[equipo,setEquipo]= useState<EquipoConId | null>(null);
-    const[loading, setLoading]= useState(true);
+export default function EliminarEquipo({ equipoID, onCancel, onSucces }: EliminarEquipoProps) {
+  const [equipo, setEquipo] = useState<EquipoConId | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    const dialog= useRef<HTMLDialogElement>(null);
-    const dialogSeguro=useRef<HTMLDialogElement>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const dialogSeguro = useRef<HTMLDialogElement>(null);
 
-const handleEliminar = async (id?: number) => {
-        if (!id) return;
-
-        try {
-            const res = await apiFetch(`/equipos/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                setEquipo(null);
-                dialog.current?.showModal();// invoca el mensaje de eliminacion exitosa
-                
-
-
-            }
-
-        }catch{
-            alert('No se pudo eliminar el equipo.');
-        }
-    };
-    useEffect(()=>{
-
-     if(equipoID){
-        const fetchEquipo= async() => {
-
-            try {
-                const res=  await apiFetch(`/equipos/${equipoID}`);
-                if(res.ok){
-                  const data=  await res.json(); 
-                  setEquipo(data);
-                }
-            } catch{
-                alert("El equipo no existe.")
-            }finally{
-                setLoading(false);
-            }
-        };
-
-        fetchEquipo();
+  const handleEliminar = async (id?: number) => {
+    if (!id) return;
+    try {
+      const res = await apiFetch(`/equipos/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setEquipo(null);
+        dialog.current?.showModal();
+      }
+    } catch {
+      alert('No se pudo eliminar el equipo.');
     }
+  };
 
-    }, [equipoID]);
+  useEffect(() => {
+    if (equipoID) {
+      const fetchEquipo = async () => {
+        try {
+          const res = await apiFetch(`/equipos/${equipoID}`);
+          if (res.ok) {
+            const data = await res.json();
+            setEquipo(data);
+          }
+        } catch {
+          alert("El equipo no existe.");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchEquipo();
+    }
+  }, [equipoID]);
 
-
-    return (
+  return (
     <div className="modulo-container formulario-box">
-        <div className="modulo-header">
-            <h1>Eliminar Equipo</h1>
-            <div className="subtitulo">Equipo: {equipoID}</div>
+      <div className="modulo-header">
+        <h1>Eliminar Equipo</h1>
+        <div className="subtitulo">Equipo: {equipoID}</div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          Cargando equipo...
         </div>
+      ) : equipo ? (
+        <form>
+          <div className="form-group">
+            <label htmlFor="nombre">Nombre</label>
+            <input
+              id="nombre"
+              name="nombre"
+              type="text"
+              value={equipo.nombre}
+              disabled
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="categoria">Categoría:</label>
+            <input
+              id="categoria"
+              name="categoria"
+              value={equipo.categoria}
+              disabled
+            />
+          </div>
 
-            {loading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                               Cargando equipo...
-                        </div>
-        ) : equipo ? (
-        <form >
-            <div className="form-group">
-                <label htmlFor="nombre">Nombre</label>
-                <input
-                    id="nombre"
-                    name="nombre"
-                    type="text"
-                    value={equipo.nombre}
-                    disabled 
-                />
-            </div>
-            <div className="form-group">
-                <label htmlFor="categoria">Categoría:</label>
-                <input
-                    id="categoria"
-                    name="categoria"
-                    value={equipo.categoria}
-                    disabled
-                >
-                </input>
-            </div>
+          <div className="form-group">
+            <label htmlFor="ubicacion">Ubicación</label>
+            <input
+              id="ubicacion"
+              name="ubicacion"
+              type="text"
+              value={equipo.ubicacion?.nombre || ''}
+              disabled
+            />
+          </div>
 
-            <div className="form-group">
-                <label htmlFor="ubicacion">Ubicación</label>
-                <input
-                    id="ubicacion"
-                    name="ubicacion"
-                    type="text"
-                    value={equipo.ubicacion}
-                    disabled
-                />
-            </div>
+          <div className="form-group">
+            <label htmlFor="plan_de_Limpieza">Plan de Limpieza</label>
+            <input
+              id="plan_de_Limpieza"
+              name="plan_de_Limpieza"
+              type="text"
+              value={equipo.plan_de_Limpieza?.nombre || ''}
+              disabled
+            />
+          </div>
 
-            <div className="form-group">
-                <label htmlFor="plan_de_Limpieza">Plan de Limpieza</label>
-                <input
-                    id="plan_de_Limpieza"
-                    name="plan_de_Limpieza"
-                    type="text"
-                    value={equipo.plan_de_Limpieza?.nombre}
-                    disabled
-                />
-            </div>
-
-            <div className="form-group">
-                <label htmlFor="plan_de_calibracion">Plan de Calibración</label>
-                <input
-                    id="plan_de_calibracion"
-                    name="plan_de_calibracion"
-                    type="text"
-                    value={equipo.plan_de_calibracion} 
-                    disabled
-                />
-            </div>
+          <div className="form-group">
+            <label htmlFor="plan_de_calibracion">Plan de Calibración</label>
+            <input
+              id="plan_de_calibracion"
+              name="plan_de_calibracion"
+              type="text"
+              value={equipo.plan_de_calibracion}
+              disabled
+            />
+          </div>
         </form>
-        ) : (
-                     <div style={{ textAlign: 'center', padding: '2rem' }}>
-                             El equipo no existe.
-                        </div>
-                
-                
-                )}
+      ) : (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          El equipo no existe.
+        </div>
+      )}
 
-                <div className="form-acciones"> <button className="btn-eliminar" title="Eliminar" onClick={() => dialogSeguro.current?.showModal()}>
-                                        Eliminar
-                        </button>
-                        
-                        <button type="button"  className="btn-cancelar" onClick={onCancel}>
-                    Cancelar
-                </button>
-                </div>
+      <div className="form-acciones">
+        <button className="btn-eliminar" title="Eliminar" onClick={() => dialogSeguro.current?.showModal()}>
+          Eliminar
+        </button>
+        <button type="button" className="btn-cancelar" onClick={onCancel}>
+          Cancelar
+        </button>
+      </div>
 
-                <dialog ref={dialogSeguro} className="seguro">
-                    <h2>Esta seguro de eliminar este equipo?</h2>
+      <dialog ref={dialogSeguro} className="seguro">
+        <h2>Esta seguro de eliminar este equipo?</h2>
+        <button type="button" className="btn-eliminar" onClick={() => { handleEliminar(equipoID ?? undefined); dialogSeguro.current?.close(); }}>
+          Eliminar
+        </button>
+        <button type="button" className="btn-cancelar" onClick={() => { dialogSeguro.current?.close(); onCancel?.(); }}>
+          Cancelar
+        </button>
+      </dialog>
 
-                    <button type="button" className="btn-eliminar" onClick={() => {handleEliminar(equipoID ?? undefined); dialogSeguro.current?.close()}}>Eliminar</button>
-
-                    <button type="button" className="btn-cancelar" onClick={() => {dialogSeguro.current?.close(); onCancel?.();}}>Cancelar</button>
-                </dialog>
-
-                <dialog ref={dialog} className="eliminado-exito">
-                    <h2>Eliminacion Exitosa</h2>
-                    <button type="button" className="btn-exito" onClick={()=> { dialog.current?.close(); onSucces?.()}}>Aceptar</button>
-                </dialog>
-
-        
+      <dialog ref={dialog} className="eliminado-exito">
+        <h2>Eliminacion Exitosa</h2>
+        <button type="button" className="btn-exito" onClick={() => { dialog.current?.close(); onSucces?.(); }}>
+          Aceptar
+        </button>
+      </dialog>
     </div>
-    
-        
-)
-
-};
-
-
+  );
+}

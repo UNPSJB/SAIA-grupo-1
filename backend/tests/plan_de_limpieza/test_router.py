@@ -82,3 +82,47 @@ def test_put_plan_fecha_inicio(session: Session) -> None:
     )
     assert res_invalido.status_code == status.HTTP_400_BAD_REQUEST
 
+
+def test_post_plan_sector_valido(session: Session) -> None:
+    hoy = date.today().isoformat()
+    response = client.post(
+        "/plan_De_limpieza/",
+        json={
+            "nombre": "PlanCocina",
+            "fecha_inicio": hoy,
+            "sector_id": 1,
+        },
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["nombre"] == "PlanCocina"
+    assert data["sector_id"] == 1
+    assert data["nombre_sector"] == "Cocina"
+
+
+def test_post_plan_sin_objetivo_falla(session: Session) -> None:
+    hoy = date.today().isoformat()
+    response = client.post(
+        "/plan_De_limpieza/",
+        json={
+            "nombre": "PlanSinObjetivo",
+            "fecha_inicio": hoy,
+        },
+    )
+    assert response.status_code in (status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_CONTENT)
+
+
+def test_post_plan_ambos_objetivos_falla(session: Session) -> None:
+    hoy = date.today().isoformat()
+    response = client.post(
+        "/plan_De_limpieza/",
+        json={
+            "nombre": "PlanDobleObjetivo",
+            "fecha_inicio": hoy,
+            "equipo_id": 1,
+            "sector_id": 1,
+        },
+    )
+    assert response.status_code in (status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_CONTENT)
+
+

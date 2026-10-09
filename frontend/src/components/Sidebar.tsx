@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../auth/useAuth';
 import { puedeVerModulo } from '../auth/permisos';
 
-export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria';
+export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -16,6 +16,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
     { id: 'dashboard', label: 'Inicio' },
     { id: 'insumos', label: 'Ingredientes' },
     { id: 'equipos', label: 'Equipos' },
+    { id: 'sectores', label: 'Sectores' },
     { id: 'personas', label: 'Personas' },
     { id: 'insumos_quimicos', label: 'Químicos Limpieza' },
     { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza' },

@@ -38,6 +38,10 @@ from src.equipos.services import crear_equipo
 from src.equipos.schemas import EquipoCreate
 from src.equipos.models import Categoria, Estado
 
+from src.sectores.services import crear_sector
+from src.sectores.schemas import SectorCreate
+import src.sectores.models
+
 from src.elementosDeLimpieza.services import crear_elementoDeLimpieza
 from src.elementosDeLimpieza.schemas import ElementoDeLimpiezaCreate
 
@@ -150,17 +154,25 @@ def main() -> None:
     for nombre, tipo, unidad, stock in INSUMOS_QUIMICOS:
         InsumoQuimicoService.create(db, InsumoQuimicoCreate(nombre=nombre, tipo=tipo, unidad_medida=unidad, stock_actual=stock))
 
+    print("Creando sectores...")
+    s_salon = crear_sector(db, SectorCreate(nombre="Salon Principal"))
+    s_deposito = crear_sector(db, SectorCreate(nombre="Deposito"))
+    s_cuadra = crear_sector(db, SectorCreate(nombre="Cuadra"))
+    s_pasteleria = crear_sector(db, SectorCreate(nombre="Pasteleria"))
+    s_bacha = crear_sector(db, SectorCreate(nombre="Bacha"))
+    s_cocina = crear_sector(db, SectorCreate(nombre="Cocina"))
+
     print("Creando equipos...")
-    heladera = crear_equipo(db, EquipoCreate(nombre="Heladera Exhibidora", categoria=Categoria.CONSERVAMIENTO, ubicacion="Salon Principal", estado=Estado.ACTIVO, plan_de_calibracion="Semestral"))
-    freezer = crear_equipo(db, EquipoCreate(nombre="Freezer Deposito", categoria=Categoria.CONSERVAMIENTO, ubicacion="Deposito", estado=Estado.ACTIVO, plan_de_calibracion="Semestral"))
-    camara = crear_equipo(db, EquipoCreate(nombre="Camara Frigorifica", categoria=Categoria.CONSERVAMIENTO, ubicacion="Deposito", estado=Estado.ACTIVO, plan_de_calibracion="Trimestral"))
-    amasadora = crear_equipo(db, EquipoCreate(nombre="Amasadora Industrial", categoria=Categoria.MANTENIMIENTO, ubicacion="Cuadra", estado=Estado.ACTIVO, plan_de_calibracion="Anual"))
-    horno = crear_equipo(db, EquipoCreate(nombre="Horno Convector", categoria=Categoria.MANTENIMIENTO, ubicacion="Cuadra", estado=Estado.ACTIVO, plan_de_calibracion="Semestral"))
-    crear_equipo(db, EquipoCreate(nombre="Batidora Planetaria", categoria=Categoria.MANTENIMIENTO, ubicacion="Pasteleria", estado=Estado.ACTIVO, plan_de_calibracion="Anual"))
-    crear_equipo(db, EquipoCreate(nombre="Sobadora", categoria=Categoria.MANTENIMIENTO, ubicacion="Cuadra", estado=Estado.ACTIVO, plan_de_calibracion="Anual"))
-    crear_equipo(db, EquipoCreate(nombre="Termometro Pinche", categoria=Categoria.MANTENIMIENTO, ubicacion="Pasteleria", estado=Estado.ACTIVO, plan_de_calibracion="Mensual"))
-    crear_equipo(db, EquipoCreate(nombre="Lavavajillas", categoria=Categoria.SANAMIENTO, ubicacion="Bacha", estado=Estado.ACTIVO, plan_de_calibracion="Anual"))
-    crear_equipo(db, EquipoCreate(nombre="Freidora Electrica", categoria=Categoria.MANTENIMIENTO, ubicacion="Cocina", estado=Estado.INACTIVO, plan_de_calibracion="Anual"))
+    heladera = crear_equipo(db, EquipoCreate(nombre="Heladera Exhibidora", categoria=Categoria.CONSERVAMIENTO, sector_id=s_salon.id, estado=Estado.ACTIVO, plan_de_calibracion="Semestral"))
+    freezer = crear_equipo(db, EquipoCreate(nombre="Freezer Deposito", categoria=Categoria.CONSERVAMIENTO, sector_id=s_deposito.id, estado=Estado.ACTIVO, plan_de_calibracion="Semestral"))
+    camara = crear_equipo(db, EquipoCreate(nombre="Camara Frigorifica", categoria=Categoria.CONSERVAMIENTO, sector_id=s_deposito.id, estado=Estado.ACTIVO, plan_de_calibracion="Trimestral"))
+    amasadora = crear_equipo(db, EquipoCreate(nombre="Amasadora Industrial", categoria=Categoria.MANTENIMIENTO, sector_id=s_cuadra.id, estado=Estado.ACTIVO, plan_de_calibracion="Anual"))
+    horno = crear_equipo(db, EquipoCreate(nombre="Horno Convector", categoria=Categoria.MANTENIMIENTO, sector_id=s_cuadra.id, estado=Estado.ACTIVO, plan_de_calibracion="Semestral"))
+    crear_equipo(db, EquipoCreate(nombre="Batidora Planetaria", categoria=Categoria.MANTENIMIENTO, sector_id=s_pasteleria.id, estado=Estado.ACTIVO, plan_de_calibracion="Anual"))
+    crear_equipo(db, EquipoCreate(nombre="Sobadora", categoria=Categoria.MANTENIMIENTO, sector_id=s_cuadra.id, estado=Estado.ACTIVO, plan_de_calibracion="Anual"))
+    crear_equipo(db, EquipoCreate(nombre="Termometro Pinche", categoria=Categoria.MANTENIMIENTO, sector_id=s_pasteleria.id, estado=Estado.ACTIVO, plan_de_calibracion="Mensual"))
+    crear_equipo(db, EquipoCreate(nombre="Lavavajillas", categoria=Categoria.SANAMIENTO, sector_id=s_bacha.id, estado=Estado.ACTIVO, plan_de_calibracion="Anual"))
+    crear_equipo(db, EquipoCreate(nombre="Freidora Electrica", categoria=Categoria.MANTENIMIENTO, sector_id=s_cocina.id, estado=Estado.INACTIVO, plan_de_calibracion="Anual"))
 
     print("Creando elementos de limpieza...")
     crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Trapo de Piso", frecuenciaDeCambio=1))
