@@ -126,3 +126,65 @@
   color: #ffffff;
   border-color: #2563eb;
 }
+
+@media (max-width: 768px) {
+  .listado-top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .filtros-top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .filtros-top-bar .input-busqueda,
+  .filtros-top-bar .select-filtro {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .tabla-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabla-custom th,
+  .tabla-custom td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .acciones-btns {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: flex-end;
+  }
+
+  .form-acciones {
+    flex-direction: column;
+  }
+
+  .form-acciones > div {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .form-acciones button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal-caja {
+    width: 95%;
+    max-height: 95vh;
+  }
+}
+
+.formulario-box-documento {
+  max-width: 860px;
+}

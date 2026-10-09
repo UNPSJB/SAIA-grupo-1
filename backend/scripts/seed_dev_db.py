@@ -401,8 +401,37 @@ def main() -> None:
     from src.documentos.services import crear_documento, subir_nueva_version
     from src.documentos.constants import TipoDocumento
 
+    def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
+        stream_content = (
+            f"BT\n/F1 18 Tf\n50 720 Td\n({titulo}) Tj\n"
+            f"/F1 12 Tf\n0 -30 Td\n({subtitulo}) Tj\nET\n"
+        ).encode("latin-1")
+        obj5 = b"5 0 obj\n<< /Length " + str(len(stream_content)).encode() + b" >>\nstream\n" + stream_content + b"endstream\nendobj\n"
+        obj1 = b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        obj2 = b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        obj3 = b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n"
+        obj4 = b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+        header = b"%PDF-1.4\n"
+        o1 = len(header)
+        o2 = o1 + len(obj1)
+        o3 = o2 + len(obj2)
+        o4 = o3 + len(obj3)
+        o5 = o4 + len(obj4)
+        xref_offset = o5 + len(obj5)
+        xref = (
+            b"xref\n0 6\n"
+            b"0000000000 65535 f \n"
+            + f"{o1:010d} 00000 n \n".encode()
+            + f"{o2:010d} 00000 n \n".encode()
+            + f"{o3:010d} 00000 n \n".encode()
+            + f"{o4:010d} 00000 n \n".encode()
+            + f"{o5:010d} 00000 n \n".encode()
+        )
+        trailer = b"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + str(xref_offset).encode() + b"\n%%EOF\n"
+        return header + obj1 + obj2 + obj3 + obj4 + obj5 + xref + trailer
+
     print("Creando documentos versionados de ejemplo...")
-    pdf1 = UploadFile(file=io.BytesIO(b"%PDF-1.4 Manual de Buenas Practicas v1"), filename="manual_bpm_v1.pdf")
+    pdf1 = UploadFile(file=io.BytesIO(generar_pdf_valido("Manual de Buenas Practicas de Manufactura", "Version 1.0 (Archivada)")), filename="manual_bpm_v1.pdf")
     doc_bpm = crear_documento(
         db,
         titulo="Manual de Buenas Practicas de Manufactura",
@@ -413,7 +442,7 @@ def main() -> None:
         fecha_vigencia=date.today() - timedelta(days=90),
         responsable_legajo=ana.legajo,
     )
-    pdf2 = UploadFile(file=io.BytesIO(b"%PDF-1.4 Manual de Buenas Practicas v2"), filename="manual_bpm_v2.pdf")
+    pdf2 = UploadFile(file=io.BytesIO(generar_pdf_valido("Manual de Buenas Practicas de Manufactura", "Version 2.0 (Vigente)")), filename="manual_bpm_v2.pdf")
     subir_nueva_version(
         db,
         documento_id=doc_bpm.id,
@@ -422,7 +451,7 @@ def main() -> None:
         responsable_legajo=ana.legajo,
     )
 
-    pdf_receta = UploadFile(file=io.BytesIO(b"%PDF-1.4 Receta Estandar Medialunas"), filename="receta_medialunas.pdf")
+    pdf_receta = UploadFile(file=io.BytesIO(generar_pdf_valido("Receta Estandar: Medialunas de Manteca", "Version 1.0 (Vigente)")), filename="receta_medialunas.pdf")
     crear_documento(
         db,
         titulo="Receta Estandar: Medialunas de Manteca",

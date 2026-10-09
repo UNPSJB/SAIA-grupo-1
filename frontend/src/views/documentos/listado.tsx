@@ -3,6 +3,7 @@ import type { DocumentoListItem, TipoDocumento } from "./tipos";
 import { ModalHistorialVersiones } from "./modalHistorial";
 import { DetalleDocumento } from "./verDetalle";
 import { apiFetch } from "../../api/client";
+import { useAuth } from "../../auth/useAuth";
 import "../../styles/formularioAlta.css";
 import "./documentos.css";
 
@@ -48,6 +49,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
   onNuevaVersionClick,
   onDetalleClick,
 }) => {
+  const { esAdministrador } = useAuth();
   const [documentos, setDocumentos] = useState<DocumentoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [detalleIdInterno, setDetalleIdInterno] = useState<number | null>(null);
@@ -57,6 +59,27 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
 
   const [modalHistorialAbierto, setModalHistorialAbierto] = useState(false);
   const [docHistorialSeleccionado, setDocHistorialSeleccionado] = useState<DocumentoListItem | null>(null);
+
+  const handleDescargar = async (versionId?: number | null, nombreArchivo?: string | null) => {
+    if (!versionId) return;
+    try {
+      const res = await apiFetch(`/documentos/archivo/${versionId}`);
+      if (!res.ok) {
+        throw new Error("No se pudo descargar el archivo.");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nombreArchivo || "documento.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert("Error al descargar el archivo.");
+    }
+  };
 
   const cargarDatos = async () => {
     try {
@@ -106,9 +129,11 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
       <div className="listado-top-bar">
         <div className="modulo-header">
           <h1>Documentos Versionados</h1>
-          <div className="subtitulo">01 · Listado de Documentos Vigentes</div>
+          <div className="subtitulo">
+            {esAdministrador ? "01 · Listado de Documentos Vigentes" : "01 · Consulta de Documentos Vigentes"}
+          </div>
         </div>
-        {onNuevoClick && (
+        {esAdministrador && onNuevoClick && (
           <button
             type="button"
             className="btn-guardar"
@@ -204,14 +229,26 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                       >
                         👁
                       </button>
-                      <button
-                        type="button"
-                        className="btn-icon btn-subir-version"
-                        title="Subir nueva versión"
-                        onClick={() => onNuevaVersionClick?.(doc.id)}
-                      >
-                        ⬆
-                      </button>
+                      {doc.version_actual_id && (
+                        <button
+                          type="button"
+                          className="btn-icon btn-descargar"
+                          title="Descargar versión vigente"
+                          onClick={() => handleDescargar(doc.version_actual_id, doc.archivo_nombre_original)}
+                        >
+                          ⬇
+                        </button>
+                      )}
+                      {esAdministrador && onNuevaVersionClick && (
+                        <button
+                          type="button"
+                          className="btn-icon btn-subir-version"
+                          title="Subir nueva versión"
+                          onClick={() => onNuevaVersionClick(doc.id)}
+                        >
+                          ⬆
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="btn-icon btn-historial"

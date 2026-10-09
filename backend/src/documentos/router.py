@@ -1,5 +1,6 @@
 import base64
 import json
+import mimetypes
 from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
@@ -204,6 +205,20 @@ def obtener_documento_endpoint(
     )
 
 @router.get(
+    "/{documento_id}/vigente",
+    response_model=schemas.VersionDocumentoResponse,
+)
+def obtener_version_vigente_endpoint(
+    documento_id: int,
+    db: Session = Depends(get_db),
+):
+    doc = services.obtener_documento(db, documento_id)
+    v_vigente = doc.version_vigente
+    if not v_vigente:
+        raise exceptions.VersionNoEncontrada()
+    return _serializar_version(v_vigente)
+
+@router.get(
     "/{documento_id}/versiones",
     response_model=List[schemas.VersionDocumentoResponse],
 )
@@ -254,16 +269,19 @@ def descargar_archivo_endpoint(
     db: Session = Depends(get_db),
 ):
     ruta, nombre_original = services.obtener_archivo_version(db, version_id)
+    tipo_media, _ = mimetypes.guess_type(nombre_original)
+    if not tipo_media:
+        tipo_media = "application/pdf" if nombre_original.lower().endswith(".pdf") else "application/octet-stream"
     if inline:
         headers = {"Content-Disposition": f'inline; filename="{nombre_original}"'}
         return FileResponse(
             path=ruta,
-            media_type="application/pdf",
+            media_type=tipo_media,
             headers=headers,
         )
     return FileResponse(
         path=ruta,
-        media_type="application/pdf",
+        media_type=tipo_media,
         filename=nombre_original,
     )
 

@@ -302,22 +302,22 @@ function Aplicacion() {
         ) : modulo === 'documentos' ? (
           vistaDocumentos === 'listado' ? (
             <ListadoDocumentos
-              onNuevoClick={() => setVistaDocumentos('alta')}
-              onNuevaVersionClick={(id) => {
+              onNuevoClick={esAdministrador ? () => setVistaDocumentos('alta') : undefined}
+              onNuevaVersionClick={esAdministrador ? (id) => {
                 setDocumentoSeleccionado(id);
                 setVistaDocumentos('nuevaVersion');
-              }}
+              } : undefined}
               onDetalleClick={(id) => {
                 setDocumentoSeleccionado(id);
                 setVistaDocumentos('detalle');
               }}
             />
-          ) : vistaDocumentos === 'alta' ? (
+          ) : vistaDocumentos === 'alta' && esAdministrador ? (
             <NuevoDocumento
               onSuccess={() => setVistaDocumentos('listado')}
               onCancel={() => setVistaDocumentos('listado')}
             />
-          ) : vistaDocumentos === 'nuevaVersion' ? (
+          ) : vistaDocumentos === 'nuevaVersion' && esAdministrador ? (
             <NuevaVersion
               documentoId={documentoSeleccionado}
               onSuccess={() => setVistaDocumentos('listado')}
