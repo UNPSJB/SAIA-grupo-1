@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import type { DocumentoListItem, TipoDocumento } from "./tipos";
-import { ModalMarcarVigente } from "./modalMarcarVigente";
+import { ModalHistorialVersiones } from "./modalHistorial";
 import { DetalleDocumento } from "./verDetalle";
 import { apiFetch } from "../../api/client";
 import "../../styles/formularioAlta.css";
-
+import "./documentos.css";
 
 const formatearFecha = (dateStr?: string | null) => {
   if (!dateStr) return "-";
@@ -55,8 +55,8 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
   const [busqueda, setBusqueda] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
 
-  const [modalVigenteAbierto, setModalVigenteAbierto] = useState(false);
-  const [docSeleccionado, setDocSeleccionado] = useState<DocumentoListItem | null>(null);
+  const [modalHistorialAbierto, setModalHistorialAbierto] = useState(false);
+  const [docHistorialSeleccionado, setDocHistorialSeleccionado] = useState<DocumentoListItem | null>(null);
 
   const cargarDatos = async () => {
     try {
@@ -76,9 +76,9 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
     cargarDatos();
   }, []);
 
-  const abrirMarcarVigente = (doc: DocumentoListItem) => {
-    setDocSeleccionado(doc);
-    setModalVigenteAbierto(true);
+  const abrirHistorial = (doc: DocumentoListItem) => {
+    setDocHistorialSeleccionado(doc);
+    setModalHistorialAbierto(true);
   };
 
   const documentosFiltrados = documentos.filter((d) => {
@@ -106,7 +106,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
       <div className="listado-top-bar">
         <div className="modulo-header">
           <h1>Documentos Versionados</h1>
-          <div className="subtitulo">01 · Listado</div>
+          <div className="subtitulo">01 · Listado de Documentos Vigentes</div>
         </div>
         {onNuevoClick && (
           <button
@@ -147,21 +147,22 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
             <tr>
               <th>Título</th>
               <th>Tipo</th>
-              <th>Versión</th>
+              <th>Versión Vigente</th>
               <th>Entrada en Vigencia</th>
+              <th>Peso</th>
               <th className="acciones-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
                   Cargando documentos...
                 </td>
               </tr>
             ) : documentosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
                   {busqueda || filtroTipo !== "TODOS"
                     ? "No se encontraron documentos que coincidan con los filtros."
                     : "No hay documentos registrados."}
@@ -172,14 +173,27 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                 <tr key={doc.id}>
                   <td style={{ fontWeight: 500 }}>{doc.titulo}</td>
                   <td>{getTipoLabel(doc.tipo)}</td>
-                  <td>{doc.version_actual ?? 1}</td>
+                  <td>
+                    <span style={{
+                      fontWeight: 600,
+                      color: "#15803d",
+                      backgroundColor: "#dcfce7",
+                      padding: "2px 8px",
+                      borderRadius: "4px",
+                    }}>
+                      v{doc.version_actual ?? 1}
+                    </span>
+                  </td>
                   <td>{formatearFecha(doc.fecha_vigencia)}</td>
+                  <td style={{ color: "#64748b", fontSize: "0.85rem" }}>
+                    {doc.tamanio_formateado || (doc.tamanio_bytes ? `${(doc.tamanio_bytes / 1024).toFixed(1)} KB` : "—")}
+                  </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button
                         type="button"
                         className="btn-icon btn-ver"
-                        title="Ver detalles"
+                        title="Ver detalles del documento"
                         onClick={() => {
                           if (onDetalleClick) {
                             onDetalleClick(doc.id);
@@ -200,11 +214,12 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                       </button>
                       <button
                         type="button"
-                        className="btn-icon btn-vigente"
-                        title="Marcar versión vigente"
-                        onClick={() => abrirMarcarVigente(doc)}
+                        className="btn-icon"
+                        style={{ backgroundColor: "#0284c7", color: "#ffffff", borderColor: "#0284c7" }}
+                        title="Ver historial de versiones"
+                        onClick={() => abrirHistorial(doc)}
                       >
-                        ✓
+                        📜
                       </button>
                     </div>
                   </td>
@@ -215,13 +230,11 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
         </table>
       </div>
 
-      <ModalMarcarVigente
-        isOpen={modalVigenteAbierto}
-        onClose={() => setModalVigenteAbierto(false)}
-        onSuccess={() => {
-          cargarDatos();
-        }}
-        documento={docSeleccionado}
+      <ModalHistorialVersiones
+        isOpen={modalHistorialAbierto}
+        onClose={() => setModalHistorialAbierto(false)}
+        documentoId={docHistorialSeleccionado?.id ?? null}
+        documentoTitulo={docHistorialSeleccionado?.titulo}
       />
     </div>
   );

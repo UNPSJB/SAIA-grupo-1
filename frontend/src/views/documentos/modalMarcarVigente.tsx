@@ -3,7 +3,6 @@ import type { DocumentoListItem, VersionItem } from "./tipos";
 import { apiFetch } from "../../api/client";
 import "./documentos.css";
 
-
 interface ModalMarcarVigenteProps {
   isOpen: boolean;
   onClose: () => void;
@@ -94,8 +93,8 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
 
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Error al marcar la versión como vigente.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al marcar la versión como vigente.");
     } finally {
       setEnviando(false);
     }
@@ -128,7 +127,7 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
             {versionVigenteActual && (
               <div style={{ backgroundColor: "#f8fafc", padding: "10px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.88rem" }}>
                 <span style={{ color: "#64748b" }}>Versión vigente actual: </span>
-                <strong>{versionVigenteActual.version}</strong>
+                <strong>v{versionVigenteActual.version}</strong>
                 {versionVigenteActual.fecha_vigencia && (
                   <span style={{ color: "#059669", marginLeft: "6px" }}>
                     (vigente desde {versionVigenteActual.fecha_vigencia})
@@ -149,11 +148,14 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
                   className="select-filtro"
                   required
                 >
-                  {versiones.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      Versión {v.version} {v.es_vigente ? "(Actualmente vigente)" : v.archivado ? "(Archivada)" : ""}
-                    </option>
-                  ))}
+                  {versiones.map((v) => {
+                    const peso = v.tamanio_formateado || `${(v.tamanio_bytes / 1024).toFixed(1)} KB`;
+                    return (
+                      <option key={v.id} value={v.id}>
+                        Versión {v.version} ({peso}) {v.es_vigente ? "(Actualmente vigente)" : v.archivado ? "(Archivada)" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               )}
             </div>
@@ -161,7 +163,7 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
             {versionSeleccionada && (
               <div className="alerta-confirmacion-vigente">
                 <div>
-                  La versión <strong>{versionSeleccionada.version}</strong> pasará a ser la <strong>única versión vigente</strong> de este documento.
+                  La versión <strong>v{versionSeleccionada.version}</strong> pasará a ser la <strong>única versión vigente</strong> de este documento.
                 </div>
                 <div style={{ marginTop: "4px" }}>
                   La versión anterior dejará de mostrarse por defecto en el listado y consultas.

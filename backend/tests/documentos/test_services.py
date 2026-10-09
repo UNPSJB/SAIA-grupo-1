@@ -45,7 +45,9 @@ def test_crear_documento_con_version_valida(session: Session):
     assert v.archivado is False
     assert v.es_vigente is True
     assert v.fecha_vigencia == date.today()
+    assert v.fecha_archivo is None
     assert v.archivo_nombre_original == "manual_bpm.pdf"
+    assert v.usuario is not None
 
 def test_multiples_documentos_mismo_tipo_activos(session: Session):
     admin = crear_personal(session, PersonalCreate(
@@ -124,14 +126,19 @@ def test_subir_nueva_version_archiva_solo_version_previa_del_mismo_documento(ses
 
     assert nueva_v_doc1.version == 2
     assert nueva_v_doc1.archivado is False
+    assert nueva_v_doc1.es_vigente is True
+    assert nueva_v_doc1.fecha_archivo is None
     assert len(doc1.versiones) == 2
 
     v1_doc1 = [v for v in doc1.versiones if v.version == 1][0]
     assert v1_doc1.archivado is True
+    assert v1_doc1.es_vigente is False
+    assert v1_doc1.fecha_archivo == date.today()
 
     assert len(doc2.versiones) == 1
     assert doc2.version_actual.version == 1
     assert doc2.version_actual.archivado is False
+    assert doc2.version_actual.es_vigente is True
 
 def test_marcar_version_vigente_criterios_completos(session: Session):
     admin1 = crear_personal(session, PersonalCreate(
@@ -172,15 +179,15 @@ def test_marcar_version_vigente_criterios_completos(session: Session):
         responsable_legajo=admin1.legajo,
         file=_crear_archivo_pdf_fake("bpm_v2.pdf"),
     )
-    assert v2.es_vigente is False
+    assert v2.es_vigente is True
     session.refresh(doc)
-    assert doc.version_vigente.version == 1
+    assert doc.version_vigente.version == 2
 
     fecha_entrada_vigencia = date.today() + timedelta(days=5)
-    v2_vigente = services.marcar_version_vigente(
+    v1_vigente = services.marcar_version_vigente(
         db=session,
         documento_id=doc.id,
-        version_id=v2.id,
+        version_id=v1.id,
         fecha_vigencia=fecha_entrada_vigencia,
         responsable_legajo=admin2.legajo,
     )
@@ -189,13 +196,16 @@ def test_marcar_version_vigente_criterios_completos(session: Session):
     session.refresh(v1)
     session.refresh(v2)
 
-    assert v2.es_vigente is True
-    assert v2.fecha_vigencia == fecha_entrada_vigencia
+    assert v1.es_vigente is True
+    assert v1.fecha_vigencia == fecha_entrada_vigencia
+    assert v1.fecha_archivo is None
 
-    assert v1.es_vigente is False
+    assert v2.es_vigente is False
+    assert v2.archivado is True
+    assert v2.fecha_archivo == fecha_entrada_vigencia
 
-    assert doc.version_vigente.version == 2
-    assert doc.version_vigente.id == v2.id
+    assert doc.version_vigente.version == 1
+    assert doc.version_vigente.id == v1.id
 
     versiones_vigentes = [v for v in doc.versiones if v.es_vigente]
     assert len(versiones_vigentes) == 1
@@ -211,8 +221,7 @@ def test_marcar_version_vigente_criterios_completos(session: Session):
     modificacion = auditorias[-1]
     assert modificacion.accion == AccionAuditoria.MODIFICAR
     assert modificacion.campo == "version_vigente"
-    assert modificacion.valor_previo == "v1"
-    assert "v2" in modificacion.valor_posterior
+    assert "v1" in modificacion.valor_posterior
     assert str(fecha_entrada_vigencia) in modificacion.valor_posterior
     assert str(admin2.legajo) in modificacion.valor_posterior
 
@@ -361,6 +370,7 @@ def test_versionado_automatico_creacion_e_incremento(session: Session):
         responsable_legajo=admin.legajo,
     )
     assert v2.version == 2
+    assert v2.es_vigente is True
 
     v3 = services.subir_nueva_version(
         db=session,
@@ -369,4 +379,74 @@ def test_versionado_automatico_creacion_e_incremento(session: Session):
         responsable_legajo=admin.legajo,
     )
     assert v3.version == 3
+    assert v3.es_vigente is True
 
+def test_listar_historial_documento_cronologico(session: Session):
+    admin = crear_personal(session, PersonalCreate(
+        documento=88812345,
+        nombre="Natalia",
+        apellido="Admin",
+        email="natalia.admin@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
+    ))
+
+    doc = services.crear_documento(
+        db=session,
+        titulo="Receta Medialunas de Grasa",
+        tipo=TipoDocumento.RECETA,
+        file=_crear_archivo_pdf_fake("receta_v1.pdf"),
+        responsable_legajo=admin.legajo,
+    )
+    v2 = services.subir_nueva_version(
+        db=session,
+        documento_id=doc.id,
+        file=_crear_archivo_pdf_fake("receta_v2.pdf"),
+        responsable_legajo=admin.legajo,
+    )
+
+    historial_asc = services.listar_historial_documento(session, doc.id, orden="asc")
+    assert len(historial_asc) == 2
+    assert historial_asc[0].version == 1
+    assert historial_asc[1].version == 2
+    assert historial_asc[0].archivado is True
+    assert historial_asc[0].fecha_archivo == date.today()
+    assert historial_asc[1].es_vigente is True
+    assert historial_asc[1].fecha_archivo is None
+    assert historial_asc[0].tamanio_formateado != ""
+    assert historial_asc[0].usuario is not None
+
+    historial_desc = services.listar_historial_documento(session, doc.id, orden="desc")
+    assert len(historial_desc) == 2
+    assert historial_desc[0].version == 2
+    assert historial_desc[1].version == 1
+
+def test_descargar_archivo_version_archivada(session: Session):
+    admin = crear_personal(session, PersonalCreate(
+        documento=99912345,
+        nombre="Gonzalo",
+        apellido="Admin",
+        email="gonzalo.admin@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
+    ))
+
+    doc = services.crear_documento(
+        db=session,
+        titulo="Procedimiento Enfriamiento",
+        tipo=TipoDocumento.PROCEDIMIENTO,
+        file=_crear_archivo_pdf_fake("poes_v1.pdf"),
+        responsable_legajo=admin.legajo,
+    )
+    v1_id = doc.version_actual.id
+
+    services.subir_nueva_version(
+        db=session,
+        documento_id=doc.id,
+        file=_crear_archivo_pdf_fake("poes_v2.pdf"),
+        responsable_legajo=admin.legajo,
+    )
+
+    ruta, nombre_orig = services.obtener_archivo_version(session, v1_id)
+    assert ruta.is_file()
+    assert nombre_orig == "poes_v1.pdf"

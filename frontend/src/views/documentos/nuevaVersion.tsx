@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import type { DocumentoDetalle, TipoDocumento, VersionItem } from "./tipos";
 import { apiFetch } from "../../api/client";
 import "../../styles/formularioAlta.css";
-
+import "./documentos.css";
 
 const getTipoLabel = (tipo?: TipoDocumento) => {
   if (!tipo) return "";
@@ -132,7 +132,7 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
         throw new Error(mensaje);
       }
 
-      setSuccessMsg("Nueva versión subida exitosamente.");
+      setSuccessMsg("Nueva versión subida y establecida como vigente exitosamente.");
       dialog.current?.showModal();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Error al conectar con el servidor.");
@@ -187,29 +187,35 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
             </div>
 
             <div className="form-group">
-              <label htmlFor="versionActual">Versión Actual</label>
+              <label htmlFor="versionActual">Versión Vigente Actual</label>
               <input
                 id="versionActual"
                 type="text"
-                value={documento.version_vigente?.version ?? documento.version_actual?.version ?? 1}
+                value={documento.version_vigente?.version ? `v${documento.version_vigente.version}` : (documento.version_actual?.version ? `v${documento.version_actual.version}` : "v1")}
                 disabled
                 style={{ opacity: 0.85, cursor: "not-allowed" }}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="nuevaVersion">Nueva Versión</label>
+              <label htmlFor="nuevaVersion">Nueva Versión que entrará en vigencia</label>
               <input
                 id="nuevaVersion"
                 type="text"
-                value={siguienteVersion}
+                value={`v${siguienteVersion}`}
                 disabled
                 style={{ opacity: 0.85, cursor: "not-allowed" }}
               />
             </div>
 
+            <div className="alerta-confirmacion-vigente">
+              Al guardar, la versión <strong>v{siguienteVersion}</strong> pasará a ser la nueva versión vigente del documento y la versión actual quedará archivada en el historial.
+            </div>
+
             <div className="form-group">
-              <label htmlFor="archivo">Archivo PDF</label>
+              <label htmlFor="archivo">
+                Archivo PDF {archivo && `(${(archivo.size / 1024).toFixed(1)} KB)`}
+              </label>
               <input
                 id="archivo"
                 type="file"
@@ -221,7 +227,7 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
 
             <div className="form-acciones">
               <button type="submit" className="btn-guardar" disabled={guardando}>
-                {guardando ? "Guardando..." : "Guardar"}
+                {guardando ? "Guardando..." : "Guardar y Entrar en Vigencia"}
               </button>
               <button type="button" className="btn-cancelar" onClick={handleCancelar}>
                 Cancelar
@@ -231,6 +237,9 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
 
           <dialog ref={dialog} className="guardado-con-exito">
             <h2>Nueva Versión Guardada con Éxito</h2>
+            <p style={{ marginTop: "8px", color: "#475569", fontSize: "0.9rem" }}>
+              La versión v{siguienteVersion} ya se encuentra vigente.
+            </p>
             <button
               type="button"
               className="btn-guardar"
