@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { TipoQuimico, UnidadMedida } from './tipos';
 import { OPCIONES_TIPO, OPCIONES_UNIDAD } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface Props {
   onVolver: () => void;
@@ -41,7 +42,7 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
 
     try {
       setCargando(true);
-      const res = await fetch('http://localhost:8000/api/insumos-quimicos', {
+      const res = await apiFetch('/api/insumos-quimicos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

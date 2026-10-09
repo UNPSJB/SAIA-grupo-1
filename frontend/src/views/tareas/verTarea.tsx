@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import type { TareaConId} from "./tipos";
-import "../../styles/formularioAlta.css";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-
-interface VerTareaProps {
+import { apiFetch } from '../../api/client';
+import "../../styles/formularioAlta.css";interface VerTareaProps {
     tareaID:number | null;
     onCancel?: () => void;
 
@@ -22,7 +18,7 @@ useEffect(() => {
         if (tareaID) {
             const fetchTarea = async () => {
                 try {
-                    const res = await fetch(`${API_URL}/tareas/${tareaID}`);
+                    const res = await apiFetch(`/tareas/${tareaID}`);
                     if (res.ok) {
                         const data = await res.json();
                         setTarea(data);

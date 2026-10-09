@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface DetalleElementoProps {
   onCancel?: () => void;
   elementoId?: number | null;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-// Formatear la fecha que viene en formato ISO desde el backend
+}// Formatear la fecha que viene en formato ISO desde el backend
   const formatearFecha = (fechaStr?: string | null) => {
     if (!fechaStr) return 'Sin fecha';
     try {
@@ -34,7 +31,7 @@ export const DetalleElementoDeLimpieza: React.FC<DetalleElementoProps> = ({ onCa
     if (elementoId) {
       const fetchElemento = async () => {
         try {
-          const res = await fetch(`${API_URL}/elementosDeLimpieza/${elementoId}`);
+          const res = await apiFetch(`/elementosDeLimpieza/${elementoId}`);
           if (res.ok) {
             const data: ElementoDeLimpieza = await res.json();
             setElemento(data);

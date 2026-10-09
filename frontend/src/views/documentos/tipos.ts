@@ -7,20 +7,36 @@ export interface DocumentoListItem {
   descripcion: string | null;
   activo: boolean;
   creado_el: string;
-  version_actual: string | null;
+  version_actual: number | null;
   version_actual_id: number | null;
   fecha_subida_actual: string | null;
-  responsable_nombre: string | null;
-  responsable_legajo: number | null;
   archivo_nombre_original: string | null;
+  es_vigente: boolean;
+  fecha_vigencia: string | null;
   total_versiones: number;
 }
 
-export interface PersonalAdmin {
-  legajo: number;
-  nombre: string;
-  apellido: string;
-  documento?: number;
-  capacidad: string;
+export interface VersionItem {
+  id: number;
+  documento_id: number;
+  version: number;
+  archivo_nombre_original: string;
+  tamanio_bytes: number;
+  archivado: boolean;
+  es_vigente: boolean;
+  fecha_vigencia: string | null;
+  creado_el: string;
+  url_descarga: string | null;
+}
+
+export interface DocumentoDetalle {
+  id: number;
+  titulo: string;
+  tipo: TipoDocumento;
+  descripcion: string | null;
   activo: boolean;
+  creado_el: string;
+  version_actual: VersionItem | null;
+  version_vigente: VersionItem | null;
+  total_versiones: number;
 }

@@ -2,16 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface ListadoElementosLimpiezaProps {
   onNuevoClick: () => void;
   onDetalleClick: (id: number) => void;
   onEditarClick: (id: number) => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> = ({
+}export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
@@ -30,7 +27,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
   const fetchElementos = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/elementosDeLimpieza/`);
+      const res = await apiFetch(`/elementosDeLimpieza/`);
       if (res.ok) {
         const data = await res.json();
         setElementos(data);
@@ -98,7 +95,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     setElementoACambiar(null);
 
     try {
-      const res = await fetch(`${API_URL}/elementosDeLimpieza/${id}/cambiar`, {
+      const res = await apiFetch(`/elementosDeLimpieza/${id}/cambiar`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',

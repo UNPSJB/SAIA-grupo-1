@@ -32,6 +32,12 @@ import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
 import { ListadoDocumentos } from './views/documentos/listado';
+import { DetalleDocumento } from './views/documentos/verDetalle';
+import NuevoDocumento from './views/documentos/nuevoDocumento';
+import NuevaVersion from './views/documentos/nuevaVersion';
+import { Login } from './views/auth/login';
+import { useAuth } from './auth/useAuth';
+import { moduloInicial, puedeVerModulo } from './auth/permisos';
 
 type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'auditoria';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -41,9 +47,13 @@ type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
+type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 
-function App() {
-  const [modulo, setModulo] = useState<Modulo>('dashboard');
+function Aplicacion() {
+  const { esAdministrador } = useAuth();
+  const [moduloElegido, setModulo] = useState<Modulo>(moduloInicial(esAdministrador));
+  // el backend ya rechaza lo que el rol no puede ver; acá evitamos mostrar pantallas rotas
+  const modulo = puedeVerModulo(moduloElegido, esAdministrador) ? moduloElegido : moduloInicial(esAdministrador);
 
   
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
@@ -69,6 +79,9 @@ function App() {
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
 
+  const [vistaDocumentos, setVistaDocumentos] = useState<VistaDocumentos>('listado');
+  const [documentoSeleccionado, setDocumentoSeleccionado] = useState<number | null>(null);
+
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaEquipos('listado');
@@ -78,6 +91,7 @@ function App() {
     setVistaElementos('listado');
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
+    setVistaDocumentos('listado');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -286,7 +300,35 @@ function App() {
         ) : modulo === 'auditoria' ? (
           <ListadoAuditoria />
         ) : modulo === 'documentos' ? (
-          <ListadoDocumentos />
+          vistaDocumentos === 'listado' ? (
+            <ListadoDocumentos
+              onNuevoClick={() => setVistaDocumentos('alta')}
+              onNuevaVersionClick={(id) => {
+                setDocumentoSeleccionado(id);
+                setVistaDocumentos('nuevaVersion');
+              }}
+              onDetalleClick={(id) => {
+                setDocumentoSeleccionado(id);
+                setVistaDocumentos('detalle');
+              }}
+            />
+          ) : vistaDocumentos === 'alta' ? (
+            <NuevoDocumento
+              onSuccess={() => setVistaDocumentos('listado')}
+              onCancel={() => setVistaDocumentos('listado')}
+            />
+          ) : vistaDocumentos === 'nuevaVersion' ? (
+            <NuevaVersion
+              documentoId={documentoSeleccionado}
+              onSuccess={() => setVistaDocumentos('listado')}
+              onCancel={() => setVistaDocumentos('listado')}
+            />
+          ) : (
+            <DetalleDocumento
+              documentoId={documentoSeleccionado}
+              onVolver={() => setVistaDocumentos('listado')}
+            />
+          )
         ) : modulo === 'checklist' ? (
           vistaChecklist === 'listado' ? (
             <ListadoChecklists
@@ -305,6 +347,12 @@ function App() {
       </div>
     </div>
   );
+}
+
+function App() {
+  const { usuario, cargando } = useAuth();
+  if (cargando) return null;
+  return usuario ? <Aplicacion /> : <Login />;
 }
 
 export default App;
