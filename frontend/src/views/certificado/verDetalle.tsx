@@ -32,6 +32,7 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
 }) => {
   const [certificado, setCertificado] = useState<Certificado | null>(null);
   const [loading, setLoading] = useState(true);
+  const [modalAbierto, setModalAbierto] = useState(false);
 
   useEffect(() => {
     if (certificadoId) {
@@ -54,6 +55,9 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
       fetchCertificado();
     }
   }, [certificadoId]);
+
+  const esPdf = certificado?.foto_url?.toLowerCase().endsWith('.pdf');
+  const archivoUrl = certificado?.foto_url ? `${API_URL}${certificado.foto_url}` : null;
 
   return (
     <div className="modulo-container formulario-box">
@@ -103,11 +107,10 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
                   disabled
                   style={{ width: '100%', margin: 0 }}
                 />
-                {/* Enlace posicionado exactamente encima del texto del input */}
-                <a
-                  href={`${API_URL}${certificado.foto_url}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                {/* Botón interactivo superpuesto */}
+                <button
+                  type="button"
+                  onClick={() => setModalAbierto(true)}
                   style={{
                     position: 'absolute',
                     top: '50%',
@@ -118,20 +121,18 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
                     gap: '0.35rem',
                     color: '#2563eb',
                     fontWeight: 600,
-                    textDecoration: 'none',
-                    fontSize: '0.9rem',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
                     cursor: 'pointer',
+                    fontSize: '0.9rem',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
-                  <span>
-                    {certificado.foto_url.toLowerCase().endsWith('.pdf')
-                      ? 'Ver documento'
-                      : 'Ver imagen'}
-                  </span>
+                  <span>{esPdf ? 'Ver documento' : 'Ver imagen'}</span>
                   <span style={{ fontSize: '0.95rem', lineHeight: 1 }}>↗</span>
-                </a>
+                </button>
               </div>
             ) : (
               <input
@@ -152,6 +153,110 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
           Volver
         </button>
       </div>
+
+      {modalAbierto && archivoUrl && (
+        <div
+          onClick={() => setModalAbierto(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              maxWidth: '750px',
+              width: '100%',
+              padding: '1.25rem',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: '#475569',
+                }}
+              >
+                Archivo
+              </h2>
+              <button
+                type="button"
+                onClick={() => setModalAbierto(false)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #1e293b',
+                  borderRadius: '6px',
+                  padding: '0.35rem 0.85rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                }}
+              >
+                ✕ Cerrar
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                maxHeight: '75vh',
+                overflow: 'hidden',
+                borderRadius: '6px',
+              }}
+            >
+              {esPdf ? (
+                <iframe
+                  src={archivoUrl}
+                  title="Documento adjunto"
+                  style={{
+                    width: '100%',
+                    height: '65vh',
+                    border: 'none',
+                    borderRadius: '6px',
+                  }}
+                />
+              ) : (
+                <img
+                  src={archivoUrl}
+                  alt="Comprobante de certificado"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '75vh',
+                    objectFit: 'contain',
+                    borderRadius: '6px',
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

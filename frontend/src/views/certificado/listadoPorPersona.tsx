@@ -30,6 +30,9 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
   const [dialogOpen, setDialogOpen] = useState(false);
   const [certificadoAEliminar, setCertificadoAEliminar] = useState<{ id: number; tipo: string } | null>(null);
 
+  // Estado para el modal de evidencia
+  const [modalArchivoUrl, setModalArchivoUrl] = useState<string | null>(null);
+
   const fetchCertificados = async () => {
     setLoading(true);
     try {
@@ -107,7 +110,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     }
   };
 
-  const renderEnlaceArchivo = (fotoUrl?: string | null) => {
+  const renderBotonArchivo = (fotoUrl?: string | null) => {
     if (!fotoUrl) {
       return <span style={{ color: '#9ca3af' }}>Sin archivo</span>;
     }
@@ -116,23 +119,27 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     const esPdf = fotoUrl.toLowerCase().endsWith('.pdf');
 
     return (
-      <a
-        href={urlCompleta}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        type="button"
+        onClick={() => setModalArchivoUrl(urlCompleta)}
         style={{
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          cursor: 'pointer',
           color: '#2563eb',
           fontWeight: 600,
-          textDecoration: 'none',
           display: 'inline-flex',
           alignItems: 'center',
           gap: '4px',
           whiteSpace: 'nowrap',
+          fontSize: 'inherit',
         }}
-        title="Abrir comprobante en nueva pestaña"
+        title="Ver evidencia"
       >
-        {esPdf ? 'Ver PDF' : 'Ver imagen'} ↗
-      </a>
+        <span>{esPdf ? 'Ver documento' : 'Ver imagen'}</span>
+        <span>↗</span>
+      </button>
     );
   };
 
@@ -140,6 +147,8 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     const term = searchTerm.toLowerCase().trim();
     return !term || c.tipo.toLowerCase().includes(term);
   });
+
+  const modalEsPdf = modalArchivoUrl?.toLowerCase().endsWith('.pdf');
 
   return (
     <div className="modulo-container">
@@ -241,7 +250,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                       )}
                     </div>
                   </td>
-                  <td>{renderEnlaceArchivo(item.foto_url)}</td>
+                  <td>{renderBotonArchivo(item.foto_url)}</td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button
@@ -290,6 +299,111 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
           setCertificadoAEliminar(null);
         }}
       />
+
+      {/* Modal flotante de evidencia fotográfica / visor PDF */}
+      {modalArchivoUrl && (
+        <div
+          onClick={() => setModalArchivoUrl(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              maxWidth: '750px',
+              width: '100%',
+              padding: '1.25rem',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: '#475569',
+                }}
+              >
+                Archivo
+              </h2>
+              <button
+                type="button"
+                onClick={() => setModalArchivoUrl(null)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #1e293b',
+                  borderRadius: '6px',
+                  padding: '0.35rem 0.85rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                }}
+              >
+                ✕ Cerrar
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                maxHeight: '75vh',
+                overflow: 'hidden',
+                borderRadius: '6px',
+              }}
+            >
+              {modalEsPdf ? (
+                <iframe
+                  src={modalArchivoUrl}
+                  title="Documento adjunto"
+                  style={{
+                    width: '100%',
+                    height: '65vh',
+                    border: 'none',
+                    borderRadius: '6px',
+                  }}
+                />
+              ) : (
+                <img
+                  src={modalArchivoUrl}
+                  alt="Comprobante de certificado"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '75vh',
+                    objectFit: 'contain',
+                    borderRadius: '6px',
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
