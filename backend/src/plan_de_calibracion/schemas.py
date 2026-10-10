@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, field_validator, AliasChoices, ConfigDict
 from typing import List, Optional
 from datetime import date, datetime
+from src.calibracion_realizada.schemas import CalibracionRealizadaBase,CalibracionRealizada
 from src.plan_de_calibracion import exceptions
 
 
@@ -16,12 +17,18 @@ class PlanDeCalibracionBase(BaseModel):
 class PlanDeCalibracionCreate(PlanDeCalibracionBase):
     periodicidad_De_cambio: int
     equipo_id: int
+    calibraciones_realizadas:Optional[List[CalibracionRealizadaBase]] = []
+
     
     @field_validator("fecha_mantenimiento")
     @classmethod
     def validar_fecha_mantenimiento(cls, v: Optional[datetime]) -> Optional[datetime]:
-            if v is not None and v < datetime.now():
-                raise exceptions.FechaAnterior()
+            
+            if v is not None:
+                v_naive = v.replace(tzinfo=None) if v.tzinfo else v
+                
+                if v_naive < datetime.now():
+                 raise exceptions.FechaAnterior()
             return v
 
     @field_validator("nombre")
@@ -110,5 +117,6 @@ class PlanDeCalibracion(PlanDeCalibracionBase):
     id: int
     equipo_id: int
     nombre_equipo: str
+    calibraciones_realizadas: Optional[List[CalibracionRealizada]] = None
 
     model_config = ConfigDict(from_attributes=True)

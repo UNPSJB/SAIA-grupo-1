@@ -395,7 +395,8 @@ dialog .btn-guardar{
   align-self: flex-end; /* muevo el boton agregar a la derecha*/
 }
 
-.btn-agregar{
+.btn-agregar,
+.btn-verCAL{
   background-color: var(--text-h);
   color: var(--bg);
   border: 1px solid var(--text-h);
@@ -405,6 +406,22 @@ dialog .btn-guardar{
   border-radius: 6px;
   cursor: pointer;
   transition: opacity 0.2s;
+}
+
+
+.acciones-botones-container{
+    display: flex;
+    justify-content: flex-end; /* Los empuja hacia la derecha */
+    gap: 0.6rem;               /* Espacio compacto entre ellos */
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Opcional: si quieres hacerlos más pequeños SOLO en esta vista sin tocar el estilo global */
+.acciones-botones-container .btn-agregar,
+.acciones-botones-container .btn-verCAL {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
 }
 
 .form-group td{

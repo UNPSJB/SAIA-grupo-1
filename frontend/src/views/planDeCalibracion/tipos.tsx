@@ -1,4 +1,5 @@
 import type{Equipo} from "../equipos/tipos";
+import type { CalibracionRealizadaConID } from "../calibracion_Realizada/tipos";
 
 export interface PlanDeCalibracion {
     nombre:string;
@@ -8,6 +9,7 @@ export interface PlanDeCalibracion {
     fecha_vencimiento:string;
     periodicidad_De_cambio:number | "";
     descripcion:string;
+    calibraciones_realizadas?:CalibracionRealizadaConID[];
 }
 
 export interface PlanDeCalibracionConId extends PlanDeCalibracion {

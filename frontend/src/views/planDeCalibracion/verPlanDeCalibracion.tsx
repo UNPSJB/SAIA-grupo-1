@@ -1,6 +1,9 @@
 import React, {useEffect,useState } from 'react';
 import type { PlanDeCalibracionConId } from "./tipos";
 import '../../styles/formularioAlta.css';
+import RegistrarCalibracion from '../calibracion_Realizada/registrarCalibracion';
+import { ListadoCalibracionesRealizadas } from '../calibracion_Realizada/listado';
+import { VerCalibracion } from '../calibracion_Realizada/verCalibracionEcha';
 
 interface DetallePlanCalibracionProps {
     onCancel?: () => void;
@@ -29,6 +32,10 @@ const formatDate = (dateStr?: string | null) => {
 export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({ onCancel, planCalibracionID }) => {
     const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId | null>(null);
     const [loading, setLoading] = useState(true);
+    const [modalAbierto, setModalAbierto]= useState(false);
+    const [modalVerCalibraciones, setModalVerTodas]= useState(false);
+    const [modalVerCalibracion,setModalVer]= useState(false);
+    const [calibracionSeleccionada, setCalibracionSeleccionada]=useState <number | null>(null);
     
 
     useEffect(() => {
@@ -56,6 +63,26 @@ export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({ on
         <div className="modulo-header">
             <h1>Plan de calibración</h1>
         </div>
+        <div className="acciones-botones-container">
+            <div className="accion-agregar">
+                  <button type="button" className="btn-agregar" onClick={()=>setModalAbierto(true)}>
+                      +Marcar como realizada
+                  </button>
+            </div>
+
+            <div className="accion-agregar">
+
+                <button type="button" className="btn-verCAL" disabled={!planCalibracion?.calibraciones_realizadas || planCalibracion.calibraciones_realizadas.length === 0} onClick={()=> {const cantidad= planCalibracion?.calibraciones_realizadas?.length || 0 
+                if(cantidad ===1){
+                    const c=planCalibracion?.calibraciones_realizadas?.[0];
+                    setModalVer(true);
+                    setCalibracionSeleccionada(c?.id ?? null);
+                }else if(cantidad>1){
+                    setModalVerTodas(true)
+                }}}> Ver Realizaciones</button>
+            </div>
+          </div>
+
 
             {loading ? (
                         <tr>
@@ -135,6 +162,44 @@ export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({ on
                     Volver
                 </button>
             </div>
+
+
+            {modalAbierto &&(
+                  
+                                <div className="modal-abierto">
+                                  <div className="modal-content">
+                                    <RegistrarCalibracion
+                                    planID={planCalibracion?.id}
+                                    onSuccess={()=> setModalAbierto(false)}
+                                    onCancel={() => setModalAbierto(false)}
+                                    />
+                  
+                                  </div>
+                        </div>)}
+
+            {modalVerCalibraciones&& (
+                                 <div className="modal-abierto">
+                                  <div className="modal-content">
+                                    <ListadoCalibracionesRealizadas
+                                    planID={planCalibracion?.id}
+                                    onCancel={() => setModalVerTodas(false)}
+                                    />
+                  
+                                  </div>
+                        </div>
+            )}
+
+
+            {modalVerCalibracion && (
+                                <div className="modal-abierto">
+                                  <div className="modal-content">
+                                    <VerCalibracion
+                                    calibracionID={calibracionSeleccionada}
+                                    onCancel={() => setModalVer(false)}
+                                    />
+                  
+                                  </div>
+                        </div>)}
         
     </div>
     

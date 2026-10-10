@@ -20,6 +20,7 @@ class Plan_de_Calibracion(ModeloBase):
     equipo_id:Mapped[int]=mapped_column(ForeignKey("equipos.id"),unique=True)
 
     equipo:Mapped["src.equipos.models.Equipo"]= relationship("src.equipos.models.Equipo", back_populates="plan_de_calibracion")
+    calibraciones_realizadas:Mapped[list["src.calibracion_realizada.models.Calibracion_Realizada"]]= relationship("src.calibracion_realizada.models.Calibracion_Realizada",back_populates="plan_calibracion")
 
     @property
     def nombre_equipo(self):
