@@ -8,12 +8,14 @@ export interface ListadoPersonasProps {
   onNuevoClick: () => void;
   onDetalleClick: (legajo: number) => void;
   onEditarClick: (legajo: number) => void;
+  onVerCertificados: (legajo: number, nombreCompleto: string) => void;
 }
 
 export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
+  onVerCertificados,
 }) => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +198,14 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                     </td>
                     <td className="acciones-col">
                       <div className="acciones-btns">
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Ver certificados"
+                          onClick={() => onVerCertificados(identificador, `${p.nombre} ${p.apellido}`)}
+                        >
+                          📜
+                        </button>
                         <button
                           className="btn-icon btn-ver"
                           title="Ver detalle"

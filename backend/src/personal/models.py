@@ -4,6 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Enum as SQLEnum, Boolean
 from src.models import ModeloBase
 from src.personal.schemas import Capacidades
+from src.certificado.models import Certificado
 
 
 class Personal(ModeloBase):
@@ -21,3 +22,5 @@ class Personal(ModeloBase):
     tareas:Mapped[List["src.tareas.models.Tarea"]] = relationship("src.tareas.models.Tarea", back_populates="personal")
 
 
+
+    certificados: Mapped[list["Certificado"]] = relationship(back_populates="persona", cascade="all, delete-orphan") #Si se borra la persona se borran sus certificados

@@ -7,9 +7,10 @@ import '../../styles/login.css';
 // Solo existen en desarrollo: en el build de producción este bloque se elimina.
 const CONTRASENIA_DEMO = 'Clave1234';
 const CUENTAS_DEMO = [
-  { etiqueta: 'Administrador', usuario: 'ana.gomez' },
-  { etiqueta: 'Operador', usuario: 'juan.perez' },
-  { etiqueta: 'Operador y admin.', usuario: 'marcos.diaz' },
+  { etiqueta: 'Admin (admin/admin)', usuario: 'admin', contrasenia: 'admin' },
+  { etiqueta: 'Administrador', usuario: 'ana.gomez', contrasenia: CONTRASENIA_DEMO },
+  { etiqueta: 'Operador', usuario: 'juan.perez', contrasenia: CONTRASENIA_DEMO },
+  { etiqueta: 'Operador y admin.', usuario: 'marcos.diaz', contrasenia: CONTRASENIA_DEMO },
 ];
 
 export const Login = () => {
@@ -104,7 +105,7 @@ export const Login = () => {
               title={`Completa el usuario ${cuenta.usuario}`}
               onClick={() => {
                 setUsuario(cuenta.usuario);
-                setContrasenia(CONTRASENIA_DEMO);
+                setContrasenia(cuenta.contrasenia);
                 setError(null);
               }}
             >

@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../auth/useAuth';
 import { puedeVerModulo } from '../auth/permisos';
 
-export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -18,6 +18,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
     { id: 'equipos', label: 'Equipos' },
     { id: 'sectores', label: 'Sectores' },
     { id: 'personas', label: 'Personas' },
+    {id: 'tipoCertificado', label: 'Tipo Certificado'},
+    { id: 'vencimientos', label: 'Vencimientos'},
     { id: 'insumos_quimicos', label: 'Químicos Limpieza' },
     { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza' },
     { id: 'planDeLimpieza', label: 'Plan de Limpieza' },

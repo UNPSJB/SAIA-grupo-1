@@ -48,10 +48,15 @@ def crear_token(persona: Personal) -> str:
 
 
 def asegurar_admin_dev(db: Session) -> None:
-    """Crea el usuario admin/admin si no existe, para que todo el equipo pueda
-    ingresar con las mismas credenciales aunque cada uno tenga su propia base.
+    """Crea el usuario admin/admin si no existe (o asegura sus credenciales si ya existe),
+    para que todo el equipo pueda ingresar con las mismas credenciales aunque cada uno tenga su propia base.
     Solo se usa en desarrollo (ver lifespan en main.py)."""
-    if db.query(Personal).filter(Personal.usuario == "admin").first():
+    persona = db.query(Personal).filter(Personal.usuario == "admin").first()
+    if persona:
+        persona.contrasenia_hash = hashear_contrasenia("admin")
+        persona.activo = True
+        persona.capacidad = Capacidades.AMBAS
+        db.commit()
         return
     db.add(Personal(
         usuario="admin",
