@@ -22,6 +22,7 @@ import { VerDetalle as VerDetalleInsumoQuimico } from './views/insumos_quimicos/
 import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
 
 import { Sidebar } from './components/Sidebar';
+import { SidebarInset, SidebarProvider } from './components/ui/sidebar';
 import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
 import { NuevoElementoDeLimpieza } from './views/elementosDeLimpieza/nuevoElemento';
 import { EditarElementoDeLimpieza } from './views/elementosDeLimpieza/editarDetalle';
@@ -186,10 +187,10 @@ function Aplicacion() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: 'var(--text)', display: 'flex' }}>
+    <SidebarProvider>
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
-      <div style={{ flex: 1, padding: '40px 60px', backgroundColor: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' }}>
+      <SidebarInset style={{ padding: '40px 60px' }}>
         {modulo === 'dashboard' ? (
           <PanelDashboard />
         ) : modulo === 'vencimientos' ? (
@@ -549,8 +550,8 @@ function Aplicacion() {
             />
           ) : null
         ) : null}
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
