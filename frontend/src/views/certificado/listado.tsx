@@ -11,6 +11,7 @@ interface PersonalInfo {
 
 interface ListadoCertificadosProps {
   onVerPersona?: (legajo: number, nombreCompleto: string) => void;
+  onVerConsolidado?: () => void;
 }
 
 type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia';
@@ -20,6 +21,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
   onVerPersona,
+  onVerConsolidado,
 }) => {
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [personalMap, setPersonalMap] = useState<Record<number, PersonalInfo>>({});
@@ -157,13 +159,55 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
 
   return (
     <div className="modulo-container">
-      <div className="listado-top-bar">
-        <div className="modulo-header">
-          <h1 style={{ lineHeight: '1.2' }}>Vencimientos de Personal</h1>
-          <div className="subtitulo">
-            Listado consolidado ordenado por urgencia
-          </div>
+      <div className="listado-top-bar" style={{ alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <div className="modulo-header" style={{ marginBottom: 0 }}>
+          <h1 style={{ lineHeight: '1.2', margin: 0 }}>Vencimientos de Personal</h1>
         </div>
+
+        {onVerConsolidado && (
+          <div
+            style={{
+              display: 'inline-flex',
+              background: '#f1f5f9',
+              padding: '4px',
+              borderRadius: '8px',
+              gap: '4px',
+              flexShrink: 0,
+            }}
+          >
+            <button
+              type="button"
+              onClick={onVerConsolidado}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                padding: '8px 14px',
+                borderRadius: '6px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: '#475569',
+                cursor: 'pointer',
+              }}
+            >
+              Todos (Consolidado)
+            </button>
+            <button
+              type="button"
+              style={{
+                border: 'none',
+                background: '#1e293b',
+                color: '#ffffff',
+                padding: '8px 14px',
+                borderRadius: '6px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Solo Personal (con archivo)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Barra de Filtros */}

@@ -56,6 +56,7 @@ import { DetalleCertificado } from './views/certificado/verDetalle';
 import { ListadoTiposCertificados } from './views/tipoCertificado/listado';
 import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertificado';
 import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
+import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 
 type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
@@ -107,6 +108,7 @@ function Aplicacion() {
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
   const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial'>('abiertos');
+  const [vistaVencimientos, setVistaVencimientos] = useState<'consolidado' | 'personal'>('consolidado');
 
   const [vistaPlanCalibracion, setVistaPlanCalibracion] = useState<VistaPlanCalibracion>('listado');
   const [planCalibracionSeleccionado, setPlanCalibracionSeleccionado] = useState<number | null>(null);
@@ -128,10 +130,32 @@ function Aplicacion() {
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
     setVistaIncidentesAdmin('abiertos');
+    setVistaVencimientos('consolidado');
     setVistaPlanCalibracion('listado');
     setVistaDocumentos('listado');
     setCertificadoSeleccionado(null);
     setVistaTipoCertificado('listado');
+  };
+
+  // Desde la vista consolidada: salta a la pantalla del registro que vence
+  const irAlRegistroDeVencimiento = (v: any) => {
+    const origen = v.origen || v.tipo;
+    const refId = v.referenciaId ?? v.referencia_id;
+    if (origen === 'personal') {
+      const [apellido, nombre] = (v.responsable ?? '').split(', ');
+      setModulo('personas');
+      setLegajoSeleccionado(refId);
+      setNombrePersonaSeleccionada(nombre ? `${nombre} ${apellido}` : (v.responsable ?? ''));
+      setVistaPersonas('certificados');
+    } else if (origen === 'equipo') {
+      setModulo('planDeCalibracion');
+      setPlanCalibracionSeleccionado(refId);
+      setVistaPlanCalibracion('detalle');
+    } else if (origen === 'documento') {
+      setModulo('documentos');
+      setDocumentoSeleccionado(refId);
+      setVistaDocumentos('detalle');
+    }
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -168,6 +192,18 @@ function Aplicacion() {
   <div style={{ flex: 1, padding: '40px 60px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}>
         {modulo === 'dashboard' ? (
           <PanelDashboard />
+        ) : modulo === 'vencimientos' ? (
+          vistaVencimientos === 'consolidado' ? (
+            <VistaConsolidadaVencimiento
+              onIrAlRegistro={irAlRegistroDeVencimiento}
+              onVerSoloPersonal={() => setVistaVencimientos('personal')}
+            />
+          ) : (
+            <ListadoCertificados
+              onVerPersona={irACertificadosDePersona}
+              onVerConsolidado={() => setVistaVencimientos('consolidado')}
+            />
+          )
         ) : modulo === 'insumos' ? (
           vistaInsumos === 'listado' ? (
             <ListadoInsumos
@@ -492,10 +528,6 @@ function Aplicacion() {
               planCalibracionID={planCalibracionSeleccionado}
             />
           ) : null
-        ) : modulo === 'vencimientos' ? (
-          <ListadoCertificados 
-            onVerPersona={irACertificadosDePersona}
-          />
         ) : modulo === 'tipoCertificado' ? (
           vistaTipoCertificado === 'listado' ? (
             <ListadoTiposCertificados
