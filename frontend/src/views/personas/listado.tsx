@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import type { Persona } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from "../../components/ui/alert-dialog";
+import { Paginacion, usePaginacion } from "../../components/ui/paginacion";
 import { apiFetch } from '../../api/client';
 
 export interface ListadoPersonasProps {
@@ -101,6 +102,18 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     return matchBusqueda && matchCapacidad && matchEstado;
   });
 
+  const {
+    itemsPaginados: personasPaginadas,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(personasFiltradas);
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -174,7 +187,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                 </td>
               </tr>
             ) : (
-              personasFiltradas.map((p) => {
+              personasPaginadas.map((p) => {
                 const identificador = p.legajo;
                 return (
                   <tr key={identificador}>
@@ -236,6 +249,18 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="personas"
+      />
 
       <ConfirmAlertDialog
         open={dialogAbierto}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
 
 interface ListadoEquiposProps {
@@ -102,6 +103,18 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
         return matchBusqueda && matchEstado && matchCat;
     });
 
+    const {
+        itemsPaginados: equiposPaginados,
+        paginaActual,
+        setPaginaActual,
+        filasPorPagina,
+        setFilasPorPagina,
+        totalRegistros,
+        totalPaginas,
+        indiceInicio,
+        indiceFin,
+    } = usePaginacion(equiposFiltrados);
+
     return (
         <div className="modulo-container">
             <div className="listado-top-bar">
@@ -176,7 +189,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                                 </td>
                             </tr>
                         ) : (
-                            equiposFiltrados.map((i) => (
+                            equiposPaginados.map((i) => (
                                 <tr key={i.id}>
                                     <td style={{ fontWeight: 500 }}>{i.nombre}</td>
                                     <td>{i.ubicacion?.nombre || '-'}</td>
@@ -218,6 +231,18 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                     </tbody>
                 </table>
             </div>
+
+            <Paginacion
+                paginaActual={paginaActual}
+                totalPaginas={totalPaginas}
+                totalRegistros={totalRegistros}
+                indiceInicio={indiceInicio}
+                indiceFin={indiceFin}
+                filasPorPagina={filasPorPagina}
+                onCambiarPagina={setPaginaActual}
+                onCambiarFilasPorPagina={setFilasPorPagina}
+                etiqueta="equipos"
+            />
 
             <ConfirmAlertDialog
                 open={dialogAbierto}

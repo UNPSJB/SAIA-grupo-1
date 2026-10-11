@@ -7,6 +7,7 @@ import {
   formatearFecha,
 } from './tipos';
 import { DetalleIncidenteModal } from './detalleModal';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
 import '../../styles/formularioAlta.css';
 import '../../styles/incidentes.css';
@@ -88,8 +89,6 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoGrupo>('TODOS');
   const [incidenteSeleccionado, setIncidenteSeleccionado] = useState<Incidente | null>(null);
-  const [paginaActual, setPaginaActual] = useState(1);
-  const [filasPorPagina, setFilasPorPagina] = useState(10);
 
   useEffect(() => {
     let cancelado = false;
@@ -119,10 +118,6 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
       cancelado = true;
     };
   }, []);
-
-  useEffect(() => {
-    setPaginaActual(1);
-  }, [busqueda, filtroEstado, filasPorPagina]);
 
   const reintentarCarga = async () => {
     setLoading(true);
@@ -167,25 +162,17 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
     return coincideBusqueda && coincideEstado;
   });
 
-  const totalIncidentes = incidentesFiltrados.length;
-  const totalPaginas = Math.max(1, Math.ceil(totalIncidentes / filasPorPagina));
-  const paginaValida = Math.min(Math.max(1, paginaActual), totalPaginas);
-  const indiceInicio = (paginaValida - 1) * filasPorPagina;
-  const indiceFin = Math.min(indiceInicio + filasPorPagina, totalIncidentes);
-  const incidentesPaginados = incidentesFiltrados.slice(indiceInicio, indiceFin);
-
-  const obtenerPaginasVisibles = (actual: number, total: number): number[] => {
-    if (total <= 5) {
-      return Array.from({ length: total }, (_, i) => i + 1);
-    }
-    if (actual <= 3) {
-      return [1, 2, 3, 4, 5];
-    }
-    if (actual >= total - 2) {
-      return [total - 4, total - 3, total - 2, total - 1, total];
-    }
-    return [actual - 2, actual - 1, actual, actual + 1, actual + 2];
-  };
+  const {
+    itemsPaginados: incidentesPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros: totalIncidentes,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(incidentesFiltrados);
 
   const handleEstadoActualizado = (incidenteActualizado: Incidente) => {
     setIncidentes((prev) =>
@@ -425,82 +412,17 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
         </table>
       </div>
 
-      {totalIncidentes > 0 && (
-        <div className="paginacion-container">
-          <div className="paginacion-info-wrapper">
-            <span className="paginacion-info-texto">
-              Mostrando <strong>{indiceInicio + 1}</strong> - <strong>{indiceFin}</strong> de <strong>{totalIncidentes}</strong> incidentes
-            </span>
-            <div className="paginacion-selector-filas">
-              <label htmlFor="select-filas-incidentes" style={{ color: 'var(--inc-text-muted)' }}>
-                Filas por página:
-              </label>
-              <select
-                id="select-filas-incidentes"
-                className="select-filas-por-pagina"
-                value={filasPorPagina}
-                onChange={(e) => setFilasPorPagina(Number(e.target.value))}
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="paginacion-controles">
-            <button
-              type="button"
-              className="btn-paginacion"
-              onClick={() => setPaginaActual(1)}
-              disabled={paginaValida <= 1}
-              title="Primera página"
-            >
-              «
-            </button>
-            <button
-              type="button"
-              className="btn-paginacion"
-              onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
-              disabled={paginaValida <= 1}
-              title="Página anterior"
-            >
-              ‹ Anterior
-            </button>
-
-            {obtenerPaginasVisibles(paginaValida, totalPaginas).map((numPagina) => (
-              <button
-                key={numPagina}
-                type="button"
-                className={`btn-paginacion-numero ${numPagina === paginaValida ? 'activo' : ''}`}
-                onClick={() => setPaginaActual(numPagina)}
-              >
-                {numPagina}
-              </button>
-            ))}
-
-            <button
-              type="button"
-              className="btn-paginacion"
-              onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
-              disabled={paginaValida >= totalPaginas}
-              title="Página siguiente"
-            >
-              Siguiente ›
-            </button>
-            <button
-              type="button"
-              className="btn-paginacion"
-              onClick={() => setPaginaActual(totalPaginas)}
-              disabled={paginaValida >= totalPaginas}
-              title="Última página"
-            >
-              »
-            </button>
-          </div>
-        </div>
-      )}
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalIncidentes}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="incidentes"
+      />
 
       {incidenteSeleccionado && (
         <DetalleIncidenteModal

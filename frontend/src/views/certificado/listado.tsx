@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { apiFetch } from '../../api/client';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 
 interface PersonalInfo {
@@ -155,6 +156,18 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
     );
   });
 
+  const {
+    itemsPaginados: certificadosPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(certificadosFiltrados);
+
   const modalEsPdf = modalArchivoUrl?.toLowerCase().endsWith('.pdf');
 
   return (
@@ -259,7 +272,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                 </td>
               </tr>
             ) : (
-              certificadosFiltrados.map((item) => {
+              certificadosPaginados.map((item) => {
                 const persona = personalMap[item.legajo_persona];
                 const nombreCompleto = persona ? `${persona.apellido}, ${persona.nombre}` : '';
                 const { estado, diffDias } = calcularEstadoVencimiento(item.fechaVencimiento);
@@ -364,6 +377,18 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="certificados"
+      />
 
       {modalArchivoUrl && (
         <div

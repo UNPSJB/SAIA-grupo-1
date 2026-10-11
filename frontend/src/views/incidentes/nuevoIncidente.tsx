@@ -123,55 +123,55 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
     onCancel?.();
   };
 
-  if (registradoExito) {
-    return (
-      <div className="incidente-form-card" style={{ textAlign: 'center', padding: '3.25rem 2rem' }}>
-        <div
-          style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            backgroundColor: '#dcfce7',
-            color: '#15803d',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '1rem',
-          }}
-        >
-          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m5 12 5 5L20 7" />
-          </svg>
-        </div>
-        <h2 style={{ fontSize: '1.6rem', fontWeight: 700, margin: '0 0 0.5rem', color: 'var(--inc-text-title)' }}>
-          ¡Incidente Registrado Correctamente!
-        </h2>
-        <p style={{ color: 'var(--inc-text-muted)', fontSize: '0.95rem', maxWidth: '440px', margin: '0 auto 1.75rem', lineHeight: 1.5 }}>
-          El reporte ha quedado asentado en el sistema a nombre de <strong>{usuario?.nombre} {usuario?.apellido}</strong> (Legajo #{usuario?.legajo}) con fecha y hora actual para su posterior evaluación.
-        </p>
-        <button
-          type="button"
-          className="btn-inc-primario"
-          onClick={() => {
-            setRegistradoExito(false);
-            setErrorMsg(null);
-            setSuccessMsg(null);
-          }}
-        >
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14" />
-            <path d="M5 12h14" />
-          </svg>
-          Reportar Otro Incidente
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="incidente-form-card">
-      <div className="incidente-form-header">
-        <h1>Registrar Incidente</h1>
+      {registradoExito ? (
+        <div key="vista-exito" style={{ textAlign: 'center', padding: '1rem 0' }}>
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: '#dcfce7',
+              color: '#15803d',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '1rem',
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m5 12 5 5L20 7" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 700, margin: '0 0 0.5rem', color: 'var(--inc-text-title)' }}>
+            <span>¡Incidente Registrado Correctamente!</span>
+          </h2>
+          <p style={{ color: 'var(--inc-text-muted)', fontSize: '0.95rem', maxWidth: '440px', margin: '0 auto 1.75rem', lineHeight: 1.5 }}>
+            <span>El reporte ha quedado asentado en el sistema a nombre de </span>
+            <strong>{`${usuario?.nombre ?? ''} ${usuario?.apellido ?? ''}`.trim()}</strong>
+            <span>{` (Legajo #${usuario?.legajo ?? '-'}) con fecha y hora actual para su posterior evaluación.`}</span>
+          </p>
+          <button
+            type="button"
+            className="btn-inc-primario"
+            onClick={() => {
+              setRegistradoExito(false);
+              setErrorMsg(null);
+              setSuccessMsg(null);
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+            <span>Reportar Otro Incidente</span>
+          </button>
+        </div>
+      ) : (
+        <div key="vista-formulario">
+          <div className="incidente-form-header">
+            <h1>Registrar Incidente</h1>
         <p>
           Deje constancia inmediata de cualquier desperfecto, desvío o hallazgo en planta para su posterior evaluación y seguimiento.
         </p>
@@ -326,16 +326,10 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
             style={{ flex: 1 }}
             disabled={loading || !esOperador || !descripcionLimpia || excedida}
           >
-            {loading ? (
-              <>Guardando...</>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m5 12 5 5L20 7" />
-                </svg>
-                Registrar Incidente
-              </>
-            )}
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m5 12 5 5L20 7" />
+            </svg>
+            <span>{loading ? 'Guardando...' : 'Registrar Incidente'}</span>
           </button>
           {onCancel && (
             <button
@@ -344,11 +338,13 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
               disabled={loading}
               onClick={handleCancelar}
             >
-              Cancelar
+              <span>Cancelar</span>
             </button>
           )}
         </div>
       </form>
+        </div>
+      )}
     </div>
   );
 };

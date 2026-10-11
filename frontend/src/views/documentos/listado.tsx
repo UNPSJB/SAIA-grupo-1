@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { DocumentoListItem, TipoDocumento } from "./tipos";
 import { ModalHistorialVersiones } from "./modalHistorial";
 import { DetalleDocumento } from "./verDetalle";
+import { Paginacion, usePaginacion } from "../../components/ui/paginacion";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/useAuth";
 import "../../styles/formularioAlta.css";
@@ -115,6 +116,18 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
     return matchTipo && matchBusqueda;
   });
 
+  const {
+    itemsPaginados: documentosPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(documentosFiltrados);
+
   if (detalleIdInterno && !onDetalleClick) {
     return (
       <DetalleDocumento
@@ -194,7 +207,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                 </td>
               </tr>
             ) : (
-              documentosFiltrados.map((doc) => (
+              documentosPaginados.map((doc) => (
                 <tr key={doc.id}>
                   <td style={{ fontWeight: 500 }}>{doc.titulo}</td>
                   <td>{getTipoLabel(doc.tipo)}</td>
@@ -265,6 +278,18 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="documentos"
+      />
 
       <ModalHistorialVersiones
         isOpen={modalHistorialAbierto}

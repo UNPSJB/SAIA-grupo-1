@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoQuimico } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
 
 interface Props {
@@ -70,6 +71,18 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
         return coincideNombre && coincideTipo && coincideEstado;
       })
     : [];
+
+  const {
+    itemsPaginados: insumosPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(insumosFiltrados);
 
   return (
     <div className="modulo-container">
@@ -147,7 +160,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
                 </td>
               </tr>
             ) : (
-              insumosFiltrados.map((item) => (
+              insumosPaginados.map((item) => (
                 <tr key={item.id}>
                   <td style={{ fontWeight: 500 }}>{item.nombre}</td>
                   <td>{item.tipo}</td>
@@ -181,6 +194,18 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="insumos químicos"
+      />
 
       <ConfirmAlertDialog
         open={dialogAbierto}

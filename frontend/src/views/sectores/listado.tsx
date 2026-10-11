@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { Sector } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
 
 interface ListadoSectoresProps {
@@ -69,6 +70,18 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
     return !term || s.nombre.toLowerCase().includes(term);
   });
 
+  const {
+    itemsPaginados: sectoresPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(sectoresFiltrados);
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -121,7 +134,7 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
                 </td>
               </tr>
             ) : (
-              sectoresFiltrados.map((s) => (
+              sectoresPaginados.map((s) => (
                 <tr key={s.id}>
                   <td>{s.id}</td>
                   <td style={{ fontWeight: 500 }}>{s.nombre}</td>
@@ -149,6 +162,18 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="sectores"
+      />
 
       <ConfirmAlertDialog
         open={dialogAbierto}

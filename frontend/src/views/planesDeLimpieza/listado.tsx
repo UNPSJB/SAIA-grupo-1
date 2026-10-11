@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { PlanConId } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
 
 interface ListadoPlanesProps {
@@ -58,6 +59,18 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
       (filtroTareas === 'CON_TAREAS' ? cantTareas > 0 : cantTareas === 0);
     return coincideBusqueda && coincideFrecuencia && coincideTareas;
   });
+
+  const {
+    itemsPaginados: planesPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(planesFiltrados);
 
   return (
     <div className="modulo-container">
@@ -131,7 +144,7 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
                 </td>
               </tr>
             ) : (
-              planesFiltrados.map((p) => (
+              planesPaginados.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
                   <td>{p.nombre_equipo || p.nombre_sector || '-'}</td>
@@ -160,6 +173,19 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="planes de limpieza"
+      />
     </div>
   );
 };
+

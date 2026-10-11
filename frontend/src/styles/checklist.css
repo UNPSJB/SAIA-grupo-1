@@ -1,8 +1,9 @@
 .checklist-container {
-  max-width: 1000px;
-  margin: 2.5rem auto;
+  max-width: 1180px;
+  margin: 2rem auto 3.5rem auto;
   padding: 0 1.5rem;
   color: var(--text);
+  box-sizing: border-box;
 }
 
 .top-bar-acciones {
@@ -499,7 +500,7 @@
   min-width: 32px !important;
   max-width: 32px !important;
   padding: 0 !important;
-  border-radius: 50% !important;
+  border-radius: 8px !important;
   box-sizing: border-box !important;
   display: inline-flex !important;
   align-items: center !important;

@@ -21,7 +21,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
 }) => {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [loading, setLoading] = useState(Boolean(checklistId));
-  const { usuario, esOperador } = useAuth();
+  const { usuario, esOperador, esAdministrador } = useAuth();
 
   // Insumos químicos activos disponibles en la BD
   const [quimicosDisponibles, setQuimicosDisponibles] = useState<
@@ -229,8 +229,11 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       }
 
       const payload: CompletarTareaPayload = {
-        // el servidor toma la autoría de la sesión; se envía porque el schema todavía lo exige
-        responsable_legajo: usuario?.legajo ?? 0,
+        responsable_legajo:
+          tareaSeleccionada.responsable_legajo ??
+          checklist.responsable_legajo ??
+          usuario?.legajo ??
+          0,
         insumos_utilizados: formInsumos,
       };
 
@@ -439,16 +442,21 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             </div>
                           </div>
 
-                          {esOperador && checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (tarea.responsable_legajo == null || tarea.responsable_legajo === usuario?.legajo) && (
-                            <button
-                              className="btn-guardar"
-                              style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
-                              onClick={() => abrirModalCompletarTarea(tarea)}
-                              title="Completar tarea"
-                            >
-                              ✓ Completar
-                            </button>
-                          )}
+                          {(esAdministrador ||
+                            (esOperador &&
+                              (tarea.responsable_legajo == null ||
+                                tarea.responsable_legajo === usuario?.legajo))) &&
+                            checklist.estado === 'pendiente' &&
+                            tarea.estado === 'pendiente' && (
+                              <button
+                                className="btn-guardar"
+                                style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                                onClick={() => abrirModalCompletarTarea(tarea)}
+                                title="Completar tarea"
+                              >
+                                ✓ Completar
+                              </button>
+                            )}
                         </div>
 
                         {tarea.descripcion_tarea && (
@@ -560,10 +568,9 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
               <div className="form-group">
                 <label>Responsable</label>
                 <p style={{ margin: '0.25rem 0 0', fontWeight: 600 }}>
-                  {usuario ? `${usuario.apellido}, ${usuario.nombre}` : ''}
-                </p>
-                <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'var(--text)' }}>
-                  La tarea queda registrada a tu nombre.
+                  {tareaSeleccionada.nombre_responsable ||
+                    checklist?.nombre_responsable ||
+                    (usuario ? `${usuario.apellido}, ${usuario.nombre}` : '')}
                 </p>
               </div>
 

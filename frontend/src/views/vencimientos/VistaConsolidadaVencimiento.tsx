@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 
 export type OrigenVencimiento = 'personal' | 'equipo' | 'documento';
@@ -130,6 +131,18 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
     [filasVisibles]
   );
 
+  const {
+    itemsPaginados: filasPaginadas,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(filasVisibles);
+
   return (
     <div className="modulo-container">
       <style>{ESTILOS}</style>
@@ -222,7 +235,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
                 </td>
               </tr>
             ) : (
-              filasVisibles.map((f) => (
+              filasPaginadas.map((f) => (
                 <tr key={f.id} className={`venc-fila--${f.estado}`}>
                   <td>
                     <span className={`venc-badge venc-badge--${f.estado}`}>
@@ -254,6 +267,18 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="vencimientos"
+      />
     </div>
   );
 };

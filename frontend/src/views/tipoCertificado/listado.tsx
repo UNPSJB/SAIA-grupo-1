@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { TipoCertificado } from './tipos';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -93,6 +94,18 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
       return a.id - b.id; // Por defecto ordena por ID ascendente
     });
 
+  const {
+    itemsPaginados: tiposPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(tiposFiltradosYOrdenados);
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -157,7 +170,7 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
                 </td>
               </tr>
             ) : (
-              tiposFiltradosYOrdenados.map((item) => (
+              tiposPaginados.map((item) => (
                 <tr key={item.id}>
                   <td>#{item.id}</td>
                   <td>
@@ -190,6 +203,18 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="tipos de certificado"
+      />
 
       <ConfirmAlertDialog
         open={dialogOpen}

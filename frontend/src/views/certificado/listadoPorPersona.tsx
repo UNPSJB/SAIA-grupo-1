@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -148,6 +149,18 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     return !term || c.tipo.toLowerCase().includes(term);
   });
 
+  const {
+    itemsPaginados: certificadosPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(certificadosFiltrados);
+
   const modalEsPdf = modalArchivoUrl?.toLowerCase().endsWith('.pdf');
 
   return (
@@ -207,7 +220,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                 </td>
               </tr>
             ) : (
-              certificadosFiltrados.map((item) => (
+              certificadosPaginados.map((item) => (
                 <tr key={item.id}>
                   <td>{item.id}</td>
                   <td><strong>{item.tipo}</strong></td>
@@ -285,6 +298,18 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="certificados"
+      />
 
       <ConfirmAlertDialog
         open={dialogOpen}

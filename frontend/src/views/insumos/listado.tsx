@@ -2,13 +2,16 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
 
 interface ListadoInsumosProps {
   onNuevoClick?: () => void;
   onVerClick?: (insumo: InsumoConId) => void;
   onEditarClick?: (insumo: InsumoConId) => void;
-}const formatDate = (dateStr?: string | null) => {
+}
+
+const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return "No aplica";
   try {
     const d = new Date(dateStr);
@@ -105,6 +108,18 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     return coincideBusqueda && coincideUnidad && coincideVencimiento;
   });
 
+  const {
+    itemsPaginados: insumosPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(insumosFiltrados);
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -185,7 +200,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                 </td>
               </tr>
             ) : (
-              insumosFiltrados.map((i) => (
+              insumosPaginados.map((i) => (
                 <tr key={i.id}>
                   <td style={{ fontWeight: 500 }}>{i.nombre}</td>
                   <td>{i.lote}</td>
@@ -225,6 +240,18 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="ingredientes"
+      />
 
       <ConfirmAlertDialog
         open={dialogAbierto}

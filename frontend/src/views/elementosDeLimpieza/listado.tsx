@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -8,7 +9,9 @@ interface ListadoElementosLimpiezaProps {
   onNuevoClick: () => void;
   onDetalleClick: (id: number) => void;
   onEditarClick: (id: number) => void;
-}export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> = ({
+}
+
+export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
@@ -127,6 +130,18 @@ interface ListadoElementosLimpiezaProps {
     return matchNombre && matchEstado;
   });
 
+  const {
+    itemsPaginados: elementosPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(elementosFiltrados);
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -189,7 +204,7 @@ interface ListadoElementosLimpiezaProps {
                 </td>
               </tr>
             ) : (
-              elementosFiltrados.map((item) => (
+              elementosPaginados.map((item) => (
                 <tr key={item.id}>
                   <td>{item.id}</td>
                   <td>{item.nombre}</td>
@@ -286,6 +301,18 @@ interface ListadoElementosLimpiezaProps {
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="elementos"
+      />
 
       <ConfirmAlertDialog
         open={dialogOpen}

@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import type { Auditoria } from "./tipos";
 import { apiFetch } from '../../api/client';
-import '../../styles/formularioAlta.css';const formatDate = (dateStr?: string | null) => {
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import '../../styles/formularioAlta.css';
+
+const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return "No aplica";
   try {
     const d = new Date(dateStr);
@@ -90,6 +93,18 @@ export const ListadoAuditoria: React.FC = () => {
     return matchBusqueda && matchAccion && matchTabla;
   });
 
+  const {
+    itemsPaginados: auditoriasPaginadas,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(auditoriasFiltradas);
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -162,7 +177,7 @@ export const ListadoAuditoria: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              auditoriasFiltradas.map((a) => (
+              auditoriasPaginadas.map((a) => (
                 <tr key={a.id}>
                   <td style={{ fontWeight: 500 }}>
                     {a.tabla}
@@ -185,6 +200,18 @@ export const ListadoAuditoria: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="registros de auditoría"
+      />
     </div>
   );
 };

@@ -1,18 +1,18 @@
-import {useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import '../../styles/formularioAlta.css';
 import type { PlanDeCalibracionConId } from './tipos';
-
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 
 interface ListadoPlanesCProps {
-    onNuevoClick?: () => void;
-    onDetalleClick?: (id: number) => void;
-    onEditarClick?: (id: number) => void;
+  onNuevoClick?: () => void;
+  onDetalleClick?: (id: number) => void;
+  onEditarClick?: (id: number) => void;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const formatDate = (dateStr?: string | null) => {
-  if (!dateStr) return "No aplica";
+  if (!dateStr) return 'No aplica';
   try {
     const d = new Date(dateStr);
     return isNaN(d.getTime())
@@ -27,34 +27,37 @@ const formatDate = (dateStr?: string | null) => {
   }
 };
 
+export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
+  onNuevoClick,
+  onDetalleClick,
+  onEditarClick,
+}) => {
+  const [planes, setPlanes] = useState<PlanDeCalibracionConId[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
 
-export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({ onNuevoClick, onDetalleClick, onEditarClick }) => {
-    const [planes, setPlanes] = useState<PlanDeCalibracionConId[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [busqueda, setBusqueda] = useState('');
-
-    useEffect(() => {
-        let ignore = false;
-        async function load() {
-          try {
-            const res = await fetch(`${API_URL}/plan_de_calibracion/`);
-            if (res.ok) {
-              const data = await res.json();
-              if (!ignore) setPlanes(data);
-            } else {
-              if (!ignore) setPlanes([]);
-            }
-          } catch {
-            if (!ignore) setPlanes([]);
-          } finally {
-            if (!ignore) setLoading(false);
-          }
+  useEffect(() => {
+    let ignore = false;
+    async function load() {
+      try {
+        const res = await fetch(`${API_URL}/plan_de_calibracion/`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!ignore) setPlanes(data);
+        } else {
+          if (!ignore) setPlanes([]);
         }
-        load();
-        return () => {
-          ignore = true;
-        };
-      }, []);
+      } catch {
+        if (!ignore) setPlanes([]);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia' | 'sin_fecha';
 
@@ -76,21 +79,34 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({ onNuev
     return 'al_dia';
   };
 
-    const planesCFiltrados = planes.filter((p) => {
-    
-        const term = busqueda.toLowerCase().trim();
-        const coincideBusqueda = !term || 
-        (p.nombre?.toLowerCase().includes(term) ?? false) || (p.nombre_equipo?.toLowerCase().includes(term) ?? false);
-        const coincideVencimiento = !term || (p.fecha_vencimiento?.toLowerCase().includes(term) ?? false);
-        return coincideBusqueda || coincideVencimiento;
-    });
+  const planesCFiltrados = planes.filter((p) => {
+    const term = busqueda.toLowerCase().trim();
+    const coincideBusqueda =
+      !term ||
+      (p.nombre?.toLowerCase().includes(term) ?? false) ||
+      (p.nombre_equipo?.toLowerCase().includes(term) ?? false);
+    const coincideVencimiento =
+      !term || (p.fecha_vencimiento?.toLowerCase().includes(term) ?? false);
+    return coincideBusqueda || coincideVencimiento;
+  });
 
+  const {
+    itemsPaginados: planesPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(planesCFiltrados);
 
-return (
+  return (
     <div className="modulo-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Lista de Planes de Limpieza</h1>
+          <h1>Lista de Planes de Calibración</h1>
           <div className="subtitulo">01 · Listado</div>
         </div>
 
@@ -125,25 +141,26 @@ return (
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando Planes...
                 </td>
               </tr>
             ) : planesCFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
                   {busqueda
-                    ? 'No se encontraron planes de limpieza que coincidan con los filtros.'
+                    ? 'No se encontraron planes de calibración que coincidan con los filtros.'
                     : 'No hay planes registrados.'}
                 </td>
               </tr>
             ) : (
-              planesCFiltrados.map((p) => (
+              planesPaginados.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
                   <td>{p.nombre_equipo}</td>
                   <td>{formatDate(p.fecha_mantenimiento)}</td>
-                  <td><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span>{formatDate(p.fecha_vencimiento)}</span>
 
                       {/* VENCIDO */}
@@ -187,7 +204,8 @@ return (
                           ▲ Próximo a vencer
                         </span>
                       )}
-                    </div></td>
+                    </div>
+                  </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button
@@ -212,6 +230,18 @@ return (
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="planes de calibración"
+      />
     </div>
   );
-}
+};

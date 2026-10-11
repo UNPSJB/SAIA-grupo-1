@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Checklist, PersonalResumen } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
 import { apiFetch } from '../../api/client';
@@ -145,6 +146,18 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   }, [esAdministrador, usuario]);
 
   const hoy = obtenerFechaLocalHoy();
+
+  const {
+    itemsPaginados: checklistsPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(checklists);
 
   const handleFiltrar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -323,7 +336,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                 </td>
               </tr>
             ) : (
-              checklists.map((c) => {
+              checklistsPaginados.map((c) => {
                 const fillClass =
                   c.porcentaje_cumplimiento === 100
                     ? ''
@@ -431,6 +444,18 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="checklists"
+      />
 
       {modalGenerar && (
         <div className="modal-overlay">
