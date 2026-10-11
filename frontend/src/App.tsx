@@ -8,6 +8,9 @@ import NuevoEquipo from './views/equipos/nuevoEquipo';
 import { ListadoEquipos } from './views/equipos/listado';
 import { DetalleEquipo } from './views/equipos/verDetalle';
 import EditarEquipo from './views/equipos/editarDetalle';
+import { ListadoSectores } from './views/sectores/listado';
+import { NuevoSector } from './views/sectores/nuevoSector';
+import { EditarSector } from './views/sectores/editarSector';
 import { NuevaPersona } from './views/personas/nuevaPersona';
 import { ListadoPersonas } from './views/personas/listado';
 import { DetallePersona } from './views/personas/verDetalle';
@@ -30,12 +33,20 @@ import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
 import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
+import { ListadoIncidentes } from './views/incidentes/listado';
+import { IncidentesAbiertos } from './views/incidentes/incidentesAbiertos';
+import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
+import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibracion';
+import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
 import { Login } from './views/auth/login';
 import { useAuth } from './auth/useAuth';
 import { moduloInicial, puedeVerModulo } from './auth/permisos';
+import { EditarPlanDeCalibracion } from './views/planDeCalibracion/editarPlanDeCalibracion';
+import { VerPlanDeCalibracion } from './views/planDeCalibracion/verPlanDeCalibracion';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -43,6 +54,7 @@ type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
+type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador } = useAuth();
@@ -53,6 +65,9 @@ function Aplicacion() {
   
   const [vistaEquipos, setVistaEquipos] = useState<VistaEquipos>('listado');
   const [equipoSeleccionado, setEquipoSeleccionado] = useState<number | null>(null);
+
+  const [vistaSectores, setVistaSectores] = useState<VistaSectores>('listado');
+  const [sectorSeleccionado, setSectorSeleccionado] = useState<number | null>(null);
 
   
   const [vistaInsumos, setVistaInsumos] = useState<VistaInsumos>('listado');
@@ -73,16 +88,23 @@ function Aplicacion() {
 
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
+  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial'>('abiertos');
+
+  const [vistaPlanCalibracion, setVistaPlanCalibracion] = useState<VistaPlanCalibracion>('listado');
+  const [planCalibracionSeleccionado, setPlanCalibracionSeleccionado] = useState<number | null>(null);
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaEquipos('listado');
+    setVistaSectores('listado');
     setVistaInsumos('listado');
     setVistaPersonas('listado');
     setVistaInsumosQuimicos('listado');
     setVistaElementos('listado');
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
+    setVistaIncidentesAdmin('abiertos');
+    setVistaPlanCalibracion('listado');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -165,6 +187,27 @@ function Aplicacion() {
               equipoId={equipoSeleccionado}
               onSuccess={() => setVistaEquipos('listado')}
               onCancel={() => setVistaEquipos('listado')}
+            />
+          )
+        ) : modulo === 'sectores' ? (
+          vistaSectores === 'listado' ? (
+            <ListadoSectores
+              onNuevoClick={() => setVistaSectores('alta')}
+              onEditarClick={(id) => {
+                setSectorSeleccionado(id);
+                setVistaSectores('editar');
+              }}
+            />
+          ) : vistaSectores === 'alta' ? (
+            <NuevoSector
+              onSuccess={() => setVistaSectores('listado')}
+              onCancel={() => setVistaSectores('listado')}
+            />
+          ) : (
+            <EditarSector
+              sectorId={sectorSeleccionado}
+              onSuccess={() => setVistaSectores('listado')}
+              onCancel={() => setVistaSectores('listado')}
             />
           )
         ) : modulo === 'personas' ? (
@@ -290,6 +333,20 @@ function Aplicacion() {
           ) : null
         ) : modulo === 'auditoria' ? (
           <ListadoAuditoria />
+        ) : modulo === 'incidentes' ? (
+          esAdministrador ? (
+            vistaIncidentesAdmin === 'abiertos' ? (
+              <IncidentesAbiertos
+                onVerHistorialCompleto={() => setVistaIncidentesAdmin('historial')}
+              />
+            ) : (
+              <ListadoIncidentes
+                onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+              />
+            )
+          ) : (
+            <NuevoIncidente />
+          )
         ) : modulo === 'checklist' ? (
           vistaChecklist === 'listado' ? (
             <ListadoChecklists
@@ -304,7 +361,37 @@ function Aplicacion() {
               onVolver={() => setVistaChecklist('listado')}
             />
           )
-        ) : null}
+        ) : modulo === 'planDeCalibracion' ? (
+          vistaPlanCalibracion === 'listado' ? (
+            <ListadoPlanesCalibracion
+              onNuevoClick={() => setVistaPlanCalibracion('alta')}
+              onDetalleClick={(id) => {
+                setPlanCalibracionSeleccionado(id);
+                setVistaPlanCalibracion('detalle');
+              }}
+              onEditarClick={(id) => {
+                setPlanCalibracionSeleccionado(id);
+                setVistaPlanCalibracion('editar');
+              }}
+            />
+          ) : vistaPlanCalibracion === 'alta' ? (
+            <NuevoPlanDeCalibracion           
+              onSuccess={() => setVistaPlanCalibracion('listado')}
+              onCancel={() => setVistaPlanCalibracion('listado')}
+            />
+          ) : vistaPlanCalibracion === 'editar' ? (
+            <EditarPlanDeCalibracion
+              planId={planCalibracionSeleccionado}
+              onSuccess={() => setVistaPlanCalibracion('listado')}
+              onCancel={() => setVistaPlanCalibracion('listado')}
+            />
+          ) : vistaPlanCalibracion === 'detalle' ? (
+            <VerPlanDeCalibracion
+              onCancel={() => setVistaPlanCalibracion('listado')}
+              planCalibracionID={planCalibracionSeleccionado}
+            />
+          ) : null
+        ) : null}  
       </div>
     </div>
   );

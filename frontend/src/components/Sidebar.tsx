@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../auth/useAuth';
 import { puedeVerModulo } from '../auth/permisos';
 
-export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'auditoria';
+export type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -16,12 +16,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
     { id: 'dashboard', label: 'Inicio' },
     { id: 'insumos', label: 'Ingredientes' },
     { id: 'equipos', label: 'Equipos' },
+    { id: 'sectores', label: 'Sectores' },
     { id: 'personas', label: 'Personas' },
     { id: 'insumos_quimicos', label: 'Químicos Limpieza' },
     { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza' },
     { id: 'planDeLimpieza', label: 'Plan de Limpieza' },
     { id: 'checklist', label: 'Checklists' },
     { id: 'auditoria', label: 'Auditoría' },
+    { id: 'planDeCalibracion', label: 'Plan de Calibración' },
+    { id: 'incidentes', label: esAdministrador ? 'Incidentes' : 'Reportar Incidente' },
   ];
   const items = todos.filter((item) => puedeVerModulo(item.id, esAdministrador));
 

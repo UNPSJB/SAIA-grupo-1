@@ -360,6 +360,24 @@ dialog .btn-guardar{
     margin-bottom: 0.5rem;
 }
 
+
+.descripcion {
+    resize: none;         
+    overflow: hidden;     
+    min-height: 100px;
+    background-color: var(--code-bg);
+    color: var(--text-h);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    width: 100%;
+    font-size: 15px;
+    box-sizing: border-box;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    font-family: var(--sans);
+}
+
 .form-group label {
     font-size: 1.1rem; 
     font-weight: 600;

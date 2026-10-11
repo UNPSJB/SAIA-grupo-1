@@ -1,10 +1,8 @@
 from datetime import date, datetime
-
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import List, Literal, Optional
 from src.tareas.schemas import Tarea, TareaBase
 from src.plan_De_limpieza import exceptions
-
 
 class PlanDeLimpiezaBase(BaseModel):
     nombre: str = Field(max_length=50)
@@ -28,9 +26,9 @@ class PlanDeLimpiezaBase(BaseModel):
             raise exceptions.FechaInicioInvalida()
         return v
 
-
 class PlanDeLimpiezaCreate(PlanDeLimpiezaBase):
-    equipo_id: int
+    equipo_id: Optional[int] = None
+    sector_id: Optional[int] = None
     tareas: Optional[List[TareaBase]] = []
 
     @field_validator("nombre")
@@ -49,11 +47,17 @@ class PlanDeLimpiezaCreate(PlanDeLimpiezaBase):
             return v
         raise exceptions.NombreError()
 
+    @model_validator(mode="after")
+    def validar_objetivo(self):
+        if (self.equipo_id is None and self.sector_id is None) or (self.equipo_id is not None and self.sector_id is not None):
+            raise exceptions.ObjetivoInvalido()
+        return self
 
 class PlanDeLimpiezaUpdate(BaseModel):
     nombre: Optional[str] = Field(None, max_length=50)
     fecha_inicio: Optional[date] = Field(None, validation_alias=AliasChoices("fecha_inicio", "fechaInicio"))
     equipo_id: Optional[int] = None
+    sector_id: Optional[int] = None
 
     @field_validator("nombre")
     @classmethod
@@ -91,10 +95,11 @@ class PlanDeLimpiezaUpdate(BaseModel):
             raise exceptions.FechaInicioInvalida()
         return v
 
-
 class PlanDeLimpieza(PlanDeLimpiezaBase):
     id: int
-    equipo_id: int
-    nombre_equipo: str
+    equipo_id: Optional[int] = None
+    sector_id: Optional[int] = None
+    nombre_equipo: Optional[str] = None
+    nombre_sector: Optional[str] = None
     tareas: Optional[List[Tarea]] = None
     model_config = ConfigDict(from_attributes=True)

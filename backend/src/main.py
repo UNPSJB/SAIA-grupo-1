@@ -20,8 +20,11 @@ from src.plan_De_limpieza.router import router as planLimpieza_router
 from src.tareas.router import router as tarea_router
 from src.auditoria.router import router as auditoria_router
 from src.checklist.router import router as checklist_router
+from src.plan_de_calibracion.router import router as plan_de_calibracion_router
 from src.dashboard.router import router as dashboard_router
 from src.autenticacion.router import router as autenticacion_router
+from src.incidentes.router import router as incidentes_router
+from src.sectores.router import router as sectores_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 
@@ -76,5 +79,9 @@ app.include_router(planLimpieza_router, dependencies=SOLO_ADMIN)
 app.include_router(tarea_router, dependencies=SOLO_ADMIN)
 app.include_router(checklist_router)
 app.include_router(dashboard_router, dependencies=SOLO_ADMIN)
+# cada endpoint de incidentes define su rol (el operador crea; el admin edita, cambia estado y elimina)
+app.include_router(incidentes_router, dependencies=SESION)
 # /autenticacion/login es público; /autenticacion/me se protege dentro de su router
 app.include_router(autenticacion_router, prefix="/autenticacion", tags=["Autenticación"])
+app.include_router(plan_de_calibracion_router)
+app.include_router(sectores_router, prefix="/sectores", tags=["Sectores"], dependencies=SOLO_ADMIN)

@@ -85,6 +85,11 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({
           </div>
 
           <div className="form-group">
+            <label htmlFor="tareas">Tareas asignadas</label>
+            <input id="tareas" value={persona.tareas?.map((t) => t.nombre).join(", ") || "sin tareas"} disabled />
+          </div>
+
+          <div className="form-group">
             <label htmlFor="estado">Estado</label>
             <span
               style={{

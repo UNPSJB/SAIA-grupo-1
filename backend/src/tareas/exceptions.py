@@ -20,3 +20,9 @@ class FRECUENCIAInvalida(ValueError):
 
 class DescripcionInvalidad(BadRequest):
     DETAIL=ErrorCode.TAREA_CON_CARACTERES_RAROS
+
+class PersonalNoEncontrado(BadRequest):
+    DETAIL=ErrorCode.PERSONAL_NO_ENCONTRADO
+
+class PersonalInactivo(BadRequest):
+    DETAIL=ErrorCode.PERSONAL_INACTIVO

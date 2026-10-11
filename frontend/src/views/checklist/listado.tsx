@@ -9,7 +9,8 @@ import { useAuth } from '../../auth/useAuth';
 
 interface ListadoChecklistsProps {
   onDetalleClick: (id: number) => void;
-}const obtenerFechaLocalHoy = (): string => {
+}
+const obtenerFechaLocalHoy = (): string => {
   const ahora = new Date();
   const anio = ahora.getFullYear();
   const mes = String(ahora.getMonth() + 1).padStart(2, '0');
@@ -20,8 +21,8 @@ interface ListadoChecklistsProps {
 export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   onDetalleClick,
 }) => {
-  // El operador solo ve el checklist del día; generar y consultar el historial es del administrador.
-  const { esAdministrador } = useAuth();
+  // El administrador ve los checklists de todos; el operador ve (y genera) solo los suyos.
+  const { esAdministrador, usuario } = useAuth();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -115,8 +116,15 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         }
       }
 
-      // 2. Cargar Personal (solo lo usa el administrador para elegir responsable al generar)
-      if (!esAdministrador) return;
+      // 2. Cargar Personal (solo lo usa el administrador para elegir responsable al generar;
+      // el operador genera siempre el suyo)
+      if (!esAdministrador) {
+        if (usuario) {
+          setPersonal([{ legajo: usuario.legajo, nombre: usuario.nombre, apellido: usuario.apellido, activo: true }]);
+          setResponsableLegajo(usuario.legajo);
+        }
+        return;
+      }
       try {
         const resPersonal = await apiFetch(`/personal`);
         if (!cancelado && resPersonal.ok) {
@@ -135,7 +143,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     return () => {
       cancelado = true;
     };
-  }, [esAdministrador]);
+  }, [esAdministrador, usuario]);
 
   const hoy = obtenerFechaLocalHoy();
 
@@ -183,7 +191,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
       if (res.ok) {
         const nueva = await res.json();
         setModalGenerar(false);
-        setResponsableLegajo('');
+        setResponsableLegajo(esAdministrador ? '' : usuario?.legajo ?? '');
         if (nueva.fecha === hoy) {
           setChecklistHoyId(nueva.id);
         }
@@ -211,14 +219,12 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     <div className="checklist-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>{esAdministrador ? 'Historial de Checklists' : 'Checklist del Día'}</h1>
-          <div className="subtitulo">
-            {esAdministrador ? '01 · Historial y Seguimiento' : '01 · Tareas de hoy'}
-          </div>
+          <h1>Historial de Checklists</h1>
+          <div className="subtitulo">01 · Historial y Seguimiento</div>
         </div>
 
         <div className="top-bar-acciones">
-          {checklistHoyId ? (
+          {checklistHoyId && !esAdministrador ? (
             <button
               onClick={() => onDetalleClick(checklistHoyId)}
               className="btn-dia-ver"
@@ -226,7 +232,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             >
               📅 Ver Checklist del Día
             </button>
-          ) : esAdministrador ? (
+          ) : (
             <button
               onClick={() => setModalGenerar(true)}
               className="btn-guardar"
@@ -234,11 +240,10 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             >
               + Generar Checklist del Día
             </button>
-          ) : null}
+          )}
         </div>
       </div>
 
-      {esAdministrador && (
       <form onSubmit={handleFiltrar} className="filtros-historial">
         <div className="filtros-rango-campos">
           <div className="filtro-campo-grupo">
@@ -290,7 +295,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
           )}
         </div>
       </form>
-      )}
 
       <div className="tabla-wrapper">
         <table className="tabla-custom">
@@ -316,9 +320,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                 <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem' }}>
                   {fechaDesde || fechaHasta || estadoFiltro
                     ? 'No se encontraron checklists registrados con los filtros seleccionados.'
-                    : esAdministrador
-                    ? 'No se encontraron checklists registrados.'
-                    : 'Todavía no hay un checklist generado para hoy. Consultá con un administrador.'}
+                    : 'No se encontraron checklists registrados.'}
                 </td>
               </tr>
             ) : (
@@ -457,6 +459,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                       e.target.value ? Number(e.target.value) : ''
                     )
                   }
+                  disabled={!esAdministrador}
                   required
                 >
                   <option value="">-- Seleccione una persona activa --</option>
@@ -481,7 +484,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                   className="btn-cancelar"
                   onClick={() => {
                     setModalGenerar(false);
-                    setResponsableLegajo('');
+                    setResponsableLegajo(esAdministrador ? '' : usuario?.legajo ?? '');
                   }}
                   disabled={generando}
                 >

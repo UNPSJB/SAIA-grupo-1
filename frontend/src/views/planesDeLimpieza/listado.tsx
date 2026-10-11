@@ -7,7 +7,8 @@ interface ListadoPlanesProps {
   onNuevoClick?: () => void;
   onDetalleClick?: (id: number) => void;
   onEditarClick?: (id: number) => void;
-}export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
+}
+export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
@@ -46,7 +47,8 @@ interface ListadoPlanesProps {
     const coincideBusqueda =
       !term ||
       (p.nombre?.toLowerCase().includes(term) ?? false) ||
-      (p.nombre_equipo?.toLowerCase().includes(term) ?? false);
+      (p.nombre_equipo?.toLowerCase().includes(term) ?? false) ||
+      (p.nombre_sector?.toLowerCase().includes(term) ?? false);
     const coincideFrecuencia =
       filtroFrecuencia === 'TODOS' ||
       (p.tareas ?? []).some((t) => t.frecuencia?.toUpperCase() === filtroFrecuencia);
@@ -76,7 +78,7 @@ interface ListadoPlanesProps {
         <input
           type="text"
           className="input-busqueda"
-          placeholder="Buscar por plan o equipo..."
+          placeholder="Buscar por plan, equipo o sector..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
@@ -108,7 +110,7 @@ interface ListadoPlanesProps {
           <thead>
             <tr>
               <th>Nombre</th>
-              <th>Equipo</th>
+              <th>Asignado a</th>
               <th>Tareas</th>
               <th className="acciones-col">Acciones</th>
             </tr>
@@ -132,7 +134,7 @@ interface ListadoPlanesProps {
               planesFiltrados.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
-                  <td>{p.nombre_equipo}</td>
+                  <td>{p.nombre_equipo || p.nombre_sector || '-'}</td>
                   <td>{p.tareas?.length}</td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
