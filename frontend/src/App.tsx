@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import NuevoInsumo from './views/insumos/nuevoInsumo';
 import { ListadoInsumos } from './views/insumos/listado';
 import VerInsumo from './views/insumos/verInsumo';
@@ -186,10 +186,10 @@ function Aplicacion() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#ffffff', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: 'var(--text)', display: 'flex' }}>
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
-  <div style={{ flex: 1, padding: '40px 60px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, padding: '40px 60px', backgroundColor: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' }}>
         {modulo === 'dashboard' ? (
           <PanelDashboard />
         ) : modulo === 'vencimientos' ? (
@@ -556,6 +556,12 @@ function Aplicacion() {
 
 function App() {
   const { usuario, cargando } = useAuth();
+
+  useEffect(() => {
+    const temaGuardado = (localStorage.getItem('saia_tema') as 'light' | 'dark') || 'light';
+    document.documentElement.setAttribute('data-theme', temaGuardado);
+  }, []);
+
   if (cargando) return null;
   return usuario ? <Aplicacion /> : <Login />;
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { puedeVerModulo } from '../auth/permisos';
 
@@ -11,6 +11,19 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
   const { usuario, esAdministrador, logout } = useAuth();
+
+  const [tema, setTema] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('saia_tema') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', tema);
+    localStorage.setItem('saia_tema', tema);
+  }, [tema]);
+
+  const alternarTema = () => {
+    setTema((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
 
   const todos: { id: Modulo; label: string }[] = [
     { id: 'dashboard', label: 'Inicio' },
@@ -73,6 +86,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
 
       {usuario && (
         <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #1e202e' }}>
+          <button
+            type="button"
+            onClick={alternarTema}
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              padding: '10px 16px',
+              marginBottom: '10px',
+              borderRadius: '8px',
+              fontSize: '13.5px',
+              fontWeight: 500,
+              backgroundColor: '#1b1d2b',
+              color: '#c9cbd8',
+              border: '1px solid #282b3e',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>{tema === 'light' ? 'Modo oscuro' : 'Modo claro'}</span>
+            <span>{tema === 'light' ? '🌙' : '☀️'}</span>
+          </button>
+
           <div style={{ padding: '0 16px 10px', color: '#8f92a3', fontSize: '13px', lineHeight: 1.4 }}>
             <div style={{ color: '#c9cbd8', fontWeight: 600 }}>
               {usuario.nombre} {usuario.apellido}
