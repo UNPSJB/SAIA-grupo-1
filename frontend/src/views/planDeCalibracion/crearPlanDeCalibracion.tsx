@@ -173,9 +173,9 @@ return (
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
       {successMsg && <div className="alerta-exito">{successMsg}</div>}
+      
 
       <form onSubmit={handleGuardar}>
-
         <div className="form-group">
           <label htmlFor="fecha_mantenimiento">Fecha de Mantenimiento</label>
           <input
@@ -188,6 +188,8 @@ return (
             required
           />
         </div>
+
+        
 
 
         <div className="form-group">

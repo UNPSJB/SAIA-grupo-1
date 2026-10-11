@@ -25,6 +25,7 @@ from src.dashboard.router import router as dashboard_router
 from src.autenticacion.router import router as autenticacion_router
 from src.incidentes.router import router as incidentes_router
 from src.sectores.router import router as sectores_router
+from src.calibracion_realizada.router import router as calibracion_realizada_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 
@@ -85,3 +86,4 @@ app.include_router(incidentes_router, dependencies=SESION)
 app.include_router(autenticacion_router, prefix="/autenticacion", tags=["Autenticación"])
 app.include_router(plan_de_calibracion_router)
 app.include_router(sectores_router, prefix="/sectores", tags=["Sectores"], dependencies=SOLO_ADMIN)
+app.include_router(calibracion_realizada_router)
