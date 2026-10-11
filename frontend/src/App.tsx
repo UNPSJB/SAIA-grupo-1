@@ -39,13 +39,17 @@ import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
 import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibracion';
 import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
+import { ListadoDocumentos } from './views/documentos/listado';
+import { DetalleDocumento } from './views/documentos/verDetalle';
+import NuevoDocumento from './views/documentos/nuevoDocumento';
+import NuevaVersion from './views/documentos/nuevaVersion';
 import { Login } from './views/auth/login';
 import { useAuth } from './auth/useAuth';
 import { moduloInicial, puedeVerModulo } from './auth/permisos';
 import { EditarPlanDeCalibracion } from './views/planDeCalibracion/editarPlanDeCalibracion';
 import { VerPlanDeCalibracion } from './views/planDeCalibracion/verPlanDeCalibracion';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -55,6 +59,7 @@ type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
 type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 
 function Aplicacion() {
   const { esAdministrador } = useAuth();
@@ -93,6 +98,9 @@ function Aplicacion() {
   const [vistaPlanCalibracion, setVistaPlanCalibracion] = useState<VistaPlanCalibracion>('listado');
   const [planCalibracionSeleccionado, setPlanCalibracionSeleccionado] = useState<number | null>(null);
 
+  const [vistaDocumentos, setVistaDocumentos] = useState<VistaDocumentos>('listado');
+  const [documentoSeleccionado, setDocumentoSeleccionado] = useState<number | null>(null);
+
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaEquipos('listado');
@@ -105,6 +113,7 @@ function Aplicacion() {
     setVistaChecklist('listado');
     setVistaIncidentesAdmin('abiertos');
     setVistaPlanCalibracion('listado');
+    setVistaDocumentos('listado');
   };
 
   const irAVerInsumo = (insumo: InsumoConId) => {
@@ -346,6 +355,36 @@ function Aplicacion() {
             )
           ) : (
             <NuevoIncidente />
+          )
+        ) : modulo === 'documentos' ? (
+          vistaDocumentos === 'listado' ? (
+            <ListadoDocumentos
+              onNuevoClick={esAdministrador ? () => setVistaDocumentos('alta') : undefined}
+              onNuevaVersionClick={esAdministrador ? (id) => {
+                setDocumentoSeleccionado(id);
+                setVistaDocumentos('nuevaVersion');
+              } : undefined}
+              onDetalleClick={(id) => {
+                setDocumentoSeleccionado(id);
+                setVistaDocumentos('detalle');
+              }}
+            />
+          ) : vistaDocumentos === 'alta' && esAdministrador ? (
+            <NuevoDocumento
+              onSuccess={() => setVistaDocumentos('listado')}
+              onCancel={() => setVistaDocumentos('listado')}
+            />
+          ) : vistaDocumentos === 'nuevaVersion' && esAdministrador ? (
+            <NuevaVersion
+              documentoId={documentoSeleccionado}
+              onSuccess={() => setVistaDocumentos('listado')}
+              onCancel={() => setVistaDocumentos('listado')}
+            />
+          ) : (
+            <DetalleDocumento
+              documentoId={documentoSeleccionado}
+              onVolver={() => setVistaDocumentos('listado')}
+            />
           )
         ) : modulo === 'checklist' ? (
           vistaChecklist === 'listado' ? (

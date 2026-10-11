@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     ROOT_PATH_DEVELOPMENT: str = ""
     ROOT_PATH_PRODUCTION: str = ""
     LOG_LEVEL: str = "INFO"
-    JWT_SECRET: str
+    JWT_SECRET: str = "clave-secreta-desarrollo-jwt-saia"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60 # Tiempo de expiracion del token en minutos TODO
 

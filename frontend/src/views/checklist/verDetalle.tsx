@@ -5,7 +5,6 @@ import type {
   InsumoUtilizado,
   CompletarTareaPayload,
 } from './tipos';
-import { parsearPasos } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
@@ -15,7 +14,8 @@ import { useAuth } from '../../auth/useAuth';
 interface DetalleChecklistProps {
   checklistId: number | null;
   onVolver: () => void;
-}export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
+}
+export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
   checklistId,
   onVolver,
 }) => {
@@ -454,16 +454,11 @@ interface DetalleChecklistProps {
                         {tarea.descripcion_tarea && (
                           <div className="tarea-procedimiento-box">
                             <div className="tarea-procedimiento-header">
-                              <span className="tarea-procedimiento-tag">📋 Procedimiento / Instrucciones a seguir</span>
+                              <span className="tarea-procedimiento-tag">Procedimiento / Instrucciones a seguir</span>
                             </div>
-                            <div className="tarea-procedimiento-pasos">
-                              {parsearPasos(tarea.descripcion_tarea).map((paso, idx) => (
-                                <div key={idx} className="paso-item">
-                                  {paso.numero && <span className="paso-numero-badge">{paso.numero}</span>}
-                                  <span className="paso-texto">{paso.texto}</span>
-                                </div>
-                              ))}
-                            </div>
+                            <p className="tarea-procedimiento-texto">
+                              {tarea.descripcion_tarea}
+                            </p>
                           </div>
                         )}
 
@@ -553,16 +548,11 @@ interface DetalleChecklistProps {
             {tareaSeleccionada.descripcion_tarea && (
               <div className="modal-procedimiento-box">
                 <div className="tarea-procedimiento-header">
-                  <span className="tarea-procedimiento-tag">📋 Procedimiento a seguir:</span>
+                  <span className="tarea-procedimiento-tag">Procedimiento a seguir:</span>
                 </div>
-                <div className="tarea-procedimiento-pasos">
-                  {parsearPasos(tareaSeleccionada.descripcion_tarea).map((paso, idx) => (
-                    <div key={idx} className="paso-item">
-                      {paso.numero && <span className="paso-numero-badge">{paso.numero}</span>}
-                      <span className="paso-texto">{paso.texto}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="tarea-procedimiento-texto">
+                  {tareaSeleccionada.descripcion_tarea}
+                </p>
               </div>
             )}
 

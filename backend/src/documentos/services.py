@@ -1,0 +1,413 @@
+import uuid
+from datetime import date, datetime
+from pathlib import Path
+from typing import List, Optional, Tuple, Union
+from fastapi import UploadFile
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+from src.auditoria.models import AccionAuditoria
+from src.auditoria.schemas import AuditoriaCreate
+from src.auditoria.services import registrar_auditoria
+from src.personal.models import Personal
+from src.personal.schemas import Capacidades
+from src.documentos import exceptions
+from src.documentos.constants import TAMANIO_MAXIMO_BYTES, TipoDocumento
+from src.documentos.models import Documento, VersionDocumento
+
+STORAGE_DIR = Path(__file__).resolve().parent / "archivos"
+STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+def es_administrador(persona: Personal) -> bool:
+    return persona.capacidad in (Capacidades.ADMINISTRAR, Capacidades.AMBAS)
+
+def obtener_descripcion_personal(persona) -> str:
+    if not persona:
+        return "Desconocido"
+    legajo = getattr(persona, "legajo", "")
+    nombre = getattr(persona, "nombre", "")
+    apellido = getattr(persona, "apellido", "")
+    usuario = getattr(persona, "usuario", None)
+    desc = f"{legajo} - {nombre} {apellido}".strip()
+    if usuario:
+        desc += f" (@{usuario})"
+    return desc
+
+def verificar_permiso_administrador(
+    db: Session,
+    responsable_legajo: Optional[int] = None,
+    usuario: Optional[Personal] = None,
+) -> Personal:
+    if responsable_legajo is not None:
+        persona = db.scalar(select(Personal).where(Personal.legajo == responsable_legajo))
+        if not persona:
+            raise exceptions.ResponsableNoEncontrado()
+        if not persona.activo:
+            raise exceptions.ResponsableInactivo()
+        if not es_administrador(persona):
+            raise exceptions.SoloAdministradorPuedeSubir()
+        return persona
+
+    if usuario is not None:
+        if not getattr(usuario, "activo", True):
+            raise exceptions.ResponsableInactivo()
+        if not es_administrador(usuario):
+            raise exceptions.SoloAdministradorPuedeSubir()
+        if isinstance(usuario, Personal):
+            return usuario
+        if hasattr(usuario, "legajo"):
+            persona_db = db.scalar(select(Personal).where(Personal.legajo == usuario.legajo))
+            if persona_db:
+                return persona_db
+        return usuario
+
+    persona = db.scalar(
+        select(Personal).where(
+            Personal.activo == True,
+            Personal.capacidad.in_([Capacidades.ADMINISTRAR, Capacidades.AMBAS]),
+        )
+    )
+    if not persona:
+        raise exceptions.SoloAdministradorPuedeSubir()
+    return persona
+
+def validar_y_guardar_archivo_pdf(file: UploadFile, documento_id: int, version: Union[int, str]) -> Tuple[str, str, int]:
+    nombre_original = file.filename or "documento.pdf"
+    extension = Path(nombre_original).suffix.lower()
+    if extension != ".pdf":
+        raise exceptions.FormatoArchivoInvalido()
+
+    contenido = file.file.read()
+    if not contenido:
+        raise exceptions.ArchivoVacio()
+
+    tamanio = len(contenido)
+    if tamanio > TAMANIO_MAXIMO_BYTES:
+        raise exceptions.ArchivoDemasiadoGrande()
+
+    if not contenido.startswith(b"%PDF"):
+        raise exceptions.FormatoArchivoInvalido()
+
+    version_sanitizada = "".join(c for c in str(version) if c.isalnum() or c in (".", "_", "-"))
+    nombre_disco = f"doc_{documento_id}_v{version_sanitizada}_{uuid.uuid4().hex[:8]}.pdf"
+    ruta_destino = STORAGE_DIR / nombre_disco
+
+    with open(ruta_destino, "wb") as f:
+        f.write(contenido)
+
+    return nombre_disco, nombre_original, tamanio
+
+def calcular_siguiente_version(versiones: List[VersionDocumento]) -> int:
+    if not versiones:
+        return 1
+    numeros = []
+    for v in versiones:
+        try:
+            numeros.append(int(v.version))
+        except (ValueError, TypeError):
+            pass
+    if numeros:
+        return max(numeros) + 1
+    return len(versiones) + 1
+
+def crear_documento(
+    db: Session,
+    titulo: str,
+    tipo: TipoDocumento,
+    version: Optional[Union[int, str]] = None,
+    file: Optional[UploadFile] = None,
+    descripcion: Optional[str] = None,
+    fecha_vigencia: Optional[date] = None,
+    usuario: Optional[Personal] = None,
+    responsable_legajo: Optional[int] = None,
+) -> Documento:
+    if isinstance(version, UploadFile) and file is None:
+        file = version
+        version = None
+
+    persona = verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
+
+    titulo_limpio = titulo.strip()
+    if not titulo_limpio:
+        raise exceptions.BadRequest()
+
+    if version is not None:
+        try:
+            version_int = int(float(str(version).strip().lower().lstrip("v")))
+        except (ValueError, TypeError):
+            version_int = 1
+    else:
+        version_int = 1
+
+    nuevo_doc = Documento(
+        titulo=titulo_limpio,
+        tipo=tipo,
+        descripcion=descripcion.strip() if descripcion else None,
+        activo=True,
+    )
+    db.add(nuevo_doc)
+    db.flush()
+
+    archivo_nombre, archivo_original, tamanio = validar_y_guardar_archivo_pdf(
+        file, nuevo_doc.id, version_int
+    )
+
+    fecha_v = fecha_vigencia or date.today()
+    nom_usuario = getattr(persona, "usuario", None) or f"{getattr(persona, 'nombre', '')} {getattr(persona, 'apellido', '')}".strip() or "admin"
+    primera_version = VersionDocumento(
+        documento_id=nuevo_doc.id,
+        version=version_int,
+        archivo_nombre=archivo_nombre,
+        archivo_nombre_original=archivo_original,
+        tamanio_bytes=tamanio,
+        archivado=False,
+        es_vigente=True,
+        fecha_vigencia=fecha_v,
+        fecha_archivo=None,
+        creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
+        creado_por_usuario=nom_usuario,
+    )
+    db.add(primera_version)
+    db.flush()
+
+    responsable_desc = obtener_descripcion_personal(persona)
+    registrar_auditoria(
+        db,
+        AuditoriaCreate(
+            tabla="documentos",
+            registro_id=nuevo_doc.id,
+            accion=AccionAuditoria.CREAR,
+            campo="version_vigente",
+            valor_previo=None,
+            valor_posterior=f"v{primera_version.version} (vigencia: {fecha_v}, usuario: {responsable_desc})",
+        ),
+        commit=False,
+    )
+    db.commit()
+    db.refresh(nuevo_doc)
+    return nuevo_doc
+
+def subir_nueva_version(
+    db: Session,
+    documento_id: int,
+    version: Optional[Union[int, str]] = None,
+    file: Optional[UploadFile] = None,
+    usuario: Optional[Personal] = None,
+    responsable_legajo: Optional[int] = None,
+) -> VersionDocumento:
+    if isinstance(version, UploadFile) and file is None:
+        file = version
+        version = None
+
+    persona = verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
+
+    doc = db.scalar(select(Documento).where(Documento.id == documento_id, Documento.activo == True))
+    if not doc:
+        raise exceptions.DocumentoNoEncontrado()
+
+    versiones_previas = db.scalars(
+        select(VersionDocumento).where(VersionDocumento.documento_id == documento_id)
+    ).all()
+
+    if version is not None:
+        try:
+            version_int = int(float(str(version).strip().lower().lstrip("v")))
+        except (ValueError, TypeError):
+            version_int = calcular_siguiente_version(versiones_previas)
+    else:
+        version_int = calcular_siguiente_version(versiones_previas)
+
+    version_existente = db.scalar(
+        select(VersionDocumento).where(
+            VersionDocumento.documento_id == documento_id,
+            VersionDocumento.version == version_int,
+        )
+    )
+    if version_existente:
+        raise exceptions.VersionDuplicada()
+
+    archivo_nombre, archivo_original, tamanio = validar_y_guardar_archivo_pdf(
+        file, documento_id, version_int
+    )
+
+    prev_vigente = next((v for v in versiones_previas if v.es_vigente), None)
+    hoy = date.today()
+
+    for v in versiones_previas:
+        v.es_vigente = False
+        v.archivado = True
+        if not v.fecha_archivo:
+            v.fecha_archivo = hoy
+
+    nom_usuario = getattr(persona, "usuario", None) or f"{getattr(persona, 'nombre', '')} {getattr(persona, 'apellido', '')}".strip() or "admin"
+    nueva_version = VersionDocumento(
+        documento_id=documento_id,
+        version=version_int,
+        archivo_nombre=archivo_nombre,
+        archivo_nombre_original=archivo_original,
+        tamanio_bytes=tamanio,
+        archivado=False,
+        es_vigente=True,
+        fecha_vigencia=hoy,
+        fecha_archivo=None,
+        creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
+        creado_por_usuario=nom_usuario,
+    )
+    db.add(nueva_version)
+    responsable_desc = obtener_descripcion_personal(persona)
+    previo = f"v{prev_vigente.version}" if prev_vigente else None
+    registrar_auditoria(
+        db,
+        AuditoriaCreate(
+            tabla="documentos",
+            registro_id=documento_id,
+            accion=AccionAuditoria.MODIFICAR,
+            campo="version_vigente",
+            valor_previo=previo,
+            valor_posterior=f"v{nueva_version.version} (vigencia: {hoy}, usuario: {responsable_desc})",
+        ),
+        commit=False,
+    )
+    db.commit()
+    db.refresh(nueva_version)
+    return nueva_version
+
+def marcar_version_vigente(
+    db: Session,
+    documento_id: int,
+    version_id: int,
+    fecha_vigencia: Optional[date] = None,
+    usuario: Optional[Personal] = None,
+    responsable_legajo: Optional[int] = None,
+) -> VersionDocumento:
+    if fecha_vigencia is None:
+        fecha_vigencia = date.today()
+    persona = verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
+
+    doc = db.scalar(select(Documento).where(Documento.id == documento_id, Documento.activo == True))
+    if not doc:
+        raise exceptions.DocumentoNoEncontrado()
+
+    version_destino = db.scalar(
+        select(VersionDocumento).where(
+            VersionDocumento.id == version_id,
+            VersionDocumento.documento_id == documento_id,
+        )
+    )
+    if not version_destino:
+        raise exceptions.VersionNoEncontrada()
+
+    version_anterior = db.scalar(
+        select(VersionDocumento).where(
+            VersionDocumento.documento_id == documento_id,
+            VersionDocumento.es_vigente == True,
+        )
+    )
+
+    if version_destino.es_vigente:
+        return version_destino
+
+    versiones = db.scalars(
+        select(VersionDocumento).where(VersionDocumento.documento_id == documento_id)
+    ).all()
+    for v in versiones:
+        if v.es_vigente:
+            v.es_vigente = False
+            v.archivado = True
+            v.fecha_archivo = fecha_vigencia
+        elif not v.fecha_archivo:
+            v.fecha_archivo = fecha_vigencia
+
+    nom_usuario = getattr(persona, "usuario", None) or f"{getattr(persona, 'nombre', '')} {getattr(persona, 'apellido', '')}".strip() or "admin"
+    nueva_entrada_vigente = VersionDocumento(
+        documento_id=documento_id,
+        version=version_destino.version,
+        archivo_nombre=version_destino.archivo_nombre,
+        archivo_nombre_original=version_destino.archivo_nombre_original,
+        tamanio_bytes=version_destino.tamanio_bytes,
+        archivado=False,
+        es_vigente=True,
+        fecha_vigencia=fecha_vigencia,
+        fecha_archivo=None,
+        creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
+        creado_por_usuario=nom_usuario,
+    )
+    db.add(nueva_entrada_vigente)
+    db.flush()
+
+    previo = f"v{version_anterior.version}" if version_anterior else None
+    responsable_desc = obtener_descripcion_personal(persona)
+    registrar_auditoria(
+        db,
+        AuditoriaCreate(
+            tabla="documentos",
+            registro_id=documento_id,
+            accion=AccionAuditoria.MODIFICAR,
+            campo="version_vigente",
+            valor_previo=previo,
+            valor_posterior=f"v{nueva_entrada_vigente.version} (vigencia: {fecha_vigencia}, usuario: {responsable_desc})",
+        ),
+        commit=False,
+    )
+    db.commit()
+    db.refresh(nueva_entrada_vigente)
+    return nueva_entrada_vigente
+
+def listar_documentos(
+    db: Session,
+    tipo: Optional[TipoDocumento] = None,
+    busqueda: Optional[str] = None,
+) -> List[Documento]:
+    query = select(Documento).where(Documento.activo == True)
+    if tipo is not None:
+        query = query.where(Documento.tipo == tipo)
+    if busqueda:
+        termino = f"%{busqueda.strip()}%"
+        query = query.where(Documento.titulo.ilike(termino))
+    query = query.order_by(Documento.id.desc())
+    return list(db.scalars(query).all())
+
+def obtener_documento(db: Session, documento_id: int) -> Documento:
+    doc = db.scalar(select(Documento).where(Documento.id == documento_id, Documento.activo == True))
+    if not doc:
+        raise exceptions.DocumentoNoEncontrado()
+    return doc
+
+def listar_versiones_documento(db: Session, documento_id: int) -> List[VersionDocumento]:
+    obtener_documento(db, documento_id)
+    query = (
+        select(VersionDocumento)
+        .where(VersionDocumento.documento_id == documento_id)
+        .order_by(VersionDocumento.id.desc())
+    )
+    todas = list(db.scalars(query).all())
+    versiones_unicas = {}
+    for v in todas:
+        if v.version not in versiones_unicas:
+            versiones_unicas[v.version] = v
+        elif v.es_vigente:
+            versiones_unicas[v.version] = v
+    return sorted(versiones_unicas.values(), key=lambda x: x.version, reverse=True)
+
+def listar_historial_documento(
+    db: Session,
+    documento_id: int,
+    orden: str = "asc",
+) -> List[VersionDocumento]:
+    obtener_documento(db, documento_id)
+    query = select(VersionDocumento).where(VersionDocumento.documento_id == documento_id)
+    if orden.lower() == "desc":
+        query = query.order_by(VersionDocumento.id.desc())
+    else:
+        query = query.order_by(VersionDocumento.id.asc())
+    return list(db.scalars(query).all())
+
+def obtener_archivo_version(db: Session, version_id: int) -> Tuple[Path, str]:
+    version = db.scalar(select(VersionDocumento).where(VersionDocumento.id == version_id))
+    if not version:
+        raise exceptions.VersionNoEncontrada()
+
+    ruta = STORAGE_DIR / version.archivo_nombre
+    if not ruta.is_file():
+        raise exceptions.ArchivoNoEncontrado()
+
+    return ruta, version.archivo_nombre_original

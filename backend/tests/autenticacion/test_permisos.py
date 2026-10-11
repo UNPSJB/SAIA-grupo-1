@@ -51,6 +51,7 @@ SOLO_ADMIN = [
     ("GET", "/sectores/1"),
     ("PUT", "/sectores/1"),
     ("DELETE", "/sectores/1"),
+    ("POST", "/documentos"),
 ]
 
 # Endpoints que piden estar logueado, sin importar el rol.
@@ -58,6 +59,7 @@ CUALQUIER_USUARIO = [
     ("GET", "/api/insumos-quimicos"),
     ("GET", "/checklist/"),
     ("GET", "/autenticacion/me"),
+    ("GET", "/documentos"),
 ]
 
 
@@ -239,3 +241,12 @@ def test_el_rol_ambos_puede_operar(session: Session, usuarios: Dict[str, Persona
     )
     assert respuesta.status_code == status.HTTP_200_OK
     assert respuesta.json()["responsable_legajo"] == usuarios["ambos"].legajo
+
+def test_operador_puede_consultar_documentos_pero_no_crear_ni_modificar(usuarios: Dict[str, Personal]) -> None:
+    operador = headers(usuarios["operador"])
+
+    res_crear_operador = client.post("/documentos", headers=operador, data={"titulo": "Test", "tipo": "RECETA"})
+    assert res_crear_operador.status_code == status.HTTP_403_FORBIDDEN
+
+    res_list = client.get("/documentos", headers=operador)
+    assert res_list.status_code == status.HTTP_200_OK
