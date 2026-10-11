@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 from fastapi import UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session
 from src.checklist import exceptions, models, schemas
 from src.auditoria.models import AccionAuditoria
@@ -133,10 +133,13 @@ def generar_checklist(
     planes = (
         db.scalars(
             select(Plan_de_Limpieza)
-            .join(Equipo)
+            .outerjoin(Equipo, Plan_de_Limpieza.equipo_id == Equipo.id)
             .where(
-                Equipo.estado == Estado.ACTIVO,
                 Plan_de_Limpieza.fecha_inicio <= fecha,
+                or_(
+                    Plan_de_Limpieza.sector_id.isnot(None),
+                    Equipo.estado == Estado.ACTIVO,
+                ),
             )
         )
         .all()

@@ -20,6 +20,8 @@ from src.insumos_quimicos.constants import TipoQuimicoEnum, UnidadMedidaEnum as 
 from src.equipos.services import crear_equipo
 from src.equipos.schemas import EquipoCreate
 from src.equipos.models import Categoria, Estado
+from src.sectores.services import crear_sector
+from src.sectores.schemas import SectorCreate
 from src.plan_De_limpieza.services import crear_plan
 from src.plan_De_limpieza.schemas import PlanDeLimpiezaCreate
 from src.tareas.services import crear_tarea
@@ -167,12 +169,15 @@ def session() -> Generator[Session, None, None]:
         ),
     )
 
+    sector_1 = crear_sector(db, SectorCreate(nombre="Cocina"))
+    sector_2 = crear_sector(db, SectorCreate(nombre="Deposito"))
+
     equipo_1 = crear_equipo(
         db,
         EquipoCreate(
             nombre="Heladera",
             categoria=Categoria.CONSERVAMIENTO,
-            ubicacion="Cocina",
+            sector_id=sector_1.id,
             estado=Estado.ACTIVO,
             plan_de_calibracion="Semestral",
         ),
@@ -183,7 +188,7 @@ def session() -> Generator[Session, None, None]:
         EquipoCreate(
             nombre="Freezer",
             categoria=Categoria.CONSERVAMIENTO,
-            ubicacion="Deposito",
+            sector_id=sector_2.id,
             estado=Estado.ACTIVO,
             plan_de_calibracion="Semestral",
         ),

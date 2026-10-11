@@ -51,22 +51,6 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
         fetchPlanLimp();
     }, [fetchPlanLimp]);
 
-    /*const handleEliminarTarea = async (id?: number) => {
-    if (!id) return;
-    if (!window.confirm('¿Seguro que desea eliminar esta tarea?')) return;
-
-    try {
-      const res = await apiFetch(`/tareas/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-         await fetchPlanLimp();
-      } else {
-        alert('No se pudo eliminar la tarea');
-      }
-    } catch {
-      alert('Error de conexión al eliminar la tarea');
-    }
-  };*/
-
     return (
     <div className="plan-container invertir-css">
         <div className="modulo-header">
@@ -97,14 +81,13 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
                 />
             </div>
             <div className="form-group">
-                <label htmlFor="equipo">EQUIPO</label>
+                <label htmlFor="objetivo">{planLimpieza.nombre_sector ? 'SECTOR' : 'EQUIPO'}</label>
                 <input
-                    id="equipo"
-                    name="equipo"
-                    value={planLimpieza.nombre_equipo}
+                    id="objetivo"
+                    name="objetivo"
+                    value={planLimpieza.nombre_sector || planLimpieza.nombre_equipo || ''}
                     disabled
-                >
-                </input>
+                />
             </div>
 
 
@@ -133,7 +116,7 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({ onCancel
               <th>Nombre</th>
               <th>Procedimiento</th>
               <th>Frecuencia</th>
-                            <th>Personal a Cargo</th>
+              <th>Personal a Cargo</th>
               <th className="acciones-col">Acciones</th>
             </tr>
           </thead>

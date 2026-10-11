@@ -62,3 +62,21 @@ def test_reactivar_equipo_inexistente(session: Session) -> None:
     with pytest.raises(HTTPException) as exc_info:
         reactivar_equipo(session, 9999)
     assert exc_info.value.status_code == 404
+
+
+def test_crear_equipo_con_sector(session: Session) -> None:
+    nuevo = crear_equipo(
+        session,
+        EquipoCreate(
+            nombre="Amasadora Nueva",
+            categoria=Categoria.MANTENIMIENTO,
+            sector_id=1,
+            estado=Estado.ACTIVO,
+            plan_de_calibracion="Anual",
+        ),
+    )
+    assert nuevo.id is not None
+    assert nuevo.sector_id == 1
+    assert nuevo.ubicacion.nombre == "Cocina"
+    assert nuevo.sector.nombre == "Cocina"
+

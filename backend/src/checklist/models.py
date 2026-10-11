@@ -129,4 +129,6 @@ class ChecklistItem(ModeloBase):
     def nombre_equipo(self) -> Optional[str]:
         if self.plan and self.plan.equipo:
             return self.plan.equipo.nombre
+        if self.plan and self.plan.sector:
+            return self.plan.sector.nombre
         return None
