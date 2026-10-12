@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
-import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
 
@@ -24,6 +24,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
 
     const [equipoAConfirmar, setEquipoAConfirmar] = useState<EquipoConId | null>(null);
     const [dialogAbierto, setDialogAbierto] = useState(false);
+    const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelado = false;
@@ -77,10 +78,10 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                 );
             } else {
                 const err = await res.json().catch(() => ({}));
-                alert(err.detail || `No se pudo ${accion} el equipo.`);
+                setErrorDialogMsg(err.detail || `No se pudo ${accion} el equipo.`);
             }
         } catch {
-            alert(`Error de conexión al ${accion} el equipo.`);
+            setErrorDialogMsg(`Error de conexión al ${accion} el equipo.`);
         } finally {
             setDialogAbierto(false);
             setEquipoAConfirmar(null);
@@ -260,6 +261,13 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                     setDialogAbierto(false);
                     setEquipoAConfirmar(null);
                 }}
+            />
+
+            <ErrorAlertDialog
+                open={Boolean(errorDialogMsg)}
+                title="No se pudo completar la acción"
+                description={errorDialogMsg || ''}
+                onClose={() => setErrorDialogMsg(null)}
             />
         </div>
     );

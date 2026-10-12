@@ -1,6 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import type { TipoDocumento } from "./tipos";
 import { apiFetch } from "../../api/client";
+import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
 import "../../styles/formularioAlta.css";
 
 
@@ -18,7 +19,7 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
+  const [exitoDialogAbierto, setExitoDialogAbierto] = useState(false);
 
   const handleArchivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -79,7 +80,7 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
       }
 
       setSuccessMsg("Documento creado exitosamente.");
-      dialog.current?.showModal();
+      setExitoDialogAbierto(true);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Error al conectar con el servidor.");
     } finally {
@@ -185,19 +186,15 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
         </div>
       </form>
 
-      <dialog ref={dialog} className="guardado-con-exito">
-        <h2>Documento Guardado con Éxito</h2>
-        <button
-          type="button"
-          className="btn-guardar"
-          onClick={() => {
-            dialog.current?.close();
-            onSuccess?.();
-          }}
-        >
-          Aceptar
-        </button>
-      </dialog>
+      <SuccessAlertDialog
+        open={exitoDialogAbierto}
+        title="Documento guardado con éxito"
+        description="El documento v1 fue publicado y ya se encuentra vigente."
+        onClose={() => {
+          setExitoDialogAbierto(false);
+          onSuccess?.();
+        }}
+      />
     </div>
   );
 }

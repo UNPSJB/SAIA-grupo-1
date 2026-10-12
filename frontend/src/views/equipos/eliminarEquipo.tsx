@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { ConfirmAlertDialog, ErrorAlertDialog, SuccessAlertDialog } from '../../components/ui/alert-dialog';
 
 interface EliminarEquipoProps {
   equipoID?: number | null;
@@ -12,20 +13,23 @@ interface EliminarEquipoProps {
 export default function EliminarEquipo({ equipoID, onCancel, onSucces }: EliminarEquipoProps) {
   const [equipo, setEquipo] = useState<EquipoConId | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const dialog = useRef<HTMLDialogElement>(null);
-  const dialogSeguro = useRef<HTMLDialogElement>(null);
+  const [confirmAbierto, setConfirmAbierto] = useState(false);
+  const [exitoAbierto, setExitoAbierto] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleEliminar = async (id?: number) => {
     if (!id) return;
+    setConfirmAbierto(false);
     try {
       const res = await apiFetch(`/equipos/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setEquipo(null);
-        dialog.current?.showModal();
+        setExitoAbierto(true);
+      } else {
+        setErrorMsg('No se pudo eliminar el equipo.');
       }
     } catch {
-      alert('No se pudo eliminar el equipo.');
+      setErrorMsg('No se pudo eliminar el equipo.');
     }
   };
 
@@ -39,7 +43,7 @@ export default function EliminarEquipo({ equipoID, onCancel, onSucces }: Elimina
             setEquipo(data);
           }
         } catch {
-          alert("El equipo no existe.");
+          setErrorMsg("El equipo no existe.");
         } finally {
           setLoading(false);
         }
@@ -121,7 +125,7 @@ export default function EliminarEquipo({ equipoID, onCancel, onSucces }: Elimina
       )}
 
       <div className="form-acciones">
-        <button className="btn-eliminar" title="Eliminar" onClick={() => dialogSeguro.current?.showModal()}>
+        <button className="btn-eliminar" title="Eliminar" onClick={() => setConfirmAbierto(true)}>
           Eliminar
         </button>
         <button type="button" className="btn-cancelar" onClick={onCancel}>
@@ -129,22 +133,32 @@ export default function EliminarEquipo({ equipoID, onCancel, onSucces }: Elimina
         </button>
       </div>
 
-      <dialog ref={dialogSeguro} className="seguro">
-        <h2>Esta seguro de eliminar este equipo?</h2>
-        <button type="button" className="btn-eliminar" onClick={() => { handleEliminar(equipoID ?? undefined); dialogSeguro.current?.close(); }}>
-          Eliminar
-        </button>
-        <button type="button" className="btn-cancelar" onClick={() => { dialogSeguro.current?.close(); onCancel?.(); }}>
-          Cancelar
-        </button>
-      </dialog>
+      <ConfirmAlertDialog
+        open={confirmAbierto}
+        title="¿Dar de baja este equipo?"
+        description={`¿Estás seguro de que deseas dar de baja el equipo "${equipo?.nombre || ''}"?`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDestructive={true}
+        onConfirm={() => handleEliminar(equipoID ?? undefined)}
+        onCancel={() => setConfirmAbierto(false)}
+      />
 
-      <dialog ref={dialog} className="eliminado-exito">
-        <h2>Eliminacion Exitosa</h2>
-        <button type="button" className="btn-exito" onClick={() => { dialog.current?.close(); onSucces?.(); }}>
-          Aceptar
-        </button>
-      </dialog>
+      <SuccessAlertDialog
+        open={exitoAbierto}
+        title="Eliminación exitosa"
+        description="El equipo fue dado de baja correctamente."
+        onClose={() => {
+          setExitoAbierto(false);
+          onSucces?.();
+        }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorMsg)}
+        description={errorMsg || ''}
+        onClose={() => setErrorMsg(null)}
+      />
     </div>
   );
 }

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Equipo } from "./tipos";
 import type { Sector } from "../sectores/tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
+import { SuccessAlertDialog } from '../../components/ui/alert-dialog';
 
 const CATEGORIAS = ["conservamiento", "sanamiento", "mantenimiento", "desinfeccion"];
 const EQUIPO_INICIAL: Equipo = {
@@ -23,7 +24,7 @@ export default function NuevoEquipo({ onSuccess, onCancel }: NuevoEquipoProps) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
+  const [exitoDialogAbierto, setExitoDialogAbierto] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -109,9 +110,9 @@ export default function NuevoEquipo({ onSuccess, onCancel }: NuevoEquipoProps) {
         throw new Error(mensaje);
       }
 
-      dialog.current?.showModal();
       setSuccessMsg("Equipo dado de alta exitosamente");
       setEquipo(EQUIPO_INICIAL);
+      setExitoDialogAbierto(true);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
     } finally {
@@ -187,7 +188,7 @@ export default function NuevoEquipo({ onSuccess, onCancel }: NuevoEquipoProps) {
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
-            {loading ? "guardando..." : "Guardar"}
+            {loading ? "Guardando..." : "Guardar"}
           </button>
           <button type="button" className="btn-cancelar" onClick={handleCancelar}>
             Cancelar
@@ -195,19 +196,15 @@ export default function NuevoEquipo({ onSuccess, onCancel }: NuevoEquipoProps) {
         </div>
       </form>
 
-      <dialog ref={dialog} className="guardado-con-exito">
-        <h2>Equipo Guardado con Exito</h2>
-        <button
-          type="button"
-          className="btn-guardar"
-          onClick={() => {
-            dialog.current?.close();
-            onSuccess?.();
-          }}
-        >
-          Aceptar
-        </button>
-      </dialog>
+      <SuccessAlertDialog
+        open={exitoDialogAbierto}
+        title="Equipo dado de alta"
+        description="El nuevo equipo fue registrado correctamente en el sistema."
+        onClose={() => {
+          setExitoDialogAbierto(false);
+          onSuccess?.();
+        }}
+      />
     </div>
   );
 }

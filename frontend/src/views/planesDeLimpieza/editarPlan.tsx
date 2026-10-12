@@ -7,7 +7,7 @@ import EditarTarea from "../tareas/editarTarea";
 import { VerTarea } from "../tareas/verTarea";
 import NuevaTarea from "../tareas/nuevaTarea";
 import type { TareaConId } from "../tareas/tipos";
-import { ConfirmAlertDialog } from "../../components/ui/alert-dialog";
+import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
 import { apiFetch } from '../../api/client';
 
 const PLAN_INICIAL: PlanConId = {
@@ -53,6 +53,7 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
   const [tareaSeleccionada, setTareaSeleccionada] = useState<number | null>(null);
   const [tareaAConfirmar, setTareaAConfirmar] = useState<TareaConId | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
   const fetchPlanLimp = useCallback(async () => {
     if (!planlimpiezaID) return;
@@ -68,7 +69,7 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
         }
       }
     } catch {
-      alert('El Plan de limpieza no existe.');
+      setErrorDialogMsg('El Plan de limpieza no existe.');
     } finally {
       setLoading(false);
     }
@@ -201,10 +202,10 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
       if (res.ok) {
         await fetchPlanLimp();
       } else {
-        alert('No se pudo eliminar la tarea');
+        setErrorDialogMsg('No se pudo eliminar la tarea.');
       }
     } catch {
-      alert('Error de conexión al eliminar la tarea');
+      setErrorDialogMsg('Error de conexión al eliminar la tarea.');
     } finally {
       setDialogAbierto(false);
       setTareaAConfirmar(null);
@@ -386,6 +387,13 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
           setDialogAbierto(false);
           setTareaAConfirmar(null);
         }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ""}
+        onClose={() => setErrorDialogMsg(null)}
       />
 
       {modalAbierto && (

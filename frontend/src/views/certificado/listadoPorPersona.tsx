@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
-import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
@@ -30,6 +30,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [certificadoAEliminar, setCertificadoAEliminar] = useState<{ id: number; tipo: string } | null>(null);
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
   // Estado para el modal de evidencia
   const [modalArchivoUrl, setModalArchivoUrl] = useState<string | null>(null);
@@ -104,10 +105,11 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
       if (res.ok) {
         setCertificados((prev) => prev.filter((c) => c.id !== id));
       } else {
-        alert('No se pudo eliminar el certificado.');
+        const err = await res.json().catch(() => ({}));
+        setErrorDialogMsg(err.detail || 'No se pudo eliminar el certificado.');
       }
     } catch {
-      alert('Error al conectar con el servidor.');
+      setErrorDialogMsg('Error al conectar con el servidor.');
     }
   };
 
@@ -323,6 +325,13 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
           setDialogOpen(false);
           setCertificadoAEliminar(null);
         }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ''}
+        onClose={() => setErrorDialogMsg(null)}
       />
 
       {/* Modal flotante de evidencia fotográfica / visor PDF */}

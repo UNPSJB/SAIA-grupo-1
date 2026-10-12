@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { Persona } from "./tipos";
 import '../../styles/formularioAlta.css';
-import { ConfirmAlertDialog } from "../../components/ui/alert-dialog";
+import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
 import { Paginacion, usePaginacion } from "../../components/ui/paginacion";
 import { apiFetch } from '../../api/client';
 
@@ -26,6 +26,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
 
   const [personaAConfirmar, setPersonaAConfirmar] = useState<Persona | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
   const cargarPersonas = async () => {
     try {
@@ -72,7 +73,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
       }
       cargarPersonas();
     } catch (err: any) {
-      alert(err.message || `Error al ${accion} la persona.`);
+      setErrorDialogMsg(err.message || `Error al ${accion} la persona.`);
     } finally {
       setDialogAbierto(false);
       setPersonaAConfirmar(null);
@@ -278,6 +279,13 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           setDialogAbierto(false);
           setPersonaAConfirmar(null);
         }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ""}
+        onClose={() => setErrorDialogMsg(null)}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { InsumoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
-import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
 
@@ -41,6 +41,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
   const [idAEliminar, setIdAEliminar] = useState<number | null>(null);
   const [nombreAEliminar, setNombreAEliminar] = useState<string>('');
   const [dialogAbierto, setDialogAbierto] = useState(false);
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
   const abrirConfirmacion = (i: InsumoConId) => {
     setIdAEliminar(i.id);
@@ -55,10 +56,11 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
       if (res.ok) {
         setInsumos((prev) => prev.filter((i) => i.id !== idAEliminar));
       } else {
-        alert('No se pudo eliminar el ingrediente');
+        const err = await res.json().catch(() => ({}));
+        setErrorDialogMsg(err.detail || 'No se pudo eliminar el ingrediente.');
       }
     } catch {
-      alert('Error de conexión al eliminar el ingrediente');
+      setErrorDialogMsg('Error de conexión al eliminar el ingrediente.');
     } finally {
       setDialogAbierto(false);
       setIdAEliminar(null);
@@ -265,6 +267,13 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
           setDialogAbierto(false);
           setIdAEliminar(null);
         }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ''}
+        onClose={() => setErrorDialogMsg(null)}
       />
     </div>
   );

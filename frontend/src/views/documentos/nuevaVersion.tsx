@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { DocumentoDetalle, TipoDocumento, VersionItem } from "./tipos";
 import { apiFetch } from "../../api/client";
+import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
 import "../../styles/formularioAlta.css";
 import "./documentos.css";
 
@@ -35,7 +36,7 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
   const [guardando, setGuardando] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
+  const [exitoDialogAbierto, setExitoDialogAbierto] = useState(false);
 
   useEffect(() => {
     if (!documentoId) return;
@@ -133,7 +134,7 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
       }
 
       setSuccessMsg("Nueva versión subida y establecida como vigente exitosamente.");
-      dialog.current?.showModal();
+      setExitoDialogAbierto(true);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Error al conectar con el servidor.");
     } finally {
@@ -235,22 +236,15 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
             </div>
           </form>
 
-          <dialog ref={dialog} className="guardado-con-exito">
-            <h2>Nueva Versión Guardada con Éxito</h2>
-            <p style={{ marginTop: "8px", color: "#475569", fontSize: "0.9rem" }}>
-              La versión v{siguienteVersion} ya se encuentra vigente.
-            </p>
-            <button
-              type="button"
-              className="btn-guardar"
-              onClick={() => {
-                dialog.current?.close();
-                onSuccess?.();
-              }}
-            >
-              Aceptar
-            </button>
-          </dialog>
+          <SuccessAlertDialog
+            open={exitoDialogAbierto}
+            title="Nueva versión guardada con éxito"
+            description={`La versión v${siguienteVersion} ya se encuentra vigente y la anterior quedó archivada.`}
+            onClose={() => {
+              setExitoDialogAbierto(false);
+              onSuccess?.();
+            }}
+          />
         </>
       ) : (
         <div style={{ textAlign: "center", padding: "2rem" }}>El documento no fue encontrado.</div>

@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import type { Sector } from "../sectores/tipos";
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { SuccessAlertDialog } from '../../components/ui/alert-dialog';
 
 const CATEGORIAS = ["conservamiento", "sanamiento", "mantenimiento", "desinfeccion"];
 const EQUIPO_INICIAL: EquipoConId = {
@@ -25,7 +26,7 @@ export default function EditarEquipo({ equipoId, onSuccess, onCancel }: EditarEq
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
+  const [exitoDialogAbierto, setExitoDialogAbierto] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -59,7 +60,7 @@ export default function EditarEquipo({ equipoId, onSuccess, onCancel }: EditarEq
             });
           }
         } catch {
-          alert('El equipo no existe.');
+          setErrorMsg('El equipo no existe.');
         } finally {
           setLoading(false);
         }
@@ -120,7 +121,7 @@ export default function EditarEquipo({ equipoId, onSuccess, onCancel }: EditarEq
         setErrorMsg(errorData.detail || "Error al guardar el equipo");
       } else {
         setSuccessMsg("Equipo editado exitosamente");
-        dialog.current?.showModal();
+        setExitoDialogAbierto(true);
       }
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
@@ -204,19 +205,15 @@ export default function EditarEquipo({ equipoId, onSuccess, onCancel }: EditarEq
         </div>
       </form>
 
-      <dialog ref={dialog} className="guardado-con-exito">
-        <h2>Equipo Editado con Exito</h2>
-        <button
-          type="button"
-          className="btn-guardar"
-          onClick={() => {
-            dialog.current?.close();
-            onSuccess?.();
-          }}
-        >
-          Aceptar
-        </button>
-      </dialog>
+      <SuccessAlertDialog
+        open={exitoDialogAbierto}
+        title="Equipo editado con éxito"
+        description="Los cambios en el equipo fueron guardados correctamente."
+        onClose={() => {
+          setExitoDialogAbierto(false);
+          onSuccess?.();
+        }}
+      />
     </div>
   );
 }

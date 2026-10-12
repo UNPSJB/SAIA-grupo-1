@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
-import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
@@ -23,9 +23,16 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
 
-  // Estado para diálogo de confirmación
+  // Estado para diálogo de confirmación de recambio
   const [dialogOpen, setDialogOpen] = useState(false);
   const [elementoACambiar, setElementoACambiar] = useState<{ id: number; nombre: string } | null>(null);
+
+  // Estado para diálogo de baja / reactivación
+  const [dialogToggleOpen, setDialogToggleOpen] = useState(false);
+  const [elementoAToggle, setElementoAToggle] = useState<ElementoDeLimpieza | null>(null);
+
+  // Estado para alerta de error
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
   const fetchElementos = async () => {
     setLoading(true);
@@ -111,10 +118,49 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           prev.map((elem) => (elem.id === id ? elementoActualizado : elem))
         );
       } else {
-        alert('No se pudo registrar el cambio.');
+        setErrorDialogMsg('No se pudo registrar el cambio.');
       }
     } catch {
-      alert('Error al conectar con el servidor.');
+      setErrorDialogMsg('Error al conectar con el servidor.');
+    }
+  };
+
+  const abrirConfirmacionToggle = (elem: ElementoDeLimpieza) => {
+    setElementoAToggle(elem);
+    setDialogToggleOpen(true);
+  };
+
+  const ejecutarToggle = async () => {
+    if (!elementoAToggle) return;
+    const accion = elementoAToggle.activo ? 'dar de baja' : 'reactivar';
+    try {
+      const res = await apiFetch(`/elementosDeLimpieza/${elementoAToggle.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre: elementoAToggle.nombre,
+          frecuenciaDeCambio: elementoAToggle.frecuenciaDeCambio ?? null,
+          activo: !elementoAToggle.activo,
+        }),
+      });
+
+      if (res.ok) {
+        const actualizado: ElementoDeLimpieza = await res.json();
+        setElementos((prev) =>
+          prev.map((elem) => (elem.id === elementoAToggle.id ? actualizado : elem))
+        );
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorDialogMsg(err.detail || `No se pudo ${accion} el elemento de limpieza.`);
+      }
+    } catch {
+      setErrorDialogMsg(`Error de conexión al ${accion} el elemento de limpieza.`);
+    } finally {
+      setDialogToggleOpen(false);
+      setElementoAToggle(null);
     }
   };
 
@@ -293,6 +339,14 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                       >
                         ✎
                       </button>
+                      <button
+                        type="button"
+                        className={`btn-icon ${item.activo ? 'btn-eliminar' : 'btn-reactivar'}`}
+                        title={item.activo ? 'Dar de baja' : 'Reactivar'}
+                        onClick={() => abrirConfirmacionToggle(item)}
+                      >
+                        {item.activo ? '🗑' : '🔄'}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -325,6 +379,31 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           setDialogOpen(false);
           setElementoACambiar(null);
         }}
+      />
+
+      <ConfirmAlertDialog
+        open={dialogToggleOpen}
+        title={elementoAToggle?.activo ? '¿Dar de baja elemento?' : '¿Reactivar elemento?'}
+        description={
+          elementoAToggle?.activo
+            ? `¿Estás seguro de que deseas dar de baja "${elementoAToggle?.nombre}"?`
+            : `¿Estás seguro de que deseas reactivar "${elementoAToggle?.nombre}"?`
+        }
+        confirmText={elementoAToggle?.activo ? 'Confirmar Baja' : 'Confirmar Reactivación'}
+        cancelText="Cancelar"
+        isDestructive={Boolean(elementoAToggle?.activo)}
+        onConfirm={ejecutarToggle}
+        onCancel={() => {
+          setDialogToggleOpen(false);
+          setElementoAToggle(null);
+        }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ''}
+        onClose={() => setErrorDialogMsg(null)}
       />
     </div>
   );
