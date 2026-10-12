@@ -21,21 +21,24 @@ const obtenerFechaLocalHoy = (): string => {
 export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   onDetalleClick,
 }) => {
-  // El administrador ve los checklists de todos; el operador ve (y genera) solo los suyos.
-  const { esAdministrador, usuario } = useAuth();
+  // El administrador ve los checklists de todos; cada operador genera y ve solo los suyos.
+  const { esAdministrador, esOperador, usuario } = useAuth();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // operadores para el filtro del administrador
   const [personal, setPersonal] = useState<PersonalResumen[]>([]);
   const [modalGenerar, setModalGenerar] = useState(false);
-  const [responsableLegajo, setResponsableLegajo] = useState<number | ''>('');
   const [generando, setGenerando] = useState(false);
 
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState('');
+  const [responsableFiltro, setResponsableFiltro] = useState('');
   const [checklistHoyId, setChecklistHoyId] = useState<number | null>(null);
   const [checklistExpandido, setChecklistExpandido] = useState<number | null>(null);
+  // el operador solo ve los suyos: la columna de responsable únicamente le sirve al administrador
+  const columnas = esAdministrador ? 6 : 5;
 
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
@@ -58,7 +61,8 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   const recargarChecklists = async (
     desde: string = fechaDesde,
     hasta: string = fechaHasta,
-    estado: string = estadoFiltro
+    estado: string = estadoFiltro,
+    responsable: string = responsableFiltro
   ) => {
     setLoading(true);
     try {
@@ -66,6 +70,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
       if (desde) params.append('fecha_desde', desde);
       if (hasta) params.append('fecha_hasta', hasta);
       if (estado) params.append('estado', estado);
+      if (responsable) params.append('responsable_legajo', responsable);
       const query = params.toString() ? `?${params.toString()}` : '';
       const res = await apiFetch(`/checklist/${query}`);
       if (res.ok) {
@@ -96,7 +101,10 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             const data: Checklist[] = await resChecklists.json();
             setChecklists(data);
             const hoyIso = obtenerFechaLocalHoy();
-            const encontrado = data.find((c) => c.fecha === hoyIso);
+            // el administrador recibe los de todos: el "del día" es el propio
+            const encontrado = data.find(
+              (c) => c.fecha === hoyIso && c.responsable_legajo === usuario?.legajo
+            );
             if (encontrado) {
               setChecklistHoyId(encontrado.id);
             }
@@ -116,21 +124,18 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         }
       }
 
-      // 2. Cargar Personal (solo lo usa el administrador para elegir responsable al generar;
-      // el operador genera siempre el suyo)
-      if (!esAdministrador) {
-        if (usuario) {
-          setPersonal([{ legajo: usuario.legajo, nombre: usuario.nombre, apellido: usuario.apellido, activo: true }]);
-          setResponsableLegajo(usuario.legajo);
-        }
-        return;
-      }
+      // 2. Cargar los operadores (solo para el filtro del administrador; el listado de personal es suyo)
+      if (!esAdministrador) return;
       try {
         const resPersonal = await apiFetch(`/personal`);
         if (!cancelado && resPersonal.ok) {
           const dataPersonal: PersonalResumen[] = await resPersonal.json();
           if (Array.isArray(dataPersonal)) {
-            setPersonal(dataPersonal.filter((p) => p.activo));
+            setPersonal(
+              dataPersonal.filter(
+                (p) => p.activo && (p.capacidad === 'OPERAR' || p.capacidad === 'AMBAS')
+              )
+            );
           }
         }
       } catch (err) {
@@ -165,14 +170,22 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
       mostrarError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.", "Rango de fechas inválido");
       return;
     }
-    await recargarChecklists(fechaDesde, fechaHasta, estadoFiltro);
+    await recargarChecklists(fechaDesde, fechaHasta, estadoFiltro, responsableFiltro);
   };
 
   const handleEstadoChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nuevoEstado = e.target.value;
     setEstadoFiltro(nuevoEstado);
     if (!(fechaDesde && fechaHasta && fechaDesde > fechaHasta)) {
-      await recargarChecklists(fechaDesde, fechaHasta, nuevoEstado);
+      await recargarChecklists(fechaDesde, fechaHasta, nuevoEstado, responsableFiltro);
+    }
+  };
+
+  const handleResponsableChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nuevoResponsable = e.target.value;
+    setResponsableFiltro(nuevoResponsable);
+    if (!(fechaDesde && fechaHasta && fechaDesde > fechaHasta)) {
+      await recargarChecklists(fechaDesde, fechaHasta, estadoFiltro, nuevoResponsable);
     }
   };
 
@@ -180,33 +193,24 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     setFechaDesde('');
     setFechaHasta('');
     setEstadoFiltro('');
-    await recargarChecklists('', '', '');
+    setResponsableFiltro('');
+    await recargarChecklists('', '', '', '');
   };
 
   const handleGenerarChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!responsableLegajo) {
-      mostrarError('Debe seleccionar un responsable válido para generar el checklist.', 'Dato requerido');
-      return;
-    }
-
     setGenerando(true);
     try {
+      // el responsable lo define la sesión: cada operador genera el suyo
       const res = await apiFetch(`/checklist/generar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          responsable_legajo: Number(responsableLegajo),
-        }),
+        body: JSON.stringify({}),
       });
 
       if (res.ok) {
         const nueva = await res.json();
         setModalGenerar(false);
-        setResponsableLegajo(esAdministrador ? '' : usuario?.legajo ?? '');
-        if (nueva.fecha === hoy) {
-          setChecklistHoyId(nueva.id);
-        }
         setChecklistHoyId(nueva.id);
         await recargarChecklists();
         onDetalleClick(nueva.id);
@@ -231,28 +235,30 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     <div className="checklist-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Historial de Checklists</h1>
-          <div className="subtitulo">01 · Historial y Seguimiento</div>
+          <h1>{esAdministrador ? 'Historial de Checklists' : 'Mis Checklists'}</h1>
+          <div className="subtitulo">
+            {esAdministrador ? '01 · Historial y Seguimiento' : '01 · Mis tareas e historial'}
+          </div>
         </div>
 
         <div className="top-bar-acciones">
-          {checklistHoyId && !esAdministrador ? (
+          {checklistHoyId ? (
             <button
               onClick={() => onDetalleClick(checklistHoyId)}
               className="btn-dia-ver"
-              title="Abrir el checklist generado para el día de hoy"
+              title="Abrir tu checklist de hoy"
             >
-              📅 Ver Checklist del Día
+              📅 Ver mi Checklist del Día
             </button>
-          ) : (
+          ) : esOperador ? (
             <button
               onClick={() => setModalGenerar(true)}
               className="btn-guardar"
-              title="Generar checklist del día de hoy"
+              title="Generar tu checklist de hoy con las tareas que tenés asignadas"
             >
-              + Generar Checklist del Día
+              + Generar mi Checklist del Día
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -289,13 +295,30 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
               <option value="vencido">Vencido</option>
             </select>
           </div>
+          {esAdministrador && (
+            <div className="filtro-campo-grupo">
+              <label htmlFor="filtro-responsable">Operador:</label>
+              <select
+                id="filtro-responsable"
+                value={responsableFiltro}
+                onChange={handleResponsableChange}
+              >
+                <option value="">Todos los operadores</option>
+                {personal.map((p) => (
+                  <option key={p.legajo} value={p.legajo}>
+                    {p.apellido}, {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="filtros-acciones">
           <button type="submit" className="btn-filtrar" title="Filtrar historial">
             🔍 Filtrar
           </button>
-          {(fechaDesde || fechaHasta || estadoFiltro) && (
+          {(fechaDesde || fechaHasta || estadoFiltro || responsableFiltro) && (
             <button
               type="button"
               onClick={handleLimpiarFiltro}
@@ -316,23 +339,25 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
               <th>Fecha</th>
               <th>Estado</th>
               <th>Cumplimiento</th>
-              <th>Responsable</th>
+              {esAdministrador && <th>Responsable</th>}
               <th className="acciones-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem' }}>
+                <td colSpan={columnas} style={{ textAlign: 'center', padding: '2.5rem' }}>
                   Cargando historial de checklists...
                 </td>
               </tr>
             ) : checklists.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem' }}>
-                  {fechaDesde || fechaHasta || estadoFiltro
+                <td colSpan={columnas} style={{ textAlign: 'center', padding: '2.5rem' }}>
+                  {fechaDesde || fechaHasta || estadoFiltro || responsableFiltro
                     ? 'No se encontraron checklists registrados con los filtros seleccionados.'
-                    : 'No se encontraron checklists registrados.'}
+                    : esAdministrador
+                    ? 'No se encontraron checklists registrados.'
+                    : 'Todavía no generaste ningún checklist. Usá "Generar mi Checklist del Día" para empezar.'}
                 </td>
               </tr>
             ) : (
@@ -379,9 +404,11 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                           </span>
                         </div>
                       </td>
-                      <td>
-                        {c.nombre_responsable || `Legajo: ${c.responsable_legajo}`}
-                      </td>
+                      {esAdministrador && (
+                        <td>
+                          {c.nombre_responsable || `Legajo: ${c.responsable_legajo}`}
+                        </td>
+                      )}
                       <td className="acciones-col">
                         <div className="acciones-btns">
                           <button
@@ -396,7 +423,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                     </tr>
                     {estaExpandido && (
                       <tr className="fila-tareas-expandida">
-                        <td colSpan={6}>
+                        <td colSpan={columnas}>
                           <div className="tareas-expandidas-contenedor">
                             <div className="tareas-expandidas-header">
                               <h4>Tareas y Procedimientos del Checklist #{c.id} ({c.fecha})</h4>
@@ -461,50 +488,27 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>Generar Checklist del Día</h2>
+              <h2>Generar mi Checklist del Día</h2>
               <p>
                 Fecha programada: <strong>{hoy}</strong>
               </p>
             </div>
 
             <form onSubmit={handleGenerarChecklist}>
-              <div className="form-group">
-                <label htmlFor="responsable">Responsable de la Checklist *</label>
-                <select
-                  id="responsable"
-                  value={responsableLegajo}
-                  onChange={(e) =>
-                    setResponsableLegajo(
-                      e.target.value ? Number(e.target.value) : ''
-                    )
-                  }
-                  disabled={!esAdministrador}
-                  required
-                >
-                  <option value="">-- Seleccione una persona activa --</option>
-                  {personal.map((p) => (
-                    <option key={p.legajo} value={p.legajo}>
-                      {p.apellido}, {p.nombre} (Legajo: {p.legajo})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <p>Se generará tu checklist de hoy con las tareas de limpieza que tenés asignadas.</p>
 
               <div className="form-acciones">
                 <button
                   type="submit"
                   className="btn-guardar"
-                  disabled={generando || !responsableLegajo}
+                  disabled={generando}
                 >
-                  {generando ? 'Generando...' : 'Generar Checklist del Día'}
+                  {generando ? 'Generando...' : 'Generar mi Checklist del Día'}
                 </button>
                 <button
                   type="button"
                   className="btn-cancelar"
-                  onClick={() => {
-                    setModalGenerar(false);
-                    setResponsableLegajo(esAdministrador ? '' : usuario?.legajo ?? '');
-                  }}
+                  onClick={() => setModalGenerar(false)}
                   disabled={generando}
                 >
                   Cancelar

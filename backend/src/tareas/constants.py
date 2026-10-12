@@ -5,4 +5,5 @@ class ErrorCode:
     FRECUENCIA_INVALIDA="LA FRECUENCIA indicada es inválida. El valor indicado debiera ser una de las opciones en la lista:"
     PERSONAL_NO_ENCONTRADO="El personal indicado no existe"
     PERSONAL_INACTIVO="El personal a cargo de la tarea debe ser un usuario activo"
+    PERSONAL_NO_OPERADOR="La tarea solo puede asignarse a personal que opere (no a un administrador puro)"
     TAREA_CON_CARACTERES_RAROS="LA DESCRIPCION TIENE CARACTERES NO PERMITIDOS"

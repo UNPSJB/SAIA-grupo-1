@@ -70,7 +70,8 @@ class ChecklistItem(BaseModel):
 
 
 class ChecklistGenerar(BaseModel):
-    responsable_legajo: int = Field(...)
+    # Lo completa el router con el usuario de la sesión: cada operador genera su propio checklist.
+    responsable_legajo: Optional[int] = None
     fecha: Optional[date] = Field(default_factory=date.today)
 
     @field_validator("fecha", mode="before")

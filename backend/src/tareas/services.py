@@ -2,6 +2,7 @@ import logging
 from typing import List, Literal
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
+from src.autenticacion.dependencies import es_operador
 from src.personal.models import Personal
 from src.tareas.models import Tarea
 from src.tareas import schemas, exceptions
@@ -10,12 +11,15 @@ from src.tareas import schemas, exceptions
 
 
 def validar_personal(db: Session, legajo: int) -> None:
-    """El responsable de una tarea tiene que ser un usuario del sistema y estar activo."""
+    """El responsable de una tarea tiene que ser un usuario del sistema, estar activo y poder operar."""
     persona = db.scalar(select(Personal).where(Personal.legajo == legajo))
     if persona is None:
         raise exceptions.PersonalNoEncontrado()
     if not persona.activo:
         raise exceptions.PersonalInactivo()
+    # solo los operadores ejecutan tareas: asignársela a un administrador puro la dejaría huérfana
+    if not es_operador(persona):
+        raise exceptions.PersonalNoOperador()
 
 
 # CRUD DE TAREA

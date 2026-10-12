@@ -332,12 +332,14 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                 <span className="valor">{checklist.fecha}</span>
               </div>
 
-              <div className="checklist-meta-item">
-                <span className="label">Responsable del Checklist</span>
-                <span className="valor">
-                  {checklist.nombre_responsable || `Legajo: ${checklist.responsable_legajo}`}
-                </span>
-              </div>
+              {esAdministrador && (
+                <div className="checklist-meta-item">
+                  <span className="label">Responsable del Checklist</span>
+                  <span className="valor">
+                    {checklist.nombre_responsable || `Legajo: ${checklist.responsable_legajo}`}
+                  </span>
+                </div>
+              )}
 
               <div className="checklist-meta-item">
                 <span className="label">Creado en</span>
@@ -442,10 +444,11 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             </div>
                           </div>
 
-                          {(esAdministrador ||
-                            (esOperador &&
-                              (tarea.responsable_legajo == null ||
-                                tarea.responsable_legajo === usuario?.legajo))) &&
+                          {/* solo un operador ejecuta tareas, y solo las de su propio checklist */}
+                          {esOperador &&
+                            checklist.responsable_legajo === usuario?.legajo &&
+                            (tarea.responsable_legajo == null ||
+                              tarea.responsable_legajo === usuario?.legajo) &&
                             checklist.estado === 'pendiente' &&
                             tarea.estado === 'pendiente' && (
                               <button

@@ -181,7 +181,7 @@ return (
             onChange={handleChange}
             required
           >
-            <option value="" disabled>Seleccione un usuario activo</option>
+            <option value="" disabled>Seleccione un operador activo</option>
             {personas.map((p) => (
               <option key={p.legajo} value={p.legajo}>
                 {p.apellido}, {p.nombre} (Legajo: {p.legajo})

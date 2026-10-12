@@ -431,7 +431,26 @@ def test_checklist_no_vence_mientras_haya_tareas_pendientes_no_vencidas(session:
     # Como ya no quedan tareas pendientes no vencidas, ahora si pasa a VENCIDO.
     assert checklist.estado == models.EstadoGeneralChecklist.VENCIDO
 
+# ---------------------------------------------------------------- un checklist por operador y por dia
 
 
+def test_generar_checklist_dos_veces_el_mismo_dia_falla(session: Session) -> None:
+    generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    with pytest.raises(exceptions.ChecklistYaGenerado):
+        generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
 
 
+def test_listar_checklists_filtra_por_responsable(session: Session) -> None:
+    # Ana (legajo 2) es operadora: le asignamos una tarea propia
+    plan = session.query(Plan_de_Limpieza).filter_by(nombre="PlanFreezer").one()
+    session.add(Tarea(nombre="TareaDeAna", descripcion="Limpiar burletes", frecuencia=Frecuencia.DIARIA,
+                      plan_id=plan.id, personal_id=2))
+    session.commit()
+
+    de_juan = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    de_ana = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=2))
+
+    assert [item.nombre_tarea for item in de_ana.items] == ["TareaDeAna"]
+    assert [c.id for c in listar_checklists(session, responsable_legajo=2)] == [de_ana.id]
+    todos = [c.id for c in listar_checklists(session)]
+    assert de_juan.id in todos and de_ana.id in todos

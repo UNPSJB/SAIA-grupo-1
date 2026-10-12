@@ -34,6 +34,10 @@ class NoHayTareasCorrespondientes(BadRequest):
     DETAIL = ErrorCode.NO_HAY_TAREAS_CORRESPONDIENTES
 
 
+class ChecklistYaGenerado(BadRequest):
+    DETAIL = ErrorCode.CHECKLIST_YA_GENERADO
+
+
 class ImagenNoEncontrada(NotFound):
     DETAIL = ErrorCode.IMAGEN_NO_ENCONTRADA
 

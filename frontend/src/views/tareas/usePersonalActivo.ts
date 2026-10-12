@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import type { Persona } from '../personas/tipos';
 
-/** Usuarios activos del sistema: los únicos que pueden quedar a cargo de una tarea. */
+/**
+ * Usuarios activos que pueden operar: los únicos que pueden quedar a cargo de una tarea
+ * (un administrador puro no ejecuta tareas, así que no se le asignan).
+ */
 export function usePersonalActivo(): Persona[] {
   const [personal, setPersonal] = useState<Persona[]>([]);
 
@@ -12,7 +15,9 @@ export function usePersonalActivo(): Persona[] {
       .then(async (res) => {
         if (!cancelado && res.ok) {
           const personas: Persona[] = await res.json();
-          setPersonal(personas.filter((p) => p.activo));
+          setPersonal(
+            personas.filter((p) => p.activo && (p.capacidad === 'OPERAR' || p.capacidad === 'AMBAS'))
+          );
         }
       })
       .catch(() => {

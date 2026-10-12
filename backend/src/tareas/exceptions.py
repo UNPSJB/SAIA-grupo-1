@@ -26,3 +26,6 @@ class PersonalNoEncontrado(BadRequest):
 
 class PersonalInactivo(BadRequest):
     DETAIL=ErrorCode.PERSONAL_INACTIVO
+
+class PersonalNoOperador(BadRequest):
+    DETAIL=ErrorCode.PERSONAL_NO_OPERADOR

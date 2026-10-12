@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from src.autenticacion.dependencies import (
     es_administrador,
     get_usuario_actual,
+    requiere_operador,
 )
 from src.checklist import schemas, services
 from src.database import get_db
@@ -25,9 +26,10 @@ def _verificar_acceso(db: Session, checklist_id: int, usuario: Personal) -> None
 
 
 def _verificar_tarea_propia(db: Session, checklist_id: int, item_id: int, usuario: Personal) -> None:
-    """Cada tarea la ejecuta quien la tiene asignada o un administrador."""
-    if es_administrador(usuario):
-        return
+    """Cada tarea la ejecuta solo quien la tiene asignada, en su propio checklist (aunque sea administrador)."""
+    checklist = services.obtener_checklist(db, checklist_id)
+    if checklist.responsable_legajo != usuario.legajo:
+        raise PermissionDenied()
     tarea = services.obtener_tarea(db, checklist_id, item_id)
     if tarea.responsable_legajo is not None and tarea.responsable_legajo != usuario.legajo:
         raise PermissionDenied()
@@ -41,11 +43,10 @@ def _verificar_tarea_propia(db: Session, checklist_id: int, item_id: int, usuari
 async def generar_checklist_endpoint(
     datos: schemas.ChecklistGenerar,
     db: Session = Depends(get_db),
-    usuario: Personal = Depends(get_usuario_actual),
+    usuario: Personal = Depends(requiere_operador),
 ):
-    # el operador solo genera su propio checklist; el administrador puede generarlo para cualquiera
-    if not es_administrador(usuario) and datos.responsable_legajo != usuario.legajo:
-        raise PermissionDenied()
+    # Cada operador genera su propio checklist: el responsable lo define la sesión, no el cliente.
+    datos = datos.model_copy(update={"responsable_legajo": usuario.legajo})
     return services.generar_checklist(db, datos)
 
 
@@ -58,10 +59,11 @@ async def listar_checklists_endpoint(
     fecha_desde: Optional[date] = Query(None),
     fecha_hasta: Optional[date] = Query(None),
     estado: Optional[str] = Query(None),
+    responsable_legajo: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     usuario: Personal = Depends(get_usuario_actual),
 ):
-    responsable_legajo = None
+    # el administrador puede filtrar por operador; el operador siempre ve solo los suyos
     if not es_administrador(usuario):
         # el operador solo ve sus propios checklists (con su historial); los filtros siguen valiendo
         responsable_legajo = usuario.legajo
@@ -124,17 +126,11 @@ async def completar_tarea_endpoint(
     item_id: int,
     datos: schemas.CompletarTareaSchema,
     db: Session = Depends(get_db),
-    usuario: Personal = Depends(get_usuario_actual),
+    usuario: Personal = Depends(requiere_operador),
 ):
-    _verificar_acceso(db, checklist_id, usuario)
     _verificar_tarea_propia(db, checklist_id, item_id, usuario)
-    tarea = services.obtener_tarea(db, checklist_id, item_id)
-    legajo_efectivo = (
-        (tarea.responsable_legajo or datos.responsable_legajo or usuario.legajo)
-        if es_administrador(usuario)
-        else usuario.legajo
-    )
-    datos = datos.model_copy(update={"responsable_legajo": legajo_efectivo})
+    # La autoría la define la sesión, no el cliente: nadie puede completar una tarea a nombre de otro.
+    datos = datos.model_copy(update={"responsable_legajo": usuario.legajo})
     return services.completar_tarea(db, checklist_id, item_id, datos)
 
 
@@ -147,9 +143,8 @@ async def subir_imagen_tarea_endpoint(
     item_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    usuario: Personal = Depends(get_usuario_actual),
+    usuario: Personal = Depends(requiere_operador),
 ):
-    _verificar_acceso(db, checklist_id, usuario)
     _verificar_tarea_propia(db, checklist_id, item_id, usuario)
     return services.guardar_archivo_imagen_tarea(db, checklist_id, item_id, file)
 
@@ -162,9 +157,8 @@ async def eliminar_imagen_tarea_endpoint(
     checklist_id: int,
     item_id: int,
     db: Session = Depends(get_db),
-    usuario: Personal = Depends(get_usuario_actual),
+    usuario: Personal = Depends(requiere_operador),
 ):
-    _verificar_acceso(db, checklist_id, usuario)
     _verificar_tarea_propia(db, checklist_id, item_id, usuario)
     return services.eliminar_imagen_tarea(db, checklist_id, item_id)
 

@@ -120,15 +120,27 @@ def generar_checklist(
         logger.warning("Intento de generar checklist con fecha futura: %s", fecha)
         raise exceptions.ChecklistFechaFutura()
 
-    responsable = db.scalar(
-        select(Personal).where(Personal.legajo == datos.responsable_legajo)
-    )
+    responsable = None
+    if datos.responsable_legajo is not None:
+        responsable = db.scalar(
+            select(Personal).where(Personal.legajo == datos.responsable_legajo)
+        )
     if not responsable:
         logger.warning("Generar checklist: responsable legajo %s no encontrado", datos.responsable_legajo)
         raise exceptions.ResponsableNoEncontrado()
     if not responsable.activo:
         logger.warning("Generar checklist: responsable legajo %s inactivo", datos.responsable_legajo)
         raise exceptions.ResponsableInactivo()
+
+    ya_generado = db.scalar(
+        select(models.Checklist.id).where(
+            models.Checklist.fecha == fecha,
+            models.Checklist.responsable_legajo == responsable.legajo,
+        )
+    )
+    if ya_generado is not None:
+        logger.warning("Generar checklist: legajo %s ya tiene checklist para %s", responsable.legajo, fecha)
+        raise exceptions.ChecklistYaGenerado()
 
     planes = (
         db.scalars(

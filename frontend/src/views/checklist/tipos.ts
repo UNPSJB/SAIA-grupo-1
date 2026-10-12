@@ -49,10 +49,11 @@ export interface PersonalResumen {
   nombre: string;
   apellido: string;
   activo: boolean;
+  capacidad?: 'OPERAR' | 'ADMINISTRAR' | 'AMBAS';
 }
 
+/** El responsable no se manda: lo define la sesión del operador que genera. */
 export interface ChecklistGenerarPayload {
-  responsable_legajo: number;
   fecha?: string;
 }
 
