@@ -10,6 +10,7 @@ class TareaBase(BaseModel):
     nombre:str=Field(max_length=50)
     descripcion:str
     frecuencia:Frecuencia
+    operador_legajo:int
 
     @field_validator(
                 "frecuencia", mode="before"
@@ -55,6 +56,7 @@ class TareaUpdate(TareaBase):
       nombre:Optional[str]= Field(None,max_length=50)
       descripcion:Optional[str]=Field(None)
       plan_id:Optional[int]=None
+      operador_legajo:Optional[int]=None
 
       @field_validator("nombre")
       @classmethod
@@ -89,4 +91,5 @@ class Tarea(TareaBase):
       id:int
       plan_id:int
       nombre_plan:str
+      nombre_operador:Optional[str]=None
       model_config = ConfigDict(from_attributes=True)

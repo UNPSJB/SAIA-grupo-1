@@ -185,6 +185,7 @@ def main() -> None:
             descripcion="Paso 1. Retirar temporalmente alimentos del estante. Paso 2. Pulverizar Alcohol Isopropilico 70 Spray a 20 cm de distancia. Paso 3. Dejar actuar durante 5 minutos para eliminar carga microbiana. Paso 4. Secar con paño descartable y restablecer la mercaderia.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_heladera.id,
+            operador_legajo=juan.legajo,
         ),
     )
     t_heladera_semanal = crear_tarea(
@@ -194,6 +195,7 @@ def main() -> None:
             descripcion="Paso 1. Desconectar la unidad electrica. Paso 2. Trasladar productos a camara auxiliar. Paso 3. Retirar rejillas y lavar en bacha con Detergente Neutro Espumante diluido. Paso 4. Enjuagar con agua caliente a 60°. Paso 5. Aplicar Sanitizante Clorado Liquido en paredes y dejar secar.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_heladera.id,
+            operador_legajo=juan.legajo,
         ),
     )
 
@@ -204,6 +206,7 @@ def main() -> None:
             descripcion="Paso 1. Limpiar manija exterior y panel con Toallitas Desinfectantes con Alcohol. Paso 2. Rociar marco con Alcohol Isopropilico 70 Spray. Paso 3. Dejar evaporar al aire sin frotar con trapo sucio.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_freezer.id,
+            operador_legajo=juan.legajo,
         ),
     )
     t_freezer_mensual = crear_tarea(
@@ -213,6 +216,7 @@ def main() -> None:
             descripcion="Paso 1. Inspeccionar burletes de goma imantada. Paso 2. Lavar con Detergente Neutro Espumante tibio usando esponja suave. Paso 3. Secar minuciosamente los pliegues para evitar moho. Paso 4. Pulverizar solucion de Amonio Cuaternario 5ta Generacion y cerrar hermeticamente.",
             frecuencia=Frecuencia.MENSUAL,
             plan_id=plan_freezer.id,
+            operador_legajo=juan.legajo,
         ),
     )
 
@@ -223,6 +227,7 @@ def main() -> None:
             descripcion="Paso 1. Barrer residuos solidos hacia la salida. Paso 2. Preparar solucion de Lavandina Concentrada 55g al 1 por ciento en balde con agua fria. Paso 3. Fregar con cepillo duro desde el fondo hacia el desague. Paso 4. Dejar actuar 10 minutos y escurrir.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_camara.id,
+            operador_legajo=lucia.legajo,
         ),
     )
     t_camara_semanal = crear_tarea(
@@ -232,6 +237,7 @@ def main() -> None:
             descripcion="Paso 1. Despejar bandejas de cada nivel. Paso 2. Preparar solucion de Amonio Cuaternario 5ta Generacion a razon de 5 ml por litro de agua. Paso 3. Pulverizar sobre todos los perfiles de acero inoxidable. Paso 4. Respetar 10 minutos de contacto antes de reubicar insumos.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_camara.id,
+            operador_legajo=lucia.legajo,
         ),
     )
 
@@ -242,6 +248,7 @@ def main() -> None:
             descripcion="Paso 1. Cortar energia electrica y accionar parada de emergencia. Paso 2. Retirar restos secos de harina y masa con espatula plastica. Paso 3. Disolver 150 gramos de Detergente en Polvo Enzimatico en agua tibia a 45°. Paso 4. Cepillar batea y gancho espiral. Paso 5. Enjuagar con abundante agua potable y rociar con Alcohol Isopropilico 70 Spray.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_amasadora.id,
+            operador_legajo=sofia.legajo,
         ),
     )
     t_amasadora_semanal = crear_tarea(
@@ -251,6 +258,7 @@ def main() -> None:
             descripcion="Paso 1. Verificar motor apagado. Paso 2. Aplicar Desengrasante Alcalino Pesado con trapo humedo sobre carcasa externa. Paso 3. Retirar gratitud acumulada frotando en movimientos circulares. Paso 4. Repasar con paño humedo limpio y secar.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_amasadora.id,
+            operador_legajo=sofia.legajo,
         ),
     )
 
@@ -261,6 +269,7 @@ def main() -> None:
             descripcion="Paso 1. Pulverizar Limpiavidrios Antiestatico sobre el cristal exterior e interior. Paso 2. Limpiar con papel tissue descartable. Paso 3. Repasar la goma selladora con Detergente Neutro Espumante y secar suavemente.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_horno.id,
+            operador_legajo=marcos.legajo,
         ),
     )
     t_horno_semanal = crear_tarea(
@@ -270,6 +279,7 @@ def main() -> None:
             descripcion="Paso 1. Esperar a que el horno baje a temperatura tibia menor a 50°. Paso 2. Colocar guantes y proteccion ocular. Paso 3. Pulverizar Desengrasante Alcalino Pesado en paredes, turbina y techo interno. Paso 4. Dejar actuar 15 minutos para emulsionar grasas. Paso 5. Fregar con fibra abrasiva y enjuagar 3 veces con agua limpia.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_horno.id,
+            operador_legajo=marcos.legajo,
         ),
     )
 
@@ -343,41 +353,47 @@ def main() -> None:
         },
     ]
 
-    responsables = [juan, ana, marcos, lucia, sofia]
+    # Cada operador tiene su propio checklist por día, con las tareas que tiene asignadas.
+    operadores = [juan, lucia, sofia, marcos]
     for i, offset in enumerate(range(12, 0, -1)):
         fecha = datetime.now().date() - timedelta(days=offset)
-        responsable = responsables[i % len(responsables)]
-        checklist = Checklist(fecha=fecha, responsable_legajo=responsable.legajo, activo=True)
 
         lista_tareas_del_dia = list(tareas_diarias)
         if offset % 7 == 0:
             lista_tareas_del_dia.extend(tareas_semanales)
 
-        for j, t_info in enumerate(lista_tareas_del_dia):
-            plan = t_info["plan"]
-            tarea = t_info["tarea"]
-            # En algunos dias dejamos 1 tarea sin hacer para variacion realista de metricas
-            realizada = not (i % 4 == 0 and j == len(lista_tareas_del_dia) - 1)
-            item = ChecklistItem(
-                plan_id=plan.id,
-                nombre_plan=plan.nombre,
-                tarea_id=tarea.id,
-                nombre_tarea=tarea.nombre,
-                descripcion_tarea=tarea.descripcion,
-                frecuencia=tarea.frecuencia,
-                estado=EstadoTareaItem.REALIZADO if realizada else EstadoTareaItem.PENDIENTE,
-                responsable_legajo=responsable.legajo if realizada else None,
-                insumos_utilizados=json.dumps(
-                    t_info["insumos"],
-                    ensure_ascii=False,
-                ) if realizada else None,
-                fecha_hora_fin=datetime.combine(fecha, datetime.min.time()) + timedelta(hours=9, minutes=15 * j) if realizada else None,
-            )
-            checklist.items.append(item)
-        db.add(checklist)
+        for k, operador in enumerate(operadores):
+            tareas_del_operador = [t for t in lista_tareas_del_dia if t["tarea"].operador_legajo == operador.legajo]
+            if not tareas_del_operador:
+                continue
+            checklist = Checklist(fecha=fecha, responsable_legajo=operador.legajo, activo=True)
+
+            for j, t_info in enumerate(tareas_del_operador):
+                plan = t_info["plan"]
+                tarea = t_info["tarea"]
+                # En algunos dias dejamos 1 tarea sin hacer para variacion realista de metricas
+                realizada = not ((i + k) % 4 == 0 and j == len(tareas_del_operador) - 1)
+                item = ChecklistItem(
+                    plan_id=plan.id,
+                    nombre_plan=plan.nombre,
+                    tarea_id=tarea.id,
+                    nombre_tarea=tarea.nombre,
+                    descripcion_tarea=tarea.descripcion,
+                    frecuencia=tarea.frecuencia,
+                    estado=EstadoTareaItem.REALIZADO if realizada else EstadoTareaItem.PENDIENTE,
+                    responsable_legajo=operador.legajo if realizada else None,
+                    insumos_utilizados=json.dumps(
+                        t_info["insumos"],
+                        ensure_ascii=False,
+                    ) if realizada else None,
+                    fecha_hora_fin=datetime.combine(fecha, datetime.min.time()) + timedelta(hours=9, minutes=15 * j) if realizada else None,
+                )
+                checklist.items.append(item)
+            db.add(checklist)
     db.commit()
 
-    print("Generando el checklist de hoy (para probarlo en la app)...")
+    # Solo Marcos tiene el de hoy generado; el resto de los operadores lo genera desde la app.
+    print("Generando el checklist de hoy de Marcos (para probarlo en la app)...")
     checklist_hoy = generar_checklist(db, ChecklistGenerar(responsable_legajo=marcos.legajo, fecha=date.today()))
     if checklist_hoy.items:
         completar_tarea(
@@ -397,9 +413,9 @@ def main() -> None:
     print("\nListo. Base alimentada exitosamente:")
     print(f"  - 5 personas, {len(INSUMOS)} insumos (materias primas), {len(INSUMOS_QUIMICOS)} insumos quimicos con unidades variadas (L, ML, KG, G, UN)")
     print("  - 10 equipos, 6 elementos de limpieza")
-    print("  - 5 planes de limpieza con 10 tareas con procedimientos paso a paso")
-    print("  - 12 checklists historicos completados con registro detallado de insumos")
-    print(f"  - 1 checklist de hoy (checklist #{id_checklist_hoy}), con tarea inicial completada y restantes pendientes para prueba en vivo")
+    print("  - 5 planes de limpieza con 10 tareas con procedimientos paso a paso, repartidas entre 4 operadores")
+    print("  - 12 dias de historial: un checklist por operador y por dia, con registro detallado de insumos")
+    print(f"  - checklist de hoy de Marcos (checklist #{id_checklist_hoy}), con tarea inicial completada; Juan, Lucia y Sofia generan el suyo desde la app")
 
 
 if __name__ == "__main__":

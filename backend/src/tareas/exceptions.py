@@ -20,3 +20,6 @@ class FRECUENCIAInvalida(ValueError):
 
 class DescripcionInvalidad(BadRequest):
     DETAIL=ErrorCode.TAREA_CON_CARACTERES_RAROS
+
+class OperadorInvalido(BadRequest):
+    DETAIL=ErrorCode.OPERADOR_INVALIDO

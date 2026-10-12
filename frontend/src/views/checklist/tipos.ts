@@ -44,15 +44,8 @@ export interface Checklist {
   items: ChecklistItem[];
 }
 
-export interface PersonalResumen {
-  legajo: number;
-  nombre: string;
-  apellido: string;
-  activo: boolean;
-}
-
+/** El responsable no se manda: lo define la sesión del operador que genera. */
 export interface ChecklistGenerarPayload {
-  responsable_legajo: number;
   fecha?: string;
 }
 

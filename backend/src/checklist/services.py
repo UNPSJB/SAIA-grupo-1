@@ -120,15 +120,27 @@ def generar_checklist(
         logger.warning("Intento de generar checklist con fecha futura: %s", fecha)
         raise exceptions.ChecklistFechaFutura()
 
-    responsable = db.scalar(
-        select(Personal).where(Personal.legajo == datos.responsable_legajo)
-    )
+    responsable = None
+    if datos.responsable_legajo is not None:
+        responsable = db.scalar(
+            select(Personal).where(Personal.legajo == datos.responsable_legajo)
+        )
     if not responsable:
         logger.warning("Generar checklist: responsable legajo %s no encontrado", datos.responsable_legajo)
         raise exceptions.ResponsableNoEncontrado()
     if not responsable.activo:
         logger.warning("Generar checklist: responsable legajo %s inactivo", datos.responsable_legajo)
         raise exceptions.ResponsableInactivo()
+
+    ya_generado = db.scalar(
+        select(models.Checklist.id).where(
+            models.Checklist.fecha == fecha,
+            models.Checklist.responsable_legajo == responsable.legajo,
+        )
+    )
+    if ya_generado is not None:
+        logger.warning("Generar checklist: legajo %s ya tiene checklist para %s", responsable.legajo, fecha)
+        raise exceptions.ChecklistYaGenerado()
 
     planes = (
         db.scalars(
@@ -146,6 +158,9 @@ def generar_checklist(
 
     for plan in planes:
         for tarea in plan.tareas:
+            # Solo entran las tareas asignadas a este operador.
+            if tarea.operador_legajo != responsable.legajo:
+                continue
             if tarea_corresponde_a_fecha(
                 tarea.frecuencia,
                 plan.fecha_inicio,
@@ -170,7 +185,7 @@ def generar_checklist(
 
     checklist = models.Checklist(
         fecha=fecha,
-        responsable_legajo=datos.responsable_legajo,
+        responsable_legajo=responsable.legajo,
         activo=True,
         items=items_a_crear,
     )
@@ -440,11 +455,14 @@ def listar_checklists(
     fecha_desde: Optional[date] = None,
     fecha_hasta: Optional[date] = None,
     estado: Optional[str] = None,
+    responsable_legajo: Optional[int] = None,
 ) -> List[models.Checklist]:
     if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
         raise exceptions.RangoFechasInvalido()
 
     query = select(models.Checklist).order_by(models.Checklist.fecha.desc())
+    if responsable_legajo is not None:
+        query = query.where(models.Checklist.responsable_legajo == responsable_legajo)
     if fecha:
         query = query.where(models.Checklist.fecha == fecha)
     if fecha_desde:

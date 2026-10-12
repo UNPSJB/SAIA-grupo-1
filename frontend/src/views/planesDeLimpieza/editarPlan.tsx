@@ -279,19 +279,20 @@ return (
                             <th>Nombre</th>
                             <th>Procedimiento</th>
                             <th>Frecuencia</th>
+                            <th>Operador</th>
                             <th className="acciones-col">Acciones</th>
                           </tr>
                         </thead>
                         <tbody>
                           {loading ? (
                             <tr>
-                              <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                              <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
                                 Cargando Tareas...
                               </td>
                             </tr>
                           ) :planLimpieza.tareas?.length === 0 ? (
                             <tr>
-                              <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                              <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
                                 No hay Tareas registradas.
                               </td>
                             </tr>
@@ -301,6 +302,7 @@ return (
                   <td style={{ fontWeight: 500 }}>{t.nombre}</td>
                   <td>{t.descripcion}</td>
                   <td>{t.frecuencia}</td>
+                  <td>{t.nombre_operador ?? `Legajo: ${t.operador_legajo}`}</td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button

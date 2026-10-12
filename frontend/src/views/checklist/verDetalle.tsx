@@ -21,7 +21,7 @@ interface DetalleChecklistProps {
 }) => {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [loading, setLoading] = useState(Boolean(checklistId));
-  const { usuario, esOperador } = useAuth();
+  const { usuario, esOperador, esAdministrador } = useAuth();
 
   // Insumos químicos activos disponibles en la BD
   const [quimicosDisponibles, setQuimicosDisponibles] = useState<
@@ -278,6 +278,9 @@ interface DetalleChecklistProps {
     });
   }
 
+  // Solo el responsable ejecuta las tareas de su checklist; el resto lo ve en modo lectura.
+  const puedeEjecutar = esOperador && checklist?.responsable_legajo === usuario?.legajo;
+
   return (
     <div className="checklist-container">
       <div className="listado-top-bar">
@@ -329,12 +332,14 @@ interface DetalleChecklistProps {
                 <span className="valor">{checklist.fecha}</span>
               </div>
 
-              <div className="checklist-meta-item">
-                <span className="label">Responsable del Checklist</span>
-                <span className="valor">
-                  {checklist.nombre_responsable || `Legajo: ${checklist.responsable_legajo}`}
-                </span>
-              </div>
+              {esAdministrador && (
+                <div className="checklist-meta-item">
+                  <span className="label">Responsable del Checklist</span>
+                  <span className="valor">
+                    {checklist.nombre_responsable || `Legajo: ${checklist.responsable_legajo}`}
+                  </span>
+                </div>
+              )}
 
               <div className="checklist-meta-item">
                 <span className="label">Creado en</span>
@@ -439,7 +444,7 @@ interface DetalleChecklistProps {
                             </div>
                           </div>
 
-                          {esOperador && checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (
+                          {puedeEjecutar && checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (
                             <button
                               className="btn-guardar"
                               style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}

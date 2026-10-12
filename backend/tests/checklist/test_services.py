@@ -343,6 +343,7 @@ def test_generar_tareas_cuando_se_saltean_dias(session: Session) -> None:
         descripcion="Procedimiento semanal",
         frecuencia=Frecuencia.SEMANAL,
         plan_id=plan.id,
+        operador_legajo=1,
     )
     session.add(tarea_semanal)
     session.commit()
@@ -434,3 +435,55 @@ def test_checklist_no_vence_mientras_haya_tareas_pendientes_no_vencidas(session:
 
 
 
+
+
+# ---------------------------------------------------------------- checklist por operador
+
+
+def _asignar_tarea_a_ana(session: Session) -> Tarea:
+    """Ana Dominguez (legajo 2) es operadora; las tareas del seed de tests son de Juan (legajo 1)."""
+    plan = session.query(Plan_de_Limpieza).filter_by(nombre="PlanFreezer").one()
+    tarea = Tarea(
+        nombre="TareaDeAna",
+        descripcion="Limpiar burletes",
+        frecuencia=Frecuencia.DIARIA,
+        plan_id=plan.id,
+        operador_legajo=2,
+    )
+    session.add(tarea)
+    session.commit()
+    return tarea
+
+
+def test_generar_checklist_solo_incluye_tareas_del_operador(session: Session) -> None:
+    _asignar_tarea_a_ana(session)
+
+    de_juan = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    de_ana = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=2))
+
+    assert "TareaDeAna" not in [item.nombre_tarea for item in de_juan.items]
+    assert [item.nombre_tarea for item in de_ana.items] == ["TareaDeAna"]
+    assert de_ana.responsable_legajo == 2
+
+
+def test_generar_checklist_operador_sin_tareas_falla(session: Session) -> None:
+    with pytest.raises(exceptions.NoHayTareasCorrespondientes):
+        generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=2))
+
+
+def test_generar_checklist_dos_veces_el_mismo_dia_falla(session: Session) -> None:
+    generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    with pytest.raises(exceptions.ChecklistYaGenerado):
+        generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+
+
+def test_listar_checklists_filtra_por_responsable(session: Session) -> None:
+    _asignar_tarea_a_ana(session)
+    de_juan = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    de_ana = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=2))
+
+    ids_de_ana = [c.id for c in listar_checklists(session, responsable_legajo=2)]
+    assert ids_de_ana == [de_ana.id]
+
+    todos = [c.id for c in listar_checklists(session)]
+    assert de_juan.id in todos and de_ana.id in todos

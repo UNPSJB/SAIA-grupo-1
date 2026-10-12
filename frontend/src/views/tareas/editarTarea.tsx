@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import type { TareaConId} from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
+import { nombreOperador, useOperadores } from './useOperadores';
 
 const TAREA_INICIAL:TareaConId ={
     id:0,
     nombre:"",
     descripcion:"",
     plan_id:0,
-    frecuencia:""
+    frecuencia:"",
+    operador_legajo:0
 } 
 
 const FRECUENCIA = ["diaria","semanal","mensual"]interface EditarTareaProps {
@@ -25,6 +27,7 @@ export default function EditarTarea({tareaID, planID,onSuccess, onCancel}: Edita
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const operadores = useOperadores();
 
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -75,7 +78,9 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         nombre: tarea.nombre.trim(),
         descripcion:tarea.descripcion.trim(),
         plan_id:planID,
-        frecuencia:tarea.frecuencia
+        frecuencia:tarea.frecuencia,
+        // si no se eligió operador, el backend conserva el que ya tenía la tarea
+        operador_legajo:Number(tarea.operador_legajo) || null
     }
 
     setLoading(true);
@@ -196,6 +201,22 @@ return (
                 </select>
             </div>
 
+        <div className="form-group">
+                <label htmlFor="operador_legajo">Operador asignado:</label>
+                <select
+                    id="operador_legajo"
+                    name="operador_legajo"
+                    value={tarea.operador_legajo || ""}
+                    onChange={handleChange}
+                >
+                    <option value="" disabled>Seleccione el operador</option>
+                    {operadores.map((o) => (
+                        <option key={o.legajo} value={o.legajo}>
+                            {nombreOperador(o)} (Legajo: {o.legajo})
+                        </option>
+                    ))}
+                </select>
+            </div>
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>

@@ -73,6 +73,16 @@ return (
                 </input>
             </div>
 
+        <div className="form-group">
+                <label htmlFor="operador">Operador asignado:</label>
+                <input
+                    id="operador"
+                    name="operador"
+                    value={tarea.nombre_operador ?? ""}
+                    disabled
+                />
+            </div>
+
         </div>
 
         <div className="form-group procedimiento">

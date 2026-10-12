@@ -2,12 +2,14 @@ import { useState } from "react";
 import type { TareaConId, TareaForm } from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
+import { nombreOperador, useOperadores } from './useOperadores';
 
 const TAREA_INICAL:TareaForm ={
     nombre:"",
     descripcion:"",
     plan_id:"",
-    frecuencia:""
+    frecuencia:"",
+    operador_legajo:""
 } 
 
 const FRECUENCIA = ["diaria","semanal","mensual"]interface NuevaTareaProps {
@@ -24,6 +26,7 @@ export default function NuevaTarea({onAgregarLocal,planID,onSuccess, onCancel}: 
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const operadores = useOperadores();
 
 
 function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -42,8 +45,19 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
 
     }
 
+    if (!tarea.operador_legajo) {
+      setErrorMsg("Debe asignar la tarea a un operador.");
+      return;
+    }
+
+    const operador = operadores.find((o) => o.legajo === Number(tarea.operador_legajo));
+
     if (!planID) {
-          onAgregarLocal?.(tarea as TareaConId);
+          onAgregarLocal?.({
+            ...tarea,
+            operador_legajo: Number(tarea.operador_legajo),
+            nombre_operador: operador ? nombreOperador(operador) : null,
+          } as TareaConId);
           onSuccess?.();
           return;
     }
@@ -80,7 +94,8 @@ async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
         nombre: tarea.nombre.trim(),
         descripcion:tarea.descripcion.trim(),
         plan_id:planID,
-        frecuencia:tarea.frecuencia
+        frecuencia:tarea.frecuencia,
+        operador_legajo:Number(tarea.operador_legajo)
     }
 
     setLoading(true);
@@ -182,6 +197,24 @@ return (
                     {FRECUENCIA.map((frecuencia) => (
                         <option key={frecuencia} value={frecuencia}>
                             {frecuencia}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+        <div className="form-group">
+                <label htmlFor="operador_legajo">Operador asignado:</label>
+                <select
+                    id="operador_legajo"
+                    name="operador_legajo"
+                    value={tarea.operador_legajo}
+                    onChange={handleChange}
+                    required
+                >
+                    <option value="" disabled>Seleccione el operador</option>
+                    {operadores.map((o) => (
+                        <option key={o.legajo} value={o.legajo}>
+                            {nombreOperador(o)} (Legajo: {o.legajo})
                         </option>
                     ))}
                 </select>

@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from enum import StrEnum, auto
 from typing import List, Optional
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 from src.tareas.models import Frecuencia
@@ -27,6 +27,8 @@ DIAS_POR_FRECUENCIA = {
 
 class Checklist(ModeloBase):
     __tablename__ = "checklists"
+    # Cada operador tiene a lo sumo un checklist por día.
+    __table_args__ = (UniqueConstraint("fecha", "responsable_legajo"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     fecha: Mapped[date] = mapped_column(Date, index=True)

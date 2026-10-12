@@ -8,6 +8,8 @@ export interface Tarea{
     descripcion:string;
     frecuencia:string;
     plan_id:number;
+    operador_legajo:number;
+    nombre_operador?:string | null;
     plan_de_limpieza?:PlanDelimpieza
 
 }
@@ -23,4 +25,5 @@ export interface TareaForm{
     descripcion:string;
     plan_id:number | "";
     frecuencia:string;
+    operador_legajo:number | "";
 }
