@@ -1,18 +1,17 @@
-import {useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import '../../styles/formularioAlta.css';
 import type { PlanDeCalibracionConId } from '../planDeCalibracion/tipos';
 import { VerCalibracion } from './verCalibracionEcha';
-
+import { apiFetch } from '../../api/client';
+import { Dialog, DialogContent } from '../../components/ui/dialog';
 
 interface ListadoCalibracionesProps {
-    planID?:number | null;
-    onCancel?: () => void;
+  planID?: number | null;
+  onCancel?: () => void;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 const formatDate = (dateStr?: string | null) => {
-  if (!dateStr) return "No aplica";
+  if (!dateStr) return 'No aplica';
   try {
     const d = new Date(dateStr);
     return isNaN(d.getTime())
@@ -27,40 +26,43 @@ const formatDate = (dateStr?: string | null) => {
   }
 };
 
+export const ListadoCalibracionesRealizadas: React.FC<ListadoCalibracionesProps> = ({
+  onCancel,
+  planID,
+}) => {
+  const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
+  const [modalVer, setModalVer] = useState(false);
+  const [calibracionSeleccionada, setCalibracionSeleccionada] = useState<number | null>(null);
 
-export const ListadoCalibracionesRealizadas: React.FC<ListadoCalibracionesProps> = ({ onCancel, planID }) => {
-    const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId |null>(null);
-    const [loading, setLoading] = useState(true);
-    //const [busqueda, setBusqueda] = useState('');
-    const [modalVer,setModalVer] = useState(false);
-    const [calibracionSeleccionada, setCalibracionSeleccionada] =useState <number | null>(null);
+  const obtenerTipoArchivo = (ruta?: string | null) => {
+    if (!ruta) return 'No adjunto';
+    const extension = ruta.split('.').pop();
+    return extension ? `Archivo ${extension.toUpperCase()}` : 'Desconocido';
+  };
 
-    const obtenerTipoArchivo = (ruta?: string | null) => {
-       if (!ruta) return "No adjunto";
-       const extension = ruta.split('.').pop();
-       return extension ? `Archivo ${extension.toUpperCase()}` : "Desconocido";
-        };
+  useEffect(() => {
+    if (planID) {
+      const fetchPlanCalibracion = async () => {
+        try {
+          const res = await apiFetch(`/plan_de_calibracion/${planID}/`);
+          if (res.ok) {
+            const data = await res.json();
+            setPlanCalibracion(data);
+          }
+        } catch {
+          setPlanCalibracion(null);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-    useEffect(() => {
-                if (planID) {
-                    const fetchPlanCalibracion = async () => {
-                        try {
-                            const res = await fetch(`${API_URL}/plan_de_calibracion/${planID}/`);
-                            if (res.ok) {
-                                const data = await res.json();
-                                setPlanCalibracion(data);
-                            }
-                        } catch {
-                            alert('El plan de calibración no existe.');
-                        } finally {
-                            setLoading(false);
-                        }
-                    };
-        
-                    fetchPlanCalibracion();
-                }
-            }, [planID]);
-return (
+      fetchPlanCalibracion();
+    }
+  }, [planID]);
+
+  return (
     <div className="modulo-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
@@ -69,12 +71,21 @@ return (
         </div>
       </div>
 
+      <div className="filtros-top-bar">
+        <input
+          type="text"
+          className="input-busqueda"
+          placeholder="Buscar por fecha o archivo..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      </div>
 
       <div className="tabla-wrapper">
         <table className="tabla-custom">
           <thead>
             <tr>
-              <th>Fecha de Realizacion</th>
+              <th>Fecha de Realización</th>
               <th>Formato del Archivo</th>
               <th className="acciones-col">Acciones</th>
             </tr>
@@ -82,14 +93,16 @@ return (
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando ejecuciones...
                 </td>
               </tr>
             ) : planCalibracion?.calibraciones_realizadas?.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
-                  nose encontro ninguna ejecucion realizada
+                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
+                  {busqueda
+                    ? 'No se encontraron calibraciones que coincidan con los filtros.'
+                    : 'No hay registros de calibraciones realizadas.'}
                 </td>
               </tr>
             ) : (
@@ -98,22 +111,30 @@ return (
                   <td style={{ fontWeight: 500 }}>{formatDate(c.fecha_d_realizacion)}</td>
                   <td>
                     <span className="badge-archivo" style={{ textTransform: 'uppercase', fontWeight: 600 }}>
-                       📄 {obtenerTipoArchivo(c.formato_archivo)}
+                      📄 {obtenerTipoArchivo(c.formato_archivo)}
                     </span>
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button
+                        type="button"
                         className="btn-icon btn-ver"
                         title="Ver detalles"
-                        onClick={() => {setModalVer(true); setCalibracionSeleccionada(c.id)}}
+                        onClick={() => {
+                          setCalibracionSeleccionada(c.id);
+                          setModalVer(true);
+                        }}
                       >
                         👁
                       </button>
                       <button
+                        type="button"
                         className="btn-icon btn-editar"
                         title="Descargar Certificado"
-                        onClick={() => {setModalVer(true); setCalibracionSeleccionada(c.id)}}
+                        onClick={() => {
+                          setCalibracionSeleccionada(c.id);
+                          setModalVer(true);
+                        }}
                       >
                         📥
                       </button>
@@ -124,23 +145,23 @@ return (
             )}
           </tbody>
         </table>
-        <div className="form-acciones">
-                <button type="button"  className="btn-cancelar" onClick={onCancel}>
-                    Volver
-                </button>
-            </div>
       </div>
 
+      <div className="form-acciones">
+        <button type="button" className="btn-cancelar" onClick={onCancel}>
+          Volver
+        </button>
+      </div>
 
-      {modalVer && (<div className="modal-abierto">
-                                        <div className="modal-content">
-                                          <VerCalibracion
-                                          calibracionID={calibracionSeleccionada}
-                                          onCancel={() => setModalVer(false)}
-                                          />
-                        
-                                        </div>
-                              </div>)}
+      <Dialog open={modalVer} onOpenChange={setModalVer}>
+        <DialogContent>
+          <VerCalibracion
+            calibracionID={calibracionSeleccionada}
+            onCancel={() => setModalVer(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
+};
+

@@ -6,6 +6,7 @@ import "../../styles/formularioAlta.css";
 import type { TareaConId } from "../tareas/tipos";
 import NuevaTarea from "../tareas/nuevaTarea";
 import { apiFetch } from '../../api/client';
+import { Dialog, DialogContent } from "../../components/ui/dialog";
 
 const PLAN_INICIAL: PlanForm = {
   nombre: "",
@@ -155,9 +156,9 @@ export default function NuevoPlanDeLimpieza({ onSuccess, onCancel }: NuevoPlanDe
   }
 
   return (
-    <div className="modulo-container formulario-box">
+    <div className="modulo-container" style={{ maxWidth: "860px" }}>
       <div className="modulo-header">
-        <h1>Nuevo Plan De Limpieza</h1>
+        <h1>Nuevo Plan de Limpieza</h1>
         <div className="subtitulo">02 · Formulario</div>
       </div>
 
@@ -192,7 +193,7 @@ export default function NuevoPlanDeLimpieza({ onSuccess, onCancel }: NuevoPlanDe
         </div>
 
         <div className="form-group">
-          <label htmlFor="tipo_objetivo">Asignar Plan a:</label>
+          <label htmlFor="tipo_objetivo">Asignar Plan a</label>
           <select
             id="tipo_objetivo"
             name="tipo_objetivo"
@@ -242,15 +243,13 @@ export default function NuevoPlanDeLimpieza({ onSuccess, onCancel }: NuevoPlanDe
           </div>
         )}
 
-        <div className="listado-top-bar">
+        <div className="listado-top-bar" style={{ marginTop: "1.75rem", marginBottom: "0.75rem" }}>
           <div className="modulo-header">
-            <h2>Tareas</h2>
+            <h2 style={{ margin: 0, fontSize: "1.25rem", color: "var(--color-texto)" }}>Tareas</h2>
           </div>
-          <div className="accion-agregar">
-            <button type="button" className="btn-agregar" onClick={() => setModalAbierto(true)}>
-              +Agregar Tarea
-            </button>
-          </div>
+          <button type="button" className="btn-guardar" onClick={() => setModalAbierto(true)}>
+            + Agregar Tarea
+          </button>
         </div>
 
         <div className="tabla-wrapper">
@@ -300,17 +299,15 @@ export default function NuevoPlanDeLimpieza({ onSuccess, onCancel }: NuevoPlanDe
         </div>
       </form>
 
-      {modalAbierto && (
-        <div className="modal-abierto">
-          <div className="modal-content">
-            <NuevaTarea
-              onSuccess={() => setModalAbierto(false)}
-              onCancel={() => setModalAbierto(false)}
-              onAgregarLocal={(nuevaTarea) => { setTareas(prev => [...prev, nuevaTarea]); }}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
+        <DialogContent>
+          <NuevaTarea
+            onSuccess={() => setModalAbierto(false)}
+            onCancel={() => setModalAbierto(false)}
+            onAgregarLocal={(nuevaTarea) => { setTareas(prev => [...prev, nuevaTarea]); }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

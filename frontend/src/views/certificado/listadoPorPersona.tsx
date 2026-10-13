@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { Badge } from '../../components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '../../components/ui/dialog';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
@@ -12,6 +21,7 @@ interface ListadoCertificadosPorPersonaProps {
   onDetalleClick: (id: number) => void;
   onEditarClick: (id: number) => void;
   onVolver: () => void;
+  textoVolver?: string;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -23,6 +33,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
   onDetalleClick,
   onEditarClick,
   onVolver,
+  textoVolver,
 }) => {
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,7 +188,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
 
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button onClick={onVolver} className="btn-cancelar">
-            ← Volver a Personal
+            {textoVolver || '← Volver a Personal'}
           </button>
           {onNuevoClick && (
             <button onClick={onNuevoClick} className="btn-guardar">
@@ -231,37 +242,11 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                       <span>{formatearFecha(item.fechaVencimiento)}</span>
 
                       {calcularEstadoVencimiento(item.fechaVencimiento) === 'vencido' && (
-                        <span
-                          style={{
-                            backgroundColor: 'var(--color-error-bg)',
-                            color: 'var(--color-error-texto)',
-                            border: '1px solid var(--color-error)',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          ● Vencido
-                        </span>
+                        <Badge variant="vencido">● Vencido</Badge>
                       )}
 
                       {calcularEstadoVencimiento(item.fechaVencimiento) === 'proximo' && (
-                        <span
-                          style={{
-                            backgroundColor: 'var(--color-alerta-bg)',
-                            color: 'var(--color-alerta-texto)',
-                            border: '1px solid color-mix(in srgb, var(--color-alerta) 40%, transparent)',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          ▲ Próximo a vencer
-                        </span>
+                        <Badge variant="proximo">▲ Próximo a vencer</Badge>
                       )}
                     </div>
                   </td>
@@ -334,81 +319,21 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
         onClose={() => setErrorDialogMsg(null)}
       />
 
-      {/* Modal flotante de evidencia fotográfica / visor PDF */}
-      {modalArchivoUrl && (
-        <div
-          onClick={() => setModalArchivoUrl(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'var(--color-overlay)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'var(--color-superficie)',
-              borderRadius: '8px',
-              maxWidth: '750px',
-              width: '100%',
-              padding: '1.25rem',
-              boxShadow: '0 20px 25px -5px color-mix(in srgb, var(--color-sombra) 20%, transparent)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--color-texto)',
-                }}
-              >
-                Archivo
-              </h2>
-              <button
-                type="button"
-                onClick={() => setModalArchivoUrl(null)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  backgroundColor: 'var(--color-superficie)',
-                  border: '1px solid var(--color-texto)',
-                  borderRadius: '6px',
-                  padding: '0.35rem 0.85rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: 'var(--color-texto)',
-                  cursor: 'pointer',
-                }}
-              >
-                ✕ Cerrar
-              </button>
-            </div>
-
+      <Dialog open={Boolean(modalArchivoUrl)} onOpenChange={(open) => !open && setModalArchivoUrl(null)}>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>Archivo adjunto</DialogTitle>
+          </DialogHeader>
+          {modalArchivoUrl && (
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                maxHeight: '75vh',
+                maxHeight: '70vh',
                 overflow: 'hidden',
-                borderRadius: '6px',
+                borderRadius: '8px',
+                border: '1px solid var(--color-borde)',
               }}
             >
               {modalEsPdf ? (
@@ -419,7 +344,6 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                     width: '100%',
                     height: '65vh',
                     border: 'none',
-                    borderRadius: '6px',
                   }}
                 />
               ) : (
@@ -428,16 +352,18 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                   alt="Comprobante de certificado"
                   style={{
                     maxWidth: '100%',
-                    maxHeight: '75vh',
+                    maxHeight: '70vh',
                     objectFit: 'contain',
-                    borderRadius: '6px',
                   }}
                 />
               )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+          <DialogFooter>
+            <DialogClose onClick={() => setModalArchivoUrl(null)}>Cerrar</DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

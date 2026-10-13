@@ -1,5 +1,6 @@
 import React from 'react';
 import type { InsumoQuimico } from './tipos';
+import { Badge } from '../../components/ui/badge';
 import '../../styles/formularioAlta.css';
 
 interface Props {
@@ -13,7 +14,7 @@ export const VerDetalle: React.FC<Props> = ({ insumo, onVolver, onEditar }) => {
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
         <h1>Detalle del Insumo Químico</h1>
-        <div className="subtitulo">03 · Consulta</div>
+        <div className="subtitulo">{insumo.nombre} (ID #{insumo.id})</div>
       </div>
 
       <div className="form-group">
@@ -38,19 +39,11 @@ export const VerDetalle: React.FC<Props> = ({ insumo, onVolver, onEditar }) => {
 
       <div className="form-group">
         <label htmlFor="estado">Estado</label>
-        <span
-          style={{
-            display: 'inline-block',
-            padding: '4px 12px',
-            borderRadius: '16px',
-            fontSize: '12px',
-            fontWeight: 600,
-            backgroundColor: insumo.activo ? 'var(--color-exito-bg)' : 'var(--color-error-bg)',
-            color: insumo.activo ? 'var(--color-exito-texto)' : 'var(--color-error-texto)',
-          }}
-        >
-          {insumo.activo ? 'Activo' : 'Inactivo'}
-        </span>
+        <div>
+          <Badge variant={insumo.activo ? 'activo' : 'inactivo'}>
+            {insumo.activo ? 'Activo' : 'Inactivo'}
+          </Badge>
+        </div>
       </div>
 
       <div className="form-acciones">
@@ -64,3 +57,4 @@ export const VerDetalle: React.FC<Props> = ({ insumo, onVolver, onEditar }) => {
     </div>
   );
 };
+

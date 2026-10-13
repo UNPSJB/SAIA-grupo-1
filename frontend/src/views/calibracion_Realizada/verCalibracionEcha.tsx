@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import type { CalibracionRealizadaConID} from "./tipos";
-import { API_URL, apiFetch } from '../../api/client';
+import type { CalibracionRealizadaConID } from "./tipos";
+import { API_URL, apiFetch } from "../../api/client";
 import "../../styles/formularioAlta.css";
-interface VerCalibracionProps {
-    calibracionID:number | null;
-    onCancel?: () => void;
 
+interface VerCalibracionProps {
+  calibracionID: number | null;
+  onCancel?: () => void;
 }
 
 const formatDate = (dateStr?: string | null) => {
@@ -14,10 +14,10 @@ const formatDate = (dateStr?: string | null) => {
     const d = new Date(dateStr);
     return isNaN(d.getTime())
       ? dateStr
-      : d.toLocaleDateString('es-AR', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
+      : d.toLocaleDateString("es-AR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
         });
   } catch {
     return dateStr;
@@ -31,55 +31,53 @@ export const VerCalibracion : React.FC<VerCalibracionProps> = ({calibracionID, o
     const [error, setError] = useState<string | null>(null);
     const [modalArchivoUrl, setModalArchivoUrl] = useState<string | null>(null);
 
-
-
-useEffect(() => {
-  if (!calibracionID) {
-    setCalibracion(null);
-    setLoading(false);
-    return;
-  }
-
-  const fetchCalibracionRealizada = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await apiFetch(`/calibracion_realizada/${calibracionID}`);
-
-      if (!res.ok) {
-        throw new Error("No se pudo obtener la calibración.");
-      }
-
-      const data = await res.json();
-      setCalibracion(data);
-    } catch (err: unknown) {
+  useEffect(() => {
+    if (!calibracionID) {
       setCalibracion(null);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "La calibración realizada no existe."
-      );
-    } finally {
       setLoading(false);
+      return;
     }
+
+    const fetchCalibracionRealizada = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await apiFetch(`/calibracion_realizada/${calibracionID}`);
+
+        if (!res.ok) {
+          throw new Error("No se pudo obtener la calibración.");
+        }
+
+        const data = await res.json();
+        setCalibracion(data);
+      } catch (err: unknown) {
+        setCalibracion(null);
+        setError(
+          err instanceof Error ? err.message : "La calibración realizada no existe."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCalibracionRealizada();
+  }, [calibracionID]);
+
+  const obtenerUrlArchivo = (ruta?: string | null, inline: boolean = false) => {
+    if (!ruta) return "";
+    const rutaNormalizada = ruta.replace(/\\/g, "/");
+    const nombreArchivo = rutaNormalizada.split("/").pop();
+
+    const apiLimpieza = API_URL.trim().endsWith("/")
+      ? API_URL.trim().slice(0, -1)
+      : API_URL.trim();
+    const urlBase = `${apiLimpieza}/calibracion_realizada/archivos/${nombreArchivo}`;
+
+    return inline ? `${urlBase}?inline=true` : urlBase;
   };
 
-  fetchCalibracionRealizada();
-}, [calibracionID]);
-
-   const obtenerUrlArchivo = (ruta?: string | null, inline: boolean = false) => {
-    if (!ruta) return "";
-    const rutaNormalizada = ruta.replace(/\\/g, '/');
-    const nombreArchivo = rutaNormalizada.split('/').pop();
-    
-    const apiLimpieza = API_URL.trim().endsWith('/') ? API_URL.trim().slice(0, -1) : API_URL.trim();
-    const urlBase = `${apiLimpieza}/calibracion_realizada/archivos/${nombreArchivo}`;
-    
-    return inline ? `${urlBase}?inline=true` : urlBase;
-};
-
-const handleDescargar = () => {
+  const handleDescargar = () => {
     if (!calibracion?.formato_archivo) return;
     const urlArchivo = obtenerUrlArchivo(calibracion.formato_archivo, false);
   
@@ -127,43 +125,38 @@ const renderBotonArchivo = (fotoUrl?: string | null) => {
 return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Informe de calibracion</h1>
+        <h1>Informe de Calibración</h1>
+        <div className="subtitulo">
+          {calibracion ? calibracion.nombre_plan_calibracion : `Calibración #${calibracionID}`}
+        </div>
       </div>
 
-      {error && (
-  <div className="alerta-error">
-    {error}
-  </div>
-)}
+      {error && <div className="alerta-error">{error}</div>}
 
-        {loading ? (
-                        <tr>
-                            <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
-                                Cargando calibracion ...
-                            </td>
-                        </tr>
-        ) : calibracion ? (
-
-        
-
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "2rem" }}>Cargando calibración...</div>
+      ) : calibracion ? (
         <div className="datos-tarea">
+          <div className="form-group">
+            <label htmlFor="fecha_d_realizacion">Fecha de Realización</label>
+            <input
+              id="fecha_d_realizacion"
+              type="text"
+              value={formatDate(calibracion.fecha_d_realizacion)}
+              disabled
+            />
+          </div>
 
-        <div className="form-group">
-          <label htmlFor="fecha_d_realizacion">Fecha de Realizacion</label>
-          <td>{formatDate(calibracion.fecha_d_realizacion)}</td>
-        </div>
-
-
-        <div className="form-group">
-                <label htmlFor="plan_calibracion">Plan de Calibracion</label>
-                <input
-                    id="plan_calibracion"
-                    name="plan_calibracion"
-                    value={calibracion.nombre_plan_calibracion}
-                    disabled
-                >
-                </input>
-            </div>
+          <div className="form-group">
+            <label htmlFor="plan_calibracion">Plan de Calibración</label>
+            <input
+              id="plan_calibracion"
+              name="plan_calibracion"
+              type="text"
+              value={calibracion.nombre_plan_calibracion}
+              disabled
+            />
+          </div>
 
       <div className="form-group">
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -328,5 +321,5 @@ return (
         </div>
       )}
     </div>
-  )
+  );
 };

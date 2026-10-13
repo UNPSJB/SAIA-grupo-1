@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import type { Persona } from "./tipos";
 import { apiFetch } from "../../api/client";
+import { Badge } from "../../components/ui/badge";
 import '../../styles/formularioAlta.css';
 
 export interface DetallePersonaProps {
@@ -45,11 +46,13 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
         <h1>Detalle de la Persona</h1>
-        <div className="subtitulo">04 · Consulta</div>
+        <div className="subtitulo">
+          {persona ? `${persona.apellido}, ${persona.nombre} (Legajo #${persona.legajo})` : "04 · Consulta"}
+        </div>
       </div>
 
       {loading ? (
-        <p>Cargando detalles de la persona...</p>
+        <div style={{ textAlign: "center", padding: "2rem" }}>Cargando detalles de la persona...</div>
       ) : errorCarga || !persona ? (
         <div className="alerta-error">{errorCarga || "Persona no encontrada."}</div>
       ) : (
@@ -91,19 +94,11 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({
 
           <div className="form-group">
             <label htmlFor="estado">Estado</label>
-            <span
-              style={{
-                display: "inline-block",
-                padding: "4px 12px",
-                borderRadius: "12px",
-                fontSize: "13px",
-                fontWeight: 600,
-                backgroundColor: persona.activo ? "var(--color-exito-bg)" : "var(--color-error-bg)",
-                color: persona.activo ? "var(--color-exito-texto)" : "var(--color-error-texto)",
-              }}
-            >
-              {persona.activo ? "Activo" : "Inactivo"}
-            </span>
+            <div>
+              <Badge variant={persona.activo ? "activo" : "inactivo"}>
+                {persona.activo ? "Activo" : "Inactivo"}
+              </Badge>
+            </div>
           </div>
         </div>
       )}

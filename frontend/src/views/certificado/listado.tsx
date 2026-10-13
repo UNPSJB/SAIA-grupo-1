@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { apiFetch } from '../../api/client';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '../../components/ui/dialog';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 
@@ -168,59 +176,45 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
     indiceFin,
   } = usePaginacion(certificadosFiltrados);
 
+  const resumen = {
+    vencidos: certificadosFiltrados.filter((c) => calcularEstadoVencimiento(c.fechaVencimiento).estado === 'vencido').length,
+    proximos: certificadosFiltrados.filter((c) => calcularEstadoVencimiento(c.fechaVencimiento).estado === 'proximo').length,
+    vigentes: certificadosFiltrados.filter((c) => calcularEstadoVencimiento(c.fechaVencimiento).estado === 'al_dia').length,
+  };
+
   const modalEsPdf = modalArchivoUrl?.toLowerCase().endsWith('.pdf');
 
   return (
-    <div className="modulo-container">
-      <div className="listado-top-bar" style={{ alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <div className="modulo-header" style={{ marginBottom: 0 }}>
-          <h1 style={{ lineHeight: '1.2', margin: 0 }}>Vencimientos de Personal</h1>
+    <div className="modulo-container modulo-vencimientos-container">
+      <div className="listado-top-bar venc-top-bar">
+        <div className="modulo-header">
+          <h1>Vencimientos de Personal</h1>
+          <div className="subtitulo">01 · Control de carnets y certificados con archivo adjunto</div>
         </div>
 
         {onVerConsolidado && (
-          <div
-            style={{
-              display: 'inline-flex',
-              background: 'var(--color-fondo)',
-              padding: '4px',
-              borderRadius: '8px',
-              gap: '4px',
-              flexShrink: 0,
-            }}
-          >
+          <div className="venc-tabs">
             <button
               type="button"
+              className="venc-tab"
               onClick={onVerConsolidado}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                padding: '8px 14px',
-                borderRadius: '6px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: 'var(--color-texto)',
-                cursor: 'pointer',
-              }}
             >
               Todos (Consolidado)
             </button>
             <button
               type="button"
-              style={{
-                border: 'none',
-                background: 'var(--color-primario)',
-                color: 'var(--color-texto-sobre-primario)',
-                padding: '8px 14px',
-                borderRadius: '6px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
+              className="venc-tab venc-tab--activo"
             >
               Solo Personal (con archivo)
             </button>
           </div>
         )}
+      </div>
+
+      <div className="venc-resumen">
+        <span className="venc-chip venc-chip--vencido">● {resumen.vencidos} vencidos</span>
+        <span className="venc-chip venc-chip--proximo">▲ {resumen.proximos} próximos</span>
+        <span className="venc-chip venc-chip--vigente">✓ {resumen.vigentes} vigentes</span>
       </div>
 
       {/* Barra de Filtros */}
@@ -246,7 +240,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
       </div>
 
       <div className="tabla-wrapper">
-        <table className="tabla-custom">
+        <table className="tabla-custom tabla-vencimientos">
           <thead>
             <tr>
               <th>Urgencia</th>
@@ -276,65 +270,30 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                 const persona = personalMap[item.legajo_persona];
                 const nombreCompleto = persona ? `${persona.apellido}, ${persona.nombre}` : '';
                 const { estado, diffDias } = calcularEstadoVencimiento(item.fechaVencimiento);
+                const claseFila = estado === 'al_dia' ? 'vigente' : estado;
 
                 return (
-                  <tr key={item.id}>
+                  <tr key={item.id} className={`venc-fila--${claseFila}`}>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {estado === 'vencido' && (
-                        <span
-                          style={{
-                            backgroundColor: 'var(--color-error-bg)',
-                            color: 'var(--color-error-texto)',
-                            border: '1px solid var(--color-error)',
-                            padding: '0.2rem 0.6rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                            display: 'inline-block',
-                          }}
-                        >
+                        <span className="venc-badge venc-badge--vencido">
                           ● Vencido ({Math.abs(diffDias)} d)
                         </span>
                       )}
 
                       {estado === 'proximo' && (
-                        <span
-                          style={{
-                            backgroundColor: 'var(--color-alerta-bg)',
-                            color: 'var(--color-alerta-texto)',
-                            border: '1px solid color-mix(in srgb, var(--color-alerta) 40%, transparent)',
-                            padding: '0.2rem 0.6rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                            display: 'inline-block',
-                          }}
-                        >
-                          ▲ Vence en {diffDias} dias
+                        <span className="venc-badge venc-badge--proximo">
+                          ▲ Vence en {diffDias} días
                         </span>
                       )}
 
                       {estado === 'al_dia' && (
-                        <span
-                          style={{
-                            backgroundColor: 'var(--color-exito-bg)',
-                            color: 'var(--color-exito-texto)',
-                            border: '1px solid color-mix(in srgb, var(--color-exito) 35%, transparent)',
-                            padding: '0.2rem 0.6rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                            display: 'inline-block',
-                          }}
-                        >
+                        <span className="venc-badge venc-badge--vigente">
                           ✓ Al día
                         </span>
                       )}
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
                       <strong>{formatearFecha(item.fechaVencimiento)}</strong>
                     </td>
                     <td>
@@ -344,20 +303,13 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                         <span style={{ color: 'var(--color-texto-sec)' }}>Cargando...</span>
                       )}
                     </td>
-                    <td>#{item.legajo_persona}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>#{item.legajo_persona}</td>
                     <td>{item.tipo}</td>
-                    <td>{renderBotonArchivo(item.foto_url)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{renderBotonArchivo(item.foto_url)}</td>
                     <td className="acciones-col">
                       <button
                         type="button"
-                        className="btn-guardar"
-                        style={{
-                          fontSize: '11px',
-                          padding: '5px 10px',
-                          whiteSpace: 'nowrap',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                        }}
+                        className="btn-guardar btn-gestionar-venc"
                         title="Gestionar en el perfil de la persona"
                         onClick={() => {
                           if (onVerPersona) {
@@ -390,80 +342,21 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         etiqueta="certificados"
       />
 
-      {modalArchivoUrl && (
-        <div
-          onClick={() => setModalArchivoUrl(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'var(--color-overlay)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'var(--color-superficie)',
-              borderRadius: '8px',
-              maxWidth: '750px',
-              width: '100%',
-              padding: '1.25rem',
-              boxShadow: '0 20px 25px -5px color-mix(in srgb, var(--color-sombra) 20%, transparent)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--color-texto)',
-                }}
-              >
-                Archivo
-              </h2>
-              <button
-                type="button"
-                onClick={() => setModalArchivoUrl(null)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  backgroundColor: 'var(--color-superficie)',
-                  border: '1px solid var(--color-texto)',
-                  borderRadius: '6px',
-                  padding: '0.35rem 0.85rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: 'var(--color-texto)',
-                  cursor: 'pointer',
-                }}
-              >
-                ✕ Cerrar
-              </button>
-            </div>
-
+      <Dialog open={Boolean(modalArchivoUrl)} onOpenChange={(open) => !open && setModalArchivoUrl(null)}>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>Archivo adjunto</DialogTitle>
+          </DialogHeader>
+          {modalArchivoUrl && (
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                maxHeight: '75vh',
+                maxHeight: '70vh',
                 overflow: 'hidden',
-                borderRadius: '6px',
+                borderRadius: '8px',
+                border: '1px solid var(--color-borde)',
               }}
             >
               {modalEsPdf ? (
@@ -474,7 +367,6 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                     width: '100%',
                     height: '65vh',
                     border: 'none',
-                    borderRadius: '6px',
                   }}
                 />
               ) : (
@@ -483,16 +375,18 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                   alt="Comprobante de certificado"
                   style={{
                     maxWidth: '100%',
-                    maxHeight: '75vh',
+                    maxHeight: '70vh',
                     objectFit: 'contain',
-                    borderRadius: '6px',
                   }}
                 />
               )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+          <DialogFooter>
+            <DialogClose onClick={() => setModalArchivoUrl(null)}>Cerrar</DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

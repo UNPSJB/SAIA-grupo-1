@@ -144,12 +144,11 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
   } = usePaginacion(filasVisibles);
 
   return (
-    <div className="modulo-container">
-      <style>{ESTILOS}</style>
-
-      <div className="listado-top-bar" style={{ alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <div className="modulo-header" style={{ marginBottom: 0 }}>
-          <h1 style={{ margin: 0 }}>Vencimientos</h1>
+    <div className="modulo-container modulo-vencimientos-container">
+      <div className="listado-top-bar venc-top-bar">
+        <div className="modulo-header">
+          <h1>Vencimientos</h1>
+          <div className="subtitulo">01 · Control consolidado de carnets, calibraciones y documentos</div>
         </div>
 
         {onVerSoloPersonal && (
@@ -209,16 +208,16 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
       {error && <div className="alerta-error">{error}</div>}
 
       <div className="tabla-wrapper">
-        <table className="tabla-custom">
+        <table className="tabla-custom tabla-vencimientos">
           <thead>
             <tr>
               <th>Estado</th>
               <th>Tipo</th>
               <th>Qué vence</th>
               <th>Responsable / Entidad</th>
-              <th>Fecha de vencimiento</th>
+              <th>Vencimiento</th>
               <th>Plazo</th>
-              <th className="acciones-col">Acciones</th>
+              <th className="acciones-col">Acción</th>
             </tr>
           </thead>
           <tbody>
@@ -237,29 +236,29 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
             ) : (
               filasPaginadas.map((f) => (
                 <tr key={f.id} className={`venc-fila--${f.estado}`}>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <span className={`venc-badge venc-badge--${f.estado}`}>
                       {ETIQUETA_ESTADO[f.estado]}
                     </span>
                   </td>
-                  <td>{ETIQUETA_ORIGEN[f.origen]}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{ETIQUETA_ORIGEN[f.origen]}</td>
                   <td>
                     <strong>{f.concepto}</strong>
                   </td>
                   <td>{f.responsable}</td>
-                  <td>{formatearFecha(f.fecha)}</td>
-                  <td>{describirPlazo(f.diasRestantes)}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <strong>{formatearFecha(f.fecha)}</strong>
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{describirPlazo(f.diasRestantes)}</td>
                   <td className="acciones-col">
-                    <div className="acciones-btns">
-                      <button
-                        type="button"
-                        className="btn-icon btn-ver"
-                        title="Ir al registro"
-                        onClick={() => onIrAlRegistro(f)}
-                      >
-                        👁
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className="btn-guardar btn-gestionar-venc"
+                      title="Gestionar registro"
+                      onClick={() => onIrAlRegistro(f)}
+                    >
+                      Gestionar ↗
+                    </button>
                   </td>
                 </tr>
               ))
@@ -282,19 +281,3 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
     </div>
   );
 };
-
-const ESTILOS = `
-.venc-resumen { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
-.venc-chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600; border: 1px solid transparent; }
-.venc-chip--vencido, .venc-badge--vencido { background-color: var(--color-error-bg); color: var(--color-error-texto); border-color: var(--color-error); }
-.venc-chip--proximo, .venc-badge--proximo { background-color: var(--color-alerta-bg); color: var(--color-alerta-texto); border-color: color-mix(in srgb, var(--color-alerta) 40%, transparent); }
-.venc-chip--vigente, .venc-badge--vigente { background-color: var(--color-exito-bg); color: var(--color-exito-texto); border-color: color-mix(in srgb, var(--color-exito) 35%, transparent); }
-.venc-badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
-.venc-fila--vencido td:first-child { box-shadow: inset 4px 0 0 var(--color-error); }
-.venc-fila--proximo td:first-child { box-shadow: inset 4px 0 0 var(--color-alerta); }
-.venc-fila--vigente td:first-child { box-shadow: inset 4px 0 0 var(--color-exito); }
-.venc-nota { color: var(--color-texto-sec); font-size: 0.85rem; margin: 0 0 1rem; }
-.venc-tabs { display: inline-flex; background: var(--color-fondo); padding: 4px; border-radius: 8px; gap: 4px; }
-.venc-tab { border: none; background: transparent; padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: var(--color-texto); cursor: pointer; transition: all 0.15s ease; }
-.venc-tab--activo { background: var(--color-primario); color: var(--color-texto-sobre-primario); }
-`;

@@ -2,44 +2,52 @@ import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { Badge } from '../../components/ui/badge';
 
 interface DetalleElementoProps {
   onCancel?: () => void;
   elementoId?: number | null;
-}// Formatear la fecha que viene en formato ISO desde el backend
-  const formatearFecha = (fechaStr?: string | null) => {
-    if (!fechaStr) return 'Sin fecha';
-    try {
-      const d = new Date(fechaStr);
-      return isNaN(d.getTime())
-        ? fechaStr
-        : d.toLocaleDateString('es-AR', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-          });
-    } catch {
-      return fechaStr;
-    }
-  };
+}
 
-export const DetalleElementoDeLimpieza: React.FC<DetalleElementoProps> = ({ onCancel, elementoId }) => {
+const formatearFecha = (fechaStr?: string | null) => {
+  if (!fechaStr) return 'Sin fecha';
+  try {
+    const d = new Date(fechaStr);
+    return isNaN(d.getTime())
+      ? fechaStr
+      : d.toLocaleDateString('es-AR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        });
+  } catch {
+    return fechaStr;
+  }
+};
+
+export const DetalleElementoDeLimpieza: React.FC<DetalleElementoProps> = ({
+  onCancel,
+  elementoId,
+}) => {
   const [elemento, setElemento] = useState<ElementoDeLimpieza | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (elementoId) {
       const fetchElemento = async () => {
+        setLoading(true);
+        setError(null);
         try {
           const res = await apiFetch(`/elementosDeLimpieza/${elementoId}`);
           if (res.ok) {
             const data: ElementoDeLimpieza = await res.json();
             setElemento(data);
           } else {
-            alert('El elemento de limpieza no existe.');
+            setError('El elemento de limpieza no existe.');
           }
         } catch {
-          alert('Error al conectar con el servidor.');
+          setError('Error al conectar con el servidor.');
         } finally {
           setLoading(false);
         }
@@ -52,34 +60,26 @@ export const DetalleElementoDeLimpieza: React.FC<DetalleElementoProps> = ({ onCa
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Detalle Elemento de Limpieza</h1>
-        <div className="subtitulo">ID: {elementoId}</div>
+        <h1>Detalle de Elemento de Limpieza</h1>
+        <div className="subtitulo">
+          {elemento ? `${elemento.nombre} (ID #${elemento.id})` : `ID: ${elementoId}`}
+        </div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando elemento...</div>
+      ) : error ? (
+        <div className="alerta-error">{error}</div>
       ) : elemento ? (
-        <form>
+        <form onSubmit={(e) => e.preventDefault()}>
           <div className="form-group">
             <label htmlFor="id">ID</label>
-            <input
-              id="id"
-              name="id"
-              type="text"
-              value={elemento.id}
-              disabled
-            />
+            <input id="id" name="id" type="text" value={elemento.id} disabled />
           </div>
 
           <div className="form-group">
             <label htmlFor="nombre">Nombre</label>
-            <input
-              id="nombre"
-              name="nombre"
-              type="text"
-              value={elemento.nombre}
-              disabled
-            />
+            <input id="nombre" name="nombre" type="text" value={elemento.nombre} disabled />
           </div>
 
           <div className="form-group">
@@ -114,24 +114,10 @@ export const DetalleElementoDeLimpieza: React.FC<DetalleElementoProps> = ({ onCa
 
           <div className="form-group">
             <label>Estado</label>
-            <div style={{ marginTop: '0.25rem' }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  padding: '0.35rem 0.85rem',
-                  borderRadius: '20px',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  color: 'var(--color-texto-sobre-primario)',
-                  backgroundColor: elemento.activo ? 'var(--color-exito)' : 'var(--color-error)',
-                  width: 'fit-content',
-                }}
-              >
-                <span>{elemento.activo ? '●' : '○'}</span>
-                <span>{elemento.activo ? 'Activo' : 'Inactivo'}</span>
-              </span>
+            <div>
+              <Badge variant={elemento.activo ? 'activo' : 'inactivo'}>
+                {elemento.activo ? 'Activo' : 'Inactivo'}
+              </Badge>
             </div>
           </div>
         </form>

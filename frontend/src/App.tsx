@@ -110,6 +110,7 @@ function Aplicacion() {
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
   const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial'>('abiertos');
   const [vistaVencimientos, setVistaVencimientos] = useState<'consolidado' | 'personal'>('consolidado');
+  const [origenVencimientos, setOrigenVencimientos] = useState<'consolidado' | 'personal' | null>(null);
 
   const [vistaPlanCalibracion, setVistaPlanCalibracion] = useState<VistaPlanCalibracion>('listado');
   const [planCalibracionSeleccionado, setPlanCalibracionSeleccionado] = useState<number | null>(null);
@@ -122,6 +123,7 @@ function Aplicacion() {
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
+    setOrigenVencimientos(null);
     setVistaEquipos('listado');
     setVistaSectores('listado');
     setVistaInsumos('listado');
@@ -138,10 +140,21 @@ function Aplicacion() {
     setVistaTipoCertificado('listado');
   };
 
+  const volverAVencimientos = () => {
+    const tabDestino = origenVencimientos || 'consolidado';
+    setOrigenVencimientos(null);
+    setVistaPersonas('listado');
+    setVistaPlanCalibracion('listado');
+    setVistaDocumentos('listado');
+    setVistaVencimientos(tabDestino);
+    setModulo('vencimientos');
+  };
+
   // Desde la vista consolidada: salta a la pantalla del registro que vence
   const irAlRegistroDeVencimiento = (v: any) => {
     const origen = v.origen || v.tipo;
     const refId = v.referenciaId ?? v.referencia_id;
+    setOrigenVencimientos('consolidado');
     if (origen === 'personal') {
       const [apellido, nombre] = (v.responsable ?? '').split(', ');
       setModulo('personas');
@@ -180,6 +193,7 @@ function Aplicacion() {
   };
 
   const irACertificadosDePersona = (legajo: number, nombreCompleto: string) => {
+    setOrigenVencimientos('personal');
     setLegajoSeleccionado(legajo);
     setNombrePersonaSeleccionada(nombreCompleto);
     setVistaPersonas('certificados');
@@ -190,7 +204,7 @@ function Aplicacion() {
     <SidebarProvider>
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
-      <SidebarInset style={{ padding: '40px 60px' }}>
+      <SidebarInset style={{ padding: '32px 36px' }}>
         {modulo === 'dashboard' ? (
           <PanelDashboard />
         ) : modulo === 'vencimientos' ? (
@@ -293,7 +307,8 @@ function Aplicacion() {
                 setLegajoSeleccionado(legajo);
                 setVistaPersonas('editar');
               }}
-              onVerCertificados={(legajo, nombreCompleto) => { // 👈 AGREGAR ESTO
+              onVerCertificados={(legajo, nombreCompleto) => {
+                setOrigenVencimientos(null);
                 setLegajoSeleccionado(legajo);
                 setNombrePersonaSeleccionada(nombreCompleto);
                 setVistaPersonas('certificados');
@@ -328,7 +343,8 @@ function Aplicacion() {
                 setCertificadoSeleccionado(id);
                 setVistaPersonas('editar_certificado');
               }}
-              onVolver={() => setVistaPersonas('listado')}
+              onVolver={origenVencimientos ? volverAVencimientos : () => setVistaPersonas('listado')}
+              textoVolver={origenVencimientos ? '← Volver a Vencimientos' : '← Volver a Personal'}
             />
           ) : vistaPersonas === 'nuevo_certificado' && legajoSeleccionado !== null ? (
             <NuevoCertificado
@@ -464,6 +480,7 @@ function Aplicacion() {
                 setVistaDocumentos('nuevaVersion');
               } : undefined}
               onDetalleClick={(id) => {
+                setOrigenVencimientos(null);
                 setDocumentoSeleccionado(id);
                 setVistaDocumentos('detalle');
               }}
@@ -482,7 +499,8 @@ function Aplicacion() {
           ) : (
             <DetalleDocumento
               documentoId={documentoSeleccionado}
-              onVolver={() => setVistaDocumentos('listado')}
+              onVolver={origenVencimientos ? volverAVencimientos : () => setVistaDocumentos('listado')}
+              textoVolver={origenVencimientos ? '← Volver a Vencimientos' : 'Volver'}
             />
           )
         ) : modulo === 'checklist' ? (
@@ -504,10 +522,12 @@ function Aplicacion() {
             <ListadoPlanesCalibracion
               onNuevoClick={() => setVistaPlanCalibracion('alta')}
               onDetalleClick={(id) => {
+                setOrigenVencimientos(null);
                 setPlanCalibracionSeleccionado(id);
                 setVistaPlanCalibracion('detalle');
               }}
               onEditarClick={(id) => {
+                setOrigenVencimientos(null);
                 setPlanCalibracionSeleccionado(id);
                 setVistaPlanCalibracion('editar');
               }}
@@ -525,7 +545,8 @@ function Aplicacion() {
             />
           ) : vistaPlanCalibracion === 'detalle' ? (
             <VerPlanDeCalibracion
-              onCancel={() => setVistaPlanCalibracion('listado')}
+              onCancel={origenVencimientos ? volverAVencimientos : () => setVistaPlanCalibracion('listado')}
+              textoVolver={origenVencimientos ? '← Volver a Vencimientos' : 'Volver'}
               planCalibracionID={planCalibracionSeleccionado}
             />
           ) : null

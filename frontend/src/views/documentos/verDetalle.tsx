@@ -4,12 +4,21 @@ import { ModalMarcarVigente } from "./modalMarcarVigente";
 import { ModalHistorialVersiones } from "./modalHistorial";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/useAuth";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "../../components/ui/dialog";
 import "../../styles/formularioAlta.css";
 import "./documentos.css";
 
 interface DetalleDocumentoProps {
   documentoId: number | null;
   onVolver: () => void;
+  textoVolver?: string;
 }
 
 const formatearFecha = (fechaStr?: string | null) => {
@@ -54,6 +63,7 @@ const formatearPeso = (bytes?: number | null, formato?: string | null) => {
 export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
   documentoId,
   onVolver,
+  textoVolver,
 }) => {
   const { esAdministrador } = useAuth();
   const [documento, setDocumento] = useState<DocumentoDetalle | null>(null);
@@ -62,6 +72,7 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
 
   const [modalVigenteAbierto, setModalVigenteAbierto] = useState(false);
   const [modalHistorialAbierto, setModalHistorialAbierto] = useState(false);
+  const [modalVisorAbierto, setModalVisorAbierto] = useState(false);
 
   const cargar = async () => {
     if (!documentoId) return;
@@ -145,23 +156,6 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
     };
   }, [versionParaDescarga?.id]);
 
-  const handlePrevisualizar = async () => {
-    if (!versionParaDescarga) return;
-    try {
-      const res = await apiFetch(`/documentos/archivo/${versionParaDescarga.id}?inline=true`);
-      if (!res.ok) {
-        throw new Error("No se pudo previsualizar el archivo.");
-      }
-      const rawBlob = await res.blob();
-      const contentType = res.headers.get("content-type") || "application/pdf";
-      const blob = new Blob([rawBlob], { type: contentType });
-      const fileUrl = window.URL.createObjectURL(blob);
-      window.open(fileUrl, "_blank");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error al abrir previsualización.");
-    }
-  };
-
   const docParaModalVigente: DocumentoListItem | null = documento
     ? {
         id: documento.id,
@@ -181,11 +175,11 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
     : null;
 
   return (
-    <div className="modulo-container formulario-box-documento">
+    <div className="modulo-container formulario-box">
       <div className="modulo-header">
         <h1>{esAdministrador ? "Detalle de Documento" : "Consulta de Versión Vigente"}</h1>
         <div className="subtitulo">
-          {documento ? `${getTipoLabel(documento.tipo)}: ${documento.titulo}` : `Documento #${documentoId}`}
+          {documento ? `${documento.titulo} (ID #${documento.id})` : `Documento #${documentoId}`}
         </div>
       </div>
 
@@ -214,17 +208,9 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
             <label htmlFor="doc-descripcion">Descripción</label>
             <textarea
               id="doc-descripcion"
-              rows={2}
+              rows={3}
               value={documento.descripcion || "Sin descripción"}
               disabled
-              style={{
-                width: "100%",
-                padding: "0.75rem 1rem",
-                backgroundColor: "var(--code-bg)",
-                border: "1px solid var(--border)",
-                borderRadius: "6px",
-                fontFamily: "inherit",
-              }}
             />
           </div>
 
@@ -245,13 +231,41 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="doc-total-versiones">Total de Versiones</label>
-            <input
-              id="doc-total-versiones"
-              type="text"
-              value={`${documento.total_versiones} versión(es)`}
-              disabled
-            />
+            <label htmlFor="doc-total-versiones">Historial de Versiones</label>
+            <div style={{ position: "relative", width: "100%" }}>
+              <input
+                id="doc-total-versiones"
+                type="text"
+                value=""
+                disabled
+                style={{ width: "100%", margin: 0 }}
+              />
+              <button
+                type="button"
+                onClick={() => setModalHistorialAbierto(true)}
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "12px",
+                  transform: "translateY(-50%)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  color: "var(--color-primario-texto)",
+                  fontWeight: 600,
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  fontSize: "0.9rem",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+              >
+                <span>Ver historial ({documento.total_versiones} versión/es)</span>
+                <span style={{ fontSize: "0.95rem", lineHeight: 1 }}>↗</span>
+              </button>
+            </div>
           </div>
 
           <div className="form-group">
@@ -264,109 +278,118 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
             />
           </div>
 
-          {versionParaDescarga && (
-            <div className="form-group">
-              <label htmlFor="doc-archivo">Archivo Asociado</label>
-              <input
-                id="doc-archivo"
-                type="text"
-                value={`${versionParaDescarga.archivo_nombre_original} (${pesoStr})`}
-                disabled
-              />
-            </div>
-          )}
-
-          {versionParaDescarga && (
-            <div className="form-group" style={{ marginTop: "1.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                <label htmlFor="visor-doc-frame" style={{ fontWeight: 700, fontSize: "0.95rem" }}>
-                  Visor de Documento Vigente
-                </label>
+          <div className="form-group">
+            <label htmlFor="doc-archivo">Archivo / Documento</label>
+            {versionParaDescarga ? (
+              <div style={{ position: "relative", width: "100%" }}>
+                <input
+                  id="doc-archivo"
+                  type="text"
+                  value=""
+                  disabled
+                  style={{ width: "100%", margin: 0 }}
+                />
                 <button
                   type="button"
-                  className="btn-secundario"
-                  style={{ padding: "0.25rem 0.6rem", fontSize: "0.85rem" }}
-                  onClick={handlePrevisualizar}
+                  onClick={() => setModalVisorAbierto(true)}
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "12px",
+                    transform: "translateY(-50%)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    color: "var(--color-primario-texto)",
+                    fontWeight: 600,
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
                 >
-                  ↗ Abrir en pestaña nueva
+                  <span>
+                    Ver documento ({versionParaDescarga.archivo_nombre_original} · {pesoStr})
+                  </span>
+                  <span style={{ fontSize: "0.95rem", lineHeight: 1 }}>↗</span>
                 </button>
               </div>
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  height: "500px",
-                  backgroundColor: "var(--color-fondo)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {cargandoVisor ? (
-                  <div style={{ color: "var(--color-texto-sec)" }}>Cargando visor del documento...</div>
-                ) : visorUrl ? (
-                  <iframe
-                    id="visor-doc-frame"
-                    src={visorUrl}
-                    title={versionParaDescarga.archivo_nombre_original || "Documento vigente"}
-                    style={{ width: "100%", height: "100%", border: "none" }}
-                  />
-                ) : (
-                  <div style={{ color: "var(--color-texto-sec)" }}>No se pudo cargar la vista previa en el visor.</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="form-acciones" style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "space-between", marginTop: "2rem" }}>
-            <button type="button" className="btn-cancelar" onClick={onVolver}>
-              Volver
-            </button>
-
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              <button
-                type="button"
-                className="btn-secundario"
-                onClick={() => setModalHistorialAbierto(true)}
-              >
-                ↺ Historial de Versiones
-              </button>
-
-              {esAdministrador && (
-                <button
-                  type="button"
-                  className="btn-secundario"
-                  onClick={() => setModalVigenteAbierto(true)}
-                >
-                  ✓ Cambiar Versión Vigente
-                </button>
-              )}
-
-              {versionParaDescarga && (
-                <>
-                  <button
-                    type="button"
-                    className="btn-secundario"
-                    onClick={handlePrevisualizar}
-                  >
-                    👁 Previsualizar
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-guardar"
-                    onClick={handleDescargar}
-                  >
-                    ⬇ Descargar Documento ({pesoStr})
-                  </button>
-                </>
-              )}
-            </div>
+            ) : (
+              <input id="doc-archivo" type="text" value="Sin archivo adjunto" disabled />
+            )}
           </div>
         </form>
       ) : (
         <div style={{ textAlign: "center", padding: "2rem" }}>El documento no existe.</div>
       )}
+
+      <div className="form-acciones" style={{ flexWrap: "wrap" }}>
+        {versionParaDescarga && (
+          <button type="button" className="btn-guardar" onClick={handleDescargar}>
+            ⬇ Descargar ({pesoStr})
+          </button>
+        )}
+        {esAdministrador && (
+          <button
+            type="button"
+            className="btn-cancelar"
+            onClick={() => setModalVigenteAbierto(true)}
+          >
+            Cambiar Vigente
+          </button>
+        )}
+        <button type="button" className="btn-cancelar" onClick={onVolver}>
+          {textoVolver || "Volver"}
+        </button>
+      </div>
+
+      <Dialog open={modalVisorAbierto} onOpenChange={setModalVisorAbierto}>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>
+              {versionParaDescarga?.archivo_nombre_original || "Documento vigente"}
+            </DialogTitle>
+          </DialogHeader>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "65vh",
+              overflow: "hidden",
+              borderRadius: "8px",
+              backgroundColor: "var(--color-fondo)",
+              border: "1px solid var(--color-borde)",
+            }}
+          >
+            {cargandoVisor ? (
+              <div style={{ color: "var(--color-texto-sec)" }}>Cargando visor del documento...</div>
+            ) : visorUrl ? (
+              <iframe
+                id="visor-doc-frame"
+                src={visorUrl}
+                title={versionParaDescarga?.archivo_nombre_original || "Documento vigente"}
+                style={{ width: "100%", height: "100%", border: "none" }}
+              />
+            ) : (
+              <div style={{ color: "var(--color-texto-sec)" }}>
+                No se pudo cargar la vista previa en el visor.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            {versionParaDescarga && (
+              <button type="button" className="btn-guardar" onClick={handleDescargar}>
+                ⬇ Descargar ({pesoStr})
+              </button>
+            )}
+            <DialogClose onClick={() => setModalVisorAbierto(false)}>Cerrar</DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {esAdministrador && (
         <ModalMarcarVigente

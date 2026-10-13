@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Badge } from '../../components/ui/badge';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -263,53 +264,23 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span>{formatearFecha(item.fechaCambio)}</span>
 
-                      {/* VENCIDO */}
                       {calcularEstadoVencimiento(item.fechaCambio) === 'vencido' && (
-                        <span
-                          title="El elemento ha superado la fecha límite"
-                          style={{
-                            backgroundColor: 'var(--color-error-bg)',
-                            color: 'var(--color-error-texto)',
-                            border: '1px solid var(--color-error)',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                          }}
-                        >
+                        <Badge variant="vencido" title="El elemento ha superado la fecha límite">
                           ● Vencido
-                        </span>
+                        </Badge>
                       )}
 
-                      {/* PRÓXIMO A VENCER */}
                       {calcularEstadoVencimiento(item.fechaCambio) === 'proximo' && (
-                        <span
-                          title="Quedan 2 días o menos para el recambio"
-                          style={{
-                            backgroundColor: 'var(--color-alerta-bg)',
-                            color: 'var(--color-alerta-texto)',
-                            border: '1px solid color-mix(in srgb, var(--color-alerta) 40%, transparent)',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                          }}
-                        >
+                        <Badge variant="proximo" title="Quedan 2 días o menos para el recambio">
                           ▲ Próximo a vencer
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </td>
                   <td>
-                    <span className={`badge-status ${item.activo ? 'activo' : 'inactivo'}`}>
+                    <Badge variant={item.activo ? 'activo' : 'inactivo'}>
                       {item.activo ? 'Activo' : 'Inactivo'}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
