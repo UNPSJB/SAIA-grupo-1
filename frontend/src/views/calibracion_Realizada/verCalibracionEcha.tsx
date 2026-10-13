@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { CalibracionRealizadaConID } from "./tipos";
 import { API_URL, apiFetch } from "../../api/client";
 import "../../styles/formularioAlta.css";
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 
 interface VerCalibracionProps {
   calibracionID: number | null;
@@ -116,7 +117,7 @@ const renderBotonArchivo = (fotoUrl?: string | null) => {
         title="Ver evidencia"
       >
         <span>{esPdf ? 'Ver documento' : 'Ver imagen'}</span>
-        <span style={{ fontSize: '0.75rem' }}>↗</span>
+        <span >↗</span>
       </button>
     );
   };
@@ -217,109 +218,51 @@ return (
         </div>
 
 
-        {modalArchivoUrl && (
-        <div
-          onClick={() => setModalArchivoUrl(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'var(--color-overlay)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'var(--color-superficie)',
-              borderRadius: '8px',
-              maxWidth: '750px',
-              width: '100%',
-              padding: '1.25rem',
-              boxShadow: '0 20px 25px -5px color-mix(in srgb, var(--color-sombra) 20%, transparent)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--color-texto)',
-                }}
-              >
-                Archivo
-              </h2>
-              <button
-                type="button"
-                onClick={() => setModalArchivoUrl(null)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  backgroundColor: 'var(--color-superficie)',
-                  border: '1px solid var(--color-texto)',
-                  borderRadius: '6px',
-                  padding: '0.35rem 0.85rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: 'var(--color-texto)',
-                  cursor: 'pointer',
-                }}
-              >
-                ✕ Cerrar
-              </button>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                maxHeight: '75vh',
-                overflow: 'hidden',
-                borderRadius: '6px',
-              }}
-            >
-              {modalEsPdf ? (
-  <iframe
-    src={modalArchivoUrl}
-    title="Documento adjunto"
-    style={{
-      width: '100%',
-      height: '65vh',
-      border: 'none',
-      borderRadius: '6px',
-    }}
-  />
-) : (
-                    <img
-                      src={modalArchivoUrl}
-                      alt="Comprobante de certificado"
+        <Dialog open={Boolean(modalArchivoUrl)} onOpenChange={(open) => !open && setModalArchivoUrl(null)}>
+                <DialogContent size="lg">
+                  <DialogHeader>
+                    <DialogTitle>Certificado</DialogTitle>
+                  </DialogHeader>
+                  {modalArchivoUrl && (
+                    <div
                       style={{
-                      maxWidth: '100%',
-                      maxHeight: '75vh',
-                      objectFit: 'contain',
-                      borderRadius: '6px',
-                     }}
-                  />
-                )}
-            </div>
-          </div>
-        </div>
-      )}
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        maxHeight: '70vh',
+                        overflow: 'hidden',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-borde)',
+                      }}
+                    >
+                      {modalEsPdf ? (
+                        <iframe
+                          src={modalArchivoUrl}
+                          title="Documento adjunto"
+                          style={{
+                            width: '100%',
+                            height: '65vh',
+                            border: 'none',
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={modalArchivoUrl}
+                          alt="Comprobante de certificado"
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '70vh',
+                            objectFit: 'contain',
+                          }}
+                        />
+                      )}
+                    </div>
+                  )}
+                  <DialogFooter>
+                    <DialogClose onClick={() => setModalArchivoUrl(null)}>Cerrar</DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
     </div>
   );
 };
