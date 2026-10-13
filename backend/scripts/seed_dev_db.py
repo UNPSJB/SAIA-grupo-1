@@ -31,7 +31,7 @@ import src.incidentes.models  # noqa: F401
 
 from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate
-from src.autenticacion.services import asegurar_admin_dev
+from src.autenticacion.services import asegurar_usuarios_dev
 
 from src.insumos.services import crear_insumo
 from src.insumos.schemas import InsumoCreate
@@ -149,7 +149,7 @@ def main() -> None:
     marcos = crear_personal(db, PersonalCreate(documento="30333444", nombre="Marcos", apellido="Diaz", email="marcos.diaz@ejemplo.com", capacidad="AMBAS", contrasenia="Clave1234"))
     lucia = crear_personal(db, PersonalCreate(documento="30444555", nombre="Lucia", apellido="Fernandez", email="lucia.fernandez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
     sofia = crear_personal(db, PersonalCreate(documento="30555666", nombre="Sofia", apellido="Martinez", email="sofia.martinez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
-    asegurar_admin_dev(db)
+    asegurar_usuarios_dev(db)
 
     print("Creando insumos (materias primas)...")
     for nombre, lote, dias_recepcion, dias_venc, cant, stock, medida in INSUMOS:
@@ -496,10 +496,82 @@ def main() -> None:
         responsable_legajo=marcos.legajo,
     )
 
+    print("Creando planes de calibracion y calibraciones realizadas...")
+    from src.equipos.models import Equipo
+    from src.plan_de_calibracion.models import Plan_de_Calibracion
+    from src.calibracion_realizada.models import Calibracion_Realizada
+
+    # (equipo, periodicidad en dias, dias desde el ultimo mantenimiento): hay vencidos, por vencer y vigentes
+    planes_cal = [
+        ("Heladera Exhibidora", 180, 200),   # vencido
+        ("Freezer Deposito", 180, 170),      # vence en 10 dias
+        ("Camara Frigorifica", 90, 30),      # vigente
+        ("Amasadora Industrial", 365, 100),  # vigente
+        ("Horno Convector", 180, 185),       # vencido
+        ("Termometro Pinche", 30, 25),       # vence en 5 dias
+    ]
+    for nombre_equipo, periodicidad, dias_desde in planes_cal:
+        equipo = db.query(Equipo).filter(Equipo.nombre == nombre_equipo).one()
+        ultimo = hoy - timedelta(days=dias_desde)
+        plan_cal = Plan_de_Calibracion(
+            nombre=f"Calibracion {nombre_equipo}",
+            fecha_mantenimiento=ultimo,
+            fecha_vencimiento=ultimo + timedelta(days=periodicidad),
+            periodicidad_De_cambio=periodicidad,
+            descripcion=f"Calibracion periodica de {nombre_equipo} contra patron certificado",
+            equipo_id=equipo.id,
+        )
+        db.add(plan_cal)
+        db.flush()
+        db.add(Calibracion_Realizada(fecha_d_realizacion=ultimo, formato_archivo="certificado_calibracion.pdf", plan_calibracion_id=plan_cal.id))
+    db.commit()
+
+    print("Creando incidentes...")
+    from src.incidentes.models import Incidente
+    from src.incidentes.constants import EstadoIncidente
+    incidentes = [
+        ("Se detecto una perdida de agua debajo de la bacha del sector de lavado.", EstadoIncidente.PENDIENTE, 0, juan, None, None),
+        ("La heladera exhibidora marca 9 grados, por encima del limite permitido.", EstadoIncidente.PENDIENTE, 2, lucia, None, None),
+        ("Se encontro un envase de crema de leche abierto y sin rotular en la camara.", EstadoIncidente.EN_REVISION, 4, sofia, None, None),
+        ("Falta de jabon antibacterial en el lavamanos de la cocina.", EstadoIncidente.CERRADO, 9, marcos, ana, "Se repuso el jabon y se agrego el control al checklist diario."),
+        ("Presencia de insectos cerca de la puerta del deposito.", EstadoIncidente.CERRADO, 15, juan, ana, "Se contrato fumigacion y se coloco malla en la puerta."),
+        ("Un empleado ingreso a produccion sin cofia.", EstadoIncidente.DESCARTADO, 20, sofia, ana, None),
+        ("El termometro de la camara frigorifica no enciende.", EstadoIncidente.REABIERTO, 6, lucia, None, None),
+    ]
+    for desc, estado, dias, reporta, resuelve, accion in incidentes:
+        creado = hoy - timedelta(days=dias)
+        cerrado = creado + timedelta(days=1) if estado in (EstadoIncidente.CERRADO, EstadoIncidente.DESCARTADO) else None
+        db.add(Incidente(
+            descripcion=desc, estado=estado, creado_el=creado, reportado_por_id=reporta.legajo,
+            accion_correctiva=accion, cerrado_el=cerrado,
+            resuelto_por_id=resuelve.legajo if resuelve else None,
+            motivo_reapertura="El problema volvio a aparecer." if estado == EstadoIncidente.REABIERTO else None,
+        ))
+    db.commit()
+
+    print("Creando tipos de certificado y certificados del personal...")
+    from src.tipoCertificado.services import crear_tipo_certificado
+    from src.certificado.models import Certificado
+    t_manip = crear_tipo_certificado(db, "Carnet de Manipulacion de Alimentos")
+    t_libreta = crear_tipo_certificado(db, "Libreta Sanitaria")
+    t_curso = crear_tipo_certificado(db, "Curso de BPM")
+    t_hs = crear_tipo_certificado(db, "Capacitacion en Higiene y Seguridad")
+    # (persona, tipo, dias hasta vencimiento): hay vencidos, por vencer y vigentes
+    certificados = [
+        (juan, t_manip, 200), (juan, t_libreta, 12),
+        (ana, t_manip, 300), (ana, t_curso, 90),
+        (marcos, t_manip, -10), (marcos, t_hs, 45),
+        (lucia, t_libreta, 5), (lucia, t_curso, 400),
+        (sofia, t_manip, 25), (sofia, t_hs, -30),
+    ]
+    for persona, tipo, dias in certificados:
+        db.add(Certificado(id_tipo=tipo.id, fechaVencimiento=hoy + timedelta(days=dias), legajo_persona=persona.legajo))
+    db.commit()
+
     db.close()
     print("\nListo. Base alimentada exitosamente:")
     print(f"  - 5 personas, {len(INSUMOS)} insumos (materias primas), {len(INSUMOS_QUIMICOS)} insumos quimicos con unidades variadas (L, ML, KG, G, UN)")
-    print("  - 10 equipos, 6 elementos de limpieza")
+    print("  - 10 equipos, 6 elementos de limpieza, 6 planes de calibracion, 7 incidentes, 4 tipos de certificado y 10 certificados")
     print("  - 5 planes de limpieza con 10 tareas con procedimientos paso a paso")
     print("  - 12 checklists historicos completados con registro detallado de insumos")
     print(f"  - 1 checklist de hoy (checklist #{id_checklist_hoy}), con tarea inicial completada y restantes pendientes para prueba en vivo")

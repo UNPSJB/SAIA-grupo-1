@@ -47,25 +47,34 @@ def crear_token(persona: Personal) -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-def asegurar_admin_dev(db: Session) -> None:
-    """Crea el usuario admin/admin si no existe (o asegura sus credenciales si ya existe),
-    para que todo el equipo pueda ingresar con las mismas credenciales aunque cada uno tenga su propia base.
+# (usuario, contraseña, nombre, apellido, documento, email, capacidad)
+USUARIOS_DEV = [
+    ("admin", "admin", "Admin", "Admin", 0, "admin@saia.com", Capacidades.ADMINISTRAR),
+    ("operador", "operador", "Operador", "Operador", 1, "operador@saia.com", Capacidades.OPERAR),
+    ("adminopp", "adminop", "Adminop", "Adminop", 2, "adminop@saia.com", Capacidades.AMBAS),
+]
+
+
+def asegurar_usuarios_dev(db: Session) -> None:
+    """Crea los usuarios de desarrollo (admin, operador y adminopp) si no existen, o asegura sus
+    credenciales y capacidad si ya existen, para que todo el equipo pueda ingresar con las mismas
+    credenciales aunque cada uno tenga su propia base.
     Solo se usa en desarrollo (ver lifespan en main.py)."""
-    persona = db.query(Personal).filter(Personal.usuario == "admin").first()
-    if persona:
-        persona.contrasenia_hash = hashear_contrasenia("admin")
-        persona.activo = True
-        persona.capacidad = Capacidades.AMBAS
-        db.commit()
-        return
-    db.add(Personal(
-        usuario="admin",
-        nombre="Admin",
-        apellido="Admin",
-        documento=0,
-        email="admin@saia.com",
-        capacidad=Capacidades.AMBAS,
-        activo=True,
-        contrasenia_hash=hashear_contrasenia("admin"),
-    ))
+    for usuario, contrasenia, nombre, apellido, documento, email, capacidad in USUARIOS_DEV:
+        persona = db.query(Personal).filter(Personal.usuario == usuario).first()
+        if persona:
+            persona.contrasenia_hash = hashear_contrasenia(contrasenia)
+            persona.activo = True
+            persona.capacidad = capacidad
+        else:
+            db.add(Personal(
+                usuario=usuario,
+                nombre=nombre,
+                apellido=apellido,
+                documento=documento,
+                email=email,
+                capacidad=capacidad,
+                activo=True,
+                contrasenia_hash=hashear_contrasenia(contrasenia),
+            ))
     db.commit()

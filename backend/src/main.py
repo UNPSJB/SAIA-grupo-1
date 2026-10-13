@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
-from src.autenticacion.services import asegurar_admin_dev
+from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
 from src.models import ModeloBase
 
@@ -44,9 +44,9 @@ setup_logging()
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
     if ENV == "DEV":
-        # Usuario admin/admin compartido por el equipo (cada integrante tiene su propia base)
+        # Usuarios admin, operador y adminopp compartidos por el equipo (cada integrante tiene su propia base)
         with SessionLocal() as db:
-            asegurar_admin_dev(db)
+            asegurar_usuarios_dev(db)
     yield
 
 
