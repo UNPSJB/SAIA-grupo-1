@@ -1,209 +1,236 @@
-import React, {useEffect,useState } from 'react';
-import type { PlanDeCalibracionConId } from "./tipos";
+import React, { useCallback, useEffect, useState } from 'react';
+import type { PlanDeCalibracionConId } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 import RegistrarCalibracion from '../calibracion_Realizada/registrarCalibracion';
 import { ListadoCalibracionesRealizadas } from '../calibracion_Realizada/listado';
 import { VerCalibracion } from '../calibracion_Realizada/verCalibracionEcha';
 
 interface DetallePlanCalibracionProps {
-    onCancel?: () => void;
-    planCalibracionID?: number | null;
+  onCancel?: () => void;
+  planCalibracionID?: number | null;
+  textoVolver?: string;
 }
 
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
 const formatDate = (dateStr?: string | null) => {
-  if (!dateStr) return "No aplica";
+  if (!dateStr) return 'No aplica';
   try {
     const d = new Date(dateStr);
     return isNaN(d.getTime())
       ? dateStr
-      : d.toLocaleDateString("es-AR", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
+      : d.toLocaleDateString('es-AR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
         });
   } catch {
     return dateStr;
   }
 };
 
-export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({ onCancel, planCalibracionID }) => {
-    const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [modalAbierto, setModalAbierto]= useState(false);
-    const [modalVerCalibraciones, setModalVerTodas]= useState(false);
-    const [modalVerCalibracion,setModalVer]= useState(false);
-    const [calibracionSeleccionada, setCalibracionSeleccionada]=useState <number | null>(null);
-    
+export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({
+  onCancel,
+  planCalibracionID,
+  textoVolver,
+}) => {
+  const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [modalVerCalibraciones, setModalVerTodas] = useState(false);
+  const [modalVerCalibracion, setModalVer] = useState(false);
+  const [calibracionSeleccionada, setCalibracionSeleccionada] = useState<number | null>(null);
 
-    useEffect(() => {
-            if (planCalibracionID) {
-                const fetchPlanCalibracion = async () => {
-                    try {
-                        const res = await fetch(`${API_URL}/plan_de_calibracion/${planCalibracionID}/`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            setPlanCalibracion(data);
-                        }
-                    } catch {
-                        alert('El plan de calibración no existe.');
-                    } finally {
-                        setLoading(false);
-                    }
-                };
-    
-                fetchPlanCalibracion();
-            }
-        }, [planCalibracionID]);
+  const fetchPlanCalibracion = useCallback(async () => {
+    if (!planCalibracionID) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`/plan_de_calibracion/${planCalibracionID}/`);
+      if (res.ok) {
+        const data = await res.json();
+        setPlanCalibracion(data);
+      } else {
+        setError('No se pudo cargar la información del plan de calibración.');
+      }
+    } catch {
+      setError('Error al conectar con el servidor.');
+    } finally {
+      setLoading(false);
+    }
+  }, [planCalibracionID]);
 
-    return (
-    <div className="plan-container invertir-css">
+  useEffect(() => {
+    fetchPlanCalibracion();
+  }, [fetchPlanCalibracion]);
+
+  const cantidadRealizaciones = planCalibracion?.calibraciones_realizadas?.length || 0;
+
+  const handleVerRealizaciones = () => {
+    if (cantidadRealizaciones === 1) {
+      const c = planCalibracion?.calibraciones_realizadas?.[0];
+      setCalibracionSeleccionada(c?.id ?? null);
+      setModalVer(true);
+    } else if (cantidadRealizaciones > 1) {
+      setModalVerTodas(true);
+    }
+  };
+
+  return (
+    <div className="modulo-container" style={{ maxWidth: '860px' }}>
+      <div className="listado-top-bar">
         <div className="modulo-header">
-            <h1>Plan de calibración</h1>
+          <h1 style={{ lineHeight: '1.25', margin: '0 0 6px 0' }}>Detalle de Plan de Calibración</h1>
+          <div className="subtitulo">
+            {planCalibracion
+              ? `${planCalibracion.nombre} (${planCalibracion.nombre_equipo || `Equipo #${planCalibracion.equipo_id}`})`
+              : `Plan #${planCalibracionID}`}
+          </div>
         </div>
-        <div className="acciones-botones-container">
-            <div className="accion-agregar">
-                  <button type="button" className="btn-agregar" onClick={()=>setModalAbierto(true)}>
-                      +Marcar como realizada
-                  </button>
-            </div>
 
-            <div className="accion-agregar">
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn-cancelar" onClick={onCancel}>
+            {textoVolver || '← Volver a Planes de Calibración'}
+          </button>
+          <button type="button" className="btn-guardar" onClick={() => setModalAbierto(true)}>
+            + Marcar como realizada
+          </button>
+        </div>
+      </div>
 
-                <button type="button" className="btn-verCAL" disabled={!planCalibracion?.calibraciones_realizadas || planCalibracion.calibraciones_realizadas.length === 0} onClick={()=> {const cantidad= planCalibracion?.calibraciones_realizadas?.length || 0 
-                if(cantidad ===1){
-                    const c=planCalibracion?.calibraciones_realizadas?.[0];
-                    setModalVer(true);
-                    setCalibracionSeleccionada(c?.id ?? null);
-                }else if(cantidad>1){
-                    setModalVerTodas(true)
-                }}}> Ver Realizaciones</button>
-            </div>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando plan de calibración...</div>
+      ) : error ? (
+        <div className="alerta-error">{error}</div>
+      ) : planCalibracion ? (
+        <form onSubmit={(e) => e.preventDefault()}>
+          <div className="form-group">
+            <label htmlFor="cal-id">ID</label>
+            <input id="cal-id" type="text" value={planCalibracion.id} disabled />
           </div>
 
-
-            {loading ? (
-                        <tr>
-                            <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
-                                Cargando plan de calibración...
-                            </td>
-                        </tr>
-        ) : planCalibracion ? (
-        <div >
+          <div className="form-group">
+            <label htmlFor="nombre">Plan</label>
+            <input id="nombre" name="nombre" type="text" value={planCalibracion.nombre} disabled />
+          </div>
 
           <div className="form-group">
-          <label htmlFor="fecha_mantenimiento">Fecha de Mantenimiento</label>
-          <td>{formatDate(planCalibracion.fecha_mantenimiento)}</td>
-        </div>
+            <label htmlFor="equipo">Equipo</label>
+            <input
+              id="equipo"
+              name="equipo"
+              type="text"
+              value={planCalibracion.nombre_equipo || `Equipo #${planCalibracion.equipo_id}`}
+              disabled
+            />
+          </div>
 
-        <div className="form-group">
+          <div className="form-group">
+            <label htmlFor="fecha_mantenimiento">Fecha de Mantenimiento</label>
+            <input
+              id="fecha_mantenimiento"
+              type="text"
+              value={formatDate(planCalibracion.fecha_mantenimiento)}
+              disabled
+            />
+          </div>
+
+          <div className="form-group">
             <label htmlFor="fecha_vencimiento">Fecha de Vencimiento</label>
-            <td>{formatDate(planCalibracion.fecha_vencimiento)}</td>
-        </div>
-        
-            <div className="form-group">
-                <label htmlFor="nombre">PLAN</label>
-                <input
-                    id="nombre"
-                    name="nombre"
-                    type="text"
-                    value={planCalibracion.nombre}
-                    disabled 
-                />
-            </div>
-            <div className="form-group">
-                <label htmlFor="equipo">EQUIPO</label>
-                <input
-                    id="equipo"
-                    name="equipo"
-                    value={planCalibracion.nombre_equipo}
-                    disabled
-                >
-                </input>
-            </div>
-
+            <input
+              id="fecha_vencimiento"
+              type="text"
+              value={formatDate(planCalibracion.fecha_vencimiento)}
+              disabled
+            />
+          </div>
 
           <div className="form-group">
-          <label htmlFor="descripcion">Descripción</label>
-          <textarea
-            className="descripcion"
-            id="descripcion"
-            name="descripcion"
-            value={planCalibracion.descripcion}
+            <label htmlFor="descripcion">Descripción</label>
+            <textarea
+              className="descripcion"
+              id="descripcion"
+              name="descripcion"
+              rows={3}
+              value={planCalibracion.descripcion || 'Sin descripción'}
+              disabled
+            />
+          </div>
+
+          <div
+            className="form-acciones"
             style={{
-               height: "auto",
-                overflow: "hidden",
-             }}
-            ref={(el) => {
-                    if (el) {
-                       el.style.height = "auto";
-                       el.style.height = `${el.scrollHeight}px`;
-                       }
-                     }}
-            disabled
-          />
-        </div>
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '10px',
+              justifyContent: 'space-between',
+              marginTop: '2rem',
+            }}
+          >
+            <button type="button" className="btn-cancelar" onClick={onCancel}>
+              {textoVolver || '← Volver a Planes de Calibración'}
+            </button>
 
-        </div>
-        ) : (
-                <tr>
-                     <td colSpan={1} style={{ textAlign: 'center', padding: '2rem' }}>
-                             El plan no existe.
-                        </td>
-                </tr>
-                )    
-                
-                }
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-cancelar"
+                disabled={cantidadRealizaciones === 0}
+                onClick={handleVerRealizaciones}
+                style={{
+                  opacity: cantidadRealizaciones === 0 ? 0.55 : 1,
+                  cursor: cantidadRealizaciones === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                ↺ Ver Realizaciones ({cantidadRealizaciones})
+              </button>
 
-                <div className="form-acciones">
-                <button type="button"  className="btn-cancelar" onClick={onCancel}>
-                    Volver
-                </button>
+              <button type="button" className="btn-guardar" onClick={() => setModalAbierto(true)}>
+                + Marcar como realizada
+              </button>
             </div>
+          </div>
+        </form>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>El plan no existe.</div>
+      )}
 
+      {modalAbierto && (
+        <div className="modal-abierto">
+          <div className="modal-content">
+            <RegistrarCalibracion
+              planID={planCalibracion?.id}
+              onSuccess={() => {
+                setModalAbierto(false);
+                fetchPlanCalibracion();
+              }}
+              onCancel={() => setModalAbierto(false)}
+            />
+          </div>
+        </div>
+      )}
 
-            {modalAbierto &&(
-                  
-                                <div className="modal-abierto">
-                                  <div className="modal-content">
-                                    <RegistrarCalibracion
-                                    planID={planCalibracion?.id}
-                                    onSuccess={()=> setModalAbierto(false)}
-                                    onCancel={() => setModalAbierto(false)}
-                                    />
-                  
-                                  </div>
-                        </div>)}
+      {modalVerCalibraciones && (
+        <div className="modal-abierto">
+          <div className="modal-content">
+            <ListadoCalibracionesRealizadas
+              planID={planCalibracion?.id}
+              onCancel={() => setModalVerTodas(false)}
+            />
+          </div>
+        </div>
+      )}
 
-            {modalVerCalibraciones&& (
-                                 <div className="modal-abierto">
-                                  <div className="modal-content">
-                                    <ListadoCalibracionesRealizadas
-                                    planID={planCalibracion?.id}
-                                    onCancel={() => setModalVerTodas(false)}
-                                    />
-                  
-                                  </div>
-                        </div>
-            )}
-
-
-            {modalVerCalibracion && (
-                                <div className="modal-abierto">
-                                  <div className="modal-content">
-                                    <VerCalibracion
-                                    calibracionID={calibracionSeleccionada}
-                                    onCancel={() => setModalVer(false)}
-                                    />
-                  
-                                  </div>
-                        </div>)}
-        
+      {modalVerCalibracion && (
+        <div className="modal-abierto">
+          <div className="modal-content">
+            <VerCalibracion
+              calibracionID={calibracionSeleccionada}
+              onCancel={() => setModalVer(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
-    
-        
-)
-
-};
+  );
+};

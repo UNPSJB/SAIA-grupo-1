@@ -10,6 +10,7 @@ import "./documentos.css";
 interface DetalleDocumentoProps {
   documentoId: number | null;
   onVolver: () => void;
+  textoVolver?: string;
 }
 
 const formatearFecha = (fechaStr?: string | null) => {
@@ -54,6 +55,7 @@ const formatearPeso = (bytes?: number | null, formato?: string | null) => {
 export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
   documentoId,
   onVolver,
+  textoVolver,
 }) => {
   const { esAdministrador } = useAuth();
   const [documento, setDocumento] = useState<DocumentoDetalle | null>(null);
@@ -182,11 +184,18 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
 
   return (
     <div className="modulo-container formulario-box-documento">
-      <div className="modulo-header">
-        <h1>{esAdministrador ? "Detalle de Documento" : "Consulta de Versión Vigente"}</h1>
-        <div className="subtitulo">
-          {documento ? `${getTipoLabel(documento.tipo)}: ${documento.titulo}` : `Documento #${documentoId}`}
+      <div className="listado-top-bar">
+        <div className="modulo-header">
+          <h1 style={{ lineHeight: "1.25", margin: "0 0 6px 0" }}>
+            {esAdministrador ? "Detalle de Documento" : "Consulta de Versión Vigente"}
+          </h1>
+          <div className="subtitulo">
+            {documento ? `${getTipoLabel(documento.tipo)}: ${documento.titulo}` : `Documento #${documentoId}`}
+          </div>
         </div>
+        <button type="button" className="btn-cancelar" onClick={onVolver}>
+          {textoVolver || "← Volver a Documentos"}
+        </button>
       </div>
 
       {loading ? (
@@ -321,7 +330,7 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
 
           <div className="form-acciones" style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "space-between", marginTop: "2rem" }}>
             <button type="button" className="btn-cancelar" onClick={onVolver}>
-              Volver
+              {textoVolver || "← Volver a Documentos"}
             </button>
 
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>

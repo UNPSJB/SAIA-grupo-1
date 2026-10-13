@@ -12,6 +12,7 @@ interface ListadoCertificadosPorPersonaProps {
   onDetalleClick: (id: number) => void;
   onEditarClick: (id: number) => void;
   onVolver: () => void;
+  textoVolver?: string;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -23,6 +24,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
   onDetalleClick,
   onEditarClick,
   onVolver,
+  textoVolver,
 }) => {
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,7 +179,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
 
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button onClick={onVolver} className="btn-cancelar">
-            ← Volver a Personal
+            {textoVolver || '← Volver a Personal'}
           </button>
           {onNuevoClick && (
             <button onClick={onNuevoClick} className="btn-guardar">

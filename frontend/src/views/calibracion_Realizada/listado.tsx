@@ -1,18 +1,16 @@
-import {useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import '../../styles/formularioAlta.css';
 import type { PlanDeCalibracionConId } from '../planDeCalibracion/tipos';
 import { VerCalibracion } from './verCalibracionEcha';
-
+import { apiFetch } from '../../api/client';
 
 interface ListadoCalibracionesProps {
-    planID?:number | null;
-    onCancel?: () => void;
+  planID?: number | null;
+  onCancel?: () => void;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 const formatDate = (dateStr?: string | null) => {
-  if (!dateStr) return "No aplica";
+  if (!dateStr) return 'No aplica';
   try {
     const d = new Date(dateStr);
     return isNaN(d.getTime())
@@ -27,39 +25,41 @@ const formatDate = (dateStr?: string | null) => {
   }
 };
 
+export const ListadoCalibracionesRealizadas: React.FC<ListadoCalibracionesProps> = ({
+  onCancel,
+  planID,
+}) => {
+  const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
+  const [modalVer, setModalVer] = useState(false);
+  const [calibracionSeleccionada, setCalibracionSeleccionada] = useState<number | null>(null);
 
-export const ListadoCalibracionesRealizadas: React.FC<ListadoCalibracionesProps> = ({ onCancel, planID }) => {
-    const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId |null>(null);
-    const [loading, setLoading] = useState(true);
-    const [busqueda, setBusqueda] = useState('');
-    const [modalVer,setModalVer] = useState(false);
-    const [calibracionSeleccionada, setCalibracionSeleccionada] =useState <number | null>(null);
+  const obtenerTipoArchivo = (ruta?: string | null) => {
+    if (!ruta) return 'No adjunto';
+    const extension = ruta.split('.').pop();
+    return extension ? `Archivo ${extension.toUpperCase()}` : 'Desconocido';
+  };
 
-    const obtenerTipoArchivo = (ruta?: string | null) => {
-       if (!ruta) return "No adjunto";
-       const extension = ruta.split('.').pop();
-       return extension ? `Archivo ${extension.toUpperCase()}` : "Desconocido";
-        };
+  useEffect(() => {
+    if (planID) {
+      const fetchPlanCalibracion = async () => {
+        try {
+          const res = await apiFetch(`/plan_de_calibracion/${planID}/`);
+          if (res.ok) {
+            const data = await res.json();
+            setPlanCalibracion(data);
+          }
+        } catch {
+          setPlanCalibracion(null);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-    useEffect(() => {
-                if (planID) {
-                    const fetchPlanCalibracion = async () => {
-                        try {
-                            const res = await fetch(`${API_URL}/plan_de_calibracion/${planID}/`);
-                            if (res.ok) {
-                                const data = await res.json();
-                                setPlanCalibracion(data);
-                            }
-                        } catch {
-                            alert('El plan de calibración no existe.');
-                        } finally {
-                            setLoading(false);
-                        }
-                    };
-        
-                    fetchPlanCalibracion();
-                }
-            }, [planID]);
+      fetchPlanCalibracion();
+    }
+  }, [planID]);
 return (
     <div className="modulo-container">
       <div className="listado-top-bar">

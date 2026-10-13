@@ -513,14 +513,11 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                         </button>
                         <button
                           type="button"
-                          className="btn-ver-detalle-tabla btn-ver-compacto"
+                          className="btn-icon btn-ver"
                           title="Ver detalles completos del incidente"
                           onClick={(e) => abrirDetalle(inc, e)}
                         >
-                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" />
-                          </svg>
+                          👁
                         </button>
                       </div>
                     </td>
