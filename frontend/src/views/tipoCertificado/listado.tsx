@@ -190,7 +190,6 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
                         type="button"
                         className="btn-icon btn-eliminar"
                         title="Eliminar tipo"
-                        style={{ color: 'var(--color-error-texto)' }}
                         onClick={() => abrirConfirmacionEliminar(item)}
                       >
                         🗑
