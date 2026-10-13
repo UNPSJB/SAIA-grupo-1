@@ -81,10 +81,10 @@ useEffect(() => {
 const handleDescargar = () => {
     if (!calibracion?.formato_archivo) return;
     
-    // Obtenemos la URL de descarga directa (sin inline)
+    
     const urlArchivo = obtenerUrlArchivo(calibracion.formato_archivo, false);
     
-    // Disparamos la descarga utilizando un enlace temporal limpio
+    
     const link = document.createElement('a');
     link.href = urlArchivo;
     document.body.appendChild(link);
