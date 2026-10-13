@@ -4,6 +4,7 @@ import type { PlanDeCalibracionConId } from './tipos';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { Badge } from '../../components/ui/badge';
 import { apiFetch } from '../../api/client';
+import RegistrarCalibracion from '../calibracion_Realizada/registrarCalibracion';
 
 interface ListadoPlanesCProps {
   onNuevoClick?: () => void;
@@ -35,6 +36,8 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
   const [planes, setPlanes] = useState<PlanDeCalibracionConId[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
+  const [modalAbierto, setModalAbierto]= useState(false);
+  const [calibracionSselecionada, setCalibracionSeleccionada]=useState <number | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -155,6 +158,8 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
               </tr>
             ) : (
               planesPaginados.map((p) => (
+
+                
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
                   <td>{p.nombre_equipo}</td>
@@ -178,6 +183,12 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
+
+                      <div className="acciones-btns">
+                          <button type="button" className="btn-icon btn-reactivar" title="marcar como realizada" onClick={()=>{setModalAbierto(true); setCalibracionSeleccionada(p?.id ?? null);}}>
+                            ↻
+                          </button>
+                        </div>
                       <button
                         className="btn-icon btn-ver"
                         title="Ver detalles"
@@ -196,10 +207,17 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
                   </td>
                 </tr>
               ))
-            )}
+
+              
+            )
+            
+            }
+            
           </tbody>
         </table>
       </div>
+
+      
 
       <Paginacion
         paginaActual={paginaActual}
@@ -212,6 +230,23 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="planes de calibración"
       />
+
+      
+      {modalAbierto &&(
+                        
+          <div className="modal-abierto">
+              <div className="modal-content">
+                   <RegistrarCalibracion
+                        planID={calibracionSselecionada}
+                        onSuccess={()=> setModalAbierto(false)}
+                        onCancel={() => setModalAbierto(false)}
+                             />
+                        
+                          </div>
+                      </div>)}
+
+
+      
     </div>
   );
 };

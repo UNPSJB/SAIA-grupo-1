@@ -136,7 +136,7 @@ export default function RegistrarCalibracion({ onSuccess,planID, onCancel }: Nue
                     />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="formato_archivo">Certificado o Evidencia (PDF, PNG, JPG)</label>
+                    <label htmlFor="formato_archivo">Certificado(PDF, PNG, JPG)</label>
                     <input
                         id="formato_archivo"
                         ref={fileInputRef}

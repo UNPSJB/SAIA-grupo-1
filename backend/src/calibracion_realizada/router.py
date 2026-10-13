@@ -37,18 +37,6 @@ async def upload_certificado(formato_archivo: UploadFile = File(...)):
     return {"ruta": file_path}
 
 
-@router.get("/archivos/{nombre_archivo:path}")
-async def obtener_archivo_certificado(nombre_archivo: str):
-    nombre_limpio = nombre_archivo.split("/")[-1]
-    ruta_completa = os.path.join("uploads", "certificados", nombre_limpio)
-    
-    if not os.path.exists(ruta_completa):
-        raise HTTPException(status_code=404, detail="Archivo no encontrado")
-        
-    # Añadir filename le dice al navegador que descargue el archivo directamente
-    return FileResponse(ruta_completa, filename=nombre_limpio)
-
-
 @router.get("/archivos/{nombre_archivo:path}", response_class=FileResponse)
 def descargar_archivo_calibracion(
     nombre_archivo: str,
