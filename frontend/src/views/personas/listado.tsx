@@ -218,7 +218,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                           title="Ver certificados"
                           onClick={() => onVerCertificados(identificador, `${p.nombre} ${p.apellido}`)}
                         >
-                          📜
+                          🗎
                         </button>
                         <button
                           className="btn-icon btn-ver"
