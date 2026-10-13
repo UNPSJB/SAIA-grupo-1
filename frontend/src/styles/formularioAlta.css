@@ -334,6 +334,38 @@
   border-color: color-mix(in srgb, var(--color-alerta) 40%, transparent);
 }
 
+.badge-vencimiento {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.badge-vencimiento.vencido {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-texto);
+  border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
+}
+
+.badge-vencimiento.proximo {
+  background-color: var(--color-alerta-bg);
+  color: var(--color-alerta-texto);
+  border-color: color-mix(in srgb, var(--color-alerta) 40%, transparent);
+}
+
+.badge-vencimiento.al_dia {
+  background-color: var(--color-exito-bg);
+  color: var(--color-exito-texto);
+  border-color: color-mix(in srgb, var(--color-exito) 35%, transparent);
+}
+
 .filtros-top-bar {
   display: flex;
   align-items: center;

@@ -73,7 +73,7 @@ type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 
 function Aplicacion() {
-  const { esAdministrador } = useAuth();
+  const { esAdministrador, esOperador } = useAuth();
   const [moduloElegido, setModulo] = useState<Modulo>(moduloInicial(esAdministrador));
   // el backend ya rechaza lo que el rol no puede ver; acá evitamos mostrar pantallas rotas
   const modulo = puedeVerModulo(moduloElegido, esAdministrador) ? moduloElegido : moduloInicial(esAdministrador);
@@ -108,7 +108,7 @@ function Aplicacion() {
 
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
-  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial'>('abiertos');
+  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial' | 'nuevo'>('abiertos');
   const [vistaVencimientos, setVistaVencimientos] = useState<'consolidado' | 'personal'>('consolidado');
   const [origenVencimientos, setOrigenVencimientos] = useState<'consolidado' | 'personal' | null>(null);
 
@@ -459,13 +459,17 @@ function Aplicacion() {
           <ListadoAuditoria />
         ) : modulo === 'incidentes' ? (
           esAdministrador ? (
-            vistaIncidentesAdmin === 'abiertos' ? (
-              <IncidentesAbiertos
-                onVerHistorialCompleto={() => setVistaIncidentesAdmin('historial')}
-              />
-            ) : (
+            vistaIncidentesAdmin === 'nuevo' && esOperador ? (
+              <NuevoIncidente onCancel={() => setVistaIncidentesAdmin('abiertos')} />
+            ) : vistaIncidentesAdmin === 'historial' ? (
               <ListadoIncidentes
                 onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
+              />
+            ) : (
+              <IncidentesAbiertos
+                onVerHistorialCompleto={() => setVistaIncidentesAdmin('historial')}
+                onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
               />
             )
           ) : (
