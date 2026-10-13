@@ -31,7 +31,7 @@ const formatDate = (dateStr?: string | null) => {
 export const ListadoCalibracionesRealizadas: React.FC<ListadoCalibracionesProps> = ({ onCancel, planID }) => {
     const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId |null>(null);
     const [loading, setLoading] = useState(true);
-    const [busqueda, setBusqueda] = useState('');
+    //const [busqueda, setBusqueda] = useState('');
     const [modalVer,setModalVer] = useState(false);
     const [calibracionSeleccionada, setCalibracionSeleccionada] =useState <number | null>(null);
 
@@ -69,15 +69,6 @@ return (
         </div>
       </div>
 
-      <div className="filtros-top-bar">
-        <input
-          type="text"
-          className="input-busqueda"
-          placeholder="Buscar por nombre"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-        />
-      </div>
 
       <div className="tabla-wrapper">
         <table className="tabla-custom">
@@ -98,9 +89,7 @@ return (
             ) : planCalibracion?.calibraciones_realizadas?.length === 0 ? (
               <tr>
                 <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
-                  {busqueda
-                    ? 'No se encontraron planes de limpieza que coincidan con los filtros.'
-                    : 'No hay registros de calibraciones realizadas.'}
+                  nose encontro ninguna ejecucion realizada
                 </td>
               </tr>
             ) : (

@@ -1,7 +1,6 @@
 import React, {useEffect,useState } from 'react';
 import type { PlanDeCalibracionConId } from "./tipos";
 import '../../styles/formularioAlta.css';
-import RegistrarCalibracion from '../calibracion_Realizada/registrarCalibracion';
 import { ListadoCalibracionesRealizadas } from '../calibracion_Realizada/listado';
 import { VerCalibracion } from '../calibracion_Realizada/verCalibracionEcha';
 
@@ -32,7 +31,6 @@ const formatDate = (dateStr?: string | null) => {
 export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({ onCancel, planCalibracionID }) => {
     const [planCalibracion, setPlanCalibracion] = useState<PlanDeCalibracionConId | null>(null);
     const [loading, setLoading] = useState(true);
-    const [modalAbierto, setModalAbierto]= useState(false);
     const [modalVerCalibraciones, setModalVerTodas]= useState(false);
     const [modalVerCalibracion,setModalVer]= useState(false);
     const [calibracionSeleccionada, setCalibracionSeleccionada]=useState <number | null>(null);
@@ -64,11 +62,6 @@ export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({ on
             <h1>Plan de calibración</h1>
         </div>
         <div className="acciones-botones-container">
-            <div className="accion-agregar">
-                  <button type="button" className="btn-agregar" onClick={()=>setModalAbierto(true)}>
-                      +Marcar como realizada
-                  </button>
-            </div>
 
             <div className="accion-agregar">
 
@@ -163,19 +156,6 @@ export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({ on
                 </button>
             </div>
 
-
-            {modalAbierto &&(
-                  
-                                <div className="modal-abierto">
-                                  <div className="modal-content">
-                                    <RegistrarCalibracion
-                                    planID={planCalibracion?.id}
-                                    onSuccess={()=> setModalAbierto(false)}
-                                    onCancel={() => setModalAbierto(false)}
-                                    />
-                  
-                                  </div>
-                        </div>)}
 
             {modalVerCalibraciones&& (
                                  <div className="modal-abierto">
