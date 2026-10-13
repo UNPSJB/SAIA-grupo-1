@@ -80,9 +80,10 @@ const FotoMiniatura: React.FC<FotoMiniaturaProps> = ({ incidenteId, descripcion,
 
 export interface ListadoIncidentesProps {
   onVerAbiertos?: () => void;
+  onRegistrarClick?: () => void;
 }
 
-export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbiertos }) => {
+export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbiertos, onRegistrarClick }) => {
   const [incidentes, setIncidentes] = useState<Incidente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -188,23 +189,29 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
           <div className="subtitulo">01 · Supervisión y gestión de incidentes reportados en planta</div>
         </div>
 
-        {onVerAbiertos && (
-          <div className="tabs-incidentes-header">
-            <button
-              type="button"
-              className="tab-incidente-btn"
-              onClick={onVerAbiertos}
-            >
-              <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
-              Abiertos
-              <span className="badge-tab-contador abiertos">{totalAbiertos}</span>
-            </button>
-            <button type="button" className="tab-incidente-btn activo">
-              Historial Completo
-            </button>
-          </div>
+        {onRegistrarClick && (
+          <button type="button" onClick={onRegistrarClick} className="btn-guardar">
+            + Registrar Incidente
+          </button>
         )}
       </div>
+
+      {onVerAbiertos && (
+        <div className="tabs-incidentes-header">
+          <button
+            type="button"
+            className="tab-incidente-btn"
+            onClick={onVerAbiertos}
+          >
+            <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
+            Abiertos
+            <span className="badge-tab-contador abiertos">{totalAbiertos}</span>
+          </button>
+          <button type="button" className="tab-incidente-btn activo">
+            Historial Completo
+          </button>
+        </div>
+      )}
 
       <div className="filtros-top-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
         <div style={{ position: 'relative', flex: '1', minWidth: '260px', maxWidth: '420px' }}>

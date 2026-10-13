@@ -90,10 +90,12 @@ const FotoMiniatura: React.FC<FotoMiniaturaProps> = ({ incidenteId, descripcion,
 
 export interface IncidentesAbiertosProps {
   onVerHistorialCompleto?: () => void;
+  onRegistrarClick?: () => void;
 }
 
 export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
   onVerHistorialCompleto,
+  onRegistrarClick,
 }) => {
   const [incidentes, setIncidentes] = useState<IncidenteAbierto[]>([]);
   const [metricas, setMetricas] = useState<IncidentesMetricas | null>(null);
@@ -210,23 +212,29 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
           </div>
         </div>
 
-        {onVerHistorialCompleto && (
-          <div className="tabs-incidentes-header">
-            <button type="button" className="tab-incidente-btn activo">
-              <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
-              Abiertos
-              <span className="badge-tab-contador abiertos">{incidentes.length}</span>
-            </button>
-            <button
-              type="button"
-              className="tab-incidente-btn"
-              onClick={onVerHistorialCompleto}
-            >
-              Historial Completo
-            </button>
-          </div>
+        {onRegistrarClick && (
+          <button type="button" onClick={onRegistrarClick} className="btn-guardar">
+            + Registrar Incidente
+          </button>
         )}
       </div>
+
+      {onVerHistorialCompleto && (
+        <div className="tabs-incidentes-header">
+          <button type="button" className="tab-incidente-btn activo">
+            <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
+            Abiertos
+            <span className="badge-tab-contador abiertos">{incidentes.length}</span>
+          </button>
+          <button
+            type="button"
+            className="tab-incidente-btn"
+            onClick={onVerHistorialCompleto}
+          >
+            Historial Completo
+          </button>
+        </div>
+      )}
 
       <div className="tablero-metricas-grid">
         <div className="tarjeta-metrica">
