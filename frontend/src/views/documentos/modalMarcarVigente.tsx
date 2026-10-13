@@ -115,7 +115,7 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
         <div className="modal-header">
           <div>
             <h2>Cambiar Versión Vigente</h2>
-            <div style={{ fontSize: "0.88rem", color: "#64748b", marginTop: "2px" }}>
+            <div style={{ fontSize: "0.88rem", color: "var(--color-texto-sec)", marginTop: "2px" }}>
               {documento.titulo}
             </div>
           </div>
@@ -128,7 +128,7 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
           {error && <div className="alerta-error">{error}</div>}
           {mensajeExito && <div className="alerta-exito">{mensajeExito}</div>}
 
-          <div style={{ fontSize: "0.88rem", color: "#64748b" }}>
+          <div style={{ fontSize: "0.88rem", color: "var(--color-texto-sec)" }}>
             Selecciona la versión que deseas establecer como la única vigente. La fecha de entrada en vigencia se registrará automáticamente como la fecha de hoy.
           </div>
 
@@ -160,14 +160,14 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
                   versiones.map((v) => {
                     const pesoStr = formatearPeso(v.tamanio_bytes, v.tamanio_formateado);
                     return (
-                      <tr key={v.id} style={{ backgroundColor: v.es_vigente ? "#f0fdf4" : "inherit" }}>
+                      <tr key={v.id} style={{ backgroundColor: v.es_vigente ? "var(--color-exito-bg)" : "inherit" }}>
                         <td style={{ fontWeight: 600 }}>
                           v{v.version}
                           {v.es_vigente ? (
                             <span style={{
                               marginLeft: "8px",
-                              backgroundColor: "#dcfce7",
-                              color: "#15803d",
+                              backgroundColor: "var(--color-exito-bg)",
+                              color: "var(--color-exito-texto)",
                               padding: "2px 7px",
                               borderRadius: "4px",
                               fontSize: "0.75rem",
@@ -178,8 +178,8 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
                           ) : (
                             <span style={{
                               marginLeft: "8px",
-                              backgroundColor: "#f1f5f9",
-                              color: "#64748b",
+                              backgroundColor: "var(--color-fondo)",
+                              color: "var(--color-texto-sec)",
                               padding: "2px 7px",
                               borderRadius: "4px",
                               fontSize: "0.75rem",
@@ -191,16 +191,16 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
                         <td>{formatearFecha(v.fecha_vigencia)}</td>
                         <td>
                           {v.es_vigente ? (
-                            <span style={{ color: "#16a34a", fontWeight: 500 }}>Vigente actual</span>
+                            <span style={{ color: "var(--color-exito-texto)", fontWeight: 500 }}>Vigente actual</span>
                           ) : (
                             formatearFecha(v.fecha_archivo)
                           )}
                         </td>
-                        <td style={{ color: "#475569", fontSize: "0.85rem" }}>{pesoStr}</td>
+                        <td style={{ color: "var(--color-texto)", fontSize: "0.85rem" }}>{pesoStr}</td>
                         <td className="acciones-col">
                           <div className="acciones-btns" style={{ justifyContent: "center" }}>
                             {v.es_vigente ? (
-                              <span style={{ color: "#16a34a", fontWeight: 600, fontSize: "0.85rem" }}>
+                              <span style={{ color: "var(--color-exito-texto)", fontWeight: 600, fontSize: "0.85rem" }}>
                                 ✓ Actual
                               </span>
                             ) : (

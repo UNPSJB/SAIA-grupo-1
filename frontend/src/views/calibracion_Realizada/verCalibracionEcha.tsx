@@ -136,7 +136,7 @@ return (
                             <label>Certificado o Evidencia Adjunta</label>
                             {calibracion.formato_archivo ? (
                             <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-start' }}>
-                                <div style={{ width: '100%', maxHeight: '250px', backgroundColor: '#f3f4f6', padding: '0.5rem', borderRadius: '8px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                                <div style={{ width: '100%', maxHeight: '250px', backgroundColor: 'var(--color-fondo)', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--color-borde)', textAlign: 'center' }}>
                                   <img 
                                     src={obtenerUrlArchivo(calibracion.formato_archivo, true)} 
                                     alt="Evidencia de calibración" 
@@ -155,7 +155,7 @@ return (
                         
                                 </div>
                             ) : (
-                                <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>No hay archivo adjunto para este registro.</p>
+                                <p style={{ color: 'var(--color-texto-sec)', fontStyle: 'italic' }}>No hay archivo adjunto para este registro.</p>
                             )}
                         </div>
 

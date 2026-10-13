@@ -1,0 +1,97 @@
+/*
+ * Paleta del sistema: el único lugar donde se definen colores.
+ * El resto de los estilos usa estas variables, así el tema claro y el oscuro
+ * salen de acá sin repetir colores en cada archivo.
+ *
+ * El tema oscuro se activa con data-theme="dark" en <html> (lo maneja el Sidebar).
+ */
+
+:root {
+  /* Base */
+  --color-fondo: #F5F8FC;              /* fondo de página */
+  --color-superficie: #FFFFFF;         /* tarjetas y campos */
+  --color-superficie-elevada: #FFFFFF; /* modales y menús que flotan sobre las tarjetas */
+  --color-borde: #DCE4EB;
+  --color-suave: #DCEBFA;              /* selector de rol y hover suave */
+
+  /* Texto */
+  --color-texto: #263746;
+  --color-texto-sec: #71808C;
+  --color-texto-sobre-primario: #FFFFFF;
+
+  /* Marca */
+  --color-primario: #2866A8;           /* botones y logo */
+  --color-primario-hover: #4C8DD5;     /* fondo del botón primario al pasar el mouse */
+  --color-primario-claro: #4C8DD5;     /* foco y enlaces activos */
+  --color-primario-texto: #2866A8;     /* el primario usado como color de texto */
+  --color-foco: rgba(76, 141, 213, 0.35); /* anillo de foco de campos y botones */
+
+  /* Estados: color base, versión para texto y fondo tenue (10 a 12 %) */
+  --color-exito: #3FA66B;
+  --color-exito-texto: #2F8A57;
+  --color-exito-bg: rgba(63, 166, 107, 0.10);
+
+  --color-alerta: #E7A83B;
+  --color-alerta-texto: #B5760A;
+  --color-alerta-bg: rgba(231, 168, 59, 0.12);
+
+  --color-error: #D95C5C;
+  --color-error-texto: #D95C5C;
+  --color-error-bg: rgba(217, 92, 92, 0.10);
+
+  /* Capas y sombras (derivadas del texto principal, no de negro puro) */
+  --color-sombra: #263746;             /* base de sombras y transparencias neutras */
+  --color-overlay: rgba(38, 55, 70, 0.45);
+  --sombra-sm: 0 1px 2px 0 rgba(38, 55, 70, 0.06);
+  --sombra-md: 0 4px 10px -2px rgba(38, 55, 70, 0.10), 0 2px 4px -2px rgba(38, 55, 70, 0.06);
+  --sombra-lg: 0 12px 28px -6px rgba(38, 55, 70, 0.16), 0 4px 10px -4px rgba(38, 55, 70, 0.08);
+
+  color-scheme: light;
+}
+
+/*
+ * Tema oscuro derivado de la paleta: mismo azul pizarra con la luminosidad invertida.
+ * Los ajustes respecto del claro son para que el texto siga siendo legible (contraste >= 4.5:1).
+ */
+[data-theme="dark"] {
+  /* Base */
+  --color-fondo: #0F1721;
+  --color-superficie: #172230;
+  --color-superficie-elevada: #1E2B3B;
+  --color-borde: #2A3A4C;
+  --color-suave: #1C3350;
+
+  /* Texto */
+  --color-texto: #E4ECF4;
+  --color-texto-sec: #93A3B1;
+  --color-texto-sobre-primario: #FFFFFF;
+
+  /* Marca: el botón conserva el azul; como texto se usa una versión más clara */
+  --color-primario: #2866A8;
+  --color-primario-hover: #2F78C6;
+  --color-primario-claro: #6FA6E3;
+  --color-primario-texto: #6FA6E3;
+  --color-foco: rgba(111, 166, 227, 0.40);
+
+  /* Estados: mismos tonos, texto más claro y fondos un poco más opacos para que se noten */
+  --color-exito: #4CB87C;
+  --color-exito-texto: #6CCB95;
+  --color-exito-bg: rgba(76, 184, 124, 0.15);
+
+  --color-alerta: #E7A83B;
+  --color-alerta-texto: #F0BC5E;
+  --color-alerta-bg: rgba(231, 168, 59, 0.15);
+
+  --color-error: #E57373;
+  --color-error-texto: #EE8E8E;
+  --color-error-bg: rgba(229, 115, 115, 0.15);
+
+  /* Capas y sombras */
+  --color-sombra: #000000;
+  --color-overlay: rgba(5, 10, 16, 0.65);
+  --sombra-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+  --sombra-md: 0 4px 10px -2px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.30);
+  --sombra-lg: 0 12px 28px -6px rgba(0, 0, 0, 0.55), 0 4px 10px -4px rgba(0, 0, 0, 0.35);
+
+  color-scheme: dark;
+}

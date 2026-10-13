@@ -201,7 +201,7 @@ interface EditarElementoProps {
 
         <div className="form-group">
           <label htmlFor="nombre">
-            Nombre <span style={{ color: '#dc2626' }}>*</span>
+            Nombre <span style={{ color: 'var(--color-error-texto)' }}>*</span>
           </label>
           <input
             id="nombre"
@@ -245,8 +245,8 @@ interface EditarElementoProps {
               cursor: 'pointer',
               fontWeight: 600,
               fontSize: '0.85rem',
-              color: '#fff',
-              backgroundColor: formData.activo ? '#16a34a' : '#dc2626',
+              color: 'var(--color-texto-sobre-primario)',
+              backgroundColor: formData.activo ? 'var(--color-exito)' : 'var(--color-error)',
               width: 'fit-content',
               transition: 'background-color 0.2s ease',
             }}

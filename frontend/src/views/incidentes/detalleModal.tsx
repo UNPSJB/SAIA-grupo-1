@@ -251,7 +251,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
 
               <div className="incidente-dato-item">
                 <span className="incidente-dato-label">Condición Actual</span>
-                <span className="incidente-dato-valor" style={{ color: esAbierto ? '#b45309' : '#15803d' }}>
+                <span className="incidente-dato-valor" style={{ color: esAbierto ? 'var(--color-alerta-texto)' : 'var(--color-exito-texto)' }}>
                   {esAbierto ? '● Caso Abierto' : '✓ Caso Cerrado'}
                 </span>
               </div>
@@ -305,7 +305,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                 {}
                 {mostrandoFormCierre ? (
                   <form onSubmit={handleCerrarConAccion} className="form-accion-correctiva">
-                    <div style={{ fontWeight: 600, color: '#15803d', fontSize: '13.5px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--color-exito-texto)', fontSize: '13.5px' }}>
                       Registrar Acción Correctiva y Cerrar Incidente
                     </div>
                     <p style={{ margin: '4px 0 8px', fontSize: '12.5px', color: 'var(--inc-text-muted)', lineHeight: 1.4 }}>
@@ -322,7 +322,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                       autoFocus
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                      <span style={{ fontSize: '11px', color: accionCorrectiva.trim().length > ACCION_CORRECTIVA_MAX ? '#dc2626' : '#64748b' }}>
+                      <span style={{ fontSize: '11px', color: accionCorrectiva.trim().length > ACCION_CORRECTIVA_MAX ? 'var(--color-error-texto)' : 'var(--color-texto-sec)' }}>
                         {accionCorrectiva.trim().length} / {ACCION_CORRECTIVA_MAX} caracteres
                       </span>
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -349,7 +349,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                   </form>
                 ) : mostrandoFormReapertura ? (
                   <form onSubmit={handleReabrirConMotivo} className="form-reapertura">
-                    <div style={{ fontWeight: 600, color: '#c2410c', fontSize: '13.5px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--color-alerta-texto)', fontSize: '13.5px' }}>
                       Reapertura del Incidente
                     </div>
                     <p style={{ margin: '4px 0 8px', fontSize: '12.5px', color: 'var(--inc-text-muted)', lineHeight: 1.4 }}>
@@ -366,7 +366,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                       autoFocus
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                      <span style={{ fontSize: '11px', color: motivoReapertura.trim().length > MOTIVO_REAPERTURA_MAX ? '#dc2626' : '#64748b' }}>
+                      <span style={{ fontSize: '11px', color: motivoReapertura.trim().length > MOTIVO_REAPERTURA_MAX ? 'var(--color-error-texto)' : 'var(--color-texto-sec)' }}>
                         {motivoReapertura.trim().length} / {MOTIVO_REAPERTURA_MAX} caracteres
                       </span>
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -477,7 +477,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                     </div>
                   )}
                   {errorFoto && (
-                    <div style={{ color: '#dc2626', padding: '1rem', fontSize: '13px' }}>
+                    <div style={{ color: 'var(--color-error-texto)', padding: '1rem', fontSize: '13px' }}>
                       {errorFoto}
                     </div>
                   )}

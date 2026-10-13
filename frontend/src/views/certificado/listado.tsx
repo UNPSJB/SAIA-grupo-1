@@ -103,7 +103,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
 
   const renderBotonArchivo = (fotoUrl?: string | null) => {
     if (!fotoUrl) {
-      return <span style={{ color: '#9ca3af' }}>Sin archivo</span>;
+      return <span style={{ color: 'var(--color-texto-sec)' }}>Sin archivo</span>;
     }
 
     const urlCompleta = fotoUrl.startsWith('http') ? fotoUrl : `${API_URL}${fotoUrl}`;
@@ -118,7 +118,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
           border: 'none',
           padding: 0,
           cursor: 'pointer',
-          color: '#2563eb',
+          color: 'var(--color-primario-texto)',
           fontWeight: 600,
           display: 'inline-flex',
           alignItems: 'center',
@@ -181,7 +181,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
           <div
             style={{
               display: 'inline-flex',
-              background: '#f1f5f9',
+              background: 'var(--color-fondo)',
               padding: '4px',
               borderRadius: '8px',
               gap: '4px',
@@ -198,7 +198,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                 borderRadius: '6px',
                 fontSize: '0.85rem',
                 fontWeight: 600,
-                color: '#475569',
+                color: 'var(--color-texto)',
                 cursor: 'pointer',
               }}
             >
@@ -208,8 +208,8 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
               type="button"
               style={{
                 border: 'none',
-                background: '#1e293b',
-                color: '#ffffff',
+                background: 'var(--color-primario)',
+                color: 'var(--color-texto-sobre-primario)',
                 padding: '8px 14px',
                 borderRadius: '6px',
                 fontSize: '0.85rem',
@@ -283,9 +283,9 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                       {estado === 'vencido' && (
                         <span
                           style={{
-                            backgroundColor: '#fee2e2',
-                            color: '#dc2626',
-                            border: '1px solid #f87171',
+                            backgroundColor: 'var(--color-error-bg)',
+                            color: 'var(--color-error-texto)',
+                            border: '1px solid var(--color-error)',
                             padding: '0.2rem 0.6rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',
@@ -301,9 +301,9 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                       {estado === 'proximo' && (
                         <span
                           style={{
-                            backgroundColor: '#fef3c7',
-                            color: '#d97706',
-                            border: '1px solid #fcd34d',
+                            backgroundColor: 'var(--color-alerta-bg)',
+                            color: 'var(--color-alerta-texto)',
+                            border: '1px solid color-mix(in srgb, var(--color-alerta) 40%, transparent)',
                             padding: '0.2rem 0.6rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',
@@ -319,9 +319,9 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                       {estado === 'al_dia' && (
                         <span
                           style={{
-                            backgroundColor: '#ecfdf5',
-                            color: '#059669',
-                            border: '1px solid #a7f3d0',
+                            backgroundColor: 'var(--color-exito-bg)',
+                            color: 'var(--color-exito-texto)',
+                            border: '1px solid color-mix(in srgb, var(--color-exito) 35%, transparent)',
                             padding: '0.2rem 0.6rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',
@@ -341,7 +341,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                       {nombreCompleto ? (
                         <strong>{nombreCompleto}</strong>
                       ) : (
-                        <span style={{ color: '#9ca3af' }}>Cargando...</span>
+                        <span style={{ color: 'var(--color-texto-sec)' }}>Cargando...</span>
                       )}
                     </td>
                     <td>#{item.legajo_persona}</td>
@@ -396,7 +396,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'var(--color-overlay)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -407,12 +407,12 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: '#ffffff',
+              backgroundColor: 'var(--color-superficie)',
               borderRadius: '8px',
               maxWidth: '750px',
               width: '100%',
               padding: '1.25rem',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+              boxShadow: '0 20px 25px -5px color-mix(in srgb, var(--color-sombra) 20%, transparent)',
               display: 'flex',
               flexDirection: 'column',
               gap: '1rem',
@@ -430,7 +430,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                   margin: 0,
                   fontSize: '1.25rem',
                   fontWeight: 700,
-                  color: '#475569',
+                  color: 'var(--color-texto)',
                 }}
               >
                 Archivo
@@ -442,13 +442,13 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.35rem',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #1e293b',
+                  backgroundColor: 'var(--color-superficie)',
+                  border: '1px solid var(--color-texto)',
                   borderRadius: '6px',
                   padding: '0.35rem 0.85rem',
                   fontSize: '0.875rem',
                   fontWeight: 600,
-                  color: '#0f172a',
+                  color: 'var(--color-texto)',
                   cursor: 'pointer',
                 }}
               >

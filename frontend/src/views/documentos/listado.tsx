@@ -214,8 +214,8 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                   <td>
                     <span style={{
                       fontWeight: 600,
-                      color: "#15803d",
-                      backgroundColor: "#dcfce7",
+                      color: "var(--color-exito-texto)",
+                      backgroundColor: "var(--color-exito-bg)",
                       padding: "2px 8px",
                       borderRadius: "4px",
                     }}>
@@ -223,7 +223,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                     </span>
                   </td>
                   <td>{formatearFecha(doc.fecha_vigencia)}</td>
-                  <td style={{ color: "#64748b", fontSize: "0.85rem" }}>
+                  <td style={{ color: "var(--color-texto-sec)", fontSize: "0.85rem" }}>
                     {doc.tamanio_formateado || (doc.tamanio_bytes ? `${(doc.tamanio_bytes / 1024).toFixed(1)} KB` : "—")}
                   </td>
                   <td className="acciones-col">

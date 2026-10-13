@@ -188,7 +188,7 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
       <form onSubmit={handleSubmit} noValidate>
         <div className="form-group">
           <label htmlFor="tipo">
-            Tipo de Certificado <span style={{ color: '#dc2626' }}>*</span>
+            Tipo de Certificado <span style={{ color: 'var(--color-error-texto)' }}>*</span>
           </label>
           <input
             id="tipo"
@@ -203,7 +203,7 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
 
         <div className="form-group">
           <label htmlFor="fechaVencimiento">
-            Fecha de Vencimiento <span style={{ color: '#dc2626' }}>*</span>
+            Fecha de Vencimiento <span style={{ color: 'var(--color-error-texto)' }}>*</span>
           </label>
           <input
             id="fechaVencimiento"
@@ -225,11 +225,11 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
             onChange={handleArchivoChange}
           />
           {archivo ? (
-            <div style={{ fontSize: '13px', color: '#059669', marginTop: '6px', fontWeight: 500 }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-exito-texto)', marginTop: '6px', fontWeight: 500 }}>
               ✓ Archivo nuevo adjunto: {archivo.name} ({(archivo.size / 1024).toFixed(1)} KB)
             </div>
           ) : formData.foto_url ? (
-            <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '6px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-texto-sec)', marginTop: '6px' }}>
               Archivo actual: {formData.foto_url.split('/').pop()} (Si no seleccionás nada nuevo, se conserva)
             </div>
           ) : null}

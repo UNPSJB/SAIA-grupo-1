@@ -1,33 +1,19 @@
+/* Colores: alias de la paleta (styles/tema.css), valen para el tema claro y el oscuro */
 :root {
   --sidebar-width: 264px;
   --sidebar-width-icon: 68px;
-  --sidebar-background: #f8fafc;
-  --sidebar-foreground: #334155;
-  --sidebar-muted: #64748b;
-  --sidebar-heading: #0f172a;
-  --sidebar-primary: #4f46e5;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef2ff;
-  --sidebar-accent-foreground: #4338ca;
-  --sidebar-hover: #f1f5f9;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: rgba(79, 70, 229, 0.25);
-  --sidebar-card: #ffffff;
-}
-
-[data-theme="dark"] {
-  --sidebar-background: #0b0d14;
-  --sidebar-foreground: #94a3b8;
-  --sidebar-muted: #64748b;
-  --sidebar-heading: #f8fafc;
-  --sidebar-primary: #6366f1;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(99, 102, 241, 0.16);
-  --sidebar-accent-foreground: #a5b4fc;
-  --sidebar-hover: #151926;
-  --sidebar-border: #1e2436;
-  --sidebar-ring: rgba(99, 102, 241, 0.35);
-  --sidebar-card: #121622;
+  --sidebar-background: var(--color-superficie);
+  --sidebar-foreground: var(--color-texto);
+  --sidebar-muted: var(--color-texto-sec);
+  --sidebar-heading: var(--color-texto);
+  --sidebar-primary: var(--color-primario);
+  --sidebar-primary-foreground: var(--color-texto-sobre-primario);
+  --sidebar-accent: var(--color-suave);
+  --sidebar-accent-foreground: var(--color-primario-texto);
+  --sidebar-hover: var(--color-suave);
+  --sidebar-border: var(--color-borde);
+  --sidebar-ring: var(--color-foco);
+  --sidebar-card: var(--color-fondo);
 }
 
 .saia-sidebar-provider {
@@ -109,13 +95,13 @@
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--color-primario) 0%, var(--color-primario-hover) 100%);
+  color: var(--color-texto-sobre-primario);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primario) 28%, transparent);
 }
 
 .saia-brand-text {
@@ -308,7 +294,7 @@ button.saia-sidebar-group-label:hover {
   background-color: var(--sidebar-accent);
   color: var(--sidebar-accent-foreground);
   font-weight: 600;
-  border-color: rgba(79, 70, 229, 0.16);
+  border-color: color-mix(in srgb, var(--color-primario) 16%, transparent);
 }
 
 .saia-sidebar-menu-button[data-active="true"]::before {
@@ -519,7 +505,7 @@ button.saia-sidebar-group-label:hover {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1px solid rgba(79, 70, 229, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-primario) 20%, transparent);
 }
 
 .saia-user-info {
@@ -568,9 +554,9 @@ button.saia-sidebar-group-label:hover {
 }
 
 .saia-logout-btn:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.22);
+  background-color: var(--color-error-bg);
+  color: var(--color-error-texto);
+  border-color: color-mix(in srgb, var(--color-error) 22%, transparent);
 }
 
 .saia-sidebar[data-state="collapsed"] .saia-logout-btn {

@@ -98,8 +98,8 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({
                 borderRadius: "12px",
                 fontSize: "13px",
                 fontWeight: 600,
-                backgroundColor: persona.activo ? "#dcfce7" : "#fee2e2",
-                color: persona.activo ? "#166534" : "#991b1b",
+                backgroundColor: persona.activo ? "var(--color-exito-bg)" : "var(--color-error-bg)",
+                color: persona.activo ? "var(--color-exito-texto)" : "var(--color-error-texto)",
               }}
             >
               {persona.activo ? "Activo" : "Inactivo"}

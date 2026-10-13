@@ -286,15 +286,15 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
 const ESTILOS = `
 .venc-resumen { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .venc-chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600; border: 1px solid transparent; }
-.venc-chip--vencido, .venc-badge--vencido { background-color: #fee2e2; color: #dc2626; border-color: #f87171; }
-.venc-chip--proximo, .venc-badge--proximo { background-color: #fef3c7; color: #b45309; border-color: #fcd34d; }
-.venc-chip--vigente, .venc-badge--vigente { background-color: #dcfce7; color: #15803d; border-color: #86efac; }
+.venc-chip--vencido, .venc-badge--vencido { background-color: var(--color-error-bg); color: var(--color-error-texto); border-color: var(--color-error); }
+.venc-chip--proximo, .venc-badge--proximo { background-color: var(--color-alerta-bg); color: var(--color-alerta-texto); border-color: color-mix(in srgb, var(--color-alerta) 40%, transparent); }
+.venc-chip--vigente, .venc-badge--vigente { background-color: var(--color-exito-bg); color: var(--color-exito-texto); border-color: color-mix(in srgb, var(--color-exito) 35%, transparent); }
 .venc-badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
-.venc-fila--vencido td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
-.venc-fila--proximo td:first-child { box-shadow: inset 4px 0 0 #f59e0b; }
-.venc-fila--vigente td:first-child { box-shadow: inset 4px 0 0 #22c55e; }
-.venc-nota { color: #6b7280; font-size: 0.85rem; margin: 0 0 1rem; }
-.venc-tabs { display: inline-flex; background: #f1f5f9; padding: 4px; border-radius: 8px; gap: 4px; }
-.venc-tab { border: none; background: transparent; padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: #475569; cursor: pointer; transition: all 0.15s ease; }
-.venc-tab--activo { background: #1e293b; color: #ffffff; }
+.venc-fila--vencido td:first-child { box-shadow: inset 4px 0 0 var(--color-error); }
+.venc-fila--proximo td:first-child { box-shadow: inset 4px 0 0 var(--color-alerta); }
+.venc-fila--vigente td:first-child { box-shadow: inset 4px 0 0 var(--color-exito); }
+.venc-nota { color: var(--color-texto-sec); font-size: 0.85rem; margin: 0 0 1rem; }
+.venc-tabs { display: inline-flex; background: var(--color-fondo); padding: 4px; border-radius: 8px; gap: 4px; }
+.venc-tab { border: none; background: transparent; padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: var(--color-texto); cursor: pointer; transition: all 0.15s ease; }
+.venc-tab--activo { background: var(--color-primario); color: var(--color-texto-sobre-primario); }
 `;

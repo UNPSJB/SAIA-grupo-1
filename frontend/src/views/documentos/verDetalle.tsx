@@ -297,14 +297,14 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
                   borderRadius: "8px",
                   overflow: "hidden",
                   height: "500px",
-                  backgroundColor: "#f8fafc",
+                  backgroundColor: "var(--color-fondo)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 {cargandoVisor ? (
-                  <div style={{ color: "#64748b" }}>Cargando visor del documento...</div>
+                  <div style={{ color: "var(--color-texto-sec)" }}>Cargando visor del documento...</div>
                 ) : visorUrl ? (
                   <iframe
                     id="visor-doc-frame"
@@ -313,7 +313,7 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
                     style={{ width: "100%", height: "100%", border: "none" }}
                   />
                 ) : (
-                  <div style={{ color: "#64748b" }}>No se pudo cargar la vista previa en el visor.</div>
+                  <div style={{ color: "var(--color-texto-sec)" }}>No se pudo cargar la vista previa en el visor.</div>
                 )}
               </div>
             </div>

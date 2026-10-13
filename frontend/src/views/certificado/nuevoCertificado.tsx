@@ -179,7 +179,7 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
       <form onSubmit={handleSubmit} noValidate>
         <div className="form-group">
           <label htmlFor="id_tipo">
-            Tipo de Certificado <span style={{ color: '#dc2626' }}>*</span>
+            Tipo de Certificado <span style={{ color: 'var(--color-error-texto)' }}>*</span>
           </label>
           <select
             id="id_tipo"
@@ -203,7 +203,7 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
 
         <div className="form-group">
           <label htmlFor="fechaVencimiento">
-            Fecha de Vencimiento <span style={{ color: '#dc2626' }}>*</span>
+            Fecha de Vencimiento <span style={{ color: 'var(--color-error-texto)' }}>*</span>
           </label>
           <input
             id="fechaVencimiento"
@@ -225,7 +225,7 @@ export const NuevoCertificado: React.FC<NuevoCertificadoProps> = ({
             onChange={handleArchivoChange}
           />
           {archivo && (
-            <div style={{ fontSize: '13px', color: '#059669', marginTop: '6px', fontWeight: 500 }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-exito-texto)', marginTop: '6px', fontWeight: 500 }}>
               ✓ Archivo adjunto: {archivo.name} ({(archivo.size / 1024).toFixed(1)} KB)
             </div>
           )}

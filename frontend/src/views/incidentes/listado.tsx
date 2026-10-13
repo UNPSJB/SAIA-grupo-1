@@ -61,7 +61,7 @@ const FotoMiniatura: React.FC<FotoMiniaturaProps> = ({ incidenteId, descripcion,
   }
 
   if (!url) {
-    return <span style={{ color: '#cbd5e1' }}>—</span>;
+    return <span style={{ color: 'var(--color-borde)' }}>—</span>;
   }
 
   return (
@@ -195,7 +195,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
               className="tab-incidente-btn"
               onClick={onVerAbiertos}
             >
-              <span className="status-dot" style={{ backgroundColor: '#dc2626' }} />
+              <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
               Abiertos
               <span className="badge-tab-contador abiertos">{totalAbiertos}</span>
             </button>
@@ -216,7 +216,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
             className="input-busqueda"
             style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '2.4rem' }}
           />
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-texto-sec)', pointerEvents: 'none' }}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.3-4.3" />
@@ -238,7 +238,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
             className={`filtro-segmento-btn ${filtroEstado === 'ABIERTOS' ? 'activo' : ''}`}
             onClick={() => setFiltroEstado('ABIERTOS')}
           >
-            <span className="status-dot" style={{ backgroundColor: '#eab308' }} />
+            <span className="status-dot" style={{ backgroundColor: 'var(--color-alerta)' }} />
             Abiertos
             <span className="badge-conteo">{totalAbiertos}</span>
           </button>
@@ -247,7 +247,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
             className={`filtro-segmento-btn ${filtroEstado === 'CERRADOS' ? 'activo' : ''}`}
             onClick={() => setFiltroEstado('CERRADOS')}
           >
-            <span className="status-dot" style={{ backgroundColor: '#22c55e' }} />
+            <span className="status-dot" style={{ backgroundColor: 'var(--color-exito)' }} />
             Cerrados
             <span className="badge-conteo">{totalCerrados}</span>
           </button>
@@ -280,7 +280,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: '#dc2626' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--color-error-texto)' }}>
                   {error}
                   <div style={{ marginTop: '0.75rem' }}>
                     <button
@@ -321,7 +321,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
                         {dia}
                       </div>
                       {hora && (
-                        <div style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)', whiteSpace: 'nowrap', marginTop: '2px' }}>
                           {hora} hs
                         </div>
                       )}
@@ -340,7 +340,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
                       >
                         {inc.nombre_reportante || 'Operador anónimo'}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', marginTop: '2px' }}>
                         Legajo #{inc.reportado_por_id ?? '-'}
                       </div>
                     </td>

@@ -268,9 +268,9 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                         <span
                           title="El elemento ha superado la fecha límite"
                           style={{
-                            backgroundColor: '#fee2e2',
-                            color: '#dc2626',
-                            border: '1px solid #f87171',
+                            backgroundColor: 'var(--color-error-bg)',
+                            color: 'var(--color-error-texto)',
+                            border: '1px solid var(--color-error)',
                             padding: '0.15rem 0.5rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',
@@ -289,9 +289,9 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                         <span
                           title="Quedan 2 días o menos para el recambio"
                           style={{
-                            backgroundColor: '#fef3c7',
-                            color: '#d97706',
-                            border: '1px solid #fcd34d',
+                            backgroundColor: 'var(--color-alerta-bg)',
+                            color: 'var(--color-alerta-texto)',
+                            border: '1px solid color-mix(in srgb, var(--color-alerta) 40%, transparent)',
                             padding: '0.15rem 0.5rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',

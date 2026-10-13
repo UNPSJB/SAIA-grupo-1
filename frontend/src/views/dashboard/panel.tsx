@@ -13,10 +13,7 @@ import {
 } from 'recharts';
 import type { ConsumoInsumo, CumplimientoResumen, Periodo } from './tipos';
 import { apiFetch } from '../../api/client';
-import '../../styles/dashboard.css';const COLOR_HECHAS = '#aa3bff';
-const COLOR_PENDIENTES = '#d98c1f';
-const COLOR_VENCIDAS = '#dc2626';
-const COLOR_VACIO = '#e5e7eb';
+import '../../styles/dashboard.css';import { useColoresTema } from './useColoresTema';
 
 const UNIDADES_ESTANDAR = [
   { id: 'L', label: 'L (Litros)' },
@@ -27,6 +24,8 @@ const UNIDADES_ESTANDAR = [
 ];
 
 export const Panel: React.FC = () => {
+  // los gráficos toman los colores de la paleta y cambian con el tema
+  const colores = useColoresTema();
   // Gráfico 1: Cumplimiento
   const [periodoCumplimiento, setPeriodoCumplimiento] = useState<Periodo>('semana');
   const [cumplimiento, setCumplimiento] = useState<CumplimientoResumen | null>(null);
@@ -102,9 +101,9 @@ export const Panel: React.FC = () => {
     (cumplimiento?.vencidas || 0);
 
   const datosDona = [
-    { name: 'Hechas', value: cumplimiento?.hechas || 0, color: COLOR_HECHAS },
-    { name: 'Pendientes', value: cumplimiento?.pendientes || 0, color: COLOR_PENDIENTES },
-    { name: 'Vencidas', value: cumplimiento?.vencidas || 0, color: COLOR_VENCIDAS },
+    { name: 'Hechas', value: cumplimiento?.hechas || 0, color: colores.exito },
+    { name: 'Pendientes', value: cumplimiento?.pendientes || 0, color: colores.alerta },
+    { name: 'Vencidas', value: cumplimiento?.vencidas || 0, color: colores.error },
   ];
   const datosFiltradosDona = datosDona.filter((d) => d.value > 0);
 
@@ -147,7 +146,7 @@ export const Panel: React.FC = () => {
                         outerRadius={95}
                         stroke="none"
                       >
-                        <Cell fill={COLOR_VACIO} />
+                        <Cell fill={colores.borde} />
                       </Pie>
                     ) : (
                       <Pie
@@ -163,7 +162,7 @@ export const Panel: React.FC = () => {
                         ))}
                       </Pie>
                     )}
-                    <Tooltip />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }} itemStyle={{ color: 'var(--color-texto)' }} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="dashboard-dona-centro">
@@ -173,15 +172,15 @@ export const Panel: React.FC = () => {
 
               <div className="dashboard-dona-leyenda">
                 <span className="dashboard-dona-leyenda-item">
-                  <i style={{ backgroundColor: COLOR_HECHAS }} /> Hechas
+                  <i style={{ backgroundColor: colores.exito }} /> Hechas
                   <strong>{cumplimiento?.hechas || 0}</strong>
                 </span>
                 <span className="dashboard-dona-leyenda-item">
-                  <i style={{ backgroundColor: COLOR_PENDIENTES }} /> Pendientes
+                  <i style={{ backgroundColor: colores.alerta }} /> Pendientes
                   <strong>{cumplimiento?.pendientes || 0}</strong>
                 </span>
                 <span className="dashboard-dona-leyenda-item">
-                  <i style={{ backgroundColor: COLOR_VENCIDAS }} /> Vencidas
+                  <i style={{ backgroundColor: colores.error }} /> Vencidas
                   <strong>{cumplimiento?.vencidas || 0}</strong>
                 </span>
               </div>
@@ -228,10 +227,10 @@ export const Panel: React.FC = () => {
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={consumoInsumos}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                 <XAxis
                   dataKey="nombre"
-                  stroke="var(--text)"
+                  stroke={colores.textoSec}
                   fontSize={12}
                   interval={0}
                   angle={-15}
@@ -239,15 +238,17 @@ export const Panel: React.FC = () => {
                   height={60}
                 />
                 <YAxis
-                  stroke="var(--text)"
+                  stroke={colores.textoSec}
                   fontSize={12}
                   unit={` ${unidadInsumos}`}
                 />
                 <Tooltip
+                  contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }} itemStyle={{ color: 'var(--color-texto)' }}
+                  cursor={{ fill: colores.suave }}
                   formatter={(valor: any) => [`${valor} ${unidadInsumos}`, 'Consumo']}
                   labelFormatter={(nombre: any) => `Insumo: ${nombre}`}
                 />
-                <Bar dataKey="cantidad" fill={COLOR_HECHAS} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="cantidad" fill={colores.primario} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

@@ -313,12 +313,12 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                     {checklist.estado}
                   </span>
                   {checklist.estado === 'vencido' && (
-                    <span style={{ fontSize: '0.825rem', color: '#dc2626', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--color-error-texto)', fontWeight: 600 }}>
                       (Auditoría cerrada · No admite modificaciones)
                     </span>
                   )}
                   {checklist.estado === 'completado' && (
-                    <span style={{ fontSize: '0.825rem', color: '#059669', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--color-exito-texto)', fontWeight: 600 }}>
                       (Auditoría cerrada · Checklist finalizado)
                     </span>
                   )}
@@ -376,13 +376,13 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                 <div className="metrica-desc">Total Tareas</div>
               </div>
               <div className="metrica-caja">
-                <div className="metrica-num" style={{ color: '#059669' }}>
+                <div className="metrica-num" style={{ color: 'var(--color-exito-texto)' }}>
                   {checklist.tareas_completadas}
                 </div>
                 <div className="metrica-desc">Realizadas</div>
               </div>
               <div className="metrica-caja">
-                <div className="metrica-num" style={{ color: '#d97706' }}>
+                <div className="metrica-num" style={{ color: 'var(--color-alerta-texto)' }}>
                   {checklist.tareas_pendientes}
                 </div>
                 <div className="metrica-desc">Pendientes</div>
@@ -599,7 +599,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                 />
                 {modalArchivoImagen ? (
                   <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ fontSize: '0.825rem', color: '#059669', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--color-exito-texto)', fontWeight: 600 }}>
                       ✓ Archivo seleccionado: {modalArchivoImagen.name}
                     </span>
                     <button
@@ -651,7 +651,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                       <div key={idx} className="insumo-form-fila" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <select
                           value={ins.id || ins.nombre}
-                          style={{ flex: 2, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
+                          style={{ flex: 2, padding: '8px', borderRadius: '6px', border: '1px solid var(--color-borde)' }}
                           onChange={(e) => {
                             const seleccionado = quimicosDisponibles.find(
                               (q) => q.id === Number(e.target.value) || q.nombre === e.target.value
@@ -686,7 +686,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           min="0.01"
                           placeholder="Cantidad"
                           value={ins.cantidad}
-                          style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
+                          style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--color-borde)' }}
                           onChange={(e) =>
                             actualizarInsumoFila(
                               idx,
@@ -697,7 +697,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           required
                         />
 
-                        <span style={{ fontSize: '13px', color: '#555', minWidth: '35px' }}>
+                        <span style={{ fontSize: '13px', color: 'var(--color-texto-sec)', minWidth: '35px' }}>
                           {ins.unidad}
                         </span>
 

@@ -213,7 +213,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
         {onVerHistorialCompleto && (
           <div className="tabs-incidentes-header">
             <button type="button" className="tab-incidente-btn activo">
-              <span className="status-dot" style={{ backgroundColor: '#dc2626' }} />
+              <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
               Abiertos
               <span className="badge-tab-contador abiertos">{incidentes.length}</span>
             </button>
@@ -254,7 +254,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             </svg>
           </div>
           <div className="tarjeta-metrica-info">
-            <span className="tarjeta-metrica-valor" style={{ color: '#dc2626' }}>
+            <span className="tarjeta-metrica-valor" style={{ color: 'var(--color-error-texto)' }}>
               {metricas?.por_antiguedad.mas_72h ?? incidentes.filter((i) => i.nivel_urgencia === 'CRITICO').length}
             </span>
             <span className="tarjeta-metrica-label">Críticos (&gt; 72 h)</span>
@@ -269,7 +269,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             </svg>
           </div>
           <div className="tarjeta-metrica-info">
-            <span className="tarjeta-metrica-valor" style={{ color: '#d97706' }}>
+            <span className="tarjeta-metrica-valor" style={{ color: 'var(--color-alerta-texto)' }}>
               {metricas?.por_antiguedad.entre_24h_y_72h ?? incidentes.filter((i) => i.nivel_urgencia === 'ATENCION').length}
             </span>
             <span className="tarjeta-metrica-label">En Atención (24h - 72h)</span>
@@ -283,7 +283,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             </svg>
           </div>
           <div className="tarjeta-metrica-info">
-            <span className="tarjeta-metrica-valor" style={{ color: '#16a34a' }}>
+            <span className="tarjeta-metrica-valor" style={{ color: 'var(--color-exito-texto)' }}>
               {metricas?.por_antiguedad.menos_24h ?? incidentes.filter((i) => i.nivel_urgencia === 'RECIENTE').length}
             </span>
             <span className="tarjeta-metrica-label">Recientes (&lt; 24 h)</span>
@@ -301,7 +301,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             className="input-busqueda"
             style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '2.4rem' }}
           />
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-texto-sec)', pointerEvents: 'none' }}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.3-4.3" />
@@ -323,7 +323,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             className={`filtro-segmento-btn ${filtroUrgencia === 'CRITICO' ? 'activo' : ''}`}
             onClick={() => setFiltroUrgencia('CRITICO')}
           >
-            <span className="status-dot" style={{ backgroundColor: '#dc2626' }} />
+            <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
             Críticos (&gt; 72h)
             <span className="badge-conteo">{incidentes.filter((i) => i.nivel_urgencia === 'CRITICO').length}</span>
           </button>
@@ -332,7 +332,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             className={`filtro-segmento-btn ${filtroUrgencia === 'ATENCION' ? 'activo' : ''}`}
             onClick={() => setFiltroUrgencia('ATENCION')}
           >
-            <span className="status-dot" style={{ backgroundColor: '#f59e0b' }} />
+            <span className="status-dot" style={{ backgroundColor: 'var(--color-alerta)' }} />
             En Atención
             <span className="badge-conteo">{incidentes.filter((i) => i.nivel_urgencia === 'ATENCION').length}</span>
           </button>
@@ -341,7 +341,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             className={`filtro-segmento-btn ${filtroUrgencia === 'RECIENTE' ? 'activo' : ''}`}
             onClick={() => setFiltroUrgencia('RECIENTE')}
           >
-            <span className="status-dot" style={{ backgroundColor: '#22c55e' }} />
+            <span className="status-dot" style={{ backgroundColor: 'var(--color-exito)' }} />
             Recientes
             <span className="badge-conteo">{incidentes.filter((i) => i.nivel_urgencia === 'RECIENTE').length}</span>
           </button>
@@ -375,7 +375,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: '#dc2626' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--color-error-texto)' }}>
                   {error}
                   <div style={{ marginTop: '0.75rem' }}>
                     <button
@@ -432,7 +432,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                         {dia}
                       </div>
                       {hora && (
-                        <div style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)', whiteSpace: 'nowrap', marginTop: '2px' }}>
                           {hora} hs
                         </div>
                       )}
@@ -451,7 +451,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                       >
                         {inc.nombre_reportante || 'Operador anónimo'}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', marginTop: '2px' }}>
                         Legajo #{inc.reportado_por_id ?? '-'}
                       </div>
                     </td>

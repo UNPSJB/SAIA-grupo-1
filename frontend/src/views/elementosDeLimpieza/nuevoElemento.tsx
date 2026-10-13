@@ -143,7 +143,7 @@ interface NuevoElementoLimpiezaProps {
       <form onSubmit={handleSubmit} noValidate>
         <div className="form-group">
           <label htmlFor="nombre">
-            Nombre <span style={{ color: '#dc2626' }}>*</span>
+            Nombre <span style={{ color: 'var(--color-error-texto)' }}>*</span>
           </label>
           <input
             id="nombre"

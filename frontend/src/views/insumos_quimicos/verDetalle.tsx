@@ -45,8 +45,8 @@ export const VerDetalle: React.FC<Props> = ({ insumo, onVolver, onEditar }) => {
             borderRadius: '16px',
             fontSize: '12px',
             fontWeight: 600,
-            backgroundColor: insumo.activo ? '#dcfce7' : '#fee2e2',
-            color: insumo.activo ? '#166534' : '#991b1b',
+            backgroundColor: insumo.activo ? 'var(--color-exito-bg)' : 'var(--color-error-bg)',
+            color: insumo.activo ? 'var(--color-exito-texto)' : 'var(--color-error-texto)',
           }}
         >
           {insumo.activo ? 'Activo' : 'Inactivo'}

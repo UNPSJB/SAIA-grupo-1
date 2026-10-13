@@ -113,7 +113,7 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
           <div>
             <h2>Historial de Versiones</h2>
             {documentoTitulo && (
-              <div style={{ fontSize: "0.88rem", color: "#64748b", marginTop: "2px" }}>
+              <div style={{ fontSize: "0.88rem", color: "var(--color-texto-sec)", marginTop: "2px" }}>
                 {documentoTitulo} (solo lectura)
               </div>
             )}
@@ -127,11 +127,11 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
           {error && <div className="alerta-error">{error}</div>}
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>
+            <span style={{ fontSize: "0.85rem", color: "var(--color-texto-sec)" }}>
               Total de versiones históricas registradas: <strong>{versiones.length}</strong>
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <label htmlFor="select-orden-historial" style={{ fontSize: "0.85rem", color: "#64748b" }}>
+              <label htmlFor="select-orden-historial" style={{ fontSize: "0.85rem", color: "var(--color-texto-sec)" }}>
                 Orden cronológico:
               </label>
               <select
@@ -176,14 +176,14 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
                   versiones.map((v) => {
                     const pesoStr = formatearPeso(v.tamanio_bytes, v.tamanio_formateado);
                     return (
-                      <tr key={v.id} style={{ backgroundColor: v.es_vigente ? "#f0fdf4" : "inherit" }}>
+                      <tr key={v.id} style={{ backgroundColor: v.es_vigente ? "var(--color-exito-bg)" : "inherit" }}>
                         <td style={{ fontWeight: 600 }}>
                           v{v.version}
                           {v.es_vigente ? (
                             <span style={{
                               marginLeft: "8px",
-                              backgroundColor: "#dcfce7",
-                              color: "#15803d",
+                              backgroundColor: "var(--color-exito-bg)",
+                              color: "var(--color-exito-texto)",
                               padding: "2px 7px",
                               borderRadius: "4px",
                               fontSize: "0.75rem",
@@ -194,8 +194,8 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
                           ) : (
                             <span style={{
                               marginLeft: "8px",
-                              backgroundColor: "#f1f5f9",
-                              color: "#64748b",
+                              backgroundColor: "var(--color-fondo)",
+                              color: "var(--color-texto-sec)",
                               padding: "2px 7px",
                               borderRadius: "4px",
                               fontSize: "0.75rem",
@@ -207,13 +207,13 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
                         <td>{formatearFecha(v.fecha_vigencia)}</td>
                         <td>
                           {v.es_vigente ? (
-                            <span style={{ color: "#16a34a", fontWeight: 500 }}>Vigente actual</span>
+                            <span style={{ color: "var(--color-exito-texto)", fontWeight: 500 }}>Vigente actual</span>
                           ) : (
                             formatearFecha(v.fecha_archivo)
                           )}
                         </td>
                         <td>{v.usuario || "admin"}</td>
-                        <td style={{ color: "#475569", fontSize: "0.85rem" }}>{pesoStr}</td>
+                        <td style={{ color: "var(--color-texto)", fontSize: "0.85rem" }}>{pesoStr}</td>
                         <td className="acciones-col">
                           <div className="acciones-btns" style={{ justifyContent: "center" }}>
                             <button

@@ -132,8 +132,8 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
               width: '64px',
               height: '64px',
               borderRadius: '50%',
-              backgroundColor: '#dcfce7',
-              color: '#15803d',
+              backgroundColor: 'var(--color-exito-bg)',
+              color: 'var(--color-exito-texto)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -227,7 +227,7 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
           <div className={`incidente-char-bar ${excedida ? 'limite' : ''}`}>
             {descripcionLimpia.length} / {DESCRIPCION_MAX} caracteres
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-texto-sec)', marginTop: '6px' }}>
             💡 Sugerencia: Especifique la ubicación física, el sector y equipo o lote involucrado si corresponde.
           </div>
         </div>
@@ -296,7 +296,7 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
               <div className="dropzone-preview-info">
                 <div className="dropzone-preview-nombre">{foto.name}</div>
                 <div className="dropzone-preview-peso">{formatearTamanio(foto.size)}</div>
-                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600, marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--color-exito-texto)', fontWeight: 600, marginTop: '2px' }}>
                   ✓ Fotografía lista para adjuntar
                 </div>
               </div>

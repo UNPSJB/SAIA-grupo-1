@@ -29,7 +29,7 @@
 
 .btn-dia-ver {
   background-color: var(--accent);
-  color: #ffffff;
+  color: var(--color-texto-sobre-primario);
   border: 1px solid var(--accent);
   padding: 0.65rem 1.4rem;
   font-size: 0.95rem;
@@ -59,21 +59,21 @@
 }
 
 .badge-estado.pendiente {
-  background-color: rgba(245, 158, 11, 0.15);
-  color: #d97706;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background-color: var(--color-alerta-bg);
+  color: var(--color-alerta-texto);
+  border: 1px solid color-mix(in srgb, var(--color-alerta) 30%, transparent);
 }
 
 .badge-estado.completado {
-  background-color: rgba(16, 185, 129, 0.15);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background-color: var(--color-exito-bg);
+  color: var(--color-exito-texto);
+  border: 1px solid color-mix(in srgb, var(--color-exito) 30%, transparent);
 }
 
 .badge-estado.vencido {
-  background-color: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background-color: var(--color-error-bg);
+  color: var(--color-error-texto);
+  border: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
 }
 
 .badge-registro {
@@ -85,11 +85,11 @@
 }
 
 .badge-registro.activo {
-  color: #10b981;
+  color: var(--color-exito-texto);
 }
 
 .badge-registro.inactivo {
-  color: #ef4444;
+  color: var(--color-error-texto);
 }
 
 .barra-progreso-wrapper {
@@ -109,17 +109,17 @@
 
 .barra-progreso-fill {
   height: 100%;
-  background-color: #10b981;
+  background-color: var(--color-exito);
   border-radius: 9999px;
   transition: width 0.3s ease;
 }
 
 .barra-progreso-fill.parcial {
-  background-color: #f59e0b;
+  background-color: var(--color-alerta);
 }
 
 .barra-progreso-fill.vacio {
-  background-color: #9ca3af;
+  background-color: var(--color-texto-sec);
 }
 
 .barra-progreso-texto {
@@ -221,7 +221,7 @@
   border-radius: 8px;
   margin-bottom: 1rem;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-sombra) 5%, transparent);
 }
 
 .plan-header {
@@ -308,11 +308,11 @@
 }
 
 .tarea-item-card.realizada {
-  border-left: 4px solid #10b981;
+  border-left: 4px solid var(--color-exito);
 }
 
 .tarea-item-card.pendiente {
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid var(--color-alerta);
 }
 
 .tarea-item-top {
@@ -401,7 +401,7 @@
 }
 
 .tarea-evidencia-link {
-  color: #2563eb;
+  color: var(--color-primario-texto);
   text-decoration: underline;
   cursor: pointer;
   font-size: 0.85rem;
@@ -411,7 +411,7 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: var(--color-overlay);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -467,8 +467,8 @@
 
 .btn-remover-insumo {
   background: none;
-  border: 1px solid #dc2626;
-  color: #dc2626;
+  border: 1px solid var(--color-error);
+  color: var(--color-error-texto);
   border-radius: 4px;
   padding: 0.4rem 0.6rem;
   cursor: pointer;
@@ -540,7 +540,7 @@
 
 .tarea-img-miniatura:hover {
   transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-sombra) 15%, transparent);
 }
 
 .btn-subir-evidencia {
@@ -568,7 +568,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
-  background-color: var(--code-bg, rgba(255, 255, 255, 0.03));
+  background-color: var(--code-bg, var(--color-fondo));
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.85rem 1.25rem;
@@ -625,7 +625,6 @@
   border-color: var(--accent);
 }
 
-
 .filtros-acciones {
   display: flex;
   align-items: center;
@@ -634,7 +633,7 @@
 
 .btn-filtrar {
   background-color: var(--accent);
-  color: #ffffff;
+  color: var(--color-texto-sobre-primario);
   border: 1px solid var(--accent);
   padding: 0.45rem 1rem;
   border-radius: 6px;
@@ -744,7 +743,7 @@
 
 .tareas-expandidas-contenedor {
   padding: 1.25rem 1.5rem;
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: var(--color-fondo);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -768,7 +767,7 @@
 .btn-ver-detalle-inline {
   background: none;
   border: none;
-  color: var(--accent, #6366f1);
+  color: var(--accent, var(--color-primario-texto));
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -778,7 +777,7 @@
 }
 
 .btn-ver-detalle-inline:hover {
-  background-color: rgba(99, 102, 241, 0.1);
+  background-color: color-mix(in srgb, var(--color-primario) 10%, transparent);
   text-decoration: underline;
 }
 
@@ -799,11 +798,11 @@
 }
 
 .tarea-expandida-card.realizado {
-  border-left: 4px solid #10b981;
+  border-left: 4px solid var(--color-exito);
 }
 
 .tarea-expandida-card.pendiente {
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid var(--color-alerta);
 }
 
 .tarea-expandida-top {
@@ -827,6 +826,4 @@
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
 }
-
-
 

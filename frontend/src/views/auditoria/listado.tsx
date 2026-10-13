@@ -181,7 +181,7 @@ export const ListadoAuditoria: React.FC = () => {
                 <tr key={a.id}>
                   <td style={{ fontWeight: 500 }}>
                     {a.tabla}
-                    <span style={{ marginLeft: '6px', fontSize: '0.85em', color: 'var(--text-muted, #6b7280)' }}>
+                    <span style={{ marginLeft: '6px', fontSize: '0.85em', color: 'var(--text-muted, var(--color-texto-sec))' }}>
                       #{a.registro_id}
                     </span>
                   </td>

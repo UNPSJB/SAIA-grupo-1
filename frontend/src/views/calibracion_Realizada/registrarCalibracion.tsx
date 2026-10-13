@@ -161,7 +161,7 @@ export default function RegistrarCalibracion({ onSuccess,planID, onCancel }: Nue
                     />
                     {archivoSeleccionado && (
                         <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                            <span style={{ fontSize: '0.825rem', color: '#059669', fontWeight: 600 }}>
+                            <span style={{ fontSize: '0.825rem', color: 'var(--color-exito-texto)', fontWeight: 600 }}>
                                 ✓ Archivo seleccionado: {archivoSeleccionado.name}
                             </span>
                             <button

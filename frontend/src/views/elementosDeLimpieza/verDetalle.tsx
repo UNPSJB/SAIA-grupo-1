@@ -124,8 +124,8 @@ export const DetalleElementoDeLimpieza: React.FC<DetalleElementoProps> = ({ onCa
                   borderRadius: '20px',
                   fontWeight: 600,
                   fontSize: '0.85rem',
-                  color: '#fff',
-                  backgroundColor: elemento.activo ? '#16a34a' : '#dc2626',
+                  color: 'var(--color-texto-sobre-primario)',
+                  backgroundColor: elemento.activo ? 'var(--color-exito)' : 'var(--color-error)',
                   width: 'fit-content',
                 }}
               >
