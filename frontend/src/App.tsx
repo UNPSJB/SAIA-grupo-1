@@ -500,7 +500,7 @@ function Aplicacion() {
             <DetalleDocumento
               documentoId={documentoSeleccionado}
               onVolver={origenVencimientos ? volverAVencimientos : () => setVistaDocumentos('listado')}
-              textoVolver={origenVencimientos ? '← Volver a Vencimientos' : '← Volver a Documentos'}
+              textoVolver={origenVencimientos ? '← Volver a Vencimientos' : 'Volver'}
             />
           )
         ) : modulo === 'checklist' ? (
@@ -546,7 +546,7 @@ function Aplicacion() {
           ) : vistaPlanCalibracion === 'detalle' ? (
             <VerPlanDeCalibracion
               onCancel={origenVencimientos ? volverAVencimientos : () => setVistaPlanCalibracion('listado')}
-              textoVolver={origenVencimientos ? '← Volver a Vencimientos' : '← Volver a Planes de Calibración'}
+              textoVolver={origenVencimientos ? '← Volver a Vencimientos' : 'Volver'}
               planCalibracionID={planCalibracionSeleccionado}
             />
           ) : null

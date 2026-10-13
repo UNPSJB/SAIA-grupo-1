@@ -196,4 +196,4 @@ export const VerCalibracion: React.FC<VerCalibracionProps> = ({ calibracionID, o
       </div>
     </div>
   );
-};
+};

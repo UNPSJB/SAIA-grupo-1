@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 
 interface DetalleCertificadoProps {
   onCancel?: () => void;
@@ -32,21 +33,24 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
 }) => {
   const [certificado, setCertificado] = useState<Certificado | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
 
   useEffect(() => {
     if (certificadoId) {
       const fetchCertificado = async () => {
+        setLoading(true);
+        setError(null);
         try {
           const res = await apiFetch(`/certificados/${certificadoId}`);
           if (res.ok) {
             const data: Certificado = await res.json();
             setCertificado(data);
           } else {
-            alert('El certificado no existe.');
+            setError('El certificado no existe.');
           }
         } catch {
-          alert('Error al conectar con el servidor.');
+          setError('Error al conectar con el servidor.');
         } finally {
           setLoading(false);
         }
@@ -63,13 +67,17 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
         <h1>Detalle del Certificado</h1>
-        <div className="subtitulo">ID: {certificadoId}</div>
+        <div className="subtitulo">
+          {certificado ? `${certificado.tipo} (ID #${certificado.id})` : `ID: ${certificadoId}`}
+        </div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando certificado...</div>
+      ) : error ? (
+        <div className="alerta-error">{error}</div>
       ) : certificado ? (
-        <form>
+        <form onSubmit={(e) => e.preventDefault()}>
           <div className="form-group">
             <label htmlFor="id">ID</label>
             <input id="id" type="text" value={certificado.id} disabled />
@@ -99,7 +107,6 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
             <label htmlFor="foto_url">Archivo / Comprobante</label>
             {certificado.foto_url ? (
               <div style={{ position: 'relative', width: '100%' }}>
-                {/* Input deshabilitado para garantizar dimensiones, borde y fondo exactos */}
                 <input
                   id="foto_url"
                   type="text"
@@ -107,7 +114,6 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
                   disabled
                   style={{ width: '100%', margin: 0 }}
                 />
-                {/* Botón interactivo superpuesto */}
                 <button
                   type="button"
                   onClick={() => setModalAbierto(true)}
@@ -154,83 +160,25 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
         </button>
       </div>
 
-      {modalAbierto && archivoUrl && (
-        <div
-          onClick={() => setModalAbierto(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'var(--color-overlay)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
-        >
+      <Dialog open={modalAbierto && Boolean(archivoUrl)} onOpenChange={setModalAbierto}>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>Comprobante de Certificado</DialogTitle>
+          </DialogHeader>
           <div
-            onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: 'var(--color-superficie)',
-              borderRadius: '8px',
-              maxWidth: '750px',
-              width: '100%',
-              padding: '1.25rem',
-              boxShadow: '0 20px 25px -5px color-mix(in srgb, var(--color-sombra) 20%, transparent)',
               display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
+              justifyContent: 'center',
+              alignItems: 'center',
+              maxHeight: '72vh',
+              overflow: 'hidden',
+              borderRadius: '8px',
+              backgroundColor: 'var(--color-fondo)',
+              border: '1px solid var(--color-borde)',
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  color: 'var(--color-texto)',
-                }}
-              >
-                Archivo
-              </h2>
-              <button
-                type="button"
-                onClick={() => setModalAbierto(false)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  backgroundColor: 'var(--color-superficie)',
-                  border: '1px solid var(--color-texto)',
-                  borderRadius: '6px',
-                  padding: '0.35rem 0.85rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: 'var(--color-texto)',
-                  cursor: 'pointer',
-                }}
-              >
-                ✕ Cerrar
-              </button>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                maxHeight: '75vh',
-                overflow: 'hidden',
-                borderRadius: '6px',
-              }}
-            >
-              {esPdf ? (
+            {archivoUrl &&
+              (esPdf ? (
                 <iframe
                   src={archivoUrl}
                   title="Documento adjunto"
@@ -247,16 +195,15 @@ export const DetalleCertificado: React.FC<DetalleCertificadoProps> = ({
                   alt="Comprobante de certificado"
                   style={{
                     maxWidth: '100%',
-                    maxHeight: '75vh',
+                    maxHeight: '70vh',
                     objectFit: 'contain',
                     borderRadius: '6px',
                   }}
                 />
-              )}
-            </div>
+              ))}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

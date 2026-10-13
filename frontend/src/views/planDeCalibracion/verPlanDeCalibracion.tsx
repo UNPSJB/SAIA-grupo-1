@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import type { PlanDeCalibracionConId } from './tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { Dialog, DialogContent } from '../../components/ui/dialog';
 import RegistrarCalibracion from '../calibracion_Realizada/registrarCalibracion';
 import { ListadoCalibracionesRealizadas } from '../calibracion_Realizada/listado';
 import { VerCalibracion } from '../calibracion_Realizada/verCalibracionEcha';
@@ -77,24 +78,13 @@ export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({
   };
 
   return (
-    <div className="modulo-container" style={{ maxWidth: '860px' }}>
-      <div className="listado-top-bar">
-        <div className="modulo-header">
-          <h1 style={{ lineHeight: '1.25', margin: '0 0 6px 0' }}>Detalle de Plan de Calibración</h1>
-          <div className="subtitulo">
-            {planCalibracion
-              ? `${planCalibracion.nombre} (${planCalibracion.nombre_equipo || `Equipo #${planCalibracion.equipo_id}`})`
-              : `Plan #${planCalibracionID}`}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn-cancelar" onClick={onCancel}>
-            {textoVolver || '← Volver a Planes de Calibración'}
-          </button>
-          <button type="button" className="btn-guardar" onClick={() => setModalAbierto(true)}>
-            + Marcar como realizada
-          </button>
+    <div className="modulo-container formulario-box">
+      <div className="modulo-header">
+        <h1>Detalle de Plan de Calibración</h1>
+        <div className="subtitulo">
+          {planCalibracion
+            ? `${planCalibracion.nombre} (ID #${planCalibracion.id})`
+            : `Plan #${planCalibracionID}`}
         </div>
       </div>
 
@@ -157,80 +147,97 @@ export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({
             />
           </div>
 
-          <div
-            className="form-acciones"
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '10px',
-              justifyContent: 'space-between',
-              marginTop: '2rem',
-            }}
-          >
-            <button type="button" className="btn-cancelar" onClick={onCancel}>
-              {textoVolver || '← Volver a Planes de Calibración'}
-            </button>
-
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn-cancelar"
-                disabled={cantidadRealizaciones === 0}
-                onClick={handleVerRealizaciones}
-                style={{
-                  opacity: cantidadRealizaciones === 0 ? 0.55 : 1,
-                  cursor: cantidadRealizaciones === 0 ? 'not-allowed' : 'pointer',
-                }}
-              >
-                ↺ Ver Realizaciones ({cantidadRealizaciones})
-              </button>
-
-              <button type="button" className="btn-guardar" onClick={() => setModalAbierto(true)}>
-                + Marcar como realizada
-              </button>
-            </div>
+          <div className="form-group">
+            <label htmlFor="realizaciones">Calibraciones Realizadas</label>
+            {cantidadRealizaciones > 0 ? (
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  id="realizaciones"
+                  type="text"
+                  value=""
+                  disabled
+                  style={{ width: '100%', margin: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={handleVerRealizaciones}
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '12px',
+                    transform: 'translateY(-50%)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    color: 'var(--color-primario-texto)',
+                    fontWeight: 600,
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                >
+                  <span>Ver realizaciones ({cantidadRealizaciones})</span>
+                  <span style={{ fontSize: '0.95rem', lineHeight: 1 }}>↗</span>
+                </button>
+              </div>
+            ) : (
+              <input
+                id="realizaciones"
+                type="text"
+                value="Sin realizaciones registradas"
+                disabled
+              />
+            )}
           </div>
         </form>
       ) : (
         <div style={{ textAlign: 'center', padding: '2rem' }}>El plan no existe.</div>
       )}
 
-      {modalAbierto && (
-        <div className="modal-abierto">
-          <div className="modal-content">
-            <RegistrarCalibracion
-              planID={planCalibracion?.id}
-              onSuccess={() => {
-                setModalAbierto(false);
-                fetchPlanCalibracion();
-              }}
-              onCancel={() => setModalAbierto(false)}
-            />
-          </div>
-        </div>
-      )}
+      <div className="form-acciones">
+        <button type="button" className="btn-guardar" onClick={() => setModalAbierto(true)}>
+          + Marcar como realizada
+        </button>
+        <button type="button" className="btn-cancelar" onClick={onCancel}>
+          {textoVolver || 'Volver'}
+        </button>
+      </div>
 
-      {modalVerCalibraciones && (
-        <div className="modal-abierto">
-          <div className="modal-content">
-            <ListadoCalibracionesRealizadas
-              planID={planCalibracion?.id}
-              onCancel={() => setModalVerTodas(false)}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
+        <DialogContent>
+          <RegistrarCalibracion
+            planID={planCalibracion?.id}
+            onSuccess={() => {
+              setModalAbierto(false);
+              fetchPlanCalibracion();
+            }}
+            onCancel={() => setModalAbierto(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-      {modalVerCalibracion && (
-        <div className="modal-abierto">
-          <div className="modal-content">
-            <VerCalibracion
-              calibracionID={calibracionSeleccionada}
-              onCancel={() => setModalVer(false)}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={modalVerCalibraciones} onOpenChange={setModalVerTodas}>
+        <DialogContent size="lg">
+          <ListadoCalibracionesRealizadas
+            planID={planCalibracion?.id}
+            onCancel={() => setModalVerTodas(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={modalVerCalibracion} onOpenChange={setModalVer}>
+        <DialogContent>
+          <VerCalibracion
+            calibracionID={calibracionSeleccionada}
+            onCancel={() => setModalVer(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
+};
+

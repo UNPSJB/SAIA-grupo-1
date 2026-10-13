@@ -3,6 +3,7 @@ import '../../styles/formularioAlta.css';
 import type { PlanDeCalibracionConId } from '../planDeCalibracion/tipos';
 import { VerCalibracion } from './verCalibracionEcha';
 import { apiFetch } from '../../api/client';
+import { Dialog, DialogContent } from '../../components/ui/dialog';
 
 interface ListadoCalibracionesProps {
   planID?: number | null;
@@ -60,7 +61,8 @@ export const ListadoCalibracionesRealizadas: React.FC<ListadoCalibracionesProps>
       fetchPlanCalibracion();
     }
   }, [planID]);
-return (
+
+  return (
     <div className="modulo-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
@@ -73,7 +75,7 @@ return (
         <input
           type="text"
           className="input-busqueda"
-          placeholder="Buscar por nombre"
+          placeholder="Buscar por fecha o archivo..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
@@ -83,7 +85,7 @@ return (
         <table className="tabla-custom">
           <thead>
             <tr>
-              <th>Fecha de Realizacion</th>
+              <th>Fecha de Realización</th>
               <th>Formato del Archivo</th>
               <th className="acciones-col">Acciones</th>
             </tr>
@@ -91,15 +93,15 @@ return (
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando ejecuciones...
                 </td>
               </tr>
             ) : planCalibracion?.calibraciones_realizadas?.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem' }}>
                   {busqueda
-                    ? 'No se encontraron planes de limpieza que coincidan con los filtros.'
+                    ? 'No se encontraron calibraciones que coincidan con los filtros.'
                     : 'No hay registros de calibraciones realizadas.'}
                 </td>
               </tr>
@@ -109,22 +111,30 @@ return (
                   <td style={{ fontWeight: 500 }}>{formatDate(c.fecha_d_realizacion)}</td>
                   <td>
                     <span className="badge-archivo" style={{ textTransform: 'uppercase', fontWeight: 600 }}>
-                       📄 {obtenerTipoArchivo(c.formato_archivo)}
+                      📄 {obtenerTipoArchivo(c.formato_archivo)}
                     </span>
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button
+                        type="button"
                         className="btn-icon btn-ver"
                         title="Ver detalles"
-                        onClick={() => {setModalVer(true); setCalibracionSeleccionada(c.id)}}
+                        onClick={() => {
+                          setCalibracionSeleccionada(c.id);
+                          setModalVer(true);
+                        }}
                       >
                         👁
                       </button>
                       <button
+                        type="button"
                         className="btn-icon btn-editar"
                         title="Descargar Certificado"
-                        onClick={() => {setModalVer(true); setCalibracionSeleccionada(c.id)}}
+                        onClick={() => {
+                          setCalibracionSeleccionada(c.id);
+                          setModalVer(true);
+                        }}
                       >
                         📥
                       </button>
@@ -135,23 +145,23 @@ return (
             )}
           </tbody>
         </table>
-        <div className="form-acciones">
-                <button type="button"  className="btn-cancelar" onClick={onCancel}>
-                    Volver
-                </button>
-            </div>
       </div>
 
+      <div className="form-acciones">
+        <button type="button" className="btn-cancelar" onClick={onCancel}>
+          Volver
+        </button>
+      </div>
 
-      {modalVer && (<div className="modal-abierto">
-                                        <div className="modal-content">
-                                          <VerCalibracion
-                                          calibracionID={calibracionSeleccionada}
-                                          onCancel={() => setModalVer(false)}
-                                          />
-                        
-                                        </div>
-                              </div>)}
+      <Dialog open={modalVer} onOpenChange={setModalVer}>
+        <DialogContent>
+          <VerCalibracion
+            calibracionID={calibracionSeleccionada}
+            onCancel={() => setModalVer(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
+};
+

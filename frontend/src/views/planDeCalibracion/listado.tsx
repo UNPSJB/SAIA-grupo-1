@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import '../../styles/formularioAlta.css';
 import type { PlanDeCalibracionConId } from './tipos';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Badge } from '../../components/ui/badge';
+import { apiFetch } from '../../api/client';
 
 interface ListadoPlanesCProps {
   onNuevoClick?: () => void;
   onDetalleClick?: (id: number) => void;
   onEditarClick?: (id: number) => void;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return 'No aplica';
@@ -40,7 +40,7 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
     let ignore = false;
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/plan_de_calibracion/`);
+        const res = await apiFetch('/plan_de_calibracion/');
         if (res.ok) {
           const data = await res.json();
           if (!ignore) setPlanes(data);
@@ -163,46 +163,16 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span>{formatDate(p.fecha_vencimiento)}</span>
 
-                      {/* VENCIDO */}
                       {calcularEstadoVencimiento(p.fecha_vencimiento) === 'vencido' && (
-                        <span
-                          title="El elemento ha superado la fecha límite"
-                          style={{
-                            backgroundColor: 'var(--color-error-bg)',
-                            color: 'var(--color-error-texto)',
-                            border: '1px solid var(--color-error)',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                          }}
-                        >
+                        <Badge variant="vencido" title="El elemento ha superado la fecha límite">
                           ● Vencido
-                        </span>
+                        </Badge>
                       )}
 
-                      {/* PRÓXIMO A VENCER */}
                       {calcularEstadoVencimiento(p.fecha_vencimiento) === 'proximo' && (
-                        <span
-                          title="Quedan 2 días o menos para el recambio"
-                          style={{
-                            backgroundColor: 'var(--color-alerta-bg)',
-                            color: 'var(--color-alerta-texto)',
-                            border: '1px solid color-mix(in srgb, var(--color-alerta) 40%, transparent)',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                          }}
-                        >
+                        <Badge variant="proximo" title="Quedan 2 días o menos para el recambio">
                           ▲ Próximo a vencer
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </td>

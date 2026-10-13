@@ -8,6 +8,7 @@ import { VerTarea } from "../tareas/verTarea";
 import NuevaTarea from "../tareas/nuevaTarea";
 import type { TareaConId } from "../tareas/tipos";
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
+import { Dialog, DialogContent } from "../../components/ui/dialog";
 import { apiFetch } from '../../api/client';
 
 const PLAN_INICIAL: PlanConId = {
@@ -213,21 +214,26 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
   };
 
   return (
-    <div className="plan-container formulario-box">
+    <div className="modulo-container" style={{ maxWidth: "860px" }}>
       <div className="modulo-header">
-        <h1>Editar Plan De Limpieza</h1>
-        <div className="subtitulo">02 · Modificacion</div>
+        <h1>Editar Plan de Limpieza</h1>
+        <div className="subtitulo">02 · Modificación</div>
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
       {successMsg && <div className="alerta-exito">{successMsg}</div>}
 
-      <div className="form-group">
-        <label htmlFor="fecha_inicio">Fecha de Inicio</label>
-        <div>{formatDate(planLimpieza.fecha_inicio)}</div>
-      </div>
-
       <form onSubmit={handleGuardar}>
+        <div className="form-group">
+          <label htmlFor="fecha_inicio">Fecha de Inicio</label>
+          <input
+            id="fecha_inicio"
+            type="text"
+            value={formatDate(planLimpieza.fecha_inicio)}
+            disabled
+          />
+        </div>
+
         <div className="form-group">
           <label htmlFor="nombre">Plan</label>
           <input
@@ -240,7 +246,7 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
         </div>
 
         <div className="form-group">
-          <label htmlFor="tipo_objetivo">Asignado a:</label>
+          <label htmlFor="tipo_objetivo">Asignado a</label>
           <select
             id="tipo_objetivo"
             name="tipo_objetivo"
@@ -288,15 +294,13 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
           </div>
         )}
 
-        <div className="listado-top-bar">
+        <div className="listado-top-bar" style={{ marginTop: "1.75rem", marginBottom: "0.75rem" }}>
           <div className="modulo-header">
-            <h2>Tareas</h2>
+            <h2 style={{ margin: 0, fontSize: "1.25rem", color: "var(--color-texto)" }}>Tareas</h2>
           </div>
-          <div className="accion-agregar">
-            <button type="button" className="btn-agregar" onClick={() => setModal(true)}>
-              +Agregar Tarea
-            </button>
-          </div>
+          <button type="button" className="btn-guardar" onClick={() => setModal(true)}>
+            + Agregar Tarea
+          </button>
         </div>
 
         <div className="tabla-wrapper">
@@ -396,41 +400,35 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
         onClose={() => setErrorDialogMsg(null)}
       />
 
-      {modalAbierto && (
-        <div className="modal-abierto">
-          <div className="modal-content">
-            <NuevaTarea
-              planID={planLimpieza?.id}
-              onSuccess={() => { setModal(false); fetchPlanLimp(); }}
-              onCancel={() => setModal(false)}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={modalAbierto} onOpenChange={setModal}>
+        <DialogContent>
+          <NuevaTarea
+            planID={planLimpieza?.id}
+            onSuccess={() => { setModal(false); fetchPlanLimp(); }}
+            onCancel={() => setModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-      {modalEditar && (
-        <div className="modal-abierto">
-          <div className="modal-content">
-            <EditarTarea
-              tareaID={tareaSeleccionada}
-              planID={planLimpieza.id}
-              onSuccess={() => { setModalEditar(false); fetchPlanLimp(); }}
-              onCancel={() => setModalEditar(false)}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={modalEditar} onOpenChange={setModalEditar}>
+        <DialogContent>
+          <EditarTarea
+            tareaID={tareaSeleccionada}
+            planID={planLimpieza.id}
+            onSuccess={() => { setModalEditar(false); fetchPlanLimp(); }}
+            onCancel={() => setModalEditar(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-      {modalVerTarea && (
-        <div className="modal-abierto">
-          <div className="modal-content">
-            <VerTarea
-              tareaID={tareaSeleccionada}
-              onCancel={() => setModelVer(false)}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={modalVerTarea} onOpenChange={setModelVer}>
+        <DialogContent>
+          <VerTarea
+            tareaID={tareaSeleccionada}
+            onCancel={() => setModelVer(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
