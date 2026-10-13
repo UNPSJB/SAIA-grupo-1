@@ -5,12 +5,10 @@ import '../../styles/login.css';
 
 // Atajos para probar con los usuarios del seed (scripts/seed_dev_db.py).
 // Solo existen en desarrollo: en el build de producción este bloque se elimina.
-const CONTRASENIA_DEMO = 'Clave1234';
 const CUENTAS_DEMO = [
-  { etiqueta: 'Admin (admin/admin)', usuario: 'admin', contrasenia: 'admin' },
-  { etiqueta: 'Administrador', usuario: 'ana.gomez', contrasenia: CONTRASENIA_DEMO },
-  { etiqueta: 'Operador', usuario: 'juan.perez', contrasenia: CONTRASENIA_DEMO },
-  { etiqueta: 'Operador y admin.', usuario: 'marcos.diaz', contrasenia: CONTRASENIA_DEMO },
+  { etiqueta: 'Administrador', usuario: 'admin', contrasenia: 'admin' },
+  { etiqueta: 'Operador', usuario: 'operador', contrasenia: 'operador' },
+  { etiqueta: 'Operador y admin.', usuario: 'adminopp', contrasenia: 'adminop' },
 ];
 
 export const Login = () => {
