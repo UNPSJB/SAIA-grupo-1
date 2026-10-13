@@ -105,20 +105,20 @@ const renderBotonArchivo = (fotoUrl?: string | null) => {
         style={{
           background: 'none',
           border: 'none',
-          padding: 0,
+          padding: '0.1rem 0.3rem',
           cursor: 'pointer',
           color: 'var(--color-primario-texto)',
-          fontWeight: 600,
+          fontWeight: 500,
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '4px',
+          gap: '3px',
           whiteSpace: 'nowrap',
-          fontSize: 'inherit',
+          fontSize: '1rem', 
         }}
         title="Ver evidencia"
       >
         <span>{esPdf ? 'Ver documento' : 'Ver imagen'}</span>
-        <span>↗</span>
+        <span style={{ fontSize: '0.75rem' }}>↗</span>
       </button>
     );
   };
@@ -165,9 +165,12 @@ return (
                 </input>
             </div>
 
-       <div className="form-group">
-    <label>Certificado</label>
-    <td>{renderBotonArchivo(calibracion.formato_archivo)}</td>
+      <div className="form-group">
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <label style={{ margin: 0 }}>Certificado</label>
+        {renderBotonArchivo(calibracion.formato_archivo)}
+    </div>
+
     {calibracion.formato_archivo ? (
         <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-start', width: '100%' }}>
             
@@ -199,7 +202,7 @@ return (
             </button>
         </div>
     ) : (
-        <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>No hay archivo adjunto para este registro.</p>
+        <p style={{ color: '#9ca3af', fontStyle: 'italic', marginTop: '0.5rem' }}>No hay archivo adjunto para este registro.</p>
     )}
 </div>
 
