@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { Certificado, CertificadoUpdate } from './tipos';
+import type { Certificado } from './tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -9,16 +9,22 @@ interface EditarCertificadoProps {
   onCancel?: () => void;
 }
 
+interface TipoCertificadoOption {
+  id: number;
+  nombre: string;
+}
+
 export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
   certificadoId,
   onSuccess,
   onCancel,
 }) => {
-  const [formData, setFormData] = useState<CertificadoUpdate>({
-    tipo: '',
-    fechaVencimiento: '',
-    foto_url: '',
-  });
+  const [tipos, setTipos] = useState<TipoCertificadoOption[]>([]);
+  const [loadingTipos, setLoadingTipos] = useState(true);
+
+  const [idTipo, setIdTipo] = useState<string>('');
+  const [fechaVencimiento, setFechaVencimiento] = useState<string>('');
+  const [fotoUrlActual, setFotoUrlActual] = useState<string>('');
 
   const [loadingFetch, setLoadingFetch] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -27,45 +33,58 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
 
+  // 1. Cargar tipos y certificado
   useEffect(() => {
-    if (certificadoId) {
-      const fetchCertificado = async () => {
-        try {
-          const res = await apiFetch(`/certificados/${certificadoId}`);
-          if (res.ok) {
-            const data: Certificado = await res.json();
-            setFormData({
-              tipo: data.tipo,
-              fechaVencimiento: data.fechaVencimiento ? data.fechaVencimiento.split('T')[0] : '',
-              foto_url: data.foto_url || '',
-            });
+    const cargarDatos = async () => {
+      try {
+        const resTipos = await apiFetch('/certificados/tipos/');
+        let listaTipos: TipoCertificadoOption[] = [];
+        if (resTipos.ok) {
+          listaTipos = await resTipos.json();
+          setTipos(listaTipos);
+        } else {
+          setErrorMsg('No se pudieron cargar los tipos de certificado.');
+        }
+
+        if (certificadoId) {
+          const resCert = await apiFetch(`/certificados/${certificadoId}`);
+          if (resCert.ok) {
+            const data: Certificado = await resCert.json();
+
+            // Si el backend devuelve id_tipo lo toma directo; sino busca coincidencia por nombre
+            const idEncontrado =
+              (data as unknown as { id_tipo?: number }).id_tipo ??
+              listaTipos.find((t) => t.nombre.toLowerCase() === data.tipo?.toLowerCase())?.id;
+
+            if (idEncontrado) {
+              setIdTipo(String(idEncontrado));
+            }
+
+            setFechaVencimiento(
+              data.fechaVencimiento ? data.fechaVencimiento.split('T')[0] : ''
+            );
+            setFotoUrlActual(data.foto_url || '');
           } else {
             setErrorMsg('No se pudo cargar el certificado.');
           }
-        } catch {
-          setErrorMsg('Error al conectar con el servidor.');
-        } finally {
-          setLoadingFetch(false);
         }
-      };
+      } catch {
+        setErrorMsg('Error al conectar con el servidor.');
+      } finally {
+        setLoadingTipos(false);
+        setLoadingFetch(false);
+      }
+    };
 
-      fetchCertificado();
-    }
+    cargarDatos();
   }, [certificadoId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const handleFechaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
     setAdvertenciaInput(null);
     setErrorMsg(null);
 
-    if (name === 'tipo') {
-      if (value.length > 30) {
-        setAdvertenciaInput('El tipo no puede tener más de 30 caracteres.');
-        return;
-      }
-    }
-
-    if (name === 'fechaVencimiento' && value) {
+    if (value) {
       const fechaIngresada = new Date(`${value}T00:00:00`);
       const fechaMinima = new Date();
       fechaMinima.setDate(fechaMinima.getDate() + 15);
@@ -76,7 +95,7 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
       }
     }
 
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFechaVencimiento(value);
   };
 
   const handleArchivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,18 +125,17 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
     setAdvertenciaInput(null);
     setSuccessMsg(null);
 
-    const tipoLimpio = formData.tipo?.trim();
-    if (!tipoLimpio) {
-      setErrorMsg('El tipo no puede estar vacío.');
+    if (!idTipo) {
+      setErrorMsg('Debe seleccionar un tipo de certificado.');
       return;
     }
 
-    if (!formData.fechaVencimiento) {
+    if (!fechaVencimiento) {
       setErrorMsg('Debe indicar una fecha de vencimiento.');
       return;
     }
 
-    const fechaIngresada = new Date(`${formData.fechaVencimiento}T00:00:00`);
+    const fechaIngresada = new Date(`${fechaVencimiento}T00:00:00`);
     const fechaMinima = new Date();
     fechaMinima.setDate(fechaMinima.getDate() + 15);
     fechaMinima.setHours(0, 0, 0, 0);
@@ -131,14 +149,13 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
 
     try {
       const formPayload = new FormData();
-      formPayload.append('tipo', tipoLimpio);
-      formPayload.append('fechaVencimiento', formData.fechaVencimiento);
+      formPayload.append('id_tipo', idTipo);
+      formPayload.append('fechaVencimiento', fechaVencimiento);
 
       if (archivo) {
         formPayload.append('archivo', archivo);
       }
 
-      // Al mandar FormData con apiFetch, no se define cabecera 'Content-Type'
       const res = await apiFetch(`/certificados/${certificadoId}`, {
         method: 'PUT',
         body: formPayload,
@@ -187,18 +204,29 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="form-group">
-          <label htmlFor="tipo">
+          <label htmlFor="id_tipo">
             Tipo de Certificado <span style={{ color: 'var(--color-error-texto)' }}>*</span>
           </label>
-          <input
-            id="tipo"
-            name="tipo"
-            type="text"
-            value={formData.tipo || ''}
-            onChange={handleChange}
-            maxLength={30}
+          <select
+            id="id_tipo"
+            name="id_tipo"
+            value={idTipo}
+            onChange={(e) => {
+              setIdTipo(e.target.value);
+              setAdvertenciaInput(null);
+            }}
+            disabled={loadingTipos}
             required
-          />
+          >
+            <option value="">
+              {loadingTipos ? 'Cargando tipos disponibles...' : 'Seleccione un tipo...'}
+            </option>
+            {tipos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">
@@ -209,8 +237,8 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
             id="fechaVencimiento"
             name="fechaVencimiento"
             type="date"
-            value={formData.fechaVencimiento || ''}
-            onChange={handleChange}
+            value={fechaVencimiento}
+            onChange={handleFechaChange}
             required
           />
         </div>
@@ -225,12 +253,25 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
             onChange={handleArchivoChange}
           />
           {archivo ? (
-            <div style={{ fontSize: '13px', color: 'var(--color-exito-texto)', marginTop: '6px', fontWeight: 500 }}>
+            <div
+              style={{
+                fontSize: '13px',
+                color: 'var(--color-exito-texto)',
+                marginTop: '6px',
+                fontWeight: 500,
+              }}
+            >
               ✓ Archivo nuevo adjunto: {archivo.name} ({(archivo.size / 1024).toFixed(1)} KB)
             </div>
-          ) : formData.foto_url ? (
-            <div style={{ fontSize: '13px', color: 'var(--color-texto-sec)', marginTop: '6px' }}>
-              Archivo actual: {formData.foto_url.split('/').pop()} (Si no seleccionás nada nuevo, se conserva)
+          ) : fotoUrlActual ? (
+            <div
+              style={{
+                fontSize: '13px',
+                color: 'var(--color-texto-sec)',
+                marginTop: '6px',
+              }}
+            >
+              Archivo actual: {fotoUrlActual.split('/').pop()} (Si no seleccionás nada nuevo, se conserva)
             </div>
           ) : null}
         </div>
@@ -239,11 +280,16 @@ export const EditarCertificado: React.FC<EditarCertificadoProps> = ({
           <button
             type="submit"
             className="btn-guardar"
-            disabled={loading || !formData.tipo?.trim() || !formData.fechaVencimiento}
+            disabled={loading || !idTipo || !fechaVencimiento}
           >
             {loading ? 'Guardando...' : 'Guardar Cambios'}
           </button>
-          <button type="button" className="btn-cancelar" onClick={onCancel} disabled={loading}>
+          <button
+            type="button"
+            className="btn-cancelar"
+            onClick={onCancel}
+            disabled={loading}
+          >
             Cancelar
           </button>
         </div>
