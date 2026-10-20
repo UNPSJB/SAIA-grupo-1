@@ -35,4 +35,3 @@ def test_service_eliminar_sector_libre(session: Session) -> None:
     assert eliminado.id == sector.id
     with pytest.raises(exceptions.SectorNoEncontrado):
         services.obtener_sector(session, sector.id)
-

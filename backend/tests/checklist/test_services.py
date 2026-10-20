@@ -18,7 +18,6 @@ from src.checklist.services import (
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.tareas.models import Frecuencia, Tarea
 
-
 def test_generar_checklist_automatico(session: Session) -> None:
     hoy = date.today()
     checklist = generar_checklist(
@@ -42,14 +41,12 @@ def test_generar_checklist_automatico(session: Session) -> None:
         assert item.responsable_legajo == 1
         assert item.fecha_hora_fin is None
 
-
 def test_generar_checklist_responsable_invalido(session: Session) -> None:
     hoy = date.today()
     with pytest.raises(exceptions.ResponsableNoEncontrado):
         generar_checklist(
             session, schemas.ChecklistGenerar(fecha=hoy, responsable_legajo=9999)
         )
-
 
 def test_inmutabilidad_checklist(session: Session) -> None:
     hoy = date.today()
@@ -67,7 +64,6 @@ def test_inmutabilidad_checklist(session: Session) -> None:
     checklist_recargado = obtener_checklist(session, checklist.id)
     assert checklist_recargado.items[0].nombre_tarea == nombre_original
     assert checklist_recargado.items[0].nombre_plan == plan_original
-
 
 def test_completar_tarea(session: Session) -> None:
     hoy = date.today()
@@ -98,7 +94,6 @@ def test_completar_tarea(session: Session) -> None:
     with pytest.raises(exceptions.TareaYaCompletada):
         completar_tarea(session, checklist.id, item.id, datos_completar)
 
-
 def test_obtener_tarea(session: Session) -> None:
     hoy = date.today()
     checklist = generar_checklist(
@@ -111,8 +106,6 @@ def test_obtener_tarea(session: Session) -> None:
 
     with pytest.raises(exceptions.TareaChecklistNoEncontrada):
         obtener_tarea(session, checklist.id, 99999)
-
-
 
 def test_guardar_y_eliminar_archivo_imagen_tarea(session: Session) -> None:
     hoy = date.today()
@@ -133,7 +126,6 @@ def test_guardar_y_eliminar_archivo_imagen_tarea(session: Session) -> None:
     item_sin_img = eliminar_imagen_tarea(session, checklist.id, item.id)
     assert item_sin_img.imagen is None
 
-
 def test_completar_tarea_responsable_invalido(session: Session) -> None:
     hoy = date.today()
     checklist = generar_checklist(
@@ -148,7 +140,6 @@ def test_completar_tarea_responsable_invalido(session: Session) -> None:
             item.id,
             schemas.CompletarTareaSchema(responsable_legajo=9999),
         )
-
 
 def test_estado_y_porcentaje_cumplimiento(session: Session) -> None:
     hoy = date.today()
@@ -171,7 +162,6 @@ def test_estado_y_porcentaje_cumplimiento(session: Session) -> None:
     assert checklist.tareas_completadas == total
     assert checklist.porcentaje_cumplimiento == 100.0
     assert checklist.estado == models.EstadoGeneralChecklist.COMPLETADO
-
 
 def test_estado_vencido_vs_pendiente_por_frecuencia(session: Session) -> None:
     hoy = date.today()
@@ -233,7 +223,6 @@ def test_estado_vencido_vs_pendiente_por_frecuencia(session: Session) -> None:
 
     assert checklist_diario_vencido.estado == models.EstadoGeneralChecklist.VENCIDO
 
-
 def test_checklist_vencido_no_admite_modificaciones(session: Session) -> None:
     hoy = date.today()
     checklist_vencido = models.Checklist(
@@ -274,7 +263,6 @@ def test_checklist_vencido_no_admite_modificaciones(session: Session) -> None:
             archivo,
         )
 
-
 def test_listar_checklists_rango_fechas(session: Session) -> None:
     hoy = date.today()
     checklist = generar_checklist(
@@ -298,7 +286,6 @@ def test_listar_checklists_rango_fechas(session: Session) -> None:
             fecha_hasta=hoy - timedelta(days=1),
         )
 
-
 def test_listar_checklists_filtro_estado(session: Session) -> None:
     hoy = date.today()
     checklist = generar_checklist(
@@ -314,14 +301,12 @@ def test_listar_checklists_filtro_estado(session: Session) -> None:
     vencidos = listar_checklists(session, estado="vencido")
     assert not any(c.id == checklist.id for c in vencidos)
 
-
 def test_generar_checklist_fecha_pasada_falla(session: Session) -> None:
     pasado = date.today() - timedelta(days=1)
     with pytest.raises(exceptions.ChecklistFechaPasada):
         generar_checklist(
             session, schemas.ChecklistGenerar(fecha=pasado, responsable_legajo=1)
         )
-
 
 def test_generar_tareas_cuando_se_saltean_dias(session: Session) -> None:
     hoy = date.today()
@@ -348,7 +333,6 @@ def test_generar_tareas_cuando_se_saltean_dias(session: Session) -> None:
     session.add(tarea_semanal)
     session.commit()
 
-    # Dia 0 del plan (hace 8 dias): simular checklist previo directamente en la base
     chk_pasado = models.Checklist(
         fecha=fecha_inicio,
         responsable_legajo=1,
@@ -367,28 +351,23 @@ def test_generar_tareas_cuando_se_saltean_dias(session: Session) -> None:
     session.add(chk_pasado)
     session.commit()
 
-    # Verificamos logica de correspondencia en dias intermedios:
-    # Dia 1 (hace 7 dias): no corresponde porque ya se hizo en ciclo 0
     assert not tarea_corresponde_a_fecha(
         Frecuencia.SEMANAL, fecha_inicio, fecha_inicio + timedelta(days=1), db=session, tarea_id=tarea_semanal.id
     )
-    # Dias 2 al 7 no hubo checklist.
-    # Hoy (dia 8 del plan, ciclo 1): pasaron 8 dias sin ejecutarse, DEBE corresponder!
+
     assert tarea_corresponde_a_fecha(
         Frecuencia.SEMANAL, fecha_inicio, hoy, db=session, tarea_id=tarea_semanal.id
     )
 
-    # Al generar el checklist de hoy, la tarea semanal DEBE generarse en el checklist
     chk_hoy = generar_checklist(
         session, schemas.ChecklistGenerar(responsable_legajo=1)
     )
     nombres_hoy = [item.nombre_tarea for item in chk_hoy.items]
     assert "LimpiezaSemanalEspecial" in nombres_hoy
 
-
 def test_checklist_no_vence_mientras_haya_tareas_pendientes_no_vencidas(session: Session) -> None:
     hoy = date.today()
-    # Checklist creado hace 2 dias con una tarea diaria y una tarea semanal
+
     checklist = models.Checklist(
         fecha=hoy - timedelta(days=2),
         responsable_legajo=1,
@@ -412,11 +391,8 @@ def test_checklist_no_vence_mientras_haya_tareas_pendientes_no_vencidas(session:
     session.commit()
     session.refresh(checklist)
 
-    # La diaria vencio (2 >= 1 dias), pero la semanal NO vencio (2 < 7 dias).
-    # Por lo tanto, el checklist NO pasa a vencido: permanece PENDIENTE.
     assert checklist.estado == models.EstadoGeneralChecklist.PENDIENTE
 
-    # Se puede completar la tarea semanal sin que lance ChecklistNoModificable
     tarea_semanal = next(it for it in checklist.items if it.nombre_tarea == "TareaSemanal")
     item_completado = completar_tarea(
         session,
@@ -427,21 +403,16 @@ def test_checklist_no_vence_mientras_haya_tareas_pendientes_no_vencidas(session:
     assert item_completado.estado == models.EstadoTareaItem.REALIZADO
 
     session.refresh(checklist)
-    # Ahora que la semanal fue completada, la unica pendiente es la diaria que esta vencida.
-    # Como ya no quedan tareas pendientes no vencidas, ahora si pasa a VENCIDO.
+
     assert checklist.estado == models.EstadoGeneralChecklist.VENCIDO
-
-# ---------------------------------------------------------------- un checklist por operador y por dia
-
 
 def test_generar_checklist_dos_veces_el_mismo_dia_falla(session: Session) -> None:
     generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
     with pytest.raises(exceptions.ChecklistYaGenerado):
         generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
 
-
 def test_listar_checklists_filtra_por_responsable(session: Session) -> None:
-    # Ana (legajo 2) es operadora: le asignamos una tarea propia
+
     plan = session.query(Plan_de_Limpieza).filter_by(nombre="PlanFreezer").one()
     session.add(Tarea(nombre="TareaDeAna", descripcion="Limpiar burletes", frecuencia=Frecuencia.DIARIA,
                       plan_id=plan.id, personal_id=2))
