@@ -85,6 +85,16 @@ INSUMOS = [
     ("Esencia de Vainilla", "VAI-2407", 45, 300, 2000.0, 1200.0, UnidadMedida.MILILITROS),
     ("Polvo de Hornear", "PHO-2408", 20, 240, 5000.0, 3500.0, UnidadMedida.GRAMOS),
     ("Membrillo", "MEM-2409", 8, 120, 30.0, 21.0, UnidadMedida.KILOGRAMOS),
+    # fiambres y lacteos frescos: vencen pronto o tienen poco stock, para ver los avisos
+    ("Jamon Cocido", "JAM-2410", 2, 7, 10.0, 3.5, UnidadMedida.KILOGRAMOS),
+    ("Queso de Maquina", "QMA-2410", 2, 8, 12.0, 2.0, UnidadMedida.KILOGRAMOS),
+    ("Cacao Amargo en Polvo", "CAC-2408", 25, 270, 10.0, 7.5, UnidadMedida.KILOGRAMOS),
+    ("Nueces Mariposa", "NUE-2408", 20, 150, 8.0, 1.2, UnidadMedida.KILOGRAMOS),
+    ("Pasas de Uva", "PAS-2408", 18, 180, 10.0, 6.0, UnidadMedida.KILOGRAMOS),
+    ("Coco Rallado", "COC-2408", 22, 160, 6.0, 4.0, UnidadMedida.KILOGRAMOS),
+    ("Almidon de Maiz", "ALM-2407", 40, 330, 20.0, 15.0, UnidadMedida.KILOGRAMOS),
+    ("Mermelada de Frutilla", "MER-2409", 9, 120, 15.0, 9.0, UnidadMedida.KILOGRAMOS),
+    ("Miel Pura", "MIE-2407", 35, 365, 12.0, 10.0, UnidadMedida.KILOGRAMOS),
 ]
 
 # (nombre, tipo, unidad, stock)
@@ -501,6 +511,10 @@ def main() -> None:
     from src.plan_de_calibracion.models import Plan_de_Calibracion
     from src.calibracion_realizada.models import Calibracion_Realizada
 
+    # El archivo de la calibracion se guarda donde lo deja el endpoint de subida (uploads/certificados).
+    carpeta_calibraciones = Path("uploads") / "certificados"
+    carpeta_calibraciones.mkdir(parents=True, exist_ok=True)
+
     # (equipo, periodicidad en dias, dias desde el ultimo mantenimiento): hay vencidos, por vencer y vigentes
     planes_cal = [
         ("Heladera Exhibidora", 180, 200),   # vencido
@@ -523,7 +537,16 @@ def main() -> None:
         )
         db.add(plan_cal)
         db.flush()
-        db.add(Calibracion_Realizada(fecha_d_realizacion=ultimo, formato_archivo="certificado_calibracion.pdf", plan_calibracion_id=plan_cal.id))
+        # el ultimo mantenimiento queda registrado como calibracion realizada, con su certificado en PDF
+        nombre_archivo = f"calibracion_{plan_cal.id}_{ultimo:%Y%m%d}.pdf"
+        (carpeta_calibraciones / nombre_archivo).write_bytes(
+            generar_pdf_valido(f"Certificado de calibracion: {nombre_equipo}", f"Realizada el {ultimo:%d/%m/%Y}")
+        )
+        db.add(Calibracion_Realizada(
+            fecha_d_realizacion=ultimo,
+            formato_archivo=str(carpeta_calibraciones / nombre_archivo).replace("\\", "/"),
+            plan_calibracion_id=plan_cal.id,
+        ))
     db.commit()
 
     print("Creando incidentes...")
@@ -551,21 +574,32 @@ def main() -> None:
 
     print("Creando tipos de certificado y certificados del personal...")
     from src.tipoCertificado.services import crear_tipo_certificado
-    from src.certificado.models import Certificado
+    from src.certificado.services import crear_certificado
     t_manip = crear_tipo_certificado(db, "Carnet de Manipulacion de Alimentos")
     t_libreta = crear_tipo_certificado(db, "Libreta Sanitaria")
     t_curso = crear_tipo_certificado(db, "Curso de BPM")
     t_hs = crear_tipo_certificado(db, "Capacitacion en Higiene y Seguridad")
-    # (persona, tipo, dias hasta vencimiento): hay vencidos, por vencer y vigentes
+
+    def pdf_certificado(titulo: str, persona) -> UploadFile:
+        contenido = generar_pdf_valido(titulo, f"{persona.nombre} {persona.apellido} - Legajo {persona.legajo}")
+        return UploadFile(file=io.BytesIO(contenido), filename=f"{titulo.lower().replace(' ', '_')}.pdf")
+
+    # (persona, tipo, dias hasta vencimiento, con archivo): hay vencidos, por vencer y vigentes
     certificados = [
-        (juan, t_manip, 200), (juan, t_libreta, 12),
-        (ana, t_manip, 300), (ana, t_curso, 90),
-        (marcos, t_manip, -10), (marcos, t_hs, 45),
-        (lucia, t_libreta, 5), (lucia, t_curso, 400),
-        (sofia, t_manip, 25), (sofia, t_hs, -30),
+        (juan, t_manip, 200, True), (juan, t_libreta, 12, False),
+        (ana, t_manip, 300, True), (ana, t_curso, 90, True),
+        (marcos, t_manip, -10, True), (marcos, t_hs, 45, False),
+        (lucia, t_libreta, 5, True), (lucia, t_curso, 400, True),
+        (sofia, t_manip, 25, False), (sofia, t_hs, -30, True),
     ]
-    for persona, tipo, dias in certificados:
-        db.add(Certificado(id_tipo=tipo.id, fechaVencimiento=hoy + timedelta(days=dias), legajo_persona=persona.legajo))
+    for persona, tipo, dias, con_archivo in certificados:
+        crear_certificado(
+            db,
+            id_tipo=tipo.id,
+            fechaVencimiento=hoy + timedelta(days=dias),
+            legajo_persona=persona.legajo,
+            archivo=pdf_certificado(tipo.nombre, persona) if con_archivo else None,
+        )
     db.commit()
 
     db.close()
