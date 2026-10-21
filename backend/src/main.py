@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
-from src.database import engine, SessionLocal
+from src.database import engine, SessionLocal, migrar_esquema
 from src.models import ModeloBase
 
 # Importamos la configuración validada por Pydantic
@@ -24,6 +24,7 @@ from src.plan_de_calibracion.router import router as plan_de_calibracion_router
 from src.dashboard.router import router as dashboard_router
 from src.autenticacion.router import router as autenticacion_router
 from src.incidentes.router import router as incidentes_router
+from src.categorias_incidentes.router import router as categorias_incidentes_router
 from src.sectores.router import router as sectores_router
 from src.calibracion_realizada.router import router as calibracion_realizada_router
 from src.certificado.router import router as certificado_router
@@ -43,6 +44,7 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    migrar_esquema(engine)
     if ENV == "DEV":
         # Usuarios admin, operador y adminopp compartidos por el equipo (cada integrante tiene su propia base)
         with SessionLocal() as db:
@@ -87,6 +89,7 @@ app.include_router(checklist_router)
 app.include_router(dashboard_router, dependencies=SOLO_ADMIN)
 # cada endpoint de incidentes define su rol (el operador crea; el admin edita, cambia estado y elimina)
 app.include_router(incidentes_router, dependencies=SESION)
+app.include_router(categorias_incidentes_router, dependencies=SESION)
 app.include_router(certificado_router, dependencies=SOLO_ADMIN)
 app.include_router(archivos_router) #Router publico para ver los archivos dentro de los certificados
 app.include_router(tipoCertificado_router, dependencies=SOLO_ADMIN)

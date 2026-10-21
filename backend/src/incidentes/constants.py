@@ -21,6 +21,27 @@ class EstadoIncidente(StrEnum):
     REABIERTO = auto()
 
 
+class TipoIncidente(StrEnum):
+    EQUIPAMIENTO = "equipamiento"
+    LIMPIEZA = "limpieza"
+    EDILICIO = "edilicio"
+    MATERIA_PRIMA = "materia_prima"
+    PLAGAS = "plagas"
+    CONDUCTA = "conducta"
+    OTRO = "otro"
+
+
+ETIQUETAS_TIPO: dict[TipoIncidente, str] = {
+    TipoIncidente.EQUIPAMIENTO: "Equipamiento / Maquinaria",
+    TipoIncidente.LIMPIEZA: "Higiene y Limpieza",
+    TipoIncidente.EDILICIO: "Edilicio / Instalaciones",
+    TipoIncidente.MATERIA_PRIMA: "Materia Prima / Insumos",
+    TipoIncidente.PLAGAS: "Control de Plagas",
+    TipoIncidente.CONDUCTA: "Personal / Conducta",
+    TipoIncidente.OTRO: "Otro",
+}
+
+
 class ErrorCode:
     INCIDENTE_NO_ENCONTRADO = "El incidente no fue encontrado."
     DESCRIPCION_VACIA = "La descripción del incidente no puede estar vacía."

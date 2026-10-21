@@ -36,6 +36,8 @@ import { DetalleChecklist } from './views/checklist/verDetalle';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { ListadoIncidentes } from './views/incidentes/listado';
 import { IncidentesAbiertos } from './views/incidentes/incidentesAbiertos';
+import { EstadisticasIncidentes } from './views/incidentes/estadisticasIncidentes';
+import { ListadoCategoriasIncidentes } from './views/incidentes/categorias/listado';
 import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
 import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibracion';
 import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
@@ -108,7 +110,7 @@ function Aplicacion() {
 
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
-  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial' | 'nuevo'>('abiertos');
+  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial' | 'estadisticas' | 'categorias' | 'nuevo'>('abiertos');
   const [vistaVencimientos, setVistaVencimientos] = useState<'consolidado' | 'personal'>('consolidado');
   const [origenVencimientos, setOrigenVencimientos] = useState<'consolidado' | 'personal' | null>(null);
 
@@ -464,11 +466,27 @@ function Aplicacion() {
             ) : vistaIncidentesAdmin === 'historial' ? (
               <ListadoIncidentes
                 onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
+                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
                 onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
+              />
+            ) : vistaIncidentesAdmin === 'estadisticas' ? (
+              <EstadisticasIncidentes
+                onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onVerHistorial={() => setVistaIncidentesAdmin('historial')}
+                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
+              />
+            ) : vistaIncidentesAdmin === 'categorias' ? (
+              <ListadoCategoriasIncidentes
+                onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onVerHistorial={() => setVistaIncidentesAdmin('historial')}
+                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
               />
             ) : (
               <IncidentesAbiertos
                 onVerHistorialCompleto={() => setVistaIncidentesAdmin('historial')}
+                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
+                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
                 onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
               />
             )
