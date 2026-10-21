@@ -13,7 +13,8 @@ import {
 } from 'recharts';
 import type { ConsumoInsumo, CumplimientoResumen, Periodo } from './tipos';
 import { apiFetch } from '../../api/client';
-import '../../styles/dashboard.css';import { useColoresTema } from './useColoresTema';
+import '../../styles/dashboard.css';
+import { useColoresTema } from './useColoresTema';
 
 const UNIDADES_ESTANDAR = [
   { id: 'L', label: 'L (Litros)' },
@@ -24,21 +25,17 @@ const UNIDADES_ESTANDAR = [
 ];
 
 export const Panel: React.FC = () => {
-  // los gráficos toman los colores de la paleta y cambian con el tema
   const colores = useColoresTema();
-  // Gráfico 1: Cumplimiento
   const [periodoCumplimiento, setPeriodoCumplimiento] = useState<Periodo>('semana');
   const [cumplimiento, setCumplimiento] = useState<CumplimientoResumen | null>(null);
   const [loadingCumplimiento, setLoadingCumplimiento] = useState(true);
 
-  // Gráfico 2: Consumo de Insumos
   const [periodoInsumos, setPeriodoInsumos] = useState<Periodo>('semana');
   const [unidadInsumos, setUnidadInsumos] = useState<string>('L');
   const [consumoInsumos, setConsumoInsumos] = useState<ConsumoInsumo[]>([]);
   const [unidadesDisponibles, setUnidadesDisponibles] = useState<string[]>([]);
   const [loadingInsumos, setLoadingInsumos] = useState(true);
 
-  // Cargar cumplimiento
   useEffect(() => {
     let cancelado = false;
     const cargarCumplimiento = async () => {
@@ -60,13 +57,13 @@ export const Panel: React.FC = () => {
     };
   }, [periodoCumplimiento]);
 
-  // Cargar consumo de insumos
   useEffect(() => {
     let cancelado = false;
     const cargarInsumos = async () => {
       setLoadingInsumos(true);
       try {
-        const res = await apiFetch(`/dashboard/consumo-insumos?periodo=${periodoInsumos}&unidad=${encodeURIComponent(unidadInsumos)}`
+        const res = await apiFetch(
+          `/dashboard/consumo-insumos?periodo=${periodoInsumos}&unidad=${encodeURIComponent(unidadInsumos)}`
         );
         if (!cancelado && res.ok) {
           const data = await res.json();
@@ -87,7 +84,6 @@ export const Panel: React.FC = () => {
     };
   }, [periodoInsumos, unidadInsumos]);
 
-  // Opciones completas de unidades (estándar + detectadas en datos)
   const opcionesUnidades = [
     ...UNIDADES_ESTANDAR,
     ...unidadesDisponibles
@@ -115,7 +111,7 @@ export const Panel: React.FC = () => {
       </div>
 
       <div className="dashboard-grid">
-        {/* Tarjeta 1: Cumplimiento de Tareas */}
+        
         <div className="dashboard-card">
           <div className="dashboard-card-header">
             <h2>Cumplimiento de Tareas</h2>
@@ -188,7 +184,7 @@ export const Panel: React.FC = () => {
           )}
         </div>
 
-        {/* Tarjeta 2: Consumo de Insumos */}
+        
         <div className="dashboard-card">
           <div className="dashboard-card-header">
             <h2>Consumo de Insumos</h2>
@@ -209,9 +205,9 @@ export const Panel: React.FC = () => {
                 onChange={(e) => setUnidadInsumos(e.target.value)}
                 title="Seleccionar unidad de medida"
               >
-                {opcionesUnidades.map((opc) => (
-                  <option key={opc.id} value={opc.id}>
-                    {opc.label}
+                {opcionesUnidades.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.label}
                   </option>
                 ))}
               </select>
@@ -222,39 +218,34 @@ export const Panel: React.FC = () => {
             <p className="dashboard-sin-datos">Cargando consumo de insumos...</p>
           ) : consumoInsumos.length === 0 ? (
             <p className="dashboard-sin-datos">
-              No hay tareas completadas con consumo de insumos en {unidadInsumos} para este período.
+              No hay consumos registrados para la unidad <strong>{unidadInsumos}</strong> en el período seleccionado.
             </p>
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={consumoInsumos}>
-                <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                <XAxis
-                  dataKey="nombre"
-                  stroke={colores.textoSec}
-                  fontSize={12}
-                  interval={0}
-                  angle={-15}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis
-                  stroke={colores.textoSec}
-                  fontSize={12}
-                  unit={` ${unidadInsumos}`}
-                />
-                <Tooltip
-                  contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }} itemStyle={{ color: 'var(--color-texto)' }}
-                  cursor={{ fill: colores.suave }}
-                  formatter={(valor: any) => [`${valor} ${unidadInsumos}`, 'Consumo']}
-                  labelFormatter={(nombre: any) => `Insumo: ${nombre}`}
-                />
-                <Bar dataKey="cantidad" fill={colores.primario} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="dashboard-barras-wrapper">
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={consumoInsumos} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis
+                    dataKey="nombre"
+                    angle={-25}
+                    textAnchor="end"
+                    interval={0}
+                    height={40}
+                    tick={{ fill: colores.textoSec, fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fill: colores.textoSec, fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value) => [`${value} ${unidadInsumos}`, 'Cantidad']}
+                    contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
+                    itemStyle={{ color: 'var(--color-texto)' }}
+                  />
+                  <Bar dataKey="cantidad" fill={colores.primario} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 };
-

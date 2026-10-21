@@ -42,6 +42,7 @@ import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
 import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibracion';
 import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
+import { NotificacionesPopover } from './components/alertas/NotificacionesPopover';
 import { ListadoDocumentos } from './views/documentos/listado';
 import { DetalleDocumento } from './views/documentos/verDetalle';
 import NuevoDocumento from './views/documentos/nuevoDocumento';
@@ -206,7 +207,24 @@ function Aplicacion() {
     <SidebarProvider>
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
-      <SidebarInset style={{ padding: '32px 36px' }}>
+      <SidebarInset style={{ padding: '32px 36px', position: 'relative' }}>
+        {esAdministrador && (
+          <div
+            className="saia-top-campana"
+            style={{
+              position: 'absolute',
+              top: '24px',
+              right: '36px',
+              zIndex: 50,
+            }}
+          >
+            <NotificacionesPopover
+              onIrAIncidentes={() => cambiarModulo('incidentes')}
+              onIrAVencimientos={() => cambiarModulo('vencimientos')}
+            />
+          </div>
+        )}
+
         {modulo === 'dashboard' ? (
           <PanelDashboard />
         ) : modulo === 'vencimientos' ? (

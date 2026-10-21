@@ -12,9 +12,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuBadge,
   SidebarRail,
   SidebarTrigger,
 } from './ui/sidebar';
+import { useAlertasSistema } from '../hooks/useAlertasSistema';
 
 export type Modulo =
   | 'dashboard'
@@ -161,6 +163,7 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
 
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
   const { usuario, esAdministrador, logout } = useAuth();
+  const { totalIncidentes, incidentesCriticos, vencimientosVencidos, vencimientosProximos } = useAlertasSistema();
 
   const [tema, setTema] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('saia_tema') as 'light' | 'dark') || 'light';
@@ -284,6 +287,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
                       >
                         <span className="saia-sidebar-menu-icon">{item.icono}</span>
                         <span className="saia-sidebar-menu-label">{item.label}</span>
+                        {(() => {
+                          const conteo =
+                            item.id === 'incidentes'
+                              ? totalIncidentes
+                              : item.id === 'vencimientos'
+                              ? vencimientosVencidos + vencimientosProximos
+                              : 0;
+                          const esCritico =
+                            item.id === 'incidentes'
+                              ? incidentesCriticos > 0
+                              : item.id === 'vencimientos'
+                              ? vencimientosVencidos > 0
+                              : false;
+
+                          if (conteo <= 0) return null;
+                          return (
+                            <SidebarMenuBadge
+                              style={{
+                                backgroundColor: esCritico ? 'var(--color-error-bg)' : undefined,
+                                color: esCritico ? 'var(--color-error-texto)' : undefined,
+                                borderColor: esCritico ? 'var(--color-error)' : undefined,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {conteo}
+                            </SidebarMenuBadge>
+                          );
+                        })()}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
