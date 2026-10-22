@@ -96,9 +96,10 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
             estado: d.estado,
           }))
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelado) {
-          setError(err?.message || 'Error al cargar los vencimientos.');
+          const mensaje = err instanceof Error ? err.message : 'Error al cargar los vencimientos.';
+          setError(mensaje);
           setFilas([]);
         }
       } finally {

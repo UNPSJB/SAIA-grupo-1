@@ -151,9 +151,9 @@ function Aplicacion() {
   };
 
   // Desde la vista consolidada: salta a la pantalla del registro que vence
-  const irAlRegistroDeVencimiento = (v: any) => {
+  const irAlRegistroDeVencimiento = (v: { origen?: string; tipo?: string; referenciaId?: number; referencia_id?: number; responsable?: string }) => {
     const origen = v.origen || v.tipo;
-    const refId = v.referenciaId ?? v.referencia_id;
+    const refId = v.referenciaId ?? v.referencia_id ?? null;
     setOrigenVencimientos('consolidado');
     if (origen === 'personal') {
       const [apellido, nombre] = (v.responsable ?? '').split(', ');
@@ -206,7 +206,10 @@ function Aplicacion() {
 
       <SidebarInset style={{ padding: '32px 36px' }}>
         {modulo === 'dashboard' ? (
-          <PanelDashboard />
+          <PanelDashboard
+            onIrAlRegistro={irAlRegistroDeVencimiento}
+            onVerTodosVencimientos={() => cambiarModulo('vencimientos')}
+          />
         ) : modulo === 'vencimientos' ? (
           vistaVencimientos === 'consolidado' ? (
             <VistaConsolidadaVencimiento

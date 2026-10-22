@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from src.config import settings
 from src.certificado.models import Certificado
 from src.personal.models import Personal
+from src.equipos.models import Estado as EstadoEquipo
 from src.plan_de_calibracion.models import Plan_de_Calibracion
 from src.documentos.models import Documento
 from src.vencimientos.schemas import (
@@ -89,8 +90,12 @@ def listar_vencimientos_consolidados(
             fecha_raw = plan.fecha_vencimiento or plan.fecha_mantenimiento
             if not fecha_raw:
                 continue
-            if plan.equipo and getattr(plan.equipo, "activo", True) is False:
-                continue
+            if plan.equipo:
+                estado_eq = getattr(plan.equipo, "estado", None)
+                if estado_eq == EstadoEquipo.INACTIVO or getattr(estado_eq, "value", None) == "INACTIVO" or str(estado_eq).upper() == "INACTIVO":
+                    continue
+                if getattr(plan.equipo, "activo", True) is False:
+                    continue
             fecha_v = _a_fecha(fecha_raw)
             dias, est = _calcular_plazo(fecha_v, hoy)
             responsable = plan.equipo.nombre if plan.equipo else f"Equipo #{plan.equipo_id}"

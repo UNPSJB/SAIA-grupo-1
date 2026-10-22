@@ -1,3 +1,4 @@
+import { SeccionVencimientosTablero, type VencimientoTableroItem } from './SeccionVencimientosTablero';
 import React, { useEffect, useState } from 'react';
 import {
   Bar,
@@ -13,7 +14,8 @@ import {
 } from 'recharts';
 import type { ConsumoInsumo, CumplimientoResumen, Periodo } from './tipos';
 import { apiFetch } from '../../api/client';
-import '../../styles/dashboard.css';import { useColoresTema } from './useColoresTema';
+import '../../styles/dashboard.css';
+import { useColoresTema } from './useColoresTema';
 
 const UNIDADES_ESTANDAR = [
   { id: 'L', label: 'L (Litros)' },
@@ -23,7 +25,15 @@ const UNIDADES_ESTANDAR = [
   { id: 'UN', label: 'UN (Unidades)' },
 ];
 
-export const Panel: React.FC = () => {
+interface PanelProps {
+  onIrAlRegistro?: (vencimiento: VencimientoTableroItem) => void;
+  onVerTodosVencimientos?: () => void;
+}
+
+export const Panel: React.FC<PanelProps> = ({
+  onIrAlRegistro,
+  onVerTodosVencimientos,
+}) => {
   // los gráficos toman los colores de la paleta y cambian con el tema
   const colores = useColoresTema();
   // Gráfico 1: Cumplimiento
@@ -245,8 +255,8 @@ export const Panel: React.FC = () => {
                 <Tooltip
                   contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }} itemStyle={{ color: 'var(--color-texto)' }}
                   cursor={{ fill: colores.suave }}
-                  formatter={(valor: any) => [`${valor} ${unidadInsumos}`, 'Consumo']}
-                  labelFormatter={(nombre: any) => `Insumo: ${nombre}`}
+                  formatter={(valor) => [`${valor} ${unidadInsumos}`, 'Consumo']}
+                  labelFormatter={(nombre) => `Insumo: ${nombre}`}
                 />
                 <Bar dataKey="cantidad" fill={colores.primario} radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -254,6 +264,13 @@ export const Panel: React.FC = () => {
           )}
         </div>
       </div>
+
+      {onIrAlRegistro && (
+        <SeccionVencimientosTablero
+          onIrAlRegistro={onIrAlRegistro}
+          onVerTodos={onVerTodosVencimientos}
+        />
+      )}
     </div>
   );
 };
