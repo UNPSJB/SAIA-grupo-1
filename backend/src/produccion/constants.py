@@ -1,0 +1,17 @@
+NOMBRE_PRODUCTO_MAX = 100
+# Si dos operadores registran a la vez un lote del mismo dia pueden generar el mismo codigo;
+# la restriccion UNIQUE lo frena y se reintenta con el siguiente numero.
+INTENTOS_CODIGO_LOTE = 3
+
+
+class ErrorCode:
+    PRODUCTO_NO_ENCONTRADO = "El producto no fue encontrado."
+    PRODUCTO_REQUERIDO = "Debe indicar el producto del lote (uno existente o el nombre de uno nuevo)."
+    PRODUCTO_AMBIGUO = "Indique un producto existente o el nombre de uno nuevo, no ambos."
+    NOMBRE_PRODUCTO_VACIO = "El nombre del producto no puede estar vacío."
+    NOMBRE_PRODUCTO_DEMASIADO_LARGO = f"El nombre del producto no puede superar los {NOMBRE_PRODUCTO_MAX} caracteres."
+    CANTIDAD_INVALIDA = "La cantidad producida debe ser mayor a cero."
+    FECHA_LOTE_INVALIDA = "La fecha del lote no puede ser posterior a la fecha actual."
+    LOTE_NO_ENCONTRADO = "El lote no fue encontrado."
+    CODIGO_LOTE_NO_GENERADO = "No se pudo generar un código único para el lote. Intente nuevamente."
+    RANGO_FECHAS_INVALIDO = "La fecha 'desde' no puede ser posterior a la fecha 'hasta'."
