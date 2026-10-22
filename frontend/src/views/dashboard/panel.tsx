@@ -13,7 +13,10 @@ import {
 } from 'recharts';
 import type { ConsumoInsumo, CumplimientoResumen, Periodo } from './tipos';
 import { apiFetch } from '../../api/client';
-import '../../styles/dashboard.css';import { useColoresTema } from './useColoresTema';
+import '../../styles/dashboard.css';
+import { useColoresTema } from './useColoresTema';
+import ActivarVista_Publica from '../vistaPublica/habilitarVista';
+import VistaPublica_Habilitada from '../vistaPublica/VistaHabilitada';
 
 const UNIDADES_ESTANDAR = [
   { id: 'L', label: 'L (Litros)' },
@@ -37,6 +40,10 @@ export const Panel: React.FC = () => {
   const [consumoInsumos, setConsumoInsumos] = useState<ConsumoInsumo[]>([]);
   const [unidadesDisponibles, setUnidadesDisponibles] = useState<string[]>([]);
   const [loadingInsumos, setLoadingInsumos] = useState(true);
+  const [modalHabilitacionPublica,setModalHabilitacion]=useState(false);
+  const [vistaHabilitada,setVistaPublica]=useState(false);
+  const [qrUrlCreado, setQrUrlCreado] = useState<string | null>(null);
+  const [qrModal,setModalVerQR]=useState(false);
 
   // Cargar cumplimiento
   useEffect(() => {
@@ -109,6 +116,21 @@ export const Panel: React.FC = () => {
 
   return (
     <div className="modulo-container dashboard-container">
+
+      <div>
+        {vistaHabilitada ? (
+          <button onClick={() => {
+              setModalVerQR(true)
+          }} className="btn-activar">
+            Ver QR
+          </button>
+        ) : (
+          <button onClick={() => setModalHabilitacion(true)} className="btn-activar">
+            Activar Vista Publica
+          </button>
+        )}
+      </div>
+
       <div className="modulo-header">
         <h1>Inicio</h1>
         <div className="subtitulo">Panel de estadísticas</div>
@@ -252,9 +274,30 @@ export const Panel: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           )}
+
+          {modalHabilitacionPublica && (<div className="modal-abierto">
+                  <div className="modal-content">
+                    <ActivarVista_Publica
+                    onSuccess={(url)=> {setQrUrlCreado(url);setModalHabilitacion(false); setVistaPublica(true)}}
+                    onCancel={() => setModalHabilitacion(false)}
+                    />                                  
+              </div>
+            </div>
+          )}
+
+          {qrModal && (<div className="modal-abierto">
+                  <div className="modal-content">
+                    <VistaPublica_Habilitada
+                    qrUrl={qrUrlCreado}
+                    onSuccess={()=> {setModalVerQR(false); setVistaPublica(false)}}
+                    onCancel={() => setModalVerQR(false)}
+                    />                                  
+              </div>
+            </div>)}
         </div>
       </div>
     </div>
+
   );
 };
 
