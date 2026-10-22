@@ -26,5 +26,5 @@ def verificar_y_redirigir(identificador_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{identificador_id}", response_model=schemas.IdentificadorQR)
-async def editar_identificadorQR(identificador_id: str, ident: schemas.IdentifacadorQRUpdate, db: Session = Depends(get_db)):
-    return services.editar_identificadorQr(db, identificador_id, ident)
+async def editar_identificadorQR(identificador_id: str, db: Session = Depends(get_db)):
+    return services.editar_identificadorQr(db, identificador_id)

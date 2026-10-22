@@ -4,12 +4,13 @@ import { apiFetch } from '../../api/client';
 
 interface VistaHabilitadaProps{
     qrUrl: string | null;
+    identificadorUnico?: string | null;
     onSuccess?: () => void;
     onCancel?: () => void;
 }
 
 
-export default function VistaPublica_Habilitada({qrUrl,onSuccess,onCancel}:VistaHabilitadaProps){
+export default function VistaPublica_Habilitada({qrUrl,identificadorUnico,onSuccess,onCancel}:VistaHabilitadaProps){
     const [loading,setLoading]=useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -25,7 +26,39 @@ function handleDescargarQR() {
         link.click();
         document.body.removeChild(link);
     }
-function handleDesactivar(){
+async function handleDesactivar(){
+    setLoading(true); 
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+            const res = await apiFetch(`/identificadorQR/${identificadorUnico}/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+    
+            if(!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                let mensaje = "Error al desactivar la vista publica.";
+                if (typeof errorData.detail === "string") {
+                  mensaje = errorData.detail;
+                } else if (Array.isArray(errorData.detail)) {
+                  mensaje = errorData.detail
+                    .map((err: { msg?: string }) => err.msg || JSON.stringify(err))
+                    .join(", ");
+                }
+                throw new Error(mensaje);
+            }
+    
+            setSuccessMsg("desahabilitado exitosamente.");
+            onSuccess?.();
+        } catch (err: unknown) {
+            setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
+        } finally {
+            setLoading(false);
+        }
 
 
 }
@@ -49,8 +82,8 @@ return(
     <div className="modal-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
         <div className="form-acciones" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-          <button type="submit" className="btn-guardar"  onClick={onSuccess}>
-           Desactivar Vista Publica
+          <button type="button" className="btn-guardar" onClick={handleDesactivar} disabled={loading}>
+                {loading ? "Desactivando..." : "Desactivar Vista Publica"}
           </button>
         </div>
 

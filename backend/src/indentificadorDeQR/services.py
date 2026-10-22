@@ -32,7 +32,7 @@ def verificar_identificadorQR(db:Session,identificador_id:str) -> schemas.Identi
     return db_identQR
 
 
-def editar_identificadorQr(db:Session,identificador_id:str,ident:schemas.IdentifacadorQRUpdate)-> schemas.IdentificadorQR:
+def editar_identificadorQr(db:Session,identificador_id:str)-> schemas.IdentificadorQR:
      db_identQR = db.scalar(select(IndentificadorUnico).where(IndentificadorUnico.id_alfanumerico == identificador_id))
      
 

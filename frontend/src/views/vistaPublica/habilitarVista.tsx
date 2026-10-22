@@ -4,7 +4,7 @@ import { apiFetch } from '../../api/client';
 import { QRCodeCanvas } from 'qrcode.react';
 
 interface ActivarVistaProps{
-    onSuccess?: (qrBlobUrl: string) => void;
+    onSuccess?: (qrBlobUrl: string,idAlfanumerico:string) => void;
     onCancel?: () => void;
 }
 
@@ -59,10 +59,15 @@ async function handleGuardar() {
         }
         throw new Error(mensaje);
       }
+    const idAlfanumerico = res.headers.get("X-Identificador-Unico");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     setSuccessMsg("Vista Publica habilitada exitosamente");
-    onSuccess?.(url);
+    if (idAlfanumerico) {
+        onSuccess?.(url, idAlfanumerico);
+    } else {
+        setErrorMsg("No se pudo recuperar el identificador único del QR.");
+    }
 
 
 

@@ -44,6 +44,7 @@ export const Panel: React.FC = () => {
   const [vistaHabilitada,setVistaPublica]=useState(false);
   const [qrUrlCreado, setQrUrlCreado] = useState<string | null>(null);
   const [qrModal,setModalVerQR]=useState(false);
+  const [idAlfanumericoCreado, setIdAlfanumericoCreado] = useState<string | null>(null);
 
   // Cargar cumplimiento
   useEffect(() => {
@@ -278,7 +279,7 @@ export const Panel: React.FC = () => {
           {modalHabilitacionPublica && (<div className="modal-abierto">
                   <div className="modal-content">
                     <ActivarVista_Publica
-                    onSuccess={(url)=> {setQrUrlCreado(url);setModalHabilitacion(false); setVistaPublica(true)}}
+                    onSuccess={(url,idAlfanumerico)=> {setQrUrlCreado(url);setModalHabilitacion(false); setVistaPublica(true); setIdAlfanumericoCreado(idAlfanumerico)}}
                     onCancel={() => setModalHabilitacion(false)}
                     />                                  
               </div>
@@ -289,6 +290,7 @@ export const Panel: React.FC = () => {
                   <div className="modal-content">
                     <VistaPublica_Habilitada
                     qrUrl={qrUrlCreado}
+                    identificadorUnico={idAlfanumericoCreado}
                     onSuccess={()=> {setModalVerQR(false); setVistaPublica(false)}}
                     onCancel={() => setModalVerQR(false)}
                     />                                  
