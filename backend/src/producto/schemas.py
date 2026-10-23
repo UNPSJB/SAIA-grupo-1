@@ -6,7 +6,7 @@ from src.producto import exceptions
 
 class ProductoBase(BaseModel):
     nombre: str = Field(min_length=1, max_length=50)
-    descripcion: str = Field(min_length=1, max_length=100)
+    descripcion: Optional[str] = Field(default=None, min_length=1, max_length=100)
     unidadMedida: Optional[UnidadMedida] = None
     id_receta: Optional[int] = None
 

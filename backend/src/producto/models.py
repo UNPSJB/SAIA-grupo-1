@@ -11,7 +11,7 @@ class Producto(ModeloBase):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     nombre: Mapped[str] = mapped_column(String(50), index=True, unique=True, nullable=True)
-    descripcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=False)
+    descripcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     unidadMedida: Mapped[UnidadMedida] = mapped_column(index=True, nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

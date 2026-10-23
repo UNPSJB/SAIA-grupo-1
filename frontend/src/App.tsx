@@ -58,8 +58,12 @@ import { ListadoTiposCertificados } from './views/tipoCertificado/listado';
 import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertificado';
 import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
+import { ListadoProductos } from './views/producto/listado';
+import NuevoProducto  from './views/producto/nuevoProducto';
+import EditarProducto from './views/producto/editarDetalle';
+import { DetalleProducto } from './views/producto/verDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | "productos";
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -71,6 +75,7 @@ type VistaChecklist = 'listado' | 'detalle';
 type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
+type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -121,6 +126,9 @@ function Aplicacion() {
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
 
+  const [vistaProductos, setVistaProductos] = useState<VistaProductos>('listado');
+  const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null);
+
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setOrigenVencimientos(null);
@@ -138,6 +146,7 @@ function Aplicacion() {
     setVistaDocumentos('listado');
     setCertificadoSeleccionado(null);
     setVistaTipoCertificado('listado');
+    setVistaProductos('listado');
   };
 
   const volverAVencimientos = () => {
@@ -574,7 +583,37 @@ function Aplicacion() {
               onCancel={() => setVistaTipoCertificado('listado')}
             />
           ) : null
-        ) : null}
+        ) : modulo === 'productos' ? (
+          vistaProductos === 'listado' ? (
+            <ListadoProductos
+              onNuevoClick={() => setVistaProductos('alta')}
+              onDetalleClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('detalle');
+              }}
+              onEditarClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('editar');
+              }}
+            />
+          ) : vistaProductos === 'alta' ? (
+            <NuevoProducto
+              onSuccess={() => setVistaProductos('listado')}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          ) : vistaProductos === 'detalle' ? (
+            <DetalleProducto
+              productoId={productoSeleccionado}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          ) : (
+            <EditarProducto
+              productoId={productoSeleccionado}
+              onSuccess={() => setVistaProductos('listado')}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          )
+        ): null}
       </SidebarInset>
     </SidebarProvider>
   );
