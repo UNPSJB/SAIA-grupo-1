@@ -152,6 +152,19 @@ def crear_incidente(
         db.rollback()
         _borrar_foto(nombre_foto)
         raise
+
+    try:
+        from src.notificaciones.services import notificar_nuevo_incidente
+
+        notificar_nuevo_incidente(
+            db,
+            incidente_id=incidente.id,
+            tipo_nombre=incidente.nombre_tipo,
+            descripcion=incidente.descripcion,
+        )
+    except Exception:
+        pass
+
     return incidente
 
 
@@ -215,6 +228,18 @@ def editar_descripcion(db: Session, incidente_id: int, nueva_descripcion: str) -
     incidente.descripcion = _normalizar_descripcion(nueva_descripcion)
     db.commit()
     db.refresh(incidente)
+
+    try:
+        from src.notificaciones.services import notificar_incidente_reabierto
+
+        notificar_incidente_reabierto(
+            db,
+            incidente_id=incidente.id,
+            motivo=texto_motivo,
+        )
+    except Exception:
+        pass
+
     return incidente
 
 

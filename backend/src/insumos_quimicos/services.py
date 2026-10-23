@@ -32,6 +32,11 @@ class InsumoQuimicoService:
         db.add(nuevo)
         db.commit()
         db.refresh(nuevo)
+        try:
+            from src.notificaciones.services import notificar_stock_bajo_quimico_si_corresponde
+            notificar_stock_bajo_quimico_si_corresponde(db, nuevo)
+        except Exception:
+            pass
         return nuevo
 
     @staticmethod
@@ -42,6 +47,11 @@ class InsumoQuimicoService:
             setattr(insumo, key, value)
         db.commit()
         db.refresh(insumo)
+        try:
+            from src.notificaciones.services import notificar_stock_bajo_quimico_si_corresponde
+            notificar_stock_bajo_quimico_si_corresponde(db, insumo)
+        except Exception:
+            pass
         return insumo
 
     @staticmethod

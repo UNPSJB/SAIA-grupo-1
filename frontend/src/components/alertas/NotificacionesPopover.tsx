@@ -1,28 +1,120 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useAlertasSistema, type AlertaItem } from '../../hooks/useAlertasSistema';
-import { EtiquetaCategoria } from '../../views/incidentes/tipos';
+import { useNotificaciones, type NotificacionItem } from '../../hooks/useNotificaciones';
 
 interface NotificacionesPopoverProps {
+  onNavegar?: (notificacion: NotificacionItem) => void;
   onIrAIncidentes?: () => void;
   onIrAVencimientos?: () => void;
 }
 
+interface ConfiguracionIcono {
+  icono: string;
+  color: string;
+  fondo: string;
+}
+
+const CONFIGURACION_ICONO: Record<string, ConfiguracionIcono> = {
+  incidente_critico: {
+    icono: 'report_problem',
+    color: 'var(--color-error, #dc2626)',
+    fondo: 'rgba(220, 38, 38, 0.12)',
+  },
+  evento_incidente: {
+    icono: 'warning',
+    color: '#d97706',
+    fondo: 'rgba(217, 119, 6, 0.12)',
+  },
+  vencimiento_personal: {
+    icono: 'badge',
+    color: 'var(--color-primario, #2563eb)',
+    fondo: 'rgba(37, 99, 235, 0.12)',
+  },
+  vencimiento_equipo: {
+    icono: 'build',
+    color: '#0284c7',
+    fondo: 'rgba(2, 132, 199, 0.12)',
+  },
+  vencimiento_documento: {
+    icono: 'description',
+    color: '#6366f1',
+    fondo: 'rgba(99, 102, 241, 0.12)',
+  },
+  vencimiento_elemento_limpieza: {
+    icono: 'cleaning_services',
+    color: '#0d9488',
+    fondo: 'rgba(13, 148, 136, 0.12)',
+  },
+  vencimiento_plagas_agua: {
+    icono: 'water_drop',
+    color: '#0284c7',
+    fondo: 'rgba(2, 132, 199, 0.12)',
+  },
+  evento_tarea_revision: {
+    icono: 'pending_actions',
+    color: '#d97706',
+    fondo: 'rgba(217, 119, 6, 0.12)',
+  },
+  evento_tarea_reasignada: {
+    icono: 'assignment_ind',
+    color: '#2563eb',
+    fondo: 'rgba(37, 99, 235, 0.12)',
+  },
+  evento_stock_quimico: {
+    icono: 'science',
+    color: '#ea580c',
+    fondo: 'rgba(234, 88, 12, 0.12)',
+  },
+  general: {
+    icono: 'notifications',
+    color: 'var(--color-texto-sec, #64748b)',
+    fondo: 'rgba(100, 116, 139, 0.12)',
+  },
+};
+
+const formatearFechaHora = (fechaIso: string): string => {
+  try {
+    const d = new Date(fechaIso);
+    const ahora = new Date();
+    const diffMs = ahora.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+
+    if (diffMin < 1) return 'Hace un momento';
+    if (diffMin < 60) return `Hace ${diffMin} ${diffMin === 1 ? 'minuto' : 'minutos'}`;
+
+    const diffHoras = Math.floor(diffMin / 60);
+    if (diffHoras < 24) return `Hace ${diffHoras} ${diffHoras === 1 ? 'hora' : 'horas'}`;
+
+    const diffDias = Math.floor(diffHoras / 24);
+    if (diffDias === 1) return 'Ayer';
+    if (diffDias < 7) return `Hace ${diffDias} días`;
+
+    const dia = String(d.getDate()).padStart(2, '0');
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const anio = d.getFullYear();
+    const hora = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${dia}/${mes}/${anio} ${hora}:${min}`;
+  } catch {
+    return fechaIso;
+  }
+};
+
 export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
+  onNavegar,
   onIrAIncidentes,
   onIrAVencimientos,
 }) => {
   const {
-    alertas,
-    totalAlertas,
-    totalCriticas,
-    totalIncidentes,
-    totalVencimientos,
+    notificaciones,
+    totalNoLeidas,
     cargando,
     refrescar,
-  } = useAlertasSistema();
+    marcarComoLeida,
+    marcarTodasComoLeidas,
+  } = useNotificaciones();
 
   const [abierto, setAbierto] = useState(false);
-  const [filtro, setFiltro] = useState<'todas' | 'incidentes' | 'vencimientos' | 'criticas'>('todas');
+  const [filtro, setFiltro] = useState<'todas' | 'no_leidas'>('todas');
   const contenedorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -49,19 +141,23 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
     };
   }, [abierto]);
 
-  const alertasFiltradas = alertas.filter((a) => {
-    if (filtro === 'incidentes') return a.tipo === 'incidente';
-    if (filtro === 'vencimientos') return a.tipo === 'vencimiento';
-    if (filtro === 'criticas') return a.severidad === 'critica';
+  const notificacionesFiltradas = notificaciones.filter((n) => {
+    if (filtro === 'no_leidas') return !n.leida;
     return true;
   });
 
-  const handleSeleccionarAlerta = (alerta: AlertaItem) => {
+  const handleSeleccionarNotificacion = async (notif: NotificacionItem) => {
+    if (!notif.leida) {
+      await marcarComoLeida(notif.id);
+    }
     setAbierto(false);
-    if (alerta.tipo === 'incidente') {
-      onIrAIncidentes?.();
-    } else {
-      onIrAVencimientos?.();
+
+    if (onNavegar) {
+      onNavegar(notif);
+    } else if (notif.tipo.startsWith('vencimiento_') && onIrAVencimientos) {
+      onIrAVencimientos();
+    } else if ((notif.tipo.includes('revision') || notif.tipo.includes('incidente')) && onIrAIncidentes) {
+      onIrAIncidentes();
     }
   };
 
@@ -70,26 +166,16 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
       <button
         type="button"
         onClick={() => setAbierto((prev) => !prev)}
-        className={`saia-campana-btn ${abierto ? 'abierto' : ''} ${totalCriticas > 0 ? 'tiene-criticas' : ''}`}
-        aria-label={`Alertas (${totalAlertas})`}
+        className={`saia-campana-btn ${abierto ? 'abierto' : ''} ${totalNoLeidas > 0 ? 'tiene-criticas' : ''}`}
+        aria-label={`Notificaciones (${totalNoLeidas} no leídas)`}
         aria-expanded={abierto}
-        title="Centro de Alertas"
+        title="Centro de Notificaciones"
       >
-        <svg
-          viewBox="0 0 24 24"
-          width="18"
-          height="18"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-        </svg>
+        <span className="material-symbols-outlined" style={{ fontSize: '20px', lineHeight: 1 }}>
+          notifications
+        </span>
 
-        {totalAlertas > 0 && (
+        {totalNoLeidas > 0 && (
           <span
             style={{
               position: 'absolute',
@@ -101,17 +187,15 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
               borderRadius: '9999px',
               fontSize: '10.5px',
               fontWeight: 700,
-              backgroundColor: totalCriticas > 0 ? 'var(--color-error)' : 'var(--color-alerta)',
+              backgroundColor: 'var(--color-error)',
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: totalCriticas > 0
-                ? '0 0 0 2px var(--color-superficie), 0 0 8px rgba(239, 68, 68, 0.4)'
-                : '0 0 0 2px var(--color-superficie)',
+              boxShadow: '0 0 0 2px var(--color-superficie), 0 0 8px rgba(239, 68, 68, 0.4)',
             }}
           >
-            {totalAlertas > 99 ? '99+' : totalAlertas}
+            {totalNoLeidas > 99 ? '99+' : totalNoLeidas}
           </span>
         )}
       </button>
@@ -130,24 +214,46 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-h)' }}>
-                Alertas
+                Notificaciones
               </span>
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  padding: '2px 7px',
-                  borderRadius: '9999px',
-                  backgroundColor: totalCriticas > 0 ? 'var(--color-error-bg)' : 'var(--color-fondo)',
-                  color: totalCriticas > 0 ? 'var(--color-error-texto)' : 'var(--color-texto-sec)',
-                  border: '1px solid var(--color-borde)',
-                }}
-              >
-                {totalAlertas} {totalAlertas === 1 ? 'pendiente' : 'pendientes'}
-              </span>
+              {totalNoLeidas > 0 && (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 7px',
+                    borderRadius: '9999px',
+                    backgroundColor: 'var(--color-error-bg)',
+                    color: 'var(--color-error-texto)',
+                    border: '1px solid var(--color-error)',
+                  }}
+                >
+                  {totalNoLeidas} {totalNoLeidas === 1 ? 'nueva' : 'nuevas'}
+                </span>
+              )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {totalNoLeidas > 0 && (
+                <button
+                  type="button"
+                  onClick={() => marcarTodasComoLeidas()}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-primario)',
+                    cursor: 'pointer',
+                    fontSize: '11.5px',
+                    fontWeight: 600,
+                    padding: '4px 6px',
+                    borderRadius: '4px',
+                  }}
+                  title="Marcar todas como leídas"
+                >
+                  Marcar leídas
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => refrescar()}
@@ -162,19 +268,17 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
                   display: 'inline-flex',
                   alignItems: 'center',
                 }}
-                title="Actualizar alertas"
+                title="Actualizar notificaciones"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="14"
-                  height="14"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  style={{ animation: cargando ? 'spin 1s linear infinite' : 'none' }}
+                <span
+                  className="material-symbols-outlined"
+                  style={{
+                    fontSize: '18px',
+                    animation: cargando ? 'spin 1s linear infinite' : 'none',
+                  }}
                 >
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                </svg>
+                  refresh
+                </span>
               </button>
 
               <button
@@ -186,12 +290,14 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
                   color: 'var(--color-texto-sec)',
                   cursor: 'pointer',
                   padding: '4px',
-                  fontSize: '13px',
-                  lineHeight: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
                 }}
                 title="Cerrar panel"
               >
-                ✕
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  close
+                </span>
               </button>
             </div>
           </div>
@@ -200,7 +306,7 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
             style={{
               display: 'flex',
               gap: '4px',
-              padding: '8px 12px',
+              padding: '6px 12px',
               borderBottom: '1px solid var(--color-borde)',
               backgroundColor: 'var(--color-fondo)',
             }}
@@ -211,39 +317,16 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
               className={`filtro-segmento-btn ${filtro === 'todas' ? 'activo' : ''}`}
               style={{ flex: 1, padding: '4px 6px', fontSize: '11.5px', borderRadius: '6px' }}
             >
-              Todas ({totalAlertas})
+              Todas ({notificaciones.length})
             </button>
             <button
               type="button"
-              onClick={() => setFiltro('incidentes')}
-              className={`filtro-segmento-btn ${filtro === 'incidentes' ? 'activo' : ''}`}
+              onClick={() => setFiltro('no_leidas')}
+              className={`filtro-segmento-btn ${filtro === 'no_leidas' ? 'activo' : ''}`}
               style={{ flex: 1, padding: '4px 6px', fontSize: '11.5px', borderRadius: '6px' }}
             >
-              Incidentes ({totalIncidentes})
+              No leídas ({totalNoLeidas})
             </button>
-            <button
-              type="button"
-              onClick={() => setFiltro('vencimientos')}
-              className={`filtro-segmento-btn ${filtro === 'vencimientos' ? 'activo' : ''}`}
-              style={{ flex: 1, padding: '4px 6px', fontSize: '11.5px', borderRadius: '6px' }}
-            >
-              Vencim. ({totalVencimientos})
-            </button>
-            {totalCriticas > 0 && (
-              <button
-                type="button"
-                onClick={() => setFiltro('criticas')}
-                className={`filtro-segmento-btn ${filtro === 'criticas' ? 'activo' : ''}`}
-                style={{
-                  padding: '4px 8px',
-                  fontSize: '11.5px',
-                  borderRadius: '6px',
-                  color: 'var(--color-error-texto)',
-                }}
-              >
-                Críticas ({totalCriticas})
-              </button>
-            )}
           </div>
 
           <div
@@ -251,112 +334,145 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
               flex: 1,
               overflowY: 'auto',
               maxHeight: '380px',
-              padding: '6px 8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
+              padding: '4px 0',
             }}
           >
-            {cargando && alertas.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
-                Sincronizando alertas...
+            {cargando && notificaciones.length === 0 ? (
+              <div
+                style={{
+                  padding: '36px 16px',
+                  textAlign: 'center',
+                  color: 'var(--color-texto-sec)',
+                  fontSize: '13px',
+                }}
+              >
+                Cargando notificaciones...
               </div>
-            ) : alertasFiltradas.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--color-texto-sec)' }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: '4px' }}>✨</div>
-                <div style={{ fontWeight: 600, color: 'var(--text-h)', fontSize: '13px' }}>
-                  Sin alertas pendientes
+            ) : notificacionesFiltradas.length === 0 ? (
+              <div
+                style={{
+                  padding: '36px 16px',
+                  textAlign: 'center',
+                  color: 'var(--color-texto-sec)',
+                }}
+              >
+                <div style={{ margin: '0 auto 8px', color: 'var(--color-texto-sec)' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '28px' }}>
+                    notifications_off
+                  </span>
                 </div>
-                <div style={{ fontSize: '12px', marginTop: '2px' }}>
-                  No hay incidentes abiertos ni vencimientos en riesgo.
-                </div>
+                <strong style={{ display: 'block', color: 'var(--text-h)', fontSize: '13px', marginBottom: '4px' }}>
+                  Sin notificaciones
+                </strong>
+                <span style={{ fontSize: '12px' }}>
+                  {filtro === 'no_leidas'
+                    ? 'No tienes notificaciones pendientes de lectura.'
+                    : 'No hay notificaciones registradas.'}
+                </span>
               </div>
             ) : (
-              alertasFiltradas.map((alerta) => {
-                const esCritica = alerta.severidad === 'critica';
-                const esAlta = alerta.severidad === 'alta';
-
-                const colorBorde = esCritica
-                  ? 'var(--color-error)'
-                  : esAlta
-                  ? 'var(--color-alerta)'
-                  : 'var(--color-primario)';
+              notificacionesFiltradas.map((notif) => {
+                const conf = CONFIGURACION_ICONO[notif.tipo] || CONFIGURACION_ICONO.general;
+                const esNoLeida = !notif.leida;
 
                 return (
                   <div
-                    key={alerta.id}
-                    onClick={() => handleSeleccionarAlerta(alerta)}
+                    key={notif.id}
+                    onClick={() => handleSeleccionarNotificacion(notif)}
                     style={{
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-borde)',
-                      borderLeft: `3.5px solid ${colorBorde}`,
-                      backgroundColor: 'var(--color-superficie)',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      padding: '10px 14px',
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease',
+                      borderBottom: '1px solid var(--color-borde)',
+                      backgroundColor: esNoLeida
+                        ? 'color-mix(in srgb, var(--color-primario) 6%, var(--color-superficie))'
+                        : 'transparent',
+                      borderLeft: esNoLeida ? '3px solid var(--color-primario)' : '3px solid transparent',
+                      transition: 'background-color 0.15s ease',
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--color-fondo)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--color-superficie)';
-                    }}
-                    title="Clic para ir a resolver"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {alerta.tipo === 'incidente' ? (
-                          <EtiquetaCategoria
-                            nombre={alerta.categoria}
-                            id={alerta.categoriaId}
-                            size="sm"
-                          />
-                        ) : (
-                          <span
-                            style={{
-                              fontSize: '10.5px',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              backgroundColor: esCritica ? 'var(--color-error-bg)' : 'var(--color-alerta-bg)',
-                              color: esCritica ? 'var(--color-error-texto)' : 'var(--color-alerta-texto)',
-                              border: `1px solid ${colorBorde}`,
-                            }}
-                          >
-                            {alerta.categoria}
-                          </span>
-                        )}
-                        <span style={{ fontSize: '11px', color: esCritica ? 'var(--color-error-texto)' : 'var(--color-texto-sec)', fontWeight: 600 }}>
-                          {alerta.tiempoTexto}
-                        </span>
-                      </div>
-
-                      <span style={{ fontSize: '11px', color: 'var(--color-primario)', fontWeight: 600 }}>
-                        Ir →
+                    <div
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        backgroundColor: conf.fondo,
+                        color: conf.color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        marginTop: '2px',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                        {conf.icono}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-h)', marginTop: '2px' }}>
-                      {alerta.titulo}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '6px',
+                          marginBottom: '2px',
+                        }}
+                      >
+                        <strong
+                          style={{
+                            fontSize: '12.5px',
+                            color: esNoLeida ? 'var(--text-h)' : 'var(--color-texto)',
+                            fontWeight: esNoLeida ? 700 : 500,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {notif.titulo}
+                        </strong>
+
+                        <span
+                          style={{
+                            fontSize: '10.5px',
+                            color: 'var(--color-texto-sec)',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {formatearFechaHora(notif.fecha)}
+                        </span>
+                      </div>
+
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: '12px',
+                          lineHeight: 1.35,
+                          color: esNoLeida ? 'var(--color-texto)' : 'var(--color-texto-sec)',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {notif.mensaje}
+                      </p>
                     </div>
 
-                    <div
-                      style={{
-                        fontSize: '11.5px',
-                        color: 'var(--color-texto-sec)',
-                        lineHeight: 1.35,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {alerta.descripcion}
-                    </div>
+                    {esNoLeida && (
+                      <span
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '9999px',
+                          backgroundColor: 'var(--color-primario)',
+                          flexShrink: 0,
+                          marginTop: '6px',
+                        }}
+                        title="No leída"
+                      />
+                    )}
                   </div>
                 );
               })
@@ -365,50 +481,15 @@ export const NotificacionesPopover: React.FC<NotificacionesPopoverProps> = ({
 
           <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 14px',
-              borderTop: '1px solid var(--color-borde)',
+              padding: '8px 16px',
               backgroundColor: 'var(--color-fondo)',
-              fontSize: '11.5px',
+              borderTop: '1px solid var(--color-borde)',
+              fontSize: '11px',
+              color: 'var(--color-texto-sec)',
+              textAlign: 'center',
             }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                setAbierto(false);
-                onIrAIncidentes?.();
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--color-primario)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              Ver incidentes abiertos ({totalIncidentes})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAbierto(false);
-                onIrAVencimientos?.();
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--color-primario)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              Ver vencimientos ({totalVencimientos})
-            </button>
+            Notificaciones automáticas del sistema
           </div>
         </div>
       )}

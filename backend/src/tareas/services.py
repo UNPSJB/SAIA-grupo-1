@@ -44,11 +44,15 @@ def obtener_tarea(db: Session, tarea_id: int) -> schemas.Tarea:
 def editar_tarea(db: Session, tarea_id: int, tarea: schemas.TareaUpdate) -> schemas.Tarea:
     db_tarea = obtener_tarea(db, tarea_id)
     validar_personal(db, tarea.personal_id)
+    anterior_id = db_tarea.personal_id
     db.execute(
         update(Tarea).where(Tarea.id == tarea_id).values(**tarea.model_dump())
     )
     db.commit()
     db.refresh(db_tarea)
+    if anterior_id != tarea.personal_id:
+        from src.notificaciones.services import notificar_tarea_reasignada
+        notificar_tarea_reasignada(db, db_tarea, tarea.personal_id)
     return db_tarea
 
 def eliminar_tarea(db: Session, tarea_id: int) -> schemas.Tarea:

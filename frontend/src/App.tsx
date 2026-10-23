@@ -43,6 +43,7 @@ import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibra
 import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
 import { NotificacionesPopover } from './components/alertas/NotificacionesPopover';
+import type { NotificacionItem } from './hooks/useNotificaciones';
 import { ListadoDocumentos } from './views/documentos/listado';
 import { DetalleDocumento } from './views/documentos/verDetalle';
 import NuevoDocumento from './views/documentos/nuevoDocumento';
@@ -153,10 +154,18 @@ function Aplicacion() {
     setModulo('vencimientos');
   };
 
+interface RegistroVencimientoRef {
+  origen?: string;
+  tipo?: string;
+  referenciaId?: number;
+  referencia_id?: number;
+  responsable?: string;
+}
+
   // Desde la vista consolidada: salta a la pantalla del registro que vence
-  const irAlRegistroDeVencimiento = (v: any) => {
+  const irAlRegistroDeVencimiento = (v: RegistroVencimientoRef) => {
     const origen = v.origen || v.tipo;
-    const refId = v.referenciaId ?? v.referencia_id;
+    const refId = v.referenciaId ?? v.referencia_id ?? null;
     setOrigenVencimientos('consolidado');
     if (origen === 'personal') {
       const [apellido, nombre] = (v.responsable ?? '').split(', ');
@@ -203,27 +212,102 @@ function Aplicacion() {
     setModulo('personas');
   };
 
+  const irANotificacion = (notif: NotificacionItem) => {
+    const { entidad_tipo, entidad_id, tipo } = notif;
+
+    if (entidad_tipo === 'personal' && entidad_id && esAdministrador) {
+      setModulo('personas');
+      setLegajoSeleccionado(entidad_id);
+      setVistaPersonas('certificados');
+      return;
+    }
+
+    if (entidad_tipo === 'equipo' && entidad_id && esAdministrador) {
+      setModulo('planDeCalibracion');
+      setPlanCalibracionSeleccionado(entidad_id);
+      setVistaPlanCalibracion('detalle');
+      return;
+    }
+
+    if (entidad_tipo === 'documento' && entidad_id) {
+      setModulo('documentos');
+      setDocumentoSeleccionado(entidad_id);
+      setVistaDocumentos('detalle');
+      return;
+    }
+
+    if (entidad_tipo === 'elemento_limpieza' && esAdministrador) {
+      setModulo('elementosDeLimpieza');
+      if (entidad_id) {
+        setElementoSeleccionado(entidad_id);
+        setVistaElementos('detalle');
+      } else {
+        setVistaElementos('listado');
+      }
+      return;
+    }
+
+    if (entidad_tipo === 'insumo_quimico' && esAdministrador) {
+      setModulo('insumos_quimicos');
+      setVistaInsumosQuimicos('listado');
+      return;
+    }
+
+    if (entidad_tipo === 'checklist' && entidad_id) {
+      setModulo('checklist');
+      setChecklistSeleccionado(entidad_id);
+      setVistaChecklist('detalle');
+      return;
+    }
+
+    if (entidad_tipo === 'tarea') {
+      setModulo('checklist');
+      setVistaChecklist('listado');
+      return;
+    }
+
+    if ((entidad_tipo === 'incidente' || tipo === 'incidente_critico' || tipo === 'evento_incidente') && esAdministrador) {
+      setModulo('incidentes');
+      setVistaIncidentesAdmin('abiertos');
+      return;
+    }
+
+    if (tipo.startsWith('vencimiento_') && esAdministrador) {
+      cambiarModulo('vencimientos');
+      return;
+    }
+
+    if (tipo === 'evento_stock_quimico' && esAdministrador) {
+      cambiarModulo('insumos_quimicos');
+      return;
+    }
+
+    if (tipo === 'evento_tarea_revision' || tipo === 'evento_tarea_reasignada') {
+      cambiarModulo('checklist');
+      return;
+    }
+  };
+
   return (
     <SidebarProvider>
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
       <SidebarInset style={{ padding: '32px 36px', position: 'relative' }}>
-        {esAdministrador && (
-          <div
-            className="saia-top-campana"
-            style={{
-              position: 'absolute',
-              top: '24px',
-              right: '36px',
-              zIndex: 50,
-            }}
-          >
-            <NotificacionesPopover
-              onIrAIncidentes={() => cambiarModulo('incidentes')}
-              onIrAVencimientos={() => cambiarModulo('vencimientos')}
-            />
-          </div>
-        )}
+        <div
+          className="saia-top-campana"
+          style={{
+            position: 'absolute',
+            top: '24px',
+            right: '36px',
+            zIndex: 50,
+          }}
+        >
+          <NotificacionesPopover
+            onNavegar={irANotificacion}
+            onIrAIncidentes={() => cambiarModulo('incidentes')}
+            onIrAVencimientos={() => cambiarModulo('vencimientos')}
+          />
+        </div>
 
         {modulo === 'dashboard' ? (
           <PanelDashboard />

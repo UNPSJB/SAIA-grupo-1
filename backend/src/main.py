@@ -34,6 +34,7 @@ from src.vencimientos.router import router as vencimientos_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 from src.documentos.router import router as documentos_router
+from src.notificaciones.router import router as notificaciones_router
 
 
 ENV = settings.ENV.upper()
@@ -49,6 +50,12 @@ async def db_creation_lifespan(app: FastAPI):
         # Usuarios admin, operador y adminopp compartidos por el equipo (cada integrante tiene su propia base)
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
+    with SessionLocal() as db:
+        try:
+            from src.notificaciones.services import revisar_y_generar_vencimientos
+            revisar_y_generar_vencimientos(db)
+        except Exception:
+            pass
     yield
 
 
@@ -100,4 +107,5 @@ app.include_router(plan_de_calibracion_router)
 app.include_router(sectores_router, prefix="/sectores", tags=["Sectores"], dependencies=SOLO_ADMIN)
 app.include_router(calibracion_realizada_router)
 app.include_router(documentos_router, dependencies=SESION)
+app.include_router(notificaciones_router, dependencies=SESION)
 
