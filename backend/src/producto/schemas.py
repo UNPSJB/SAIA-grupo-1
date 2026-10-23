@@ -48,5 +48,6 @@ class ProductoResponse(ProductoBase):
     id: int = Field(ge=0)
 
     nombre_receta: Optional[str] = None
+    activo: bool
 
     model_config = ConfigDict(from_attributes=True)
