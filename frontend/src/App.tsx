@@ -58,8 +58,11 @@ import { ListadoTiposCertificados } from './views/tipoCertificado/listado';
 import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertificado';
 import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
+import { NuevoLote } from './views/produccion/nuevoLote';
+import { AsociarInsumos } from './views/produccion/asociarInsumos';
+import type { LoteProduccion } from './views/produccion/tipos';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'produccion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -121,8 +124,12 @@ function Aplicacion() {
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
 
+  // lote recién registrado al que se le van a asociar insumos (null = se está en el formulario)
+  const [loteParaAsociar, setLoteParaAsociar] = useState<LoteProduccion | null>(null);
+
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
+    setLoteParaAsociar(null);
     setOrigenVencimientos(null);
     setVistaEquipos('listado');
     setVistaSectores('listado');
@@ -474,6 +481,23 @@ function Aplicacion() {
             )
           ) : (
             <NuevoIncidente />
+          )
+        ) : modulo === 'produccion' ? (
+          // registrar lotes es del operador; un administrador puro solo consulta (el historial es otra historia)
+          !esOperador ? (
+            <div className="modulo-container formulario-box">
+              <div className="modulo-header">
+                <h1>Producción</h1>
+                <div className="subtitulo">Solo consulta</div>
+              </div>
+              <div className="alerta-error">
+                Tu perfil solo permite consultar. El registro de lotes lo hace el personal operativo.
+              </div>
+            </div>
+          ) : loteParaAsociar ? (
+            <AsociarInsumos lote={loteParaAsociar} onVolver={() => setLoteParaAsociar(null)} />
+          ) : (
+            <NuevoLote onAsociarInsumos={setLoteParaAsociar} />
           )
         ) : modulo === 'documentos' ? (
           vistaDocumentos === 'listado' ? (

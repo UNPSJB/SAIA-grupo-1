@@ -1,0 +1,41 @@
+.lote-resultado {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.25rem 1.5rem;
+  background-color: var(--color-exito-bg);
+  color: var(--color-exito-texto);
+  border: 1px solid color-mix(in srgb, var(--color-exito) 35%, transparent);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.lote-resultado-etiqueta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+}
+
+.lote-resultado-codigo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lote-resultado-detalle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 1rem;
+  margin: 0.75rem 0 0 0;
+}
+
+.lote-resultado-detalle dt {
+  font-weight: 700;
+}
+
+.lote-resultado-detalle dd {
+  margin: 0;
+}
