@@ -20,6 +20,7 @@ import { NuevoInsumoQuimico } from './views/insumos_quimicos/nuevoInsumoQuimico'
 import { EditarDetalle as EditarInsumoQuimico } from './views/insumos_quimicos/editarDetalle';
 import { VerDetalle as VerDetalleInsumoQuimico } from './views/insumos_quimicos/verDetalle';
 import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
+import { ConsumoHistoricoInsumos } from './views/insumos_quimicos/ConsumoHistoricoInsumos';
 
 import { Sidebar } from './components/Sidebar';
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar';
@@ -64,7 +65,7 @@ type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar' | 'certificados' | 'nuevo_certificado' | 'editar_certificado' | 'detalle_certificado';
-type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar' | 'consumo_historico';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
@@ -376,6 +377,14 @@ function Aplicacion() {
                 setQuimicoSeleccionado(insumo);
                 setVistaInsumosQuimicos('detalle');
               }}
+              onVerConsumoHistorico={(insumo) => {
+                if (insumo) {
+                  setQuimicoSeleccionado(insumo);
+                } else {
+                  setQuimicoSeleccionado(null);
+                }
+                setVistaInsumosQuimicos('consumo_historico');
+              }}
             />
           ) : vistaInsumosQuimicos === 'alta' ? (
             <NuevoInsumoQuimico
@@ -393,6 +402,11 @@ function Aplicacion() {
               insumo={quimicoSeleccionado}
               onVolver={volverAListadoQuimicos}
               onActualizado={volverAListadoQuimicos}
+            />
+          ) : vistaInsumosQuimicos === 'consumo_historico' ? (
+            <ConsumoHistoricoInsumos
+              onVolver={volverAListadoQuimicos}
+              insumoIdInicial={quimicoSeleccionado?.id}
             />
           ) : null
         ) : modulo === 'elementosDeLimpieza' ? (

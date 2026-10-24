@@ -13,3 +13,7 @@ class InsumoQuimicoDuplicateNameException(InsumoQuimicoException):
 class InsumoQuimicoInvalidStockException(InsumoQuimicoException):
     def __init__(self):
         super().__init__("El stock no puede ser menor a cero.")
+
+class RangoFechasInvalidoException(InsumoQuimicoException):
+    def __init__(self, mensaje: str = "La fecha 'desde' no puede ser posterior a la fecha 'hasta'."):
+        super().__init__(mensaje)

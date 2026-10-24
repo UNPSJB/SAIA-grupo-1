@@ -100,31 +100,31 @@ INSUMOS = [
 # (nombre, tipo, unidad, stock)
 INSUMOS_QUIMICOS = [
     # Líquidos en Litros (L)
-    ("Lavandina Concentrada 55g", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 80.0),
-    ("Detergente Neutro Espumante", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 50.0),
-    ("Amonio Cuaternario 5ta Generacion", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 40.0),
-    ("Desengrasante Alcalino Pesado", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.LITROS, 30.0),
-    ("Sanitizante Clorado Liquido", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.LITROS, 25.0),
+    ("Lavandina Concentrada 55g", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 80.0, "Clorox Profesional"),
+    ("Detergente Neutro Espumante", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 50.0, "Spartan Chemical"),
+    ("Amonio Cuaternario 5ta Generacion", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 40.0, "Ecolab"),
+    ("Desengrasante Alcalino Pesado", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.LITROS, 30.0, "Diversey"),
+    ("Sanitizante Clorado Liquido", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.LITROS, 25.0, "Ecolab"),
     
     # Líquidos y Sprays en Mililitros (ML)
-    ("Alcohol Isopropilico 70 Spray", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.MILILITROS, 5000.0),
-    ("Limpiavidrios Antiestatico", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 3500.0),
-    ("Jabon Antibacterial Clorhexidina", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 4000.0),
-    ("Desinfectante Concentrado Peracetico", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.MILILITROS, 2000.0),
+    ("Alcohol Isopropilico 70 Spray", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.MILILITROS, 5000.0, "Química del Sur"),
+    ("Limpiavidrios Antiestatico", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 3500.0, "Spartan Chemical"),
+    ("Jabon Antibacterial Clorhexidina", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 4000.0, "Diversey"),
+    ("Desinfectante Concentrado Peracetico", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.MILILITROS, 2000.0, "Ecolab"),
     
     # Sólidos y Polvos en Kilogramos (KG)
-    ("Soda Caustica en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 40.0),
-    ("Detergente en Polvo Enzimatico", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.KILOGRAMOS, 35.0),
-    ("Hipoclorito de Calcio Granulado", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.KILOGRAMOS, 20.0),
+    ("Soda Caustica en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 40.0, "Química Industrial"),
+    ("Detergente en Polvo Enzimatico", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.KILOGRAMOS, 35.0, "Spartan Chemical"),
+    ("Hipoclorito de Calcio Granulado", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.KILOGRAMOS, 20.0, "Clorox Profesional"),
     
     # Sólidos en Gramos (G)
-    ("Pastillas Efervescentes Cloradas", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.GRAMOS, 1500.0),
-    ("Polvo Abrasivo Sanitizante", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.GRAMOS, 2500.0),
+    ("Pastillas Efervescentes Cloradas", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.GRAMOS, 1500.0, "Química del Sur"),
+    ("Polvo Abrasivo Sanitizante", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.GRAMOS, 2500.0, "Diversey"),
     
     # Unidades y Paquetes (UN)
-    ("Toallitas Desinfectantes con Alcohol", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.UNIDADES, 60.0),
-    ("Pastillas Sanitizantes de Cisterna", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.UNIDADES, 50.0),
-    ("Bloque Desincrustante Quimico", TipoQuimicoEnum.OTRO, UnidadQuimico.UNIDADES, 24.0),
+    ("Toallitas Desinfectantes con Alcohol", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.UNIDADES, 60.0, "Química del Sur"),
+    ("Pastillas Sanitizantes de Cisterna", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.UNIDADES, 50.0, "Ecolab"),
+    ("Bloque Desincrustante Quimico", TipoQuimicoEnum.OTRO, UnidadQuimico.UNIDADES, 24.0, "Spartan Chemical"),
 ]
 
 
@@ -171,8 +171,13 @@ def main() -> None:
         ))
 
     print("Creando insumos quimicos...")
-    for nombre, tipo, unidad, stock in INSUMOS_QUIMICOS:
-        InsumoQuimicoService.create(db, InsumoQuimicoCreate(nombre=nombre, tipo=tipo, unidad_medida=unidad, stock_actual=stock))
+    for item in INSUMOS_QUIMICOS:
+        if len(item) == 5:
+            nombre, tipo, unidad, stock, proveedor = item
+        else:
+            nombre, tipo, unidad, stock = item
+            proveedor = None
+        InsumoQuimicoService.create(db, InsumoQuimicoCreate(nombre=nombre, tipo=tipo, unidad_medida=unidad, stock_actual=stock, proveedor=proveedor))
 
     print("Creando sectores...")
     s_salon = crear_sector(db, SectorCreate(nombre="Salon Principal"))
