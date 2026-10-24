@@ -1,7 +1,9 @@
+from datetime import date
 from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
 Periodo = Literal["dia", "diaria", "diario", "semana", "mes"]
+AgrupacionGrafico = Literal["dia", "semana"]
 
 
 class CumplimientoResumen(BaseModel):
@@ -28,3 +30,26 @@ class DashboardResumen(BaseModel):
     consumo_insumos: List[ConsumoInsumo]
     unidades_disponibles: List[str] = Field(default_factory=list)
     unidad_actual: Optional[str] = None
+
+
+class PuntoCumplimiento(BaseModel):
+    fecha: Optional[date] = None
+    fecha_inicio: Optional[date] = None
+    fecha_fin: Optional[date] = None
+    etiqueta: str
+    total_checklists: int
+    total_tareas: int
+    tareas_completadas: int
+    tareas_pendientes: int
+    porcentaje: float
+
+
+class GraficoCumplimientoResponse(BaseModel):
+    agrupacion: AgrupacionGrafico
+    desde: date
+    hasta: date
+    total_checklists: int
+    total_tareas: int
+    tareas_completadas: int
+    promedio_cumplimiento: float
+    puntos: List[PuntoCumplimiento]

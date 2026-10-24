@@ -13,7 +13,9 @@ import {
 } from 'recharts';
 import type { ConsumoInsumo, CumplimientoResumen, Periodo } from './tipos';
 import { apiFetch } from '../../api/client';
-import '../../styles/dashboard.css';import { useColoresTema } from './useColoresTema';
+import '../../styles/dashboard.css';
+import { useColoresTema } from './useColoresTema';
+import { GraficoCumplimientoLimpieza } from './GraficoCumplimientoLimpieza';
 
 const UNIDADES_ESTANDAR = [
   { id: 'L', label: 'L (Litros)' },
@@ -254,6 +256,8 @@ export const Panel: React.FC = () => {
           )}
         </div>
       </div>
+
+      <GraficoCumplimientoLimpieza />
     </div>
   );
 };

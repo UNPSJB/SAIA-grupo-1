@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from src.checklist import services as checklist_services
 from src.checklist.models import DIAS_POR_FRECUENCIA, EstadoTareaItem
 from src.dashboard import schemas
+from src.dashboard.exceptions import RangoFechasInvalido
 
 
 def _rango_periodo(periodo: str, hoy: date) -> Tuple[date, date]:
@@ -148,3 +149,107 @@ def obtener_resumen(
         unidad_actual=unidad_efectiva,
     )
 
+
+def obtener_grafico_cumplimiento(
+    db: Session,
+    desde: date | None = None,
+    hasta: date | None = None,
+    agrupacion: str = "dia",
+    hoy: date | None = None,
+) -> schemas.GraficoCumplimientoResponse:
+    fecha_hoy = hoy or date.today()
+    fecha_hasta = hasta or fecha_hoy
+    fecha_desde = desde or (fecha_hasta - timedelta(days=30))
+
+    if fecha_desde > fecha_hasta:
+        raise RangoFechasInvalido()
+
+    agr = str(agrupacion).lower().strip()
+    if agr not in ("dia", "semana"):
+        agr = "dia"
+
+    checklists = checklist_services.listar_checklists(
+        db, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta
+    )
+
+    if not checklists:
+        return schemas.GraficoCumplimientoResponse(
+            agrupacion=agr,
+            desde=fecha_desde,
+            hasta=fecha_hasta,
+            total_checklists=0,
+            total_tareas=0,
+            tareas_completadas=0,
+            promedio_cumplimiento=0.0,
+            puntos=[],
+        )
+
+    puntos: list[schemas.PuntoCumplimiento] = []
+
+    if agr == "dia":
+        por_dia: dict[date, list] = {}
+        for c in checklists:
+            por_dia.setdefault(c.fecha, []).append(c)
+
+        for f in sorted(por_dia.keys()):
+            grupo = por_dia[f]
+            t_total = sum(c.total_tareas for c in grupo)
+            t_comp = sum(c.tareas_completadas for c in grupo)
+            t_pend = t_total - t_comp
+            pct = round((t_comp / t_total) * 100.0, 1) if t_total > 0 else 100.0
+            puntos.append(
+                schemas.PuntoCumplimiento(
+                    fecha=f,
+                    etiqueta=f.strftime("%d/%m/%Y"),
+                    total_checklists=len(grupo),
+                    total_tareas=t_total,
+                    tareas_completadas=t_comp,
+                    tareas_pendientes=t_pend,
+                    porcentaje=pct,
+                )
+            )
+    else:  # semana
+        por_semana: dict[date, list] = {}
+        for c in checklists:
+            inicio_sem = c.fecha - timedelta(days=c.fecha.weekday())
+            por_semana.setdefault(inicio_sem, []).append(c)
+
+        for inicio_sem in sorted(por_semana.keys()):
+            fin_sem = inicio_sem + timedelta(days=6)
+            grupo = por_semana[inicio_sem]
+            t_total = sum(c.total_tareas for c in grupo)
+            t_comp = sum(c.tareas_completadas for c in grupo)
+            t_pend = t_total - t_comp
+            pct = round((t_comp / t_total) * 100.0, 1) if t_total > 0 else 100.0
+            puntos.append(
+                schemas.PuntoCumplimiento(
+                    fecha_inicio=inicio_sem,
+                    fecha_fin=fin_sem,
+                    etiqueta=f"{inicio_sem.strftime('%d/%m')} al {fin_sem.strftime('%d/%m')}",
+                    total_checklists=len(grupo),
+                    total_tareas=t_total,
+                    tareas_completadas=t_comp,
+                    tareas_pendientes=t_pend,
+                    porcentaje=pct,
+                )
+            )
+
+    total_checklists = len(checklists)
+    total_tareas = sum(c.total_tareas for c in checklists)
+    tareas_completadas = sum(c.tareas_completadas for c in checklists)
+    promedio_cumplimiento = (
+        round((tareas_completadas / total_tareas) * 100.0, 1)
+        if total_tareas > 0
+        else 0.0
+    )
+
+    return schemas.GraficoCumplimientoResponse(
+        agrupacion=agr,
+        desde=fecha_desde,
+        hasta=fecha_hasta,
+        total_checklists=total_checklists,
+        total_tareas=total_tareas,
+        tareas_completadas=tareas_completadas,
+        promedio_cumplimiento=promedio_cumplimiento,
+        puntos=puntos,
+    )

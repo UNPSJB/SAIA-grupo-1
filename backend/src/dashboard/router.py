@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -46,4 +47,16 @@ def obtener_consumo_insumos(
         consumo=consumo,
         unidades_disponibles=unidades_disp,
         unidad_actual=unidad_efectiva,
+    )
+
+
+@router.get("/grafico-cumplimiento", response_model=schemas.GraficoCumplimientoResponse)
+def obtener_grafico_cumplimiento(
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    agrupacion: schemas.AgrupacionGrafico = "dia",
+    db: Session = Depends(get_db),
+):
+    return services.obtener_grafico_cumplimiento(
+        db, desde=desde, hasta=hasta, agrupacion=agrupacion
     )

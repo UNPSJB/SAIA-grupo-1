@@ -109,3 +109,8 @@
   text-align: center;
   padding: 2rem 0;
 }
+
+.dashboard-card-full {
+  grid-column: 1 / -1;
+  width: 100%;
+}
