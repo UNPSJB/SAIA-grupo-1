@@ -3,9 +3,11 @@ from typing import List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from src.insumos.models import Insumo
+from src.insumos.services import leer_insumo
 from src.produccion import exceptions, schemas
 from src.produccion.constants import INTENTOS_CODIGO_LOTE
-from src.produccion.models import LoteProduccion, Producto
+from src.produccion.models import InsumoLote, LoteProduccion, Producto
 
 
 def listar_productos(db: Session) -> List[Producto]:
@@ -88,3 +90,46 @@ def listar_lotes(
         consulta = consulta.where(LoteProduccion.fecha <= hasta)
     consulta = consulta.order_by(LoteProduccion.fecha.desc(), LoteProduccion.id.desc())
     return list(db.scalars(consulta).unique().all())
+
+
+# ------------------------------------------------------------------ insumos del lote
+
+
+def listar_insumos_disponibles(db: Session) -> List[Insumo]:
+    """Insumos del maestro que todavía tienen stock para usar en un lote."""
+    return list(db.scalars(select(Insumo).where(Insumo.stock > 0).order_by(func.lower(Insumo.nombre))).all())
+
+
+def asociar_insumos(db: Session, lote_id: int, datos: schemas.AsociarInsumos) -> LoteProduccion:
+    """Asocia los insumos al lote y descuenta lo usado del stock. Si alguno falla no se guarda ninguno."""
+    lote = leer_lote(db, lote_id)
+    ya_asociados = {i.insumo_id for i in lote.insumos}
+    try:
+        for item in datos.insumos:
+            insumo = leer_insumo(db, item.insumo_id)
+            if insumo.id in ya_asociados:
+                raise exceptions.InsumoYaAsociado()
+            if item.cantidad > insumo.stock:
+                raise exceptions.StockInsuficiente()
+            insumo.stock -= item.cantidad
+            lote.insumos.append(InsumoLote(insumo=insumo, cantidad=item.cantidad))
+        db.commit()
+    except Exception:
+        # descarta también los descuentos de stock que ya se hubieran hecho en la sesión
+        db.rollback()
+        raise
+    db.refresh(lote)
+    return lote
+
+
+def quitar_insumo(db: Session, lote_id: int, insumo_id: int) -> LoteProduccion:
+    """Quita un insumo asociado por error y le devuelve al stock la cantidad que se había descontado."""
+    lote = leer_lote(db, lote_id)
+    asociacion = next((i for i in lote.insumos if i.insumo_id == insumo_id), None)
+    if asociacion is None:
+        raise exceptions.InsumoNoAsociado()
+    asociacion.insumo.stock += asociacion.cantidad
+    lote.insumos.remove(asociacion)
+    db.commit()
+    db.refresh(lote)
+    return lote

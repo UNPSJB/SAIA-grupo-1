@@ -30,9 +30,38 @@ def listar_lotes_endpoint(
     return services.listar_lotes(db, producto_id, desde, hasta)
 
 
+# va antes de /{lote_id} para que "insumos-disponibles" no se tome como un id.
+# /insumos es solo de administradores; el operador necesita ver el maestro para elegir qué usó.
+@lotes_router.get("/insumos-disponibles", response_model=List[schemas.InsumoDisponible])
+def listar_insumos_disponibles_endpoint(db: Session = Depends(get_db)):
+    return services.listar_insumos_disponibles(db)
+
+
 @lotes_router.get("/{lote_id}", response_model=schemas.LoteProduccion)
 def leer_lote_endpoint(lote_id: int, db: Session = Depends(get_db)):
     return services.leer_lote(db, lote_id)
+
+
+@lotes_router.post(
+    "/{lote_id}/insumos", response_model=schemas.LoteProduccion, status_code=status.HTTP_201_CREATED
+)
+def asociar_insumos_endpoint(
+    lote_id: int,
+    datos: schemas.AsociarInsumos,
+    db: Session = Depends(get_db),
+    _: Personal = Depends(requiere_operador),
+):
+    return services.asociar_insumos(db, lote_id, datos)
+
+
+@lotes_router.delete("/{lote_id}/insumos/{insumo_id}", response_model=schemas.LoteProduccion)
+def quitar_insumo_endpoint(
+    lote_id: int,
+    insumo_id: int,
+    db: Session = Depends(get_db),
+    _: Personal = Depends(requiere_operador),
+):
+    return services.quitar_insumo(db, lote_id, insumo_id)
 
 
 @productos_router.get("/", response_model=List[schemas.Producto])

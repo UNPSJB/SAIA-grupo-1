@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Optional, Self
+from typing import List, Optional, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.insumos.models import UnidadMedida
 from src.produccion import exceptions
@@ -57,6 +57,52 @@ class LoteProduccionCreate(BaseModel):
         return self
 
 
+class InsumoLoteCreate(BaseModel):
+    insumo_id: int
+    # en la unidad de medida del insumo (si el insumo está en kilogramos, se cargan kilogramos)
+    cantidad: float = Field(allow_inf_nan=False)
+
+    @field_validator("cantidad")
+    @classmethod
+    def validar_cantidad_positiva(cls, v: float) -> float:
+        if v <= 0:
+            raise exceptions.CantidadInsumoInvalida()
+        return v
+
+
+class AsociarInsumos(BaseModel):
+    insumos: List[InsumoLoteCreate]
+
+    @field_validator("insumos")
+    @classmethod
+    def validar_insumos(cls, v: List[InsumoLoteCreate]) -> List[InsumoLoteCreate]:
+        if not v:
+            raise exceptions.InsumosRequeridos()
+        ids = [i.insumo_id for i in v]
+        if len(ids) != len(set(ids)):
+            raise exceptions.InsumoRepetido()
+        return v
+
+
+class InsumoResumen(BaseModel):
+    id: int
+    nombre: str
+    lote: str
+    medida: UnidadMedida
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InsumoDisponible(InsumoResumen):
+    stock: float
+    fechaVencimiento: Optional[datetime]
+
+
+class InsumoLote(BaseModel):
+    insumo: InsumoResumen
+    cantidad: float
+    model_config = ConfigDict(from_attributes=True)
+
+
 class LoteProduccion(BaseModel):
     id: int
     codigo: str
@@ -67,4 +113,5 @@ class LoteProduccion(BaseModel):
     responsable_legajo: int
     nombre_responsable: str
     creado_en: datetime
+    insumos: List[InsumoLote]
     model_config = ConfigDict(from_attributes=True)

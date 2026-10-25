@@ -1,7 +1,8 @@
 from datetime import date, datetime
-from sqlalchemy import Date, DateTime, ForeignKey, Index, String, func
+from typing import List
+from sqlalchemy import Date, DateTime, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from src.insumos.models import UnidadMedida
+from src.insumos.models import Insumo, UnidadMedida
 from src.models import ModeloBase
 from src.personal.models import Personal
 from src.produccion.constants import NOMBRE_PRODUCTO_MAX
@@ -32,7 +33,26 @@ class LoteProduccion(ModeloBase):
 
     producto: Mapped[Producto] = relationship(lazy="joined")
     responsable: Mapped[Personal] = relationship(lazy="joined")
+    insumos: Mapped[List["InsumoLote"]] = relationship(
+        back_populates="lote", cascade="all, delete-orphan", lazy="selectin", order_by="InsumoLote.id"
+    )
 
     @property
     def nombre_responsable(self) -> str:
         return f"{self.responsable.nombre} {self.responsable.apellido}"
+
+
+class InsumoLote(ModeloBase):
+    """Cuánto se usó de un insumo del maestro en un lote, en la unidad de medida del insumo."""
+
+    __tablename__ = "insumos_lote"
+    # el mismo insumo no puede asociarse dos veces al mismo lote
+    __table_args__ = (UniqueConstraint("lote_id", "insumo_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    lote_id: Mapped[int] = mapped_column(ForeignKey("lotes_produccion.id", ondelete="CASCADE"), index=True)
+    insumo_id: Mapped[int] = mapped_column(ForeignKey("insumos.id"), index=True)
+    cantidad: Mapped[float] = mapped_column()
+
+    lote: Mapped[LoteProduccion] = relationship(back_populates="insumos")
+    insumo: Mapped[Insumo] = relationship(lazy="joined")

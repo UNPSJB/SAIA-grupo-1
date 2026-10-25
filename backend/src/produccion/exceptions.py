@@ -40,3 +40,27 @@ class CodigoLoteNoGenerado(BadRequest):
 
 class RangoFechasInvalido(BadRequest):
     DETAIL = ErrorCode.RANGO_FECHAS_INVALIDO
+
+
+class CantidadInsumoInvalida(BadRequest):
+    DETAIL = ErrorCode.CANTIDAD_INSUMO_INVALIDA
+
+
+class InsumosRequeridos(BadRequest):
+    DETAIL = ErrorCode.INSUMOS_REQUERIDOS
+
+
+class InsumoRepetido(BadRequest):
+    DETAIL = ErrorCode.INSUMO_REPETIDO
+
+
+class InsumoYaAsociado(BadRequest):
+    DETAIL = ErrorCode.INSUMO_YA_ASOCIADO
+
+
+class StockInsuficiente(BadRequest):
+    DETAIL = ErrorCode.STOCK_INSUFICIENTE
+
+
+class InsumoNoAsociado(NotFound):
+    DETAIL = ErrorCode.INSUMO_NO_ASOCIADO

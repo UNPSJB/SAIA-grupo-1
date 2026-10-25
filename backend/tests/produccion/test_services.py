@@ -3,12 +3,15 @@ from typing import Any
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from src.insumos.models import UnidadMedida
+from src.insumos.exceptions import InsumoNoEncontrado
+from src.insumos.models import Insumo, UnidadMedida
 from src.produccion import exceptions, schemas, services
-from src.produccion.models import LoteProduccion, Producto
+from src.produccion.models import InsumoLote, LoteProduccion, Producto
 from tests.database import session  # noqa: F401  (session es una fixture)
 
 LEGAJO = 1  # Juan Perez, el del seed de tests
+# ids de los insumos del seed de tests: 80 kg de harina, 35 l de aceite y 1500 g de levadura
+HARINA, ACEITE, LEVADURA = 1, 2, 3
 
 
 def _datos(**cambios: Any) -> schemas.LoteProduccionCreate:
@@ -213,3 +216,140 @@ def test_listar_lotes_con_rango_de_fechas_invalido(session: Session) -> None:
     hoy = date.today()
     with pytest.raises(exceptions.RangoFechasInvalido):
         services.listar_lotes(session, desde=hoy, hasta=hoy - timedelta(days=1))
+
+
+# ------------------------------------------------------------------ insumos del lote
+
+
+def _insumos(*pares: tuple) -> schemas.AsociarInsumos:
+    return schemas.AsociarInsumos(insumos=[{"insumo_id": i, "cantidad": c} for i, c in pares])
+
+
+def _stock(db: Session, insumo_id: int) -> float:
+    db.expire_all()
+    return db.get(Insumo, insumo_id).stock
+
+
+def test_asociar_insumos_descuenta_el_stock(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+
+    lote = services.asociar_insumos(session, lote.id, _insumos((HARINA, 30), (LEVADURA, 250.5)))
+
+    assert [(i.insumo.nombre, i.insumo.lote, i.cantidad) for i in lote.insumos] == [
+        ("Harina de Trigo 000", "ING-HAR-001", 30),
+        ("Levadura Fresca", "ING-LEV-003", 250.5),
+    ]
+    assert _stock(session, HARINA) == 50
+    assert _stock(session, LEVADURA) == 1249.5
+
+
+def test_se_pueden_agregar_insumos_en_varias_veces(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 10)))
+    services.asociar_insumos(session, lote.id, _insumos((ACEITE, 5)))
+
+    assert [i.insumo_id for i in services.leer_lote(session, lote.id).insumos] == [HARINA, ACEITE]
+
+
+def test_se_puede_usar_todo_el_stock(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((ACEITE, 35)))
+
+    assert _stock(session, ACEITE) == 0
+    assert ACEITE not in [i.id for i in services.listar_insumos_disponibles(session)]
+
+
+def test_el_mismo_insumo_puede_usarse_en_lotes_distintos(session: Session) -> None:
+    uno = services.registrar_lote(session, LEGAJO, _datos())
+    otro = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, uno.id, _insumos((HARINA, 10)))
+    services.asociar_insumos(session, otro.id, _insumos((HARINA, 10)))
+
+    assert _stock(session, HARINA) == 60
+
+
+def test_no_se_puede_asociar_un_insumo_ya_asociado(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 10)))
+
+    with pytest.raises(exceptions.InsumoYaAsociado):
+        services.asociar_insumos(session, lote.id, _insumos((HARINA, 5)))
+    assert _stock(session, HARINA) == 70
+
+
+def test_no_se_puede_usar_mas_que_el_stock(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    with pytest.raises(exceptions.StockInsuficiente):
+        services.asociar_insumos(session, lote.id, _insumos((ACEITE, 35.01)))
+    assert _stock(session, ACEITE) == 35
+
+
+@pytest.mark.parametrize(
+    "error, pares",
+    [
+        (exceptions.StockInsuficiente, ((HARINA, 10), (ACEITE, 999))),
+        (InsumoNoEncontrado, ((HARINA, 10), (999, 1))),
+    ],
+)
+def test_si_un_insumo_falla_no_se_guarda_ninguno(session: Session, error: type, pares: tuple) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+
+    with pytest.raises(error):
+        services.asociar_insumos(session, lote.id, _insumos(*pares))
+
+    # la harina, que sí era válida, tampoco se descuenta
+    assert _stock(session, HARINA) == 80
+    assert _cantidad_de(session, InsumoLote) == 0
+
+
+def test_asociar_insumos_a_un_lote_inexistente(session: Session) -> None:
+    with pytest.raises(exceptions.LoteNoEncontrado):
+        services.asociar_insumos(session, 999, _insumos((HARINA, 1)))
+
+
+def test_quitar_insumo_devuelve_el_stock(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 30), (ACEITE, 5)))
+
+    lote = services.quitar_insumo(session, lote.id, HARINA)
+
+    assert [i.insumo_id for i in lote.insumos] == [ACEITE]
+    assert _stock(session, HARINA) == 80
+    assert _cantidad_de(session, InsumoLote) == 1
+    # una vez quitado se puede volver a asociar
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 1)))
+
+
+def test_quitar_un_insumo_no_asociado(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    with pytest.raises(exceptions.InsumoNoAsociado):
+        services.quitar_insumo(session, lote.id, HARINA)
+    with pytest.raises(exceptions.LoteNoEncontrado):
+        services.quitar_insumo(session, 999, HARINA)
+
+
+def test_listar_insumos_disponibles_ordenados_por_nombre(session: Session) -> None:
+    nombres = [i.nombre for i in services.listar_insumos_disponibles(session)]
+    assert nombres == ["Aceite de Girasol", "Harina de Trigo 000", "Levadura Fresca"]
+
+
+@pytest.mark.parametrize("cantidad", [0, -1, -0.01])
+def test_la_cantidad_del_insumo_debe_ser_mayor_a_cero(cantidad: float) -> None:
+    with pytest.raises(exceptions.CantidadInsumoInvalida):
+        _insumos((HARINA, cantidad))
+
+
+def test_no_se_permite_insumo_sin_cantidad() -> None:
+    with pytest.raises(Exception) as error:
+        schemas.AsociarInsumos(insumos=[{"insumo_id": HARINA}])
+    assert "cantidad" in str(error.value)
+
+
+def test_hay_que_indicar_al_menos_un_insumo() -> None:
+    with pytest.raises(exceptions.InsumosRequeridos):
+        _insumos()
+
+
+def test_no_se_permite_el_mismo_insumo_dos_veces_en_el_pedido() -> None:
+    with pytest.raises(exceptions.InsumoRepetido):
+        _insumos((HARINA, 1), (HARINA, 2))

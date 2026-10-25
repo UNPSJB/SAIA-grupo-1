@@ -132,6 +132,91 @@ def test_listar_productos(session: Session) -> None:
     assert [p["nombre"] for p in respuesta.json()] == ["Alfajor", "Tarta"]
 
 
+# ------------------------------------------------------------------ insumos del lote
+
+HARINA, ACEITE = 1, 2  # del seed de tests: 80 kg y 35 l
+CANTIDAD_INVALIDA = "La cantidad utilizada de cada insumo debe ser mayor a cero."
+
+
+def _crear_lote() -> int:
+    return client.post("/lotes/", json=_lote()).json()["id"]
+
+
+def _insumos(*pares: tuple) -> Dict[str, Any]:
+    return {"insumos": [{"insumo_id": i, "cantidad": c} for i, c in pares]}
+
+
+def test_asociar_insumos(session: Session) -> None:
+    lote_id = _crear_lote()
+
+    respuesta = client.post(f"/lotes/{lote_id}/insumos", json=_insumos((HARINA, 12.5), (ACEITE, 2)))
+
+    assert respuesta.status_code == status.HTTP_201_CREATED
+    assert respuesta.json()["insumos"] == [
+        {"insumo": {"id": HARINA, "nombre": "Harina de Trigo 000", "lote": "ING-HAR-001", "medida": "kilogramos"},
+         "cantidad": 12.5},
+        {"insumo": {"id": ACEITE, "nombre": "Aceite de Girasol", "lote": "ING-ACE-002", "medida": "litros"},
+         "cantidad": 2},
+    ]
+    # el detalle y el listado de lotes también traen los insumos
+    assert len(client.get(f"/lotes/{lote_id}").json()["insumos"]) == 2
+    assert len(client.get("/lotes/").json()[0]["insumos"]) == 2
+    stock = {i["id"]: i["stock"] for i in client.get("/lotes/insumos-disponibles").json()}
+    assert (stock[HARINA], stock[ACEITE]) == (67.5, 33)
+
+
+def test_un_lote_nuevo_no_tiene_insumos(session: Session) -> None:
+    assert client.post("/lotes/", json=_lote()).json()["insumos"] == []
+
+
+@pytest.mark.parametrize(
+    "cuerpo, codigo, detalle",
+    [
+        ({"insumos": [{"insumo_id": HARINA}]}, status.HTTP_422_UNPROCESSABLE_CONTENT, None),
+        (_insumos((HARINA, 0)), status.HTTP_400_BAD_REQUEST, CANTIDAD_INVALIDA),
+        (_insumos((HARINA, -3)), status.HTTP_400_BAD_REQUEST, CANTIDAD_INVALIDA),
+        (_insumos(), status.HTTP_400_BAD_REQUEST, "Debe indicar al menos un insumo."),
+        (_insumos((HARINA, 1), (HARINA, 2)), status.HTTP_400_BAD_REQUEST,
+         "No se puede indicar el mismo insumo más de una vez."),
+        (_insumos((HARINA, 81)), status.HTTP_400_BAD_REQUEST,
+         "La cantidad utilizada supera el stock disponible del insumo."),
+        (_insumos((999, 1)), status.HTTP_404_NOT_FOUND, "El insumo no fue encontrado."),
+    ],
+)
+def test_validaciones_al_asociar(session: Session, cuerpo: Dict[str, Any], codigo: int, detalle: str) -> None:
+    respuesta = client.post(f"/lotes/{_crear_lote()}/insumos", json=cuerpo)
+    assert respuesta.status_code == codigo
+    if detalle:
+        assert respuesta.json()["detail"] == detalle
+
+
+def test_no_se_puede_asociar_dos_veces_el_mismo_insumo(session: Session) -> None:
+    lote_id = _crear_lote()
+    client.post(f"/lotes/{lote_id}/insumos", json=_insumos((HARINA, 1)))
+
+    respuesta = client.post(f"/lotes/{lote_id}/insumos", json=_insumos((HARINA, 1)))
+
+    assert respuesta.status_code == status.HTTP_400_BAD_REQUEST
+    assert respuesta.json()["detail"] == "El insumo ya está asociado a este lote."
+
+
+def test_asociar_a_un_lote_inexistente(session: Session) -> None:
+    assert client.post("/lotes/999/insumos", json=_insumos((HARINA, 1))).status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_quitar_insumo(session: Session) -> None:
+    lote_id = _crear_lote()
+    client.post(f"/lotes/{lote_id}/insumos", json=_insumos((HARINA, 10)))
+
+    respuesta = client.delete(f"/lotes/{lote_id}/insumos/{HARINA}")
+
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert respuesta.json()["insumos"] == []
+    harina = next(i for i in client.get("/lotes/insumos-disponibles").json() if i["id"] == HARINA)
+    assert harina["stock"] == 80
+    assert client.delete(f"/lotes/{lote_id}/insumos/{HARINA}").status_code == status.HTTP_404_NOT_FOUND
+
+
 # ------------------------------------------------------------------ permisos
 
 
@@ -140,6 +225,9 @@ def test_sin_token_no_se_puede_entrar(usuarios: Dict[str, Personal]) -> None:
     assert client.get("/lotes/").status_code == status.HTTP_401_UNAUTHORIZED
     assert client.get("/lotes/1").status_code == status.HTTP_401_UNAUTHORIZED
     assert client.get("/productos/").status_code == status.HTTP_401_UNAUTHORIZED
+    assert client.get("/lotes/insumos-disponibles").status_code == status.HTTP_401_UNAUTHORIZED
+    assert client.post("/lotes/1/insumos", json=_insumos((HARINA, 1))).status_code == status.HTTP_401_UNAUTHORIZED
+    assert client.delete(f"/lotes/1/insumos/{HARINA}").status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.parametrize("rol", ["operador", "ambos"])
@@ -165,3 +253,29 @@ def test_cualquier_usuario_logueado_puede_consultar(usuarios: Dict[str, Personal
     assert client.get("/lotes/", headers=cabeceras).status_code == status.HTTP_200_OK
     assert client.get(f"/lotes/{creado['id']}", headers=cabeceras).status_code == status.HTTP_200_OK
     assert client.get("/productos/", headers=cabeceras).status_code == status.HTTP_200_OK
+    assert client.get("/lotes/insumos-disponibles", headers=cabeceras).status_code == status.HTTP_200_OK
+
+
+@pytest.mark.parametrize("rol", ["operador", "ambos"])
+def test_operador_y_ambos_asocian_y_quitan_insumos(usuarios: Dict[str, Personal], rol: str) -> None:
+    cabeceras = headers(usuarios[rol])
+    lote_id = client.post("/lotes/", json=_lote(), headers=cabeceras).json()["id"]
+
+    asociar = client.post(f"/lotes/{lote_id}/insumos", json=_insumos((HARINA, 1)), headers=cabeceras)
+    quitar = client.delete(f"/lotes/{lote_id}/insumos/{HARINA}", headers=cabeceras)
+
+    assert asociar.status_code == status.HTTP_201_CREATED
+    assert quitar.status_code == status.HTTP_200_OK
+
+
+def test_un_administrador_puro_no_puede_asociar_ni_quitar_insumos(usuarios: Dict[str, Personal]) -> None:
+    operador = headers(usuarios["operador"])
+    admin = headers(usuarios["administrador"])
+    lote_id = client.post("/lotes/", json=_lote(), headers=operador).json()["id"]
+    client.post(f"/lotes/{lote_id}/insumos", json=_insumos((HARINA, 1)), headers=operador)
+
+    asociar = client.post(f"/lotes/{lote_id}/insumos", json=_insumos((ACEITE, 1)), headers=admin)
+    quitar = client.delete(f"/lotes/{lote_id}/insumos/{HARINA}", headers=admin)
+
+    assert asociar.status_code == status.HTTP_403_FORBIDDEN
+    assert quitar.status_code == status.HTTP_403_FORBIDDEN
