@@ -30,6 +30,7 @@ interface NuevaVersionProps {
 export default function NuevaVersion({ documentoId, onSuccess, onCancel }: NuevaVersionProps) {
   const [documento, setDocumento] = useState<DocumentoDetalle | null>(null);
   const [siguienteVersion, setSiguienteVersion] = useState<number>(2);
+  const [fechaVencimiento, setFechaVencimiento] = useState("");
   const [archivo, setArchivo] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(Boolean(documentoId));
@@ -40,10 +41,9 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
 
   useEffect(() => {
     if (!documentoId) return;
+    let cancelado = false;
 
     const cargarDatos = async () => {
-      setLoading(true);
-      setErrorMsg(null);
       try {
         const [resDoc, resVersiones] = await Promise.all([
           apiFetch(`/documentos/${documentoId}`),
@@ -52,32 +52,43 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
 
         if (resDoc.ok) {
           const docData: DocumentoDetalle = await resDoc.json();
-          setDocumento(docData);
+          if (!cancelado) {
+            setDocumento(docData);
+          }
 
           if (resVersiones.ok) {
             const versionesData: VersionItem[] = await resVersiones.json();
-            if (versionesData.length > 0) {
-              const maxV = Math.max(...versionesData.map((v) => Number(v.version) || 0));
-              setSiguienteVersion(maxV + 1);
-            } else if (docData.version_actual) {
-              setSiguienteVersion(Number(docData.version_actual.version) + 1);
-            } else {
-              setSiguienteVersion(2);
+            if (!cancelado) {
+              if (versionesData.length > 0) {
+                const maxV = Math.max(...versionesData.map((v) => Number(v.version) || 0));
+                setSiguienteVersion(maxV + 1);
+              } else if (docData.version_actual) {
+                setSiguienteVersion(Number(docData.version_actual.version) + 1);
+              } else {
+                setSiguienteVersion(2);
+              }
             }
-          } else {
+          } else if (!cancelado) {
             setSiguienteVersion(docData.version_actual ? Number(docData.version_actual.version) + 1 : 2);
           }
-        } else {
-          throw new Error("No se pudo cargar el documento.");
+        } else if (!cancelado) {
+          setErrorMsg("No se pudo cargar el documento.");
         }
       } catch (err: unknown) {
-        setErrorMsg(err instanceof Error ? err.message : "Error de conexión.");
+        if (!cancelado) {
+          setErrorMsg(err instanceof Error ? err.message : "Error de conexión.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
     };
 
     cargarDatos();
+    return () => {
+      cancelado = true;
+    };
   }, [documentoId]);
 
   const handleArchivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,6 +122,9 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
     const formData = new FormData();
     formData.append("archivo", archivo);
     formData.append("version", String(siguienteVersion));
+    if (fechaVencimiento) {
+      formData.append("fecha_vencimiento", fechaVencimiento);
+    }
 
     setGuardando(true);
 
@@ -206,6 +220,16 @@ export default function NuevaVersion({ documentoId, onSuccess, onCancel }: Nueva
                 value={`v${siguienteVersion}`}
                 disabled
                 style={{ opacity: 0.85, cursor: "not-allowed" }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="fechaVencimiento">Fecha de Vencimiento (opcional)</label>
+              <input
+                id="fechaVencimiento"
+                type="date"
+                value={fechaVencimiento}
+                onChange={(e) => setFechaVencimiento(e.target.value)}
               />
             </div>
 

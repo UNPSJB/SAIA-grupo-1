@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoQuimico } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 
 interface Props {
@@ -23,24 +24,34 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
   const [quimicoAConfirmar, setQuimicoAConfirmar] = useState<InsumoQuimico | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState<boolean>(false);
 
-  const cargarDatos = async () => {
-    try {
-      setCargando(true);
-      setError(null);
-      const res = await apiFetch('/api/insumos-quimicos');
-      if (!res.ok) throw new Error('Error al cargar insumos químicos');
-      const data = await res.json();
-      setInsumos(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-    } finally {
-      setCargando(false);
-    }
-  };
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let cancelado = false;
+    const cargarDatos = async () => {
+      try {
+        const res = await apiFetch('/api/insumos-quimicos');
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setInsumos(data);
+        } else if (!cancelado) {
+          setError('Error al cargar insumos químicos');
+        }
+      } catch (err) {
+        if (!cancelado) {
+          setError(err instanceof Error ? err.message : 'Error desconocido');
+        }
+      } finally {
+        if (!cancelado) {
+          setCargando(false);
+        }
+      }
+    };
     cargarDatos();
-  }, []);
+    return () => {
+      cancelado = true;
+    };
+  }, [refreshKey]);
 
   const abrirConfirmacion = (insumo: InsumoQuimico) => {
     setQuimicoAConfirmar(insumo);
@@ -51,7 +62,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
     if (!quimicoAConfirmar) return;
     try {
       await apiFetch(`/api/insumos-quimicos/${quimicoAConfirmar.id}/toggle`, { method: 'PATCH' });
-      cargarDatos();
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error(err);
     } finally {

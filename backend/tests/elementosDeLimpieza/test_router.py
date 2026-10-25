@@ -55,3 +55,23 @@ def test_router_cambiar_elemento(session: Session):
     res_cambio = client.post(f"/elementosDeLimpieza/{elem_id}/cambiar")
     assert res_cambio.status_code == status.HTTP_200_OK
     assert res_cambio.json()["fechaCambio"] is not None
+
+def test_router_crear_elemento_nombre_50_caracteres(session: Session):
+    nombre_50 = "A" * 50
+    res = client.post("/elementosDeLimpieza/", json={"nombre": nombre_50, "frecuenciaDeCambio": 10})
+    assert res.status_code == status.HTTP_200_OK
+    assert res.json()["nombre"] == nombre_50
+
+def test_router_crear_elemento_nombre_51_caracteres_falla(session: Session):
+    nombre_51 = "A" * 51
+    res = client.post("/elementosDeLimpieza/", json={"nombre": nombre_51, "frecuenciaDeCambio": 10})
+    assert res.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+def test_router_editar_elemento_nombre_50_caracteres(session: Session):
+    res_crear = client.post("/elementosDeLimpieza/", json={"nombre": "Inicial", "frecuenciaDeCambio": 10})
+    elem_id = res_crear.json()["id"]
+    nombre_50 = "B" * 50
+    res_edit = client.put(f"/elementosDeLimpieza/{elem_id}", json={"nombre": nombre_50})
+    assert res_edit.status_code == status.HTTP_200_OK
+    res_get = client.get(f"/elementosDeLimpieza/{elem_id}")
+    assert res_get.json()["nombre"] == nombre_50

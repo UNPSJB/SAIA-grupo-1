@@ -57,29 +57,30 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
       .finally(() => setLoading(false));
   }, [personaLegajo]);
 
-  const validateField = (name: string, value: any) => {
+  const validateField = (name: string, value?: string | number | null) => {
     let error = "";
+    const strVal = String(value ?? "").trim();
     switch (name) {
       case "nombre":
-        if (!value.trim()) error = "El nombre es obligatorio.";
-        else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(value)) error = "Solo letras y espacios.";
+        if (!strVal) error = "El nombre es obligatorio.";
+        else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(strVal)) error = "Solo letras y espacios.";
         break;
       case "apellido":
-        if (!value.trim()) error = "El apellido es obligatorio.";
-        else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(value)) error = "Solo letras y espacios.";
+        if (!strVal) error = "El apellido es obligatorio.";
+        else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(strVal)) error = "Solo letras y espacios.";
         break;
       case "documento":
-        if (!String(value).trim()) error = "El DNI es obligatorio.";
-        else if (!/^\d{7,8}$/.test(String(value).trim())) error = "DNI de 7 u 8 dígitos.";
+        if (!strVal) error = "El DNI es obligatorio.";
+        else if (!/^\d{7,8}$/.test(strVal)) error = "DNI de 7 u 8 dígitos.";
         break;
       case "email":
-        if (!value.trim()) error = "El correo es obligatorio.";
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = "Correo inválido.";
+        if (!strVal) error = "El correo es obligatorio.";
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strVal)) error = "Correo inválido.";
         break;
       case "contrasenia":
         // opcional: vacío = no se cambia la contraseña actual
-        if (value && value.length < 8) error = "Mínimo 8 caracteres.";
-        else if (value && value.length > 72) error = "Máximo 72 caracteres.";
+        if (value && String(value).length < 8) error = "Mínimo 8 caracteres.";
+        else if (value && String(value).length > 72) error = "Máximo 72 caracteres.";
         break;
       default:
         break;
@@ -146,8 +147,8 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
       }
 
       onSuccess();
-    } catch (err: any) {
-      setApiError(err.message || "Error al conectar con el servidor.");
+    } catch (err: unknown) {
+      setApiError(err instanceof Error ? err.message : "Error al conectar con el servidor.");
     } finally {
       setIsSubmitting(false);
     }

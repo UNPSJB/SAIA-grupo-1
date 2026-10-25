@@ -9,7 +9,8 @@ import {
   DialogFooter,
   DialogClose,
 } from '../../components/ui/dialog';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 
 interface PersonalInfo {
@@ -21,6 +22,8 @@ interface PersonalInfo {
 interface ListadoCertificadosProps {
   onVerPersona?: (legajo: number, nombreCompleto: string) => void;
   onVerConsolidado?: () => void;
+  onVerSoloDocumentos?: () => void;
+  filtroEstadoInicial?: FiltroEstado;
 }
 
 type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia';
@@ -31,12 +34,14 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
   onVerPersona,
   onVerConsolidado,
+  onVerSoloDocumentos,
+  filtroEstadoInicial,
 }) => {
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [personalMap, setPersonalMap] = useState<Record<number, PersonalInfo>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('TODOS');
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>(filtroEstadoInicial || 'TODOS');
 
   // Estado para el modal de evidencia flotante
   const [modalArchivoUrl, setModalArchivoUrl] = useState<string | null>(null);
@@ -101,11 +106,15 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
     if (!fechaStr) return { estado: 'al_dia', diffDias: 999 };
     const fechaLimite = new Date(fechaStr);
     const hoy = new Date();
-    const diffTiempo = fechaLimite.getTime() - hoy.getTime();
+    hoy.setHours(0, 0, 0, 0);
+    const fLim = new Date(fechaLimite);
+    fLim.setHours(0, 0, 0, 0);
+
+    const diffTiempo = fLim.getTime() - hoy.getTime();
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
 
-    if (diffDias <= 0) return { estado: 'vencido', diffDias };
-    if (diffDias <= 15) return { estado: 'proximo', diffDias };
+    if (diffDias < 0) return { estado: 'vencido', diffDias };
+    if (diffDias < 15) return { estado: 'proximo', diffDias };
     return { estado: 'al_dia', diffDias };
   };
 
@@ -192,21 +201,32 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
           <div className="subtitulo">01 · Control de carnets y certificados con archivo adjunto</div>
         </div>
 
-        {onVerConsolidado && (
+        {(onVerConsolidado || onVerSoloDocumentos) && (
           <div className="venc-tabs">
-            <button
-              type="button"
-              className="venc-tab"
-              onClick={onVerConsolidado}
-            >
-              Todos (Consolidado)
-            </button>
+            {onVerConsolidado && (
+              <button
+                type="button"
+                className="venc-tab"
+                onClick={onVerConsolidado}
+              >
+                Todos (Consolidado)
+              </button>
+            )}
             <button
               type="button"
               className="venc-tab venc-tab--activo"
             >
               Solo Personal (con archivo)
             </button>
+            {onVerSoloDocumentos && (
+              <button
+                type="button"
+                className="venc-tab"
+                onClick={onVerSoloDocumentos}
+              >
+                Solo Documentos
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -234,7 +254,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         >
           <option value="TODOS">Todos los estados</option>
           <option value="VENCIDOS">Vencidos</option>
-          <option value="PROXIMOS">Próximos a vencer (≤ 15 días)</option>
+          <option value="PROXIMOS">Próximos a vencer (&lt; 15 días)</option>
           <option value="AL_DIA">Al día</option>
         </select>
       </div>

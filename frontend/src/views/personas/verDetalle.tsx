@@ -18,28 +18,31 @@ export const DetallePersona: React.FC<DetallePersonaProps> = ({
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!personaLegajo) {
-      setErrorCarga("No se especificó la persona.");
-      setLoading(false);
-      return;
-    }
-
-    apiFetch(`/personal/${personaLegajo}`, {
-      headers: { "Accept": "application/json" }
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("No se pudo obtener la información de la persona.");
-        return res.json();
-      })
-      .then((data: Persona) => {
-        setPersona(data);
-        setErrorCarga(null);
-      })
-      .catch((err) => {
+    if (!personaLegajo) return;
+    let cancelado = false;
+    const cargar = async () => {
+      try {
+        const res = await apiFetch(`/personal/${personaLegajo}`, {
+          headers: { "Accept": "application/json" }
+        });
+        if (!cancelado && res.ok) {
+          const data: Persona = await res.json();
+          setPersona(data);
+          setErrorCarga(null);
+        } else if (!cancelado) {
+          setErrorCarga("No se pudo obtener la información de la persona.");
+        }
+      } catch (err) {
         console.error("Error en verDetalle:", err);
-        setErrorCarga("Error al conectar con el servidor.");
-      })
-      .finally(() => setLoading(false));
+        if (!cancelado) setErrorCarga("Error al conectar con el servidor.");
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
+    cargar();
+    return () => {
+      cancelado = true;
+    };
   }, [personaLegajo]);
 
   return (

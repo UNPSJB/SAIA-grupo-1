@@ -99,8 +99,39 @@ def test_vencimientos_documentos(session: Session):
         version="1",
         file=archivo_pdf,
         responsable_legajo=admin.legajo,
+        fecha_vencimiento=date.today() + timedelta(days=30),
     )
 
     docs_venc = services.listar_vencimientos_consolidados(session, origen=schemas.OrigenVencimiento.DOCUMENTO)
     assert len(docs_venc) >= 1
     assert any(it.origen == schemas.OrigenVencimiento.DOCUMENTO for it in docs_venc)
+
+def test_documento_vencido_aparece_como_vencido(session: Session):
+    admin = crear_personal(
+        session,
+        PersonalCreate(
+            documento="91919191",
+            nombre="Admin2",
+            apellido="Vencimientos2",
+            email="admin2.venc@gmail.com",
+            capacidad=Capacidades.ADMINISTRAR,
+            contrasenia="Clave1234",
+        ),
+    )
+    archivo_pdf = UploadFile(filename="doc_exp.pdf", file=io.BytesIO(b"%PDF-1.4 doc"))
+    crear_documento(
+        session,
+        titulo="Procedimiento Caducado",
+        tipo=TipoDocumento.PROCEDIMIENTO,
+        version="1",
+        file=archivo_pdf,
+        responsable_legajo=admin.legajo,
+        fecha_vencimiento=date.today() - timedelta(days=5),
+    )
+
+    docs_vencidos = services.listar_vencimientos_consolidados(
+        session,
+        origen=schemas.OrigenVencimiento.DOCUMENTO,
+        estado=schemas.EstadoVencimiento.VENCIDO,
+    )
+    assert any(it.concepto == "Procedimiento Caducado (v1)" and it.estado == schemas.EstadoVencimiento.VENCIDO for it in docs_vencidos)
