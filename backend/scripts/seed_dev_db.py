@@ -391,7 +391,7 @@ def main() -> None:
     ]
 
     responsables = [juan, ana, marcos, lucia, sofia]
-    for i, offset in enumerate(range(12, 0, -1)):
+    for i, offset in enumerate(range(60, 0, -1)):
         fecha = datetime.now().date() - timedelta(days=offset)
         responsable = responsables[i % len(responsables)]
         checklist = Checklist(fecha=fecha, responsable_legajo=responsable.legajo, activo=True)
@@ -612,7 +612,7 @@ def main() -> None:
     print(f"  - 5 personas, {len(INSUMOS)} insumos (materias primas), {len(INSUMOS_QUIMICOS)} insumos quimicos con unidades variadas (L, ML, KG, G, UN)")
     print("  - 10 equipos, 6 elementos de limpieza, 6 planes de calibracion, 7 incidentes, 4 tipos de certificado y 10 certificados")
     print("  - 5 planes de limpieza con 10 tareas con procedimientos paso a paso")
-    print("  - 12 checklists historicos completados con registro detallado de insumos")
+    print("  - 60 checklists historicos completados con registro detallado de insumos")
     print(f"  - 1 checklist de hoy (checklist #{id_checklist_hoy}), con tarea inicial completada y restantes pendientes para prueba en vivo")
 
 
