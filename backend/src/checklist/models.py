@@ -147,8 +147,8 @@ class ChecklistItem(ModeloBase):
     imagen: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     insumos_utilizados: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     fecha_hora_fin: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    motivo_no_realizado: Mapped[Optional[MotivoNoRealizado]] = mapped_column(
-        nullable=True, index=True
+    motivo_no_realizado: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, index=True
     )
     observacion_no_realizado: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True

@@ -505,7 +505,8 @@ def marcar_tarea_no_realizada(
     if not datos.motivo:
         raise exceptions.MotivoNoRealizadoRequerido()
 
-    if datos.motivo == models.MotivoNoRealizado.OTRO:
+    motivo_str = datos.motivo.value if hasattr(datos.motivo, "value") else str(datos.motivo).strip()
+    if motivo_str.lower() in ("otro", models.MotivoNoRealizado.OTRO.value):
         if not datos.observacion or not datos.observacion.strip():
             raise exceptions.ObservacionObligatoriaParaOtro()
 

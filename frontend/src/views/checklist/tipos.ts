@@ -2,7 +2,7 @@ export type Frecuencia = 'diaria' | 'semanal' | 'mensual';
 
 export type EstadoTareaItem = 'pendiente' | 'realizado' | 'no_realizado' | 'vencido';
 
-export type MotivoNoRealizado = 'equipo_fuera_de_uso' | 'falta_de_insumo' | 'otro';
+export type MotivoNoRealizado = 'equipo_fuera_de_uso' | 'falta_de_insumo' | 'otro' | string;
 
 export type EstadoGeneralChecklist = 'pendiente' | 'completado' | 'vencido';
 

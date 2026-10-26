@@ -44,6 +44,10 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     { id: number; nombre: string; unidad_medida: string; stock_actual: number; activo: boolean }[]
   >([]);
 
+  const [motivosDisponibles, setMotivosDisponibles] = useState<
+    { id: number; nombre: string }[]
+  >([]);
+
   const [planesAbiertos, setPlanesAbiertos] = useState<Record<string, boolean>>({});
 
   const [tareaSeleccionada, setTareaSeleccionada] = useState<ChecklistItem | null>(null);
@@ -147,6 +151,18 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         }
       } catch (err) {
         console.warn('No se pudieron cargar los insumos químicos:', err);
+      }
+
+      try {
+        const resMotivos = await apiFetch(`/checklist/motivos/?solo_activos=true`);
+        if (!cancelado && resMotivos.ok) {
+          const dataMotivos = await resMotivos.json();
+          if (Array.isArray(dataMotivos) && dataMotivos.length > 0) {
+            setMotivosDisponibles(dataMotivos);
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudieron cargar los motivos:', err);
       }
     };
 
@@ -315,7 +331,8 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       return;
     }
 
-    if (formMotivo === 'otro' && !formObservacion.trim()) {
+    const esOtro = formMotivo.toLowerCase().trim() === 'otro';
+    if (esOtro && !formObservacion.trim()) {
       mostrarError(
         'La observación es obligatoria cuando el motivo es "Otro".',
         'Observación requerida'
@@ -919,31 +936,41 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                 <select
                   id="motivo-no-realizado"
                   value={formMotivo}
-                  onChange={(e) => setFormMotivo(e.target.value as MotivoNoRealizado)}
+                  onChange={(e) => setFormMotivo(e.target.value)}
                   required
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-borde)' }}
                 >
                   <option value="">Seleccione un motivo...</option>
-                  <option value="equipo_fuera_de_uso">Equipo fuera de uso</option>
-                  <option value="falta_de_insumo">Falta de insumo</option>
-                  <option value="otro">Otro</option>
+                  {motivosDisponibles.length > 0 ? (
+                    motivosDisponibles.map((m) => (
+                      <option key={m.id} value={m.nombre}>
+                        {m.nombre}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="equipo_fuera_de_uso">Equipo fuera de uso</option>
+                      <option value="falta_de_insumo">Falta de insumo</option>
+                      <option value="otro">Otro</option>
+                    </>
+                  )}
                 </select>
               </div>
 
               <div className="form-group">
                 <label htmlFor="observacion-no-realizado">
-                  Observación {formMotivo === 'otro' ? <span style={{ color: 'var(--color-error)' }}>(Obligatoria) *</span> : '(Opcional)'}
+                  Observación {formMotivo.toLowerCase().trim() === 'otro' ? <span style={{ color: 'var(--color-error)' }}>(Obligatoria) *</span> : '(Opcional)'}
                 </label>
                 <textarea
                   id="observacion-no-realizado"
                   value={formObservacion}
                   onChange={(e) => setFormObservacion(e.target.value)}
                   placeholder={
-                    formMotivo === 'otro'
+                    formMotivo.toLowerCase().trim() === 'otro'
                       ? 'Especifique detalladamente el motivo por el cual no se pudo realizar la tarea...'
                       : 'Observaciones o detalles adicionales (opcional)...'
                   }
-                  required={formMotivo === 'otro'}
+                  required={formMotivo.toLowerCase().trim() === 'otro'}
                   rows={4}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-borde)', resize: 'vertical' }}
                 />

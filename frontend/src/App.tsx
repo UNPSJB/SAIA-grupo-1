@@ -57,9 +57,11 @@ import { DetalleCertificado } from './views/certificado/verDetalle';
 import { ListadoTiposCertificados } from './views/tipoCertificado/listado';
 import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertificado';
 import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
+import { ListadoMotivos } from './views/motivos/listado';
+import { NuevoMotivo } from './views/motivos/nuevoMotivo';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -71,6 +73,7 @@ type VistaChecklist = 'listado' | 'detalle';
 type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
+type VistaMotivos = 'listado' | 'alta';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -120,6 +123,7 @@ function Aplicacion() {
 
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
+  const [vistaMotivos, setVistaMotivos] = useState<VistaMotivos>('listado');
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
@@ -132,6 +136,7 @@ function Aplicacion() {
     setVistaElementos('listado');
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
+    setVistaMotivos('listado');
     setVistaIncidentesAdmin('abiertos');
     setVistaVencimientos('consolidado');
     setVistaPlanCalibracion('listado');
@@ -572,6 +577,17 @@ function Aplicacion() {
             <DetalleTipoCertificado
               tipoId={tipoCertificadoSeleccionado}
               onCancel={() => setVistaTipoCertificado('listado')}
+            />
+          ) : null
+        ) : modulo === 'motivos' ? (
+          vistaMotivos === 'listado' ? (
+            <ListadoMotivos
+              onNuevoClick={() => setVistaMotivos('alta')}
+            />
+          ) : vistaMotivos === 'alta' ? (
+            <NuevoMotivo
+              onSuccess={() => setVistaMotivos('listado')}
+              onCancel={() => setVistaMotivos('listado')}
             />
           ) : null
         ) : null}

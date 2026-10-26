@@ -1,6 +1,6 @@
 import json
 from datetime import date, datetime
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.checklist import exceptions
 from src.checklist.models import EstadoGeneralChecklist, EstadoTareaItem, MotivoNoRealizado
@@ -23,13 +23,13 @@ class CompletarTareaSchema(BaseModel):
 
 
 class MarcarNoRealizadaSchema(BaseModel):
-    motivo: MotivoNoRealizado
+    motivo: Union[MotivoNoRealizado, str]
     observacion: Optional[str] = None
 
     @field_validator("motivo", mode="before")
     @classmethod
     def parse_motivo(cls, v: Any) -> Any:
-        if not v:
+        if not v or (isinstance(v, str) and not v.strip()):
             raise exceptions.MotivoNoRealizadoRequerido()
         if isinstance(v, MotivoNoRealizado):
             return v
@@ -38,11 +38,13 @@ class MarcarNoRealizadaSchema(BaseModel):
             for m in MotivoNoRealizado:
                 if m.value == val_clean or m.name.lower() == val_clean:
                     return m
+            return v.strip()
         raise exceptions.MotivoInvalido()
 
     @model_validator(mode="after")
     def validar_observacion(self) -> "MarcarNoRealizadaSchema":
-        if self.motivo == MotivoNoRealizado.OTRO:
+        m_str = str(self.motivo.value if hasattr(self.motivo, "value") else self.motivo).strip().lower()
+        if m_str in ("otro", MotivoNoRealizado.OTRO.value):
             if not self.observacion or not self.observacion.strip():
                 raise exceptions.ObservacionObligatoriaParaOtro()
         return self
@@ -64,7 +66,7 @@ class ChecklistItem(BaseModel):
     imagen: Optional[str] = None
     insumos_utilizados: List[InsumoUtilizadoPlaceholder] = Field(default_factory=list)
     fecha_hora_fin: Optional[datetime] = None
-    motivo_no_realizado: Optional[MotivoNoRealizado] = None
+    motivo_no_realizado: Optional[Union[MotivoNoRealizado, str]] = None
     observacion_no_realizado: Optional[str] = None
     fecha_hora_no_realizado: Optional[datetime] = None
 
