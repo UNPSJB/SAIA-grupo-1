@@ -7,3 +7,4 @@ class ErrorCode:
     CANTIDAD_RECIBIDA_INVALIDA = "La cantidad recibida debe ser mayor a cero."
     STOCK_INVALIDO =   "El stock debe ser mayor o igual a cero."
     STOCK_MAYOR_CANTIDAD = "El stock no puede ser mayor a la cantidad recibida."
+    NOMBRE_DUPLICADO = "Ya existe un insumo activo con ese nombre."

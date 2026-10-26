@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from src.insumos.exceptions import InsumoNoEncontrado
 from src.insumos.models import Insumo, UnidadMedida
+from src.insumos.services import eliminar_insumo
 from src.produccion import exceptions, schemas, services
 from src.produccion.models import InsumoLote, LoteProduccion, Producto
 from tests.database import session  # noqa: F401  (session es una fixture)
@@ -331,6 +332,20 @@ def test_quitar_un_insumo_no_asociado(session: Session) -> None:
 def test_listar_insumos_disponibles_ordenados_por_nombre(session: Session) -> None:
     nombres = [i.nombre for i in services.listar_insumos_disponibles(session)]
     assert nombres == ["Aceite de Girasol", "Harina de Trigo 000", "Levadura Fresca"]
+
+
+def test_un_insumo_dado_de_baja_no_se_puede_asociar_pero_el_lote_lo_conserva(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 10)))
+
+    eliminar_insumo(session, HARINA)
+
+    assert HARINA not in [i.id for i in services.listar_insumos_disponibles(session)]
+    with pytest.raises(InsumoNoEncontrado):
+        services.asociar_insumos(session, services.registrar_lote(session, LEGAJO, _datos()).id, _insumos((HARINA, 1)))
+    # la trazabilidad no se pierde: el lote sigue mostrando de qué insumo salió
+    asociado = services.leer_lote(session, lote.id).insumos[0]
+    assert (asociado.insumo.nombre, asociado.insumo.lote, asociado.cantidad) == ("Harina de Trigo 000", "ING-HAR-001", 10)
 
 
 @pytest.mark.parametrize("cantidad", [0, -1, -0.01])

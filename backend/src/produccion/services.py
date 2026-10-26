@@ -96,8 +96,9 @@ def listar_lotes(
 
 
 def listar_insumos_disponibles(db: Session) -> List[Insumo]:
-    """Insumos del maestro que todavía tienen stock para usar en un lote."""
-    return list(db.scalars(select(Insumo).where(Insumo.stock > 0).order_by(func.lower(Insumo.nombre))).all())
+    """Insumos activos del maestro que todavía tienen stock para usar en un lote."""
+    consulta = select(Insumo).where(Insumo.activo, Insumo.stock > 0).order_by(func.lower(Insumo.nombre))
+    return list(db.scalars(consulta).all())
 
 
 def asociar_insumos(db: Session, lote_id: int, datos: schemas.AsociarInsumos) -> LoteProduccion:
