@@ -16,10 +16,14 @@ def _lote(**cambios: Any) -> Dict[str, Any]:
         "producto_nombre": "Pan lactal",
         "fecha": date.today().isoformat(),
         "cantidad": 50,
-        "unidad_medida": "kilogramos",
+        "producto_unidad_medida": "kilogramos",
     }
     base.update(cambios)
     return {k: v for k, v in base.items() if v is not None}
+
+
+def _de_producto_existente(producto_id: int) -> Dict[str, Any]:
+    return _lote(producto_nombre=None, producto_unidad_medida=None, producto_id=producto_id)
 
 
 # ------------------------------------------------------------------ registro
@@ -33,7 +37,8 @@ def test_registrar_lote_con_producto_nuevo(session: Session) -> None:
     assert cuerpo["codigo"] == f"L-{date.today():%Y%m%d}-01"
     assert cuerpo["producto"]["nombre"] == "Pan lactal"
     assert cuerpo["cantidad"] == 50
-    assert cuerpo["unidad_medida"] == "kilogramos"
+    assert cuerpo["producto"]["unidad_medida"] == "kilogramos"
+    assert cuerpo["editable"] is True
     assert cuerpo["responsable_legajo"] == 1
     assert cuerpo["nombre_responsable"] == "Juan Perez"
 
@@ -41,7 +46,7 @@ def test_registrar_lote_con_producto_nuevo(session: Session) -> None:
 def test_registrar_lote_con_producto_existente(session: Session) -> None:
     producto_id = client.post("/lotes/", json=_lote()).json()["producto"]["id"]
 
-    respuesta = client.post("/lotes/", json=_lote(producto_nombre=None, producto_id=producto_id))
+    respuesta = client.post("/lotes/", json=_de_producto_existente(producto_id))
 
     assert respuesta.status_code == status.HTTP_201_CREATED
     assert respuesta.json()["producto"]["id"] == producto_id
@@ -50,14 +55,35 @@ def test_registrar_lote_con_producto_existente(session: Session) -> None:
 
 
 def test_producto_inexistente(session: Session) -> None:
-    respuesta = client.post("/lotes/", json=_lote(producto_nombre=None, producto_id=999))
+    respuesta = client.post("/lotes/", json=_de_producto_existente(999))
     assert respuesta.status_code == status.HTTP_404_NOT_FOUND
 
 
-@pytest.mark.parametrize("campo", ["fecha", "cantidad", "unidad_medida"])
+@pytest.mark.parametrize("campo", ["fecha", "cantidad"])
 def test_faltan_datos_obligatorios(session: Session, campo: str) -> None:
     respuesta = client.post("/lotes/", json=_lote(**{campo: None}))
     assert respuesta.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+@pytest.mark.parametrize(
+    "cuerpo, detalle",
+    [
+        (_lote(producto_unidad_medida=None), "Debe indicar la unidad de medida del producto nuevo."),
+        (_lote(producto_nombre=None, producto_id=1),
+         "La unidad de medida la define el producto: solo se indica al crear uno nuevo."),
+    ],
+)
+def test_unidad_de_medida_del_producto(session: Session, cuerpo: Dict[str, Any], detalle: str) -> None:
+    respuesta = client.post("/lotes/", json=cuerpo)
+    assert respuesta.status_code == status.HTTP_400_BAD_REQUEST
+    assert respuesta.json()["detail"] == detalle
+
+
+def test_producto_existente_con_otra_unidad(session: Session) -> None:
+    client.post("/lotes/", json=_lote())
+    respuesta = client.post("/lotes/", json=_lote(producto_nombre="PAN LACTAL", producto_unidad_medida="unidades"))
+    assert respuesta.status_code == status.HTTP_400_BAD_REQUEST
+    assert respuesta.json()["detail"] == "Ya existe un producto con ese nombre y se mide en otra unidad."
 
 
 def test_falta_el_producto(session: Session) -> None:
@@ -84,7 +110,7 @@ def test_la_fecha_no_puede_ser_futura(session: Session) -> None:
 
 
 def test_unidad_de_medida_invalida(session: Session) -> None:
-    respuesta = client.post("/lotes/", json=_lote(unidad_medida="toneladas"))
+    respuesta = client.post("/lotes/", json=_lote(producto_unidad_medida="toneladas"))
     assert respuesta.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
@@ -119,8 +145,14 @@ def test_listar_lotes_con_filtros(session: Session) -> None:
     desde = client.get("/lotes/", params={"desde": (hoy - timedelta(days=1)).isoformat()}).json()
     assert [l["id"] for l in desde] == [tarta["id"]]
 
+    hasta = client.get("/lotes/", params={"hasta": (hoy - timedelta(days=1)).isoformat()}).json()
+    assert [l["id"] for l in hasta] == [pan["id"]]
+    # el de hoy todavía se puede modificar; el de hace tres días ya es de solo lectura
+    assert [l["editable"] for l in todos] == [True, False]
+
     invalido = client.get("/lotes/", params={"desde": hoy.isoformat(), "hasta": (hoy - timedelta(days=1)).isoformat()})
     assert invalido.status_code == status.HTTP_400_BAD_REQUEST
+    assert invalido.json()["detail"] == "La fecha 'desde' no puede ser posterior a la fecha 'hasta'."
 
 
 def test_listar_productos(session: Session) -> None:
@@ -130,6 +162,7 @@ def test_listar_productos(session: Session) -> None:
     respuesta = client.get("/productos/")
     assert respuesta.status_code == status.HTTP_200_OK
     assert [p["nombre"] for p in respuesta.json()] == ["Alfajor", "Tarta"]
+    assert respuesta.json()[0]["unidad_medida"] == "kilogramos"
 
 
 # ------------------------------------------------------------------ insumos del lote
@@ -215,6 +248,19 @@ def test_quitar_insumo(session: Session) -> None:
     harina = next(i for i in client.get("/lotes/insumos-disponibles").json() if i["id"] == HARINA)
     assert harina["stock"] == 80
     assert client.delete(f"/lotes/{lote_id}/insumos/{HARINA}").status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_un_lote_de_un_dia_anterior_es_de_solo_lectura(session: Session) -> None:
+    cerrado = "El lote está cerrado: solo se pueden modificar los lotes del día."
+    ayer = (date.today() - timedelta(days=1)).isoformat()
+    lote_id = client.post("/lotes/", json=_lote(fecha=ayer)).json()["id"]
+
+    asociar = client.post(f"/lotes/{lote_id}/insumos", json=_insumos((HARINA, 1)))
+    quitar = client.delete(f"/lotes/{lote_id}/insumos/{HARINA}")
+
+    assert (asociar.status_code, asociar.json()["detail"]) == (status.HTTP_400_BAD_REQUEST, cerrado)
+    assert (quitar.status_code, quitar.json()["detail"]) == (status.HTTP_400_BAD_REQUEST, cerrado)
+    assert client.get(f"/lotes/{lote_id}").json()["editable"] is False
 
 
 # ------------------------------------------------------------------ permisos

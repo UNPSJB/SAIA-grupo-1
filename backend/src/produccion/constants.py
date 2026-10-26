@@ -21,3 +21,7 @@ class ErrorCode:
     INSUMO_YA_ASOCIADO = "El insumo ya está asociado a este lote."
     STOCK_INSUFICIENTE = "La cantidad utilizada supera el stock disponible del insumo."
     INSUMO_NO_ASOCIADO = "El insumo no está asociado a este lote."
+    UNIDAD_PRODUCTO_REQUERIDA = "Debe indicar la unidad de medida del producto nuevo."
+    UNIDAD_DE_PRODUCTO_EXISTENTE = "La unidad de medida la define el producto: solo se indica al crear uno nuevo."
+    PRODUCTO_CON_OTRA_UNIDAD = "Ya existe un producto con ese nombre y se mide en otra unidad."
+    LOTE_CERRADO = "El lote está cerrado: solo se pueden modificar los lotes del día."

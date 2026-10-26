@@ -64,3 +64,19 @@ class StockInsuficiente(BadRequest):
 
 class InsumoNoAsociado(NotFound):
     DETAIL = ErrorCode.INSUMO_NO_ASOCIADO
+
+
+class UnidadProductoRequerida(BadRequest):
+    DETAIL = ErrorCode.UNIDAD_PRODUCTO_REQUERIDA
+
+
+class UnidadDeProductoExistente(BadRequest):
+    DETAIL = ErrorCode.UNIDAD_DE_PRODUCTO_EXISTENTE
+
+
+class ProductoConOtraUnidad(BadRequest):
+    DETAIL = ErrorCode.PRODUCTO_CON_OTRA_UNIDAD
+
+
+class LoteCerrado(BadRequest):
+    DETAIL = ErrorCode.LOTE_CERRADO

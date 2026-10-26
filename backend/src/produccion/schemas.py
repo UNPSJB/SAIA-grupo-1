@@ -19,15 +19,18 @@ def normalizar_nombre_producto(nombre: str) -> str:
 class Producto(BaseModel):
     id: int
     nombre: str
+    unidad_medida: UnidadMedida
     model_config = ConfigDict(from_attributes=True)
 
 
 class LoteProduccionCreate(BaseModel):
     producto_id: Optional[int] = None
     producto_nombre: Optional[str] = None
+    # solo para un producto nuevo; uno existente ya tiene la suya
+    producto_unidad_medida: Optional[UnidadMedida] = None
     fecha: date
+    # en la unidad de medida del producto
     cantidad: float = Field(allow_inf_nan=False)
-    unidad_medida: UnidadMedida
 
     @field_validator("producto_nombre")
     @classmethod
@@ -54,6 +57,10 @@ class LoteProduccionCreate(BaseModel):
             raise exceptions.ProductoRequerido()
         if self.producto_id is not None and self.producto_nombre is not None:
             raise exceptions.ProductoAmbiguo()
+        if self.producto_nombre is not None and self.producto_unidad_medida is None:
+            raise exceptions.UnidadProductoRequerida()
+        if self.producto_id is not None and self.producto_unidad_medida is not None:
+            raise exceptions.UnidadDeProductoExistente()
         return self
 
 
@@ -109,9 +116,10 @@ class LoteProduccion(BaseModel):
     producto: Producto
     fecha: date
     cantidad: float
-    unidad_medida: UnidadMedida
     responsable_legajo: int
     nombre_responsable: str
     creado_en: datetime
+    # False para los lotes de días anteriores: ya no se les pueden agregar ni quitar insumos
+    editable: bool
     insumos: List[InsumoLote]
     model_config = ConfigDict(from_attributes=True)

@@ -13,6 +13,8 @@ class Producto(ModeloBase):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     nombre: Mapped[str] = mapped_column(String(NOMBRE_PRODUCTO_MAX))
+    # en qué se mide lo que se produce: todos los lotes del producto usan esta unidad
+    unidad_medida: Mapped[UnidadMedida] = mapped_column()
 
 
 # Un producto no puede repetirse aunque cambien las mayusculas ("Pan" y "pan" son el mismo).
@@ -26,8 +28,8 @@ class LoteProduccion(ModeloBase):
     codigo: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     producto_id: Mapped[int] = mapped_column(ForeignKey("productos.id"), index=True)
     fecha: Mapped[date] = mapped_column(Date, index=True)
+    # cantidad producida, en la unidad de medida del producto. No se edita una vez registrada.
     cantidad: Mapped[float] = mapped_column()
-    unidad_medida: Mapped[UnidadMedida] = mapped_column()
     responsable_legajo: Mapped[int] = mapped_column(ForeignKey("personal.legajo"), index=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
@@ -40,6 +42,11 @@ class LoteProduccion(ModeloBase):
     @property
     def nombre_responsable(self) -> str:
         return f"{self.responsable.nombre} {self.responsable.apellido}"
+
+    @property
+    def editable(self) -> bool:
+        """Solo se le pueden agregar o quitar insumos el mismo día del lote; después queda de solo lectura."""
+        return self.fecha >= date.today()
 
 
 class InsumoLote(ModeloBase):
