@@ -1,3 +1,4 @@
+import { ConsumoHistoricoInsumos } from '../insumos_quimicos/ConsumoHistoricoInsumos';
 import React from 'react';
 import type { TipoDetalleEstadisticas } from './tipos';
 import '../../styles/dashboard.css';
@@ -54,6 +55,16 @@ export const VistaDetalleEstadisticas: React.FC<VistaDetalleEstadisticasProps> =
   tipo,
   onVolver,
 }) => {
+  if (tipo === 'insumos') {
+    return (
+      <ConsumoHistoricoInsumos
+        onVolver={onVolver}
+        textoVolver="Volver al Dashboard"
+        mostrarBreadcrumbDashboard={true}
+      />
+    );
+  }
+
   const config = CONFIGURACION_VISTA[tipo];
 
   return (

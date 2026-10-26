@@ -20,7 +20,8 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { useColoresTema } from '../dashboard/useColoresTema';
 import {
   COLORES_TIPO_QUIMICO,
@@ -34,6 +35,8 @@ import '../../styles/formularioAlta.css';
 interface Props {
   onVolver: () => void;
   insumoIdInicial?: number | null;
+  textoVolver?: string;
+  mostrarBreadcrumbDashboard?: boolean;
 }
 
 const formatearFechaInput = (d: Date): string => {
@@ -66,7 +69,7 @@ const formatearFechaHoraVisual = (fechaIso?: string | null): string => {
   }
 };
 
-export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdInicial }) => {
+export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdInicial, textoVolver, mostrarBreadcrumbDashboard }) => {
   const { esAdministrador } = useAuth();
   const colores = useColoresTema();
 
@@ -215,6 +218,26 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
 
   return (
     <div className="modulo-container" style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
+      {mostrarBreadcrumbDashboard && (
+        <nav className="dashboard-breadcrumb" aria-label="Breadcrumb" style={{ marginBottom: '18px' }}>
+          <button
+            type="button"
+            className="dashboard-breadcrumb-link"
+            onClick={onVolver}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="7" height="9" x="3" y="3" rx="1.5" />
+              <rect width="7" height="5" x="14" y="3" rx="1.5" />
+              <rect width="7" height="9" x="14" y="12" rx="1.5" />
+              <rect width="7" height="5" x="3" y="16" rx="1.5" />
+            </svg>
+            Inicio
+          </button>
+          <span className="dashboard-breadcrumb-separador">/</span>
+          <span className="dashboard-breadcrumb-actual">Consumo de Insumos Químicos</span>
+        </nav>
+      )}
+
       {/* Encabezado Principal */}
       <div
         style={{
@@ -240,13 +263,13 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                 fontSize: '13px',
                 cursor: 'pointer',
               }}
-              title="Volver al listado de insumos químicos"
+              title={textoVolver || "Volver"}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <line x1="19" y1="12" x2="5" y2="12" />
                 <polyline points="12 19 5 12 12 5" />
               </svg>
-              Volver
+              {textoVolver || "Volver"}
             </button>
             <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-h)' }}>
               Consumo Histórico de Insumos Químicos
