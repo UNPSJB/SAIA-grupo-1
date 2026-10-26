@@ -50,6 +50,22 @@ class MarcarNoRealizadaSchema(BaseModel):
         return self
 
 
+class HistorialItemSchema(BaseModel):
+    id: int
+    fecha_hora: datetime
+    usuario_legajo: Optional[int] = None
+    usuario_nombre: Optional[str] = None
+    accion: str
+    detalle: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReasignarTareaSchema(BaseModel):
+    nuevo_responsable_legajo: int = Field(..., gt=0)
+    motivo: Optional[str] = Field(None, max_length=500)
+
+
 class ChecklistItem(BaseModel):
     id: int
     checklist_id: int
@@ -69,6 +85,11 @@ class ChecklistItem(BaseModel):
     motivo_no_realizado: Optional[Union[MotivoNoRealizado, str]] = None
     observacion_no_realizado: Optional[str] = None
     fecha_hora_no_realizado: Optional[datetime] = None
+    es_reasignada: bool = False
+    fecha_original: Optional[date] = None
+    checklist_fecha: Optional[date] = None
+    dias_restantes: Optional[int] = None
+    historial: List[HistorialItemSchema] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -137,9 +158,11 @@ class Checklist(BaseModel):
     porcentaje_cumplimiento: float
     total_tareas: int
     tareas_completadas: int
+    tareas_reasignadas: int = 0
     tareas_no_realizadas: int = 0
     tareas_pendientes: int
     tareas_vencidas: int = 0
+    tiene_reasignacion_no_leida: bool = False
     items: List[ChecklistItem]
 
     model_config = ConfigDict(from_attributes=True)

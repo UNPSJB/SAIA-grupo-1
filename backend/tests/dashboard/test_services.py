@@ -147,3 +147,27 @@ def test_consumo_insumos_filtra_por_unidad(session: Session) -> None:
     consumo_un = services.obtener_consumo_insumos(session, "semana", unidad="UN")
     assert any(c.nombre.lower() == "bobina papel" and c.unidad == "UN" for c in consumo_un)
     assert not any(c.unidad == "L" for c in consumo_un)
+
+
+def test_cumplimiento_cuenta_tareas_reasignadas_como_hechas(session: Session) -> None:
+    from src.checklist import models
+    from src.tareas.models import Frecuencia
+
+    chk = models.Checklist(
+        fecha=date.today(),
+        responsable_legajo=1,
+        activo=True,
+        items=[
+            models.ChecklistItem(
+                nombre_plan="Plan Reasig",
+                nombre_tarea="Tarea Reasignada",
+                frecuencia=Frecuencia.DIARIA,
+                estado=models.EstadoTareaItem.REASIGNADO,
+            )
+        ],
+    )
+    session.add(chk)
+    session.commit()
+
+    resumen = services.obtener_cumplimiento_actual(session, "dia")
+    assert resumen.hechas >= 1

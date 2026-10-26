@@ -19,5 +19,10 @@ class ErrorCode:
     OBSERVACION_OBLIGATORIA_OTRO = "La observación es obligatoria cuando el motivo es 'Otro'."
     MOTIVO_INVALIDO = "El motivo seleccionado no es válido."
     TAREA_YA_JUSTIFICADA = "La tarea ya fue marcada como no realizada y su justificación no puede modificarse."
-    TAREA_YA_JUSTIFICADA = "La tarea ya fue marcada como no realizada y su justificación no puede modificarse."
+    TAREA_NO_REASIGNABLE_ESTADO = "Solo se pueden reasignar tareas en estado pendiente o no realizada."
+    TAREA_VENCIDA_NO_REASIGNABLE = "No se puede reasignar una tarea vencida."
+    REASIGNAR_MISMO_OPERADOR_SOLO_NO_REALIZADA = "Una tarea solo puede reasignarse a la misma persona si está en estado no realizada."
+    OPERADOR_DESTINO_SIN_CHECKLIST_PENDIENTE = "El operador destino debe tener un checklist del día en estado pendiente para recibir la tarea."
+    OPERADOR_DESTINO_NO_OPERADOR = "El personal asignado debe tener capacidad para operar."
+    TAREA_VENCE_HOY_SIN_CHECKLIST = "La tarea vence hoy y el operador destino no tiene un checklist pendiente para hoy."
 

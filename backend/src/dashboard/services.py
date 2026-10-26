@@ -29,7 +29,7 @@ def _resumen_checklists(checklists, hoy: date | None = None) -> schemas.Cumplimi
     for c in checklists:
         dias_transcurridos = (hoy - c.fecha).days
         for item in c.items:
-            if item.estado == EstadoTareaItem.REALIZADO:
+            if item.estado in (EstadoTareaItem.REALIZADO, EstadoTareaItem.REASIGNADO):
                 hechas += 1
             elif item.estado == EstadoTareaItem.NO_REALIZADO:
                 justificadas += 1

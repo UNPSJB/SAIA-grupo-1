@@ -4,6 +4,8 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from tests.database import app, session
+from src.checklist import models
+from src.tareas.models import Frecuencia
 
 client = TestClient(app)
 
@@ -362,5 +364,136 @@ def test_no_permitir_modificar_justificacion_despues_de_hecha(session: Session) 
         json={"motivo": "equipo_fuera_de_uso", "observacion": "Cambio de motivo"},
     )
     assert res_segunda.status_code == status.HTTP_400_BAD_REQUEST
+
+
+def test_reasignar_tarea_router_exitoso(session: Session) -> None:
+    from src.checklist.models import Checklist, ChecklistItem, EstadoTareaItem
+    from src.tareas.models import Frecuencia
+
+    res_crear = client.post(
+        "/checklist/generar",
+        json={"responsable_legajo": 1},
+    )
+    checklist_id = res_crear.json()["id"]
+    item_id = res_crear.json()["items"][0]["id"]
+
+    chk_destino = Checklist(
+        fecha=date.today(),
+        responsable_legajo=2,
+        activo=True,
+        items=[
+            ChecklistItem(
+                nombre_plan="Plan Ana",
+                nombre_tarea="Tarea Ana",
+                frecuencia=Frecuencia.DIARIA,
+                estado=EstadoTareaItem.PENDIENTE,
+                responsable_legajo=2,
+            )
+        ],
+    )
+    session.add(chk_destino)
+    session.commit()
+
+    res_reasignar = client.post(
+        f"/checklist/{checklist_id}/tareas/{item_id}/reasignar",
+        json={"nuevo_responsable_legajo": 2, "motivo": "Relevo de turno"},
+    )
+    assert res_reasignar.status_code == status.HTTP_200_OK
+    data = res_reasignar.json()
+    assert data["estado"] == "reasignado"
+
+
+def test_reasignar_tarea_router_no_admin_403(session: Session) -> None:
+    from types import SimpleNamespace
+    from src.autenticacion.dependencies import get_usuario_actual
+    from src.personal.schemas import Capacidades
+
+    res_crear = client.post(
+        "/checklist/generar",
+        json={"responsable_legajo": 1},
+    )
+    checklist_id = res_crear.json()["id"]
+    item_id = res_crear.json()["items"][0]["id"]
+
+    app.dependency_overrides[get_usuario_actual] = lambda: SimpleNamespace(
+        legajo=2, capacidad=Capacidades.OPERAR, activo=True, nombre="Solo", apellido="Operador"
+    )
+    try:
+        res = client.post(
+            f"/checklist/{checklist_id}/tareas/{item_id}/reasignar",
+            json={"nuevo_responsable_legajo": 1},
+        )
+        assert res.status_code == status.HTTP_403_FORBIDDEN
+    finally:
+        from tests.database import USUARIO_DE_PRUEBA
+        app.dependency_overrides[get_usuario_actual] = lambda: USUARIO_DE_PRUEBA
+
+
+def test_reasignar_tarea_router_operador_sin_checklist_400(session: Session) -> None:
+    res_crear = client.post(
+        "/checklist/generar",
+        json={"responsable_legajo": 1},
+    )
+    checklist_id = res_crear.json()["id"]
+    item_id = res_crear.json()["items"][0]["id"]
+
+    res = client.post(
+        f"/checklist/{checklist_id}/tareas/{item_id}/reasignar",
+        json={"nuevo_responsable_legajo": 2},
+    )
+    assert res.status_code == status.HTTP_400_BAD_REQUEST
+
+
+def test_reasignar_tarea_no_diaria_router_sin_checklist_200(session: Session) -> None:
+    res_crear = client.post(
+        "/checklist/generar",
+        json={"responsable_legajo": 1},
+    )
+    checklist_id = res_crear.json()["id"]
+    items = res_crear.json()["items"]
+    item_semanal = next((it for it in items if it["frecuencia"] == "SEMANAL"), None)
+    if not item_semanal:
+        item = models.ChecklistItem(
+            checklist_id=checklist_id,
+            nombre_plan="Plan Router Semanal",
+            nombre_tarea="Tarea Router Semanal",
+            frecuencia=models.Frecuencia.SEMANAL,
+            _estado=models.EstadoTareaItem.PENDIENTE,
+            responsable_legajo=1,
+        )
+        session.add(item)
+        session.commit()
+        item_id = item.id
+    else:
+        item_id = item_semanal["id"]
+
+    res = client.post(
+        f"/checklist/{checklist_id}/tareas/{item_id}/reasignar",
+        json={"nuevo_responsable_legajo": 2, "motivo": "Reasignada via router"},
+    )
+    assert res.status_code == status.HTTP_200_OK
+    assert res.json()["estado"] == "reasignado"
+
+
+def test_get_tareas_no_realizadas_admin_200(session: Session) -> None:
+    res = client.get("/checklist/tareas-no-realizadas")
+    assert res.status_code == status.HTTP_200_OK
+    assert isinstance(res.json(), list)
+
+
+def test_get_tareas_no_realizadas_no_admin_403(session: Session) -> None:
+    from types import SimpleNamespace
+    from src.autenticacion.dependencies import get_usuario_actual
+    from src.personal.schemas import Capacidades
+
+    app.dependency_overrides[get_usuario_actual] = lambda: SimpleNamespace(
+        legajo=2, capacidad=Capacidades.OPERAR, activo=True, nombre="Solo", apellido="Operador"
+    )
+    try:
+        res = client.get("/checklist/tareas-no-realizadas")
+        assert res.status_code == status.HTTP_403_FORBIDDEN
+    finally:
+        from tests.database import USUARIO_DE_PRUEBA
+        app.dependency_overrides[get_usuario_actual] = lambda: USUARIO_DE_PRUEBA
 
 

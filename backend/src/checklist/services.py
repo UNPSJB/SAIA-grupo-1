@@ -13,10 +13,13 @@ from src.auditoria.schemas import AuditoriaCreate
 from src.auditoria.services import registrar_auditoria
 from src.equipos.models import Equipo, Estado
 from src.personal.models import Personal
+from src.personal.schemas import Capacidades
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.tareas.models import Frecuencia
 from src.insumos_quimicos.models import InsumoQuimico
 from src.logger import get_logger
+from src.autenticacion.dependencies import es_administrador
+from src.exceptions import PermissionDenied
 
 logger = get_logger(__name__)
 
@@ -112,6 +115,41 @@ def tarea_corresponde_a_fecha(
     return False
 
 
+def _tarea_esta_en_ciclo_reasignada_o_activa(
+    db: Session,
+    tarea_id: int,
+    fecha: date,
+    frecuencia: Frecuencia,
+) -> bool:
+    dias_limite = models.DIAS_POR_FRECUENCIA.get(frecuencia, 1)
+
+    rp = db.scalar(
+        select(models.ReasignacionPendiente).where(
+            models.ReasignacionPendiente.tarea_id == tarea_id,
+            models.ReasignacionPendiente.procesada == False,
+        )
+    )
+    if rp is not None:
+        if (fecha - rp.fecha_origen).days < dias_limite:
+            return True
+
+    items_reasignados = db.scalars(
+        select(models.ChecklistItem)
+        .join(models.Checklist, models.ChecklistItem.checklist_id == models.Checklist.id)
+        .where(
+            models.Checklist.activo == True,
+            models.ChecklistItem.tarea_id == tarea_id,
+            models.ChecklistItem.es_reasignada == True,
+        )
+    ).all()
+    for it in items_reasignados:
+        fecha_ref = it.fecha_original or (it.checklist.fecha if it.checklist else fecha)
+        if (fecha - fecha_ref).days < dias_limite:
+            return True
+
+    return False
+
+
 def generar_checklist(
     db: Session, datos: schemas.ChecklistGenerar
 ) -> models.Checklist:
@@ -164,6 +202,10 @@ def generar_checklist(
             # cada persona genera su checklist solo con las tareas que tiene asignadas
             if tarea.personal_id != datos.responsable_legajo:
                 continue
+            if _tarea_esta_en_ciclo_reasignada_o_activa(
+                db, tarea.id, fecha, tarea.frecuencia
+            ):
+                continue
             if tarea_corresponde_a_fecha(
                 tarea.frecuencia,
                 plan.fecha_inicio,
@@ -181,20 +223,85 @@ def generar_checklist(
                     estado=models.EstadoTareaItem.PENDIENTE,
                     responsable_legajo=tarea.personal_id,
                 )
+                item.historial.append(
+                    models.ChecklistItemHistorial(
+                        accion="CREADA",
+                        detalle=f"Tarea programada como pendiente para {responsable.nombre} {responsable.apellido}",
+                        usuario_legajo=responsable.legajo,
+                        usuario_nombre=f"{responsable.nombre} {responsable.apellido}",
+                    )
+                )
                 items_a_crear.append(item)
+
+    reasignaciones_pendientes = db.scalars(
+        select(models.ReasignacionPendiente).where(
+            models.ReasignacionPendiente.nuevo_responsable_legajo == responsable.legajo,
+            models.ReasignacionPendiente.procesada == False,
+        )
+    ).all()
+
+    items_de_reasignacion: List[tuple[models.ReasignacionPendiente, models.ChecklistItem]] = []
+    for r in reasignaciones_pendientes:
+        dias_transcurridos = (fecha - r.fecha_origen).days
+        dias_limite = models.DIAS_POR_FRECUENCIA.get(r.frecuencia, 1)
+        if dias_transcurridos < dias_limite:
+            nombre_anterior = (
+                r.anterior_responsable_nombre
+                or (f"Legajo {r.item_origen.responsable_legajo}" if r.item_origen and r.item_origen.responsable_legajo else "desconocido")
+            )
+            detalle_destino = f"Reasignada desde checklist #{r.checklist_origen_id} (anterior responsable: {nombre_anterior}) por {r.admin_nombre or 'Administrador'}"
+            if r.motivo and r.motivo.strip():
+                detalle_destino += f". Motivo: {r.motivo.strip()}"
+
+            item_nuevo = models.ChecklistItem(
+                plan_id=r.plan_id,
+                nombre_plan=r.nombre_plan,
+                tarea_id=r.tarea_id,
+                nombre_tarea=r.nombre_tarea,
+                descripcion_tarea=r.descripcion_tarea,
+                frecuencia=r.frecuencia,
+                _estado=models.EstadoTareaItem.PENDIENTE,
+                responsable_legajo=responsable.legajo,
+                insumos_utilizados="[]",
+                fecha_hora_fin=None,
+                fecha_original=r.fecha_origen,
+                es_reasignada=True,
+                revisada_por_operador=False,
+                tarea_origen_id=r.item_origen_id,
+            )
+            item_nuevo.historial.append(
+                models.ChecklistItemHistorial(
+                    accion="CREADA_POR_REASIGNACION",
+                    detalle=detalle_destino,
+                    usuario_legajo=r.admin_legajo,
+                    usuario_nombre=r.admin_nombre,
+                )
+            )
+            items_a_crear.append(item_nuevo)
+            items_de_reasignacion.append((r, item_nuevo))
+        else:
+            r.procesada = True
 
     if not items_a_crear:
         logger.warning("No hay tareas correspondientes para la fecha %s", fecha)
         raise exceptions.NoHayTareasCorrespondientes()
 
+    tiene_reasignaciones = len(items_de_reasignacion) > 0
     checklist = models.Checklist(
         fecha=fecha,
         responsable_legajo=datos.responsable_legajo,
         activo=True,
+        tiene_reasignacion_no_leida=tiene_reasignaciones,
         items=items_a_crear,
     )
     db.add(checklist)
     db.flush()
+
+    for r, item_nuevo in items_de_reasignacion:
+        r.procesada = True
+        if r.item_origen:
+            r.item_origen.tarea_reemplazo_id = item_nuevo.id
+
     _auditar(
         db,
         TABLA_CHECKLIST,
@@ -450,6 +557,21 @@ def completar_tarea(
     item.estado = models.EstadoTareaItem.REALIZADO
     item.fecha_hora_fin = datetime.now()
 
+    nombre_responsable = f"{responsable.nombre} {responsable.apellido}"
+    detalle_comp = f"Completada por {nombre_responsable}"
+    if insumos_guardados:
+        ins_str = ", ".join(f"{x['nombre']} ({x['cantidad']} {x['unidad']})" for x in insumos_guardados)
+        detalle_comp += f". Insumos: {ins_str}"
+
+    item.historial.append(
+        models.ChecklistItemHistorial(
+            accion="COMPLETADA",
+            detalle=detalle_comp,
+            usuario_legajo=responsable.legajo,
+            usuario_nombre=nombre_responsable,
+        )
+    )
+
     _auditar_cambios_item(db, item, previos)
     db.commit()
     logger.info("Tarea %s del checklist %s completada por legajo %s. Insumos descontados.", item_id, checklist_id, datos.responsable_legajo)
@@ -523,6 +645,21 @@ def marcar_tarea_no_realizada(
     item.responsable_legajo = usuario_legajo
     item.fecha_hora_no_realizado = datetime.now()
 
+    nombre_responsable = f"{responsable.nombre} {responsable.apellido}"
+    motivo_texto = datos.motivo.value if hasattr(datos.motivo, "value") else str(datos.motivo)
+    detalle_nr = f"Marcada como no realizada por {nombre_responsable}. Motivo: {motivo_texto}"
+    if item.observacion_no_realizado:
+        detalle_nr += f". Observación: {item.observacion_no_realizado}"
+
+    item.historial.append(
+        models.ChecklistItemHistorial(
+            accion="NO_REALIZADA",
+            detalle=detalle_nr,
+            usuario_legajo=responsable.legajo,
+            usuario_nombre=nombre_responsable,
+        )
+    )
+
     _auditar_cambios_item(db, item, previos)
     db.commit()
     logger.info("Tarea %s del checklist %s marcada como no realizada (motivo: %s) por legajo %s", item_id, checklist_id, datos.motivo, usuario_legajo)
@@ -578,12 +715,208 @@ def listar_checklists(
     return checklists
 
 
+def listar_tareas_no_realizadas_reasignables(
+    db: Session,
+) -> List[models.ChecklistItem]:
+    query = (
+        select(models.ChecklistItem)
+        .join(models.Checklist, models.ChecklistItem.checklist_id == models.Checklist.id)
+        .where(
+            models.Checklist.activo == True,
+            models.ChecklistItem._estado == models.EstadoTareaItem.NO_REALIZADO,
+            models.ChecklistItem.tarea_reemplazo_id.is_(None),
+        )
+        .order_by(models.Checklist.fecha.desc(), models.ChecklistItem.id.desc())
+    )
+    items = list(db.scalars(query).all())
+    hoy = date.today()
+    reasignables = []
+    for item in items:
+        fecha_ref = item.fecha_original or (item.checklist.fecha if item.checklist else hoy)
+        dias_transcurridos = (hoy - fecha_ref).days
+        dias_limite = models.DIAS_POR_FRECUENCIA.get(item.frecuencia, 1)
+        if dias_transcurridos < dias_limite:
+            reasignables.append(item)
+    return reasignables
+
+
 def obtener_checklist(
     db: Session,
     checklist_id: int,
+    usuario: Optional[Personal] = None,
 ) -> models.Checklist:
     query = select(models.Checklist).where(models.Checklist.id == checklist_id)
     checklist = db.scalar(query)
     if not checklist:
         raise exceptions.ChecklistNoEncontrado()
+
+    if (
+        usuario
+        and usuario.legajo == checklist.responsable_legajo
+        and checklist.tiene_reasignacion_no_leida
+    ):
+        checklist.tiene_reasignacion_no_leida = False
+        for it in checklist.items:
+            if it.es_reasignada and not it.revisada_por_operador:
+                it.revisada_por_operador = True
+        db.commit()
+        db.refresh(checklist)
+
     return checklist
+
+
+def reasignar_tarea(
+    db: Session,
+    checklist_id: int,
+    item_id: int,
+    datos: schemas.ReasignarTareaSchema,
+    admin_usuario: Personal,
+) -> models.ChecklistItem:
+    if not es_administrador(admin_usuario):
+        raise PermissionDenied()
+
+    checklist_origen = obtener_checklist(db, checklist_id)
+    item_origen = obtener_tarea(db, checklist_id, item_id)
+
+    dias_transcurridos = (
+        date.today() - (item_origen.fecha_original or checklist_origen.fecha)
+    ).days
+    dias_limite = models.DIAS_POR_FRECUENCIA.get(item_origen.frecuencia, 1)
+    if item_origen.estado == models.EstadoTareaItem.VENCIDO or dias_transcurridos >= dias_limite:
+        raise exceptions.TareaVencidaNoReasignable()
+
+    if item_origen.estado not in (
+        models.EstadoTareaItem.PENDIENTE,
+        models.EstadoTareaItem.NO_REALIZADO,
+    ):
+        raise exceptions.TareaNoReasignablePorEstado()
+
+    nuevo_operador = db.scalar(
+        select(Personal).where(Personal.legajo == datos.nuevo_responsable_legajo)
+    )
+    if not nuevo_operador:
+        raise exceptions.ResponsableNoEncontrado()
+
+    if not nuevo_operador.activo:
+        raise exceptions.ResponsableInactivo()
+
+    if nuevo_operador.capacidad not in (Capacidades.OPERAR, Capacidades.AMBAS):
+        raise exceptions.OperadorDestinoNoOperador()
+
+    es_mismo_operador = nuevo_operador.legajo == checklist_origen.responsable_legajo
+    if es_mismo_operador:
+        if item_origen.estado != models.EstadoTareaItem.NO_REALIZADO:
+            raise exceptions.ReasignarMismoOperadorSoloNoRealizada()
+
+    hoy = date.today()
+    checklist_destino = db.scalar(
+        select(models.Checklist).where(
+            models.Checklist.fecha == hoy,
+            models.Checklist.responsable_legajo == nuevo_operador.legajo,
+            models.Checklist.activo == True,
+        )
+    )
+    tiene_checklist_pendiente_hoy = bool(
+        checklist_destino
+        and checklist_destino.estado == models.EstadoGeneralChecklist.PENDIENTE
+    )
+    se_vence_hoy = dias_transcurridos >= dias_limite - 1
+    es_diaria = item_origen.frecuencia == Frecuencia.DIARIA
+
+    if not tiene_checklist_pendiente_hoy:
+        if es_diaria:
+            raise exceptions.OperadorDestinoSinChecklistPendiente()
+        if se_vence_hoy:
+            raise exceptions.TareaVenceHoyRequiereChecklistPendiente()
+
+    previos = {
+        "estado": item_origen.estado.value if hasattr(item_origen.estado, "value") else str(item_origen.estado),
+        "responsable_legajo": item_origen.responsable_legajo,
+    }
+
+    item_origen.estado = models.EstadoTareaItem.REASIGNADO
+
+    nombre_admin = (
+        f"{admin_usuario.nombre} {admin_usuario.apellido}".strip()
+        if hasattr(admin_usuario, "nombre") and hasattr(admin_usuario, "apellido") and admin_usuario.nombre
+        else f"Usuario #{admin_usuario.legajo}"
+    )
+    nombre_nuevo = f"{nuevo_operador.nombre} {nuevo_operador.apellido}"
+    detalle_origen = f"Reasignada a {nombre_nuevo} (Legajo {nuevo_operador.legajo}) por {nombre_admin}"
+    if datos.motivo and datos.motivo.strip():
+        detalle_origen += f". Motivo: {datos.motivo.strip()}"
+
+    item_origen.historial.append(
+        models.ChecklistItemHistorial(
+            accion="REASIGNADA",
+            detalle=detalle_origen,
+            usuario_legajo=admin_usuario.legajo,
+            usuario_nombre=nombre_admin,
+        )
+    )
+    _auditar_cambios_item(db, item_origen, previos)
+
+    nombre_anterior = item_origen.nombre_responsable or f"Legajo {checklist_origen.responsable_legajo}"
+
+    if tiene_checklist_pendiente_hoy and checklist_destino is not None:
+        detalle_destino = f"Reasignada desde checklist #{checklist_origen.id} (anterior responsable: {nombre_anterior}) por {nombre_admin}"
+        if datos.motivo and datos.motivo.strip():
+            detalle_destino += f". Motivo: {datos.motivo.strip()}"
+
+        item_nuevo = models.ChecklistItem(
+            checklist_id=checklist_destino.id,
+            plan_id=item_origen.plan_id,
+            nombre_plan=item_origen.nombre_plan,
+            tarea_id=item_origen.tarea_id,
+            nombre_tarea=item_origen.nombre_tarea,
+            descripcion_tarea=item_origen.descripcion_tarea,
+            frecuencia=item_origen.frecuencia,
+            _estado=models.EstadoTareaItem.PENDIENTE,
+            responsable_legajo=nuevo_operador.legajo,
+            insumos_utilizados="[]",
+            fecha_hora_fin=None,
+            fecha_original=item_origen.fecha_original or checklist_origen.fecha,
+            es_reasignada=True,
+            revisada_por_operador=False,
+            tarea_origen_id=item_origen.id,
+        )
+        item_nuevo.historial.append(
+            models.ChecklistItemHistorial(
+                accion="CREADA_POR_REASIGNACION",
+                detalle=detalle_destino,
+                usuario_legajo=admin_usuario.legajo,
+                usuario_nombre=nombre_admin,
+            )
+        )
+        db.add(item_nuevo)
+        db.flush()
+
+        item_origen.tarea_reemplazo_id = item_nuevo.id
+        checklist_destino.tiene_reasignacion_no_leida = True
+
+        db.commit()
+        db.refresh(item_origen)
+        db.refresh(checklist_destino)
+        return item_origen
+    else:
+        reasignacion = models.ReasignacionPendiente(
+            item_origen_id=item_origen.id,
+            checklist_origen_id=checklist_origen.id,
+            nuevo_responsable_legajo=nuevo_operador.legajo,
+            plan_id=item_origen.plan_id,
+            nombre_plan=item_origen.nombre_plan,
+            tarea_id=item_origen.tarea_id,
+            nombre_tarea=item_origen.nombre_tarea,
+            descripcion_tarea=item_origen.descripcion_tarea,
+            frecuencia=item_origen.frecuencia,
+            fecha_origen=item_origen.fecha_original or checklist_origen.fecha,
+            motivo=datos.motivo.strip() if datos.motivo and datos.motivo.strip() else None,
+            admin_legajo=admin_usuario.legajo,
+            admin_nombre=nombre_admin,
+            anterior_responsable_nombre=nombre_anterior,
+            procesada=False,
+        )
+        db.add(reasignacion)
+        db.commit()
+        db.refresh(item_origen)
+        return item_origen

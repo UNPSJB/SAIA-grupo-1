@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING, List, Optional
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 from src.tareas.models import Frecuencia
@@ -17,6 +17,7 @@ class EstadoTareaItem(StrEnum):
     REALIZADO = auto()
     NO_REALIZADO = auto()
     VENCIDO = auto()
+    REASIGNADO = auto()
 
 
 class MotivoNoRealizado(StrEnum):
@@ -50,6 +51,9 @@ class Checklist(ModeloBase):
     responsable_legajo: Mapped[int] = mapped_column(
         ForeignKey("personal.legajo"), index=True
     )
+    tiene_reasignacion_no_leida: Mapped[bool] = mapped_column(
+        Boolean, default=False, index=True
+    )
 
     responsable: Mapped["Personal"] = relationship("Personal", lazy="joined")
 
@@ -73,7 +77,17 @@ class Checklist(ModeloBase):
 
     @property
     def tareas_completadas(self) -> int:
-        return sum(1 for item in self.items if item.estado == EstadoTareaItem.REALIZADO)
+        return sum(
+            1
+            for item in self.items
+            if item.estado in (EstadoTareaItem.REALIZADO, EstadoTareaItem.REASIGNADO)
+        )
+
+    @property
+    def tareas_reasignadas(self) -> int:
+        return sum(
+            1 for item in self.items if item.estado == EstadoTareaItem.REASIGNADO
+        )
 
     @property
     def tareas_no_realizadas(self) -> int:
@@ -132,7 +146,8 @@ class ChecklistItem(ModeloBase):
     @property
     def estado(self) -> EstadoTareaItem:
         if self._estado == EstadoTareaItem.PENDIENTE and self.checklist and self.checklist.fecha:
-            dias_transcurridos = (date.today() - self.checklist.fecha).days
+            fecha_ref = self.fecha_original or self.checklist.fecha
+            dias_transcurridos = (date.today() - fecha_ref).days
             dias_limite = DIAS_POR_FRECUENCIA.get(self.frecuencia, 1)
             if dias_transcurridos >= dias_limite:
                 return EstadoTareaItem.VENCIDO
@@ -144,6 +159,7 @@ class ChecklistItem(ModeloBase):
     responsable_legajo: Mapped[Optional[int]] = mapped_column(
         ForeignKey("personal.legajo", ondelete="SET NULL"), nullable=True, index=True
     )
+    fecha_original: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     imagen: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     insumos_utilizados: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     fecha_hora_fin: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -156,10 +172,25 @@ class ChecklistItem(ModeloBase):
     fecha_hora_no_realizado: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True
     )
+    es_reasignada: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    revisada_por_operador: Mapped[bool] = mapped_column(Boolean, default=True)
+    tarea_origen_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("checklist_items.id", ondelete="SET NULL"), nullable=True
+    )
+    tarea_reemplazo_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("checklist_items.id", ondelete="SET NULL"), nullable=True
+    )
 
     checklist: Mapped["Checklist"] = relationship("Checklist", back_populates="items")
     responsable: Mapped[Optional["Personal"]] = relationship("Personal", lazy="joined")
     plan: Mapped[Optional["Plan_de_Limpieza"]] = relationship("Plan_de_Limpieza", lazy="joined")
+    historial: Mapped[List["ChecklistItemHistorial"]] = relationship(
+        "ChecklistItemHistorial",
+        back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="ChecklistItemHistorial.id.asc()",
+        lazy="selectin",
+    )
 
     @property
     def nombre_responsable(self) -> Optional[str]:
@@ -174,3 +205,69 @@ class ChecklistItem(ModeloBase):
         if self.plan and self.plan.sector:
             return self.plan.sector.nombre
         return None
+
+    @property
+    def checklist_fecha(self) -> Optional[date]:
+        return self.checklist.fecha if self.checklist else None
+
+    @property
+    def dias_restantes(self) -> Optional[int]:
+        if self.checklist and self.checklist.fecha:
+            fecha_ref = self.fecha_original or self.checklist.fecha
+            dias_transcurridos = (date.today() - fecha_ref).days
+            dias_limite = DIAS_POR_FRECUENCIA.get(self.frecuencia, 1)
+            return max(0, dias_limite - dias_transcurridos)
+        return None
+
+
+class ChecklistItemHistorial(ModeloBase):
+    __tablename__ = "checklist_item_historial"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    item_id: Mapped[int] = mapped_column(
+        ForeignKey("checklist_items.id", ondelete="CASCADE"), index=True
+    )
+    fecha_hora: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    usuario_legajo: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("personal.legajo", ondelete="SET NULL"), nullable=True
+    )
+    usuario_nombre: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    accion: Mapped[str] = mapped_column(String(50), index=True)
+    detalle: Mapped[str] = mapped_column(Text)
+
+    item: Mapped["ChecklistItem"] = relationship("ChecklistItem", back_populates="historial")
+
+
+class ReasignacionPendiente(ModeloBase):
+    __tablename__ = "reasignaciones_pendientes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    item_origen_id: Mapped[int] = mapped_column(
+        ForeignKey("checklist_items.id", ondelete="CASCADE"), index=True
+    )
+    checklist_origen_id: Mapped[int] = mapped_column(
+        ForeignKey("checklists.id", ondelete="CASCADE"), index=True
+    )
+    nuevo_responsable_legajo: Mapped[int] = mapped_column(
+        ForeignKey("personal.legajo", ondelete="CASCADE"), index=True
+    )
+    plan_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("plan_de_limpieza.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    nombre_plan: Mapped[str] = mapped_column(String(50))
+    tarea_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("tareas.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    nombre_tarea: Mapped[str] = mapped_column(String(50))
+    descripcion_tarea: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    frecuencia: Mapped[Frecuencia] = mapped_column(index=True)
+    fecha_origen: Mapped[date] = mapped_column(Date, index=True)
+    motivo: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    admin_legajo: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    admin_nombre: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    anterior_responsable_nombre: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    procesada: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    item_origen: Mapped["ChecklistItem"] = relationship(
+        "ChecklistItem", foreign_keys=[item_origen_id]
+    )

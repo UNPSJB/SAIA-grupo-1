@@ -9,6 +9,7 @@ import { useAuth } from '../../auth/useAuth';
 
 interface ListadoChecklistsProps {
   onDetalleClick: (id: number) => void;
+  onTareasNoRealizadasClick?: () => void;
 }
 const obtenerFechaLocalHoy = (): string => {
   const ahora = new Date();
@@ -34,6 +35,7 @@ const formatearMotivo = (motivo?: string | null): string => {
 
 export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   onDetalleClick,
+  onTareasNoRealizadasClick,
 }) => {
   // El administrador ve los checklists de todos; cada operador genera y ve solo los suyos.
   const { esAdministrador, esOperador, usuario } = useAuth();
@@ -256,14 +258,53 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         </div>
 
         <div className="top-bar-acciones">
-          {checklistHoyId ? (
+          {esAdministrador && onTareasNoRealizadasClick && (
             <button
-              onClick={() => onDetalleClick(checklistHoyId)}
-              className="btn-dia-ver"
-              title="Abrir tu checklist de hoy"
+              onClick={onTareasNoRealizadasClick}
+              className="btn-guardar"
+              style={{
+                backgroundColor: 'var(--color-alerta-fondo, #fffbeb)',
+                color: 'var(--color-alerta-texto, #b45309)',
+                border: '1px solid var(--color-alerta-borde, #fde68a)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                padding: '0.65rem 1.25rem',
+                cursor: 'pointer',
+              }}
+              title="Ver tareas no realizadas que aún se pueden reasignar"
             >
-              📅 Ver mi Checklist del Día
+              Tareas No Realizadas Reasignables
             </button>
+          )}
+
+          {checklistHoyId ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => onDetalleClick(checklistHoyId)}
+                className="btn-dia-ver"
+                title="Abrir tu checklist de hoy"
+              >
+                📅 Ver mi Checklist del Día
+              </button>
+              {checklists.find((c) => c.id === checklistHoyId)?.tiene_reasignacion_no_leida && (
+                <span
+                  style={{
+                    backgroundColor: 'var(--color-primario-fondo, #eff6ff)',
+                    color: 'var(--color-primario, #1d4ed8)',
+                    border: '1px solid var(--color-primario, #3b82f6)',
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  ✦ Nueva tarea reasignada
+                </span>
+              )}
+            </div>
           ) : esOperador ? (
             <button
               onClick={() => setModalGenerar(true)}
@@ -405,6 +446,43 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                           <span className={`badge-estado ${c.estado}`}>
                             {c.estado}
                           </span>
+                          {c.responsable_legajo === usuario?.legajo && c.tiene_reasignacion_no_leida && (
+                            <span
+                              className="badge-nueva-tarea-pill"
+                              style={{
+                                backgroundColor: 'var(--color-primario-fondo, #eff6ff)',
+                                color: 'var(--color-primario, #1d4ed8)',
+                                border: '1px solid var(--color-primario, #3b82f6)',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                              title="Tenés una nueva tarea reasignada en este checklist"
+                            >
+                              ✦ Nueva tarea reasignada
+                            </span>
+                          )}
+                          {(c.tareas_reasignadas ?? 0) > 0 && (
+                            <span
+                              className="badge-reasignada-pill"
+                              style={{
+                                backgroundColor: 'var(--color-alerta-fondo, #fffbeb)',
+                                color: 'var(--color-alerta, #d97706)',
+                                border: '1px solid var(--color-alerta, #f59e0b)',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                              }}
+                              title={`${c.tareas_reasignadas ?? 0} tarea(s) reasignada(s)`}
+                            >
+                              ↻ {c.tareas_reasignadas ?? 0} reasignada{(c.tareas_reasignadas ?? 0) > 1 ? 's' : ''}
+                            </span>
+                          )}
                           {(c.tareas_no_realizadas ?? 0) > 0 && (
                             <span className="badge-justificada-pill" title={`${c.tareas_no_realizadas ?? 0} tarea(s) no realizada(s) justificada(s)`}>
                               ✓ {c.tareas_no_realizadas ?? 0} justificada{(c.tareas_no_realizadas ?? 0) > 1 ? 's' : ''}

@@ -33,6 +33,7 @@ import EditarPlanDeLimpieza from './views/planesDeLimpieza/editarPlan';
 import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
 import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
+import { TareasNoRealizadas } from './views/checklist/tareasNoRealizadas';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { ListadoIncidentes } from './views/incidentes/listado';
 import { IncidentesAbiertos } from './views/incidentes/incidentesAbiertos';
@@ -69,7 +70,7 @@ type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar' | 'certificados' 
 type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
-type VistaChecklist = 'listado' | 'detalle';
+type VistaChecklist = 'listado' | 'detalle' | 'noRealizadas';
 type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
@@ -516,6 +517,15 @@ function Aplicacion() {
           vistaChecklist === 'listado' ? (
             <ListadoChecklists
               onDetalleClick={(id) => {
+                setChecklistSeleccionado(id);
+                setVistaChecklist('detalle');
+              }}
+              onTareasNoRealizadasClick={() => setVistaChecklist('noRealizadas')}
+            />
+          ) : vistaChecklist === 'noRealizadas' ? (
+            <TareasNoRealizadas
+              onVolver={() => setVistaChecklist('listado')}
+              onDetalleChecklist={(id) => {
                 setChecklistSeleccionado(id);
                 setVistaChecklist('detalle');
               }}

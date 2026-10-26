@@ -80,3 +80,27 @@ class MotivoInvalido(BadRequest):
 
 class TareaYaJustificada(BadRequest):
     DETAIL = ErrorCode.TAREA_YA_JUSTIFICADA
+
+
+class TareaNoReasignablePorEstado(BadRequest):
+    DETAIL = ErrorCode.TAREA_NO_REASIGNABLE_ESTADO
+
+
+class TareaVencidaNoReasignable(BadRequest):
+    DETAIL = ErrorCode.TAREA_VENCIDA_NO_REASIGNABLE
+
+
+class ReasignarMismoOperadorSoloNoRealizada(BadRequest):
+    DETAIL = ErrorCode.REASIGNAR_MISMO_OPERADOR_SOLO_NO_REALIZADA
+
+
+class OperadorDestinoSinChecklistPendiente(BadRequest):
+    DETAIL = ErrorCode.OPERADOR_DESTINO_SIN_CHECKLIST_PENDIENTE
+
+
+class OperadorDestinoNoOperador(BadRequest):
+    DETAIL = ErrorCode.OPERADOR_DESTINO_NO_OPERADOR
+
+
+class TareaVenceHoyRequiereChecklistPendiente(OperadorDestinoSinChecklistPendiente):
+    DETAIL = ErrorCode.TAREA_VENCE_HOY_SIN_CHECKLIST
