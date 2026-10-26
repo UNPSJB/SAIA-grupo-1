@@ -17,6 +17,12 @@ def asegurar_migraciones_esquema(db_engine):
             with db_engine.begin() as conn:
                 conn.execute(text("ALTER TABLE insumos_quimicos ADD COLUMN proveedor VARCHAR(150)"))
 
+    if "versiones_documento" in tablas:
+        columnas_doc = [col["name"] for col in inspector.get_columns("versiones_documento")]
+        if "fecha_vencimiento" not in columnas_doc:
+            with db_engine.begin() as conn:
+                conn.execute(text("ALTER TABLE versiones_documento ADD COLUMN fecha_vencimiento DATE"))
+
 
 # Dependency
 def get_db():

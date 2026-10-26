@@ -324,6 +324,29 @@ def main() -> None:
     # Tareas asignadas a las cuentas de desarrollo por defecto (operador y adminopp)
     op_dev = db.query(Personal).filter(Personal.usuario == "operador").first()
     adminop_dev = db.query(Personal).filter(Personal.usuario == "adminopp").first()
+    admin_dev = db.query(Personal).filter(Personal.usuario == "admin").first()
+
+    if admin_dev:
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Sanitizacion Diaria de Oficina y Control",
+                descripcion="Paso 1. Desinfectar superficies de trabajo.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_heladera.id,
+                personal_id=admin_dev.legajo,
+            ),
+        )
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Control y Desinfeccion de Puntos Criticos",
+                descripcion="Paso 1. Repasar manijas y paneles.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_horno.id,
+                personal_id=admin_dev.legajo,
+            ),
+        )
 
     if op_dev:
         crear_tarea(
