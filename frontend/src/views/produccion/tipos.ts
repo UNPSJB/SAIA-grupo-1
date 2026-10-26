@@ -8,6 +8,27 @@ export interface Producto {
   nombre: string;
 }
 
+/** Insumo del maestro tal como se muestra dentro de un lote */
+export interface InsumoResumen {
+  id: number;
+  nombre: string;
+  /** lote del proveedor: es lo que responde "de dónde salió esto" */
+  lote: string;
+  medida: string;
+}
+
+/** Insumo activo con stock, para elegir en el modal de asociar */
+export interface InsumoDisponible extends InsumoResumen {
+  stock: number;
+  fechaVencimiento: string | null;
+}
+
+/** Cuánto se usó de un insumo en el lote, en la unidad del insumo */
+export interface InsumoDelLote {
+  insumo: InsumoResumen;
+  cantidad: number;
+}
+
 export interface LoteProduccion {
   id: number;
   codigo: string;
@@ -18,6 +39,7 @@ export interface LoteProduccion {
   responsable_legajo: number;
   nombre_responsable: string;
   creado_en: string;
+  insumos: InsumoDelLote[];
 }
 
 export interface LoteForm {

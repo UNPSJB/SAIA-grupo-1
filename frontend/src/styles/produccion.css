@@ -39,3 +39,69 @@
 .lote-resultado-detalle dd {
   margin: 0;
 }
+
+/* Insumos del lote */
+.lote-insumos {
+  max-width: 820px;
+}
+
+.insumos-filas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.insumo-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  column-gap: 0.75rem;
+  align-items: end;
+  padding: 0.85rem 0.85rem 0.5rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  background-color: var(--color-fondo);
+}
+
+.insumo-fila .form-group {
+  margin-bottom: 0;
+}
+
+.insumo-fila-quitar {
+  margin-bottom: 0.35rem;
+}
+
+.insumo-fila-quitar:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.insumo-fila-pie {
+  grid-column: 1 / -1;
+  min-height: 1.25rem;
+  padding-top: 0.2rem;
+}
+
+.insumo-fila-stock {
+  font-size: 0.8rem;
+  color: var(--color-texto-sec);
+}
+
+.insumos-agregar-fila {
+  margin-top: 0.75rem;
+}
+
+.insumos-agregar-fila:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .insumo-fila {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .insumo-fila-insumo {
+    grid-column: 1 / -1;
+    margin-bottom: 0.75rem !important;
+  }
+}
