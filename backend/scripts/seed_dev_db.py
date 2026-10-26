@@ -320,6 +320,64 @@ def main() -> None:
         ),
     )
 
+
+    # Tareas asignadas a las cuentas de desarrollo por defecto (operador y adminopp)
+    op_dev = db.query(Personal).filter(Personal.usuario == "operador").first()
+    adminop_dev = db.query(Personal).filter(Personal.usuario == "adminopp").first()
+
+    if op_dev:
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Sanitizacion Diaria de Bandejas y Rejillas",
+                descripcion="Paso 1. Pulverizar Alcohol Isopropilico 70 Spray. Paso 2. Secar con paño descartable.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_heladera.id,
+                personal_id=op_dev.legajo,
+            ),
+        )
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Control Semanal de Condensador y Filtros",
+                descripcion="Paso 1. Cepillar rejilla trasera y aspirar polvo acumulado.",
+                frecuencia=Frecuencia.SEMANAL,
+                plan_id=plan_heladera.id,
+                personal_id=op_dev.legajo,
+            ),
+        )
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Desinfeccion Diaria de Manijas y Burletes",
+                descripcion="Paso 1. Limpiar manija exterior con toallitas desinfectantes. Paso 2. Dejar secar al aire.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_freezer.id,
+                personal_id=op_dev.legajo,
+            ),
+        )
+
+    if adminop_dev:
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Limpieza Diaria de Tolva y Protector",
+                descripcion="Paso 1. Desconectar y retirar restos secos de harina. Paso 2. Pulverizar desinfectante neutro.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_amasadora.id,
+                personal_id=adminop_dev.legajo,
+            ),
+        )
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Sanitizacion Diaria de Puerta y Cristales",
+                descripcion="Paso 1. Pulverizar desinfectante y limpiar cristales frontal. Paso 2. Repasar con papel tissue.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_horno.id,
+                personal_id=adminop_dev.legajo,
+            ),
+        )
     db.commit()
 
     print("Generando historial de checklists completados (dias anteriores con insumos y procedimientos)...")
