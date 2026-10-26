@@ -8,6 +8,7 @@ class CumplimientoResumen(BaseModel):
     hechas: int
     pendientes: int
     vencidas: int = 0
+    justificadas: int = 0
     porcentaje: float
 
 

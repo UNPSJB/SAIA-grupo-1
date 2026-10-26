@@ -1,8 +1,9 @@
 import io
 from datetime import date, timedelta
 import pytest
+from fastapi import UploadFile
 from sqlalchemy.orm import Session
-from starlette.datastructures import UploadFile as StarletteUploadFile
+from starlette.datastructures import Headers
 from tests.database import session
 from src.checklist import exceptions, models, schemas
 from src.checklist.services import (
@@ -11,10 +12,13 @@ from src.checklist.services import (
     generar_checklist,
     guardar_archivo_imagen_tarea,
     listar_checklists,
+    marcar_tarea_no_realizada,
     obtener_checklist,
     obtener_tarea,
     tarea_corresponde_a_fecha,
 )
+from src.auditoria.models import AccionAuditoria
+from src.auditoria.services import listar_auditorias
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.tareas.models import Frecuencia, Tarea
 
@@ -60,7 +64,9 @@ def test_inmutabilidad_checklist(session: Session) -> None:
     nombre_original = primer_item.nombre_tarea
     plan_original = primer_item.nombre_plan
 
-    tarea_original = session.query(Plan_de_Limpieza).first().tareas[0]
+    plan = session.query(Plan_de_Limpieza).first()
+    assert plan is not None
+    tarea_original = plan.tareas[0]
     tarea_original.nombre = "NuevoNombre"
     session.commit()
 
@@ -121,10 +127,10 @@ def test_guardar_y_eliminar_archivo_imagen_tarea(session: Session) -> None:
     )
     item = checklist.items[0]
 
-    archivo = StarletteUploadFile(
+    archivo = UploadFile(
         filename="foto_test.png",
         file=io.BytesIO(b"fake image content"),
-        headers={"content-type": "image/png"},
+        headers=Headers({"content-type": "image/png"}),
     )
     item_con_img = guardar_archivo_imagen_tarea(session, checklist.id, item.id, archivo)
     assert item_con_img.imagen is not None
@@ -253,6 +259,11 @@ def test_checklist_vencido_no_admite_modificaciones(session: Session) -> None:
     session.commit()
     session.refresh(checklist_vencido)
 
+    assert checklist_vencido.estado == models.EstadoGeneralChecklist.VENCIDO
+    assert checklist_vencido.items[0].estado == models.EstadoTareaItem.VENCIDO
+    assert checklist_vencido.tareas_vencidas == 1
+    assert checklist_vencido.tareas_pendientes == 0
+
     with pytest.raises(exceptions.ChecklistNoModificable):
         completar_tarea(
             session,
@@ -261,10 +272,19 @@ def test_checklist_vencido_no_admite_modificaciones(session: Session) -> None:
             schemas.CompletarTareaSchema(responsable_legajo=1),
         )
 
-    archivo = StarletteUploadFile(
+    with pytest.raises(exceptions.ChecklistNoModificable):
+        marcar_tarea_no_realizada(
+            session,
+            checklist_vencido.id,
+            checklist_vencido.items[0].id,
+            1,
+            schemas.MarcarNoRealizadaSchema(motivo=models.MotivoNoRealizado.EQUIPO_FUERA_DE_USO),
+        )
+
+    archivo = UploadFile(
         filename="foto.png",
         file=io.BytesIO(b"abc"),
-        headers={"content-type": "image/png"},
+        headers=Headers({"content-type": "image/png"}),
     )
     with pytest.raises(exceptions.ChecklistNoModificable):
         guardar_archivo_imagen_tarea(
@@ -454,3 +474,165 @@ def test_listar_checklists_filtra_por_responsable(session: Session) -> None:
     assert [c.id for c in listar_checklists(session, responsable_legajo=2)] == [de_ana.id]
     todos = [c.id for c in listar_checklists(session)]
     assert de_juan.id in todos and de_ana.id in todos
+
+
+def test_marcar_tarea_no_realizada_motivos_frecuentes(session: Session) -> None:
+    checklist = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    item = checklist.items[0]
+
+    resultado = marcar_tarea_no_realizada(
+        session,
+        checklist.id,
+        item.id,
+        schemas.MarcarNoRealizadaSchema(
+            motivo=models.MotivoNoRealizado.EQUIPO_FUERA_DE_USO,
+            observacion="El motor se encuentra averiado",
+        ),
+        usuario_legajo=1,
+    )
+
+    assert resultado.estado == models.EstadoTareaItem.NO_REALIZADO
+    assert resultado.motivo_no_realizado == models.MotivoNoRealizado.EQUIPO_FUERA_DE_USO
+    assert resultado.observacion_no_realizado == "El motor se encuentra averiado"
+    assert resultado.responsable_legajo == 1
+    assert resultado.fecha_hora_no_realizado is not None
+
+
+def test_marcar_tarea_no_realizada_motivo_otro_requiere_observacion(session: Session) -> None:
+    checklist = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    item = checklist.items[0]
+
+    with pytest.raises(exceptions.ObservacionObligatoriaParaOtro):
+        marcar_tarea_no_realizada(
+            session,
+            checklist.id,
+            item.id,
+            schemas.MarcarNoRealizadaSchema(
+                motivo=models.MotivoNoRealizado.OTRO,
+                observacion="",
+            ),
+            usuario_legajo=1,
+        )
+
+    with pytest.raises(exceptions.ObservacionObligatoriaParaOtro):
+        marcar_tarea_no_realizada(
+            session,
+            checklist.id,
+            item.id,
+            schemas.MarcarNoRealizadaSchema(
+                motivo=models.MotivoNoRealizado.OTRO,
+                observacion="   ",
+            ),
+            usuario_legajo=1,
+        )
+
+    resultado = marcar_tarea_no_realizada(
+        session,
+        checklist.id,
+        item.id,
+        schemas.MarcarNoRealizadaSchema(
+            motivo=models.MotivoNoRealizado.OTRO,
+            observacion="Corte de suministro eléctrico general en la planta",
+        ),
+        usuario_legajo=1,
+    )
+    assert resultado.estado == models.EstadoTareaItem.NO_REALIZADO
+    assert resultado.observacion_no_realizado == "Corte de suministro eléctrico general en la planta"
+
+
+def test_marcar_tarea_no_realizada_no_permite_modificar_justificacion(session: Session) -> None:
+    checklist = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    item = checklist.items[0]
+
+    marcar_tarea_no_realizada(
+        session,
+        checklist.id,
+        item.id,
+        schemas.MarcarNoRealizadaSchema(
+            motivo=models.MotivoNoRealizado.FALTA_DE_INSUMO,
+            observacion="Sin desinfectante en depósito",
+        ),
+        usuario_legajo=1,
+    )
+
+    registros = listar_auditorias(session, "checklist_items", item.id)
+    por_campo = {r.campo: r for r in registros}
+    assert por_campo["estado"].valor_previo == "pendiente"
+    assert por_campo["estado"].valor_posterior == "no_realizado"
+    assert por_campo["motivo_no_realizado"].valor_posterior == "falta_de_insumo"
+    assert por_campo["observacion_no_realizado"].valor_posterior == "Sin desinfectante en depósito"
+
+    with pytest.raises(exceptions.TareaYaJustificada):
+        marcar_tarea_no_realizada(
+            session,
+            checklist.id,
+            item.id,
+            schemas.MarcarNoRealizadaSchema(
+                motivo=models.MotivoNoRealizado.EQUIPO_FUERA_DE_USO,
+                observacion="En revisión técnica por mantenimiento",
+            ),
+            usuario_legajo=1,
+        )
+
+
+def test_cumplimiento_tareas_justificadas_cuentan_como_no_cumplidas(session: Session) -> None:
+    checklist = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    assert len(checklist.items) >= 2
+    total = checklist.total_tareas
+    item1 = checklist.items[0]
+
+    completar_tarea(
+        session,
+        checklist.id,
+        item1.id,
+        schemas.CompletarTareaSchema(responsable_legajo=1),
+    )
+    session.refresh(checklist)
+    assert checklist.tareas_completadas == 1
+    assert checklist.tareas_no_realizadas == 0
+    assert checklist.porcentaje_cumplimiento == round((1 / total) * 100.0, 1)
+    assert checklist.estado == models.EstadoGeneralChecklist.PENDIENTE
+
+    for item in checklist.items[1:]:
+        marcar_tarea_no_realizada(
+            session,
+            checklist.id,
+            item.id,
+            schemas.MarcarNoRealizadaSchema(
+                motivo=models.MotivoNoRealizado.EQUIPO_FUERA_DE_USO,
+                observacion="Equipo detenido por calibración",
+            ),
+            usuario_legajo=1,
+        )
+
+    session.refresh(checklist)
+    assert checklist.tareas_completadas == 1
+    assert checklist.tareas_no_realizadas == total - 1
+    assert checklist.tareas_pendientes == 0
+    assert checklist.porcentaje_cumplimiento == round((1 / total) * 100.0, 1)
+    assert checklist.estado == models.EstadoGeneralChecklist.COMPLETADO
+
+
+
+def test_no_permitir_marcar_no_realizada_tarea_ya_completada(session: Session) -> None:
+    checklist = generar_checklist(session, schemas.ChecklistGenerar(responsable_legajo=1))
+    item = checklist.items[0]
+
+    completar_tarea(
+        session,
+        checklist.id,
+        item.id,
+        schemas.CompletarTareaSchema(responsable_legajo=1),
+    )
+
+    with pytest.raises(exceptions.TareaYaCompletada):
+        marcar_tarea_no_realizada(
+            session,
+            checklist.id,
+            item.id,
+            schemas.MarcarNoRealizadaSchema(
+                motivo=models.MotivoNoRealizado.EQUIPO_FUERA_DE_USO,
+            ),
+            usuario_legajo=1,
+        )
+

@@ -15,3 +15,9 @@ class ErrorCode:
     INSUMO_QUIMICO_INACTIVO = "El insumo químico seleccionado se encuentra inactivo."
     INSUMO_QUIMICO_NO_ENCONTRADO = "Uno de los insumos químicos seleccionados no existe."
     CANTIDAD_CONSUMO_INVALIDA = "La cantidad consumida debe ser mayor a cero."
+    MOTIVO_NO_REALIZADO_REQUERIDO = "Debe seleccionar un motivo para marcar la tarea como no realizada."
+    OBSERVACION_OBLIGATORIA_OTRO = "La observación es obligatoria cuando el motivo es 'Otro'."
+    MOTIVO_INVALIDO = "El motivo seleccionado no es válido."
+    TAREA_YA_JUSTIFICADA = "La tarea ya fue marcada como no realizada y su justificación no puede modificarse."
+    TAREA_YA_JUSTIFICADA = "La tarea ya fue marcada como no realizada y su justificación no puede modificarse."
+

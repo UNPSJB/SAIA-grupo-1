@@ -1,9 +1,9 @@
 import json
 from datetime import date, datetime
 from typing import Any, List, Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.checklist import exceptions
-from src.checklist.models import EstadoGeneralChecklist, EstadoTareaItem
+from src.checklist.models import EstadoGeneralChecklist, EstadoTareaItem, MotivoNoRealizado
 from src.tareas.models import Frecuencia
 
 
@@ -22,6 +22,32 @@ class CompletarTareaSchema(BaseModel):
     insumos_utilizados: List[InsumoUtilizadoPlaceholder] = Field(default_factory=list)
 
 
+class MarcarNoRealizadaSchema(BaseModel):
+    motivo: MotivoNoRealizado
+    observacion: Optional[str] = None
+
+    @field_validator("motivo", mode="before")
+    @classmethod
+    def parse_motivo(cls, v: Any) -> Any:
+        if not v:
+            raise exceptions.MotivoNoRealizadoRequerido()
+        if isinstance(v, MotivoNoRealizado):
+            return v
+        if isinstance(v, str):
+            val_clean = v.strip().lower()
+            for m in MotivoNoRealizado:
+                if m.value == val_clean or m.name.lower() == val_clean:
+                    return m
+        raise exceptions.MotivoInvalido()
+
+    @model_validator(mode="after")
+    def validar_observacion(self) -> "MarcarNoRealizadaSchema":
+        if self.motivo == MotivoNoRealizado.OTRO:
+            if not self.observacion or not self.observacion.strip():
+                raise exceptions.ObservacionObligatoriaParaOtro()
+        return self
+
+
 class ChecklistItem(BaseModel):
     id: int
     checklist_id: int
@@ -38,6 +64,9 @@ class ChecklistItem(BaseModel):
     imagen: Optional[str] = None
     insumos_utilizados: List[InsumoUtilizadoPlaceholder] = Field(default_factory=list)
     fecha_hora_fin: Optional[datetime] = None
+    motivo_no_realizado: Optional[MotivoNoRealizado] = None
+    observacion_no_realizado: Optional[str] = None
+    fecha_hora_no_realizado: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -106,8 +135,9 @@ class Checklist(BaseModel):
     porcentaje_cumplimiento: float
     total_tareas: int
     tareas_completadas: int
+    tareas_no_realizadas: int = 0
     tareas_pendientes: int
+    tareas_vencidas: int = 0
     items: List[ChecklistItem]
 
     model_config = ConfigDict(from_attributes=True)
-

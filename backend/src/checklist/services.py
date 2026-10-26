@@ -248,6 +248,13 @@ def guardar_archivo_imagen_tarea(
     if item.estado == models.EstadoTareaItem.REALIZADO:
         raise exceptions.TareaYaCompletada()
 
+    if item.estado == models.EstadoTareaItem.NO_REALIZADO:
+        raise exceptions.TareaYaJustificada()
+
+    if item.estado == models.EstadoTareaItem.VENCIDO:
+        raise exceptions.ChecklistNoModificable()
+
+
     extension = Path(file.filename or "").suffix.lower()
     tipos_validos = {
         ".jpg": "image/jpeg",
@@ -316,6 +323,13 @@ def eliminar_imagen_tarea(
     if item.estado == models.EstadoTareaItem.REALIZADO:
         raise exceptions.TareaYaCompletada()
 
+    if item.estado == models.EstadoTareaItem.NO_REALIZADO:
+        raise exceptions.TareaYaJustificada()
+
+    if item.estado == models.EstadoTareaItem.VENCIDO:
+        raise exceptions.ChecklistNoModificable()
+
+
     if item.imagen and item.imagen.startswith("/checklist/imagenes/"):
         nombre = Path(item.imagen).name
         ruta = IMAGENES_DIR / nombre
@@ -366,6 +380,13 @@ def completar_tarea(
 
     if item.estado == models.EstadoTareaItem.REALIZADO:
         raise exceptions.TareaYaCompletada()
+
+    if item.estado == models.EstadoTareaItem.NO_REALIZADO:
+        raise exceptions.TareaYaJustificada()
+
+    if item.estado == models.EstadoTareaItem.VENCIDO:
+        raise exceptions.ChecklistNoModificable()
+
 
     responsable = db.scalar(
         select(Personal).where(Personal.legajo == datos.responsable_legajo)
@@ -434,6 +455,79 @@ def completar_tarea(
     logger.info("Tarea %s del checklist %s completada por legajo %s. Insumos descontados.", item_id, checklist_id, datos.responsable_legajo)
     db.refresh(item)
     return item
+
+
+def marcar_tarea_no_realizada(
+    db: Session,
+    checklist_id: int,
+    item_id: int,
+    datos: schemas.MarcarNoRealizadaSchema,
+    usuario_legajo: int,
+) -> models.ChecklistItem:
+    checklist = obtener_checklist(db, checklist_id)
+    if checklist.estado in (
+        models.EstadoGeneralChecklist.COMPLETADO,
+        models.EstadoGeneralChecklist.VENCIDO,
+    ):
+        raise exceptions.ChecklistNoModificable()
+
+    item = db.scalar(
+        select(models.ChecklistItem).where(
+            models.ChecklistItem.id == item_id,
+            models.ChecklistItem.checklist_id == checklist_id,
+        )
+    )
+    if not item:
+        logger.warning("Marcar tarea no realizada: item %s no encontrado en checklist %s", item_id, checklist_id)
+        raise exceptions.TareaChecklistNoEncontrada()
+
+    if item.estado == models.EstadoTareaItem.REALIZADO:
+        raise exceptions.TareaYaCompletada()
+
+    if item.estado == models.EstadoTareaItem.NO_REALIZADO:
+        raise exceptions.TareaYaJustificada()
+
+    if item.estado == models.EstadoTareaItem.VENCIDO:
+        raise exceptions.ChecklistNoModificable()
+
+
+    responsable = db.scalar(
+        select(Personal).where(Personal.legajo == usuario_legajo)
+    )
+    if not responsable:
+        logger.warning("Marcar tarea no realizada %s: responsable legajo %s no encontrado", item_id, usuario_legajo)
+        raise exceptions.ResponsableNoEncontrado()
+
+    if not responsable.activo:
+        logger.warning("Marcar tarea no realizada %s: responsable legajo %s inactivo", item_id, usuario_legajo)
+        raise exceptions.ResponsableInactivo()
+
+    if not datos.motivo:
+        raise exceptions.MotivoNoRealizadoRequerido()
+
+    if datos.motivo == models.MotivoNoRealizado.OTRO:
+        if not datos.observacion or not datos.observacion.strip():
+            raise exceptions.ObservacionObligatoriaParaOtro()
+
+    previos = {
+        "estado": item.estado.value if hasattr(item.estado, "value") else str(item.estado),
+        "motivo_no_realizado": item.motivo_no_realizado.value if item.motivo_no_realizado and hasattr(item.motivo_no_realizado, "value") else item.motivo_no_realizado,
+        "observacion_no_realizado": item.observacion_no_realizado,
+        "responsable_legajo": item.responsable_legajo,
+    }
+
+    item.estado = models.EstadoTareaItem.NO_REALIZADO
+    item.motivo_no_realizado = datos.motivo
+    item.observacion_no_realizado = datos.observacion.strip() if datos.observacion else None
+    item.responsable_legajo = usuario_legajo
+    item.fecha_hora_no_realizado = datetime.now()
+
+    _auditar_cambios_item(db, item, previos)
+    db.commit()
+    logger.info("Tarea %s del checklist %s marcada como no realizada (motivo: %s) por legajo %s", item_id, checklist_id, datos.motivo, usuario_legajo)
+    db.refresh(item)
+    return item
+
 
 
 def obtener_tarea(

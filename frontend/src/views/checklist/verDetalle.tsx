@@ -4,12 +4,28 @@ import type {
   ChecklistItem,
   InsumoUtilizado,
   CompletarTareaPayload,
+  MotivoNoRealizado,
+  MarcarNoRealizadaPayload,
 } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
 import { apiFetch, API_URL } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
+
+const formatearMotivo = (motivo?: string | null): string => {
+  if (!motivo) return '';
+  switch (motivo) {
+    case 'equipo_fuera_de_uso':
+      return 'Equipo fuera de uso';
+    case 'falta_de_insumo':
+      return 'Falta de insumo';
+    case 'otro':
+      return 'Otro';
+    default:
+      return motivo;
+  }
+};
 
 interface DetalleChecklistProps {
   checklistId: number | null;
@@ -37,6 +53,13 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
   const [guardandoTarea, setGuardandoTarea] = useState(false);
   const [modalImagenVer, setModalImagenVer] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [modalNoRealizadaAbierto, setModalNoRealizadaAbierto] = useState(false);
+  const [tareaNoRealizadaSeleccionada, setTareaNoRealizadaSeleccionada] = useState<ChecklistItem | null>(null);
+  const [formMotivo, setFormMotivo] = useState<MotivoNoRealizado | ''>('');
+  const [formObservacion, setFormObservacion] = useState('');
+  const [guardandoNoRealizada, setGuardandoNoRealizada] = useState(false);
+
 
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
@@ -264,6 +287,78 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     }
   };
 
+  const abrirModalNoRealizada = (tarea: ChecklistItem) => {
+    if (checklist?.estado !== 'pendiente' || tarea.estado !== 'pendiente') return;
+    setTareaNoRealizadaSeleccionada(tarea);
+    setFormMotivo('');
+    setFormObservacion('');
+    setModalNoRealizadaAbierto(true);
+  };
+
+  const handleGuardarNoRealizada = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checklist || !tareaNoRealizadaSeleccionada) return;
+
+    if (checklist.estado !== 'pendiente') {
+      mostrarError(
+        'El checklist se encuentra completado o vencido y no admite modificaciones.',
+        'Auditoría cerrada'
+      );
+      return;
+    }
+
+    if (!formMotivo) {
+      mostrarError(
+        'Debe seleccionar un motivo para marcar la tarea como no realizada.',
+        'Motivo requerido'
+      );
+      return;
+    }
+
+    if (formMotivo === 'otro' && !formObservacion.trim()) {
+      mostrarError(
+        'La observación es obligatoria cuando el motivo es "Otro".',
+        'Observación requerida'
+      );
+      return;
+    }
+
+    setGuardandoNoRealizada(true);
+    try {
+      const payload: MarcarNoRealizadaPayload = {
+        motivo: formMotivo,
+        observacion: formObservacion.trim() || undefined,
+      };
+
+      const res = await apiFetch(
+        `/checklist/${checklist.id}/tareas/${tareaNoRealizadaSeleccionada.id}/no-realizada`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (res.ok) {
+        setModalNoRealizadaAbierto(false);
+        setTareaNoRealizadaSeleccionada(null);
+        setFormMotivo('');
+        setFormObservacion('');
+        await recargarChecklist();
+      } else {
+        const err = await res.json();
+        mostrarError(
+          err.detail || 'No se pudo registrar la justificación.',
+          'Error al guardar'
+        );
+      }
+    } catch {
+      mostrarError('Error de red al intentar registrar la justificación.', 'Error de conexión');
+    } finally {
+      setGuardandoNoRealizada(false);
+    }
+  };
+
   const tareasPorPlan: Record<
     string,
     { equipo: string; tareas: ChecklistItem[] }
@@ -382,12 +477,27 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                 <div className="metrica-desc">Realizadas</div>
               </div>
               <div className="metrica-caja">
+                <div className="metrica-num" style={{ color: 'var(--color-primario-texto)' }}>
+                  {checklist.tareas_no_realizadas ?? 0}
+                </div>
+                <div className="metrica-desc">Justificadas</div>
+              </div>
+              <div className="metrica-caja">
                 <div className="metrica-num" style={{ color: 'var(--color-alerta-texto)' }}>
                   {checklist.tareas_pendientes}
                 </div>
                 <div className="metrica-desc">Pendientes</div>
               </div>
+              {(checklist.tareas_vencidas ?? 0) > 0 && (
+                <div className="metrica-caja">
+                  <div className="metrica-num" style={{ color: 'var(--color-error-texto)' }}>
+                    {checklist.tareas_vencidas}
+                  </div>
+                  <div className="metrica-desc">Vencidas</div>
+                </div>
+              )}
             </div>
+
           </div>
 
           <div className="planes-seccion-titulo">
@@ -438,9 +548,19 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                               <span className="tarea-frecuencia">
                                 {tarea.frecuencia}
                               </span>
-                              <span className={`badge-estado ${tarea.estado}`}>
-                                {tarea.estado}
-                              </span>
+                              {tarea.estado === 'no_realizado' ? (
+                                <span className="badge-estado no_realizado" title="Tarea no realizada justificada">
+                                  Justificada
+                                </span>
+                              ) : tarea.estado === 'vencido' ? (
+                                <span className="badge-estado vencido" title="Tarea vencida">
+                                  Vencida
+                                </span>
+                              ) : (
+                                <span className={`badge-estado ${tarea.estado}`}>
+                                  {tarea.estado}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -451,16 +571,47 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                               tarea.responsable_legajo === usuario?.legajo) &&
                             checklist.estado === 'pendiente' &&
                             tarea.estado === 'pendiente' && (
-                              <button
-                                className="btn-guardar"
-                                style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
-                                onClick={() => abrirModalCompletarTarea(tarea)}
-                                title="Completar tarea"
-                              >
-                                ✓ Completar
-                              </button>
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="btn-guardar"
+                                  style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                                  onClick={() => abrirModalCompletarTarea(tarea)}
+                                  title="Completar tarea"
+                                >
+                                  ✓ Completar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-cancelar"
+                                  style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem' }}
+                                  onClick={() => abrirModalNoRealizada(tarea)}
+                                  title="Indicar motivo de no realización"
+                                >
+                                  ✕ No realizada
+                                </button>
+                              </div>
                             )}
                         </div>
+
+                        {tarea.estado === 'no_realizado' && (
+                          <div className="tarea-justificacion-box">
+                            <div className="tarea-justificacion-header">
+                              <span className="tarea-justificacion-tag">Justificación de no realización:</span>
+                              <span className="tarea-justificacion-motivo">{formatearMotivo(tarea.motivo_no_realizado)}</span>
+                            </div>
+                            {tarea.observacion_no_realizado && (
+                              <p className="tarea-justificacion-texto">
+                                <strong>Observación:</strong> {tarea.observacion_no_realizado}
+                              </p>
+                            )}
+                            {tarea.fecha_hora_no_realizado && (
+                              <div style={{ fontSize: '0.78rem', color: 'var(--color-texto-sec)', marginTop: '0.35rem' }}>
+                                Registrado el {new Date(tarea.fecha_hora_no_realizado).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {tarea.descripcion_tarea && (
                           <div className="tarea-procedimiento-box">
@@ -485,13 +636,18 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           </div>
 
                           <div className="tarea-detalle-dato">
-                            <span>Finalización</span>
+                            <span>Estado / Registro</span>
                             <span>
-                              {tarea.fecha_hora_fin
-                                ? new Date(tarea.fecha_hora_fin).toLocaleString()
+                              {tarea.estado === 'realizado' && tarea.fecha_hora_fin
+                                ? `Completada: ${new Date(tarea.fecha_hora_fin).toLocaleString()}`
+                                : tarea.estado === 'no_realizado' && tarea.fecha_hora_no_realizado
+                                ? `Justificada: ${new Date(tarea.fecha_hora_no_realizado).toLocaleString()}`
+                                : tarea.estado === 'vencido'
+                                ? 'Vencida (no completada a tiempo)'
                                 : 'No completada'}
                             </span>
                           </div>
+
 
                           <div className="tarea-detalle-dato" style={{ gridColumn: 'span 2' }}>
                             <span>Insumos Químicos Consumidos</span>
@@ -738,6 +894,79 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                   className="btn-cancelar"
                   onClick={() => setModalTareaAbierto(false)}
                   disabled={guardandoTarea}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {modalNoRealizadaAbierto && tareaNoRealizadaSeleccionada && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2>Marcar Tarea como No Realizada</h2>
+              <p>Tarea: <strong>{tareaNoRealizadaSeleccionada.nombre_tarea}</strong></p>
+            </div>
+
+            <form onSubmit={handleGuardarNoRealizada}>
+              <div className="form-group">
+                <label htmlFor="motivo-no-realizado">
+                  Motivo <span style={{ color: 'var(--color-error)' }}>*</span>
+                </label>
+                <select
+                  id="motivo-no-realizado"
+                  value={formMotivo}
+                  onChange={(e) => setFormMotivo(e.target.value as MotivoNoRealizado)}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-borde)' }}
+                >
+                  <option value="">Seleccione un motivo...</option>
+                  <option value="equipo_fuera_de_uso">Equipo fuera de uso</option>
+                  <option value="falta_de_insumo">Falta de insumo</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="observacion-no-realizado">
+                  Observación {formMotivo === 'otro' ? <span style={{ color: 'var(--color-error)' }}>(Obligatoria) *</span> : '(Opcional)'}
+                </label>
+                <textarea
+                  id="observacion-no-realizado"
+                  value={formObservacion}
+                  onChange={(e) => setFormObservacion(e.target.value)}
+                  placeholder={
+                    formMotivo === 'otro'
+                      ? 'Especifique detalladamente el motivo por el cual no se pudo realizar la tarea...'
+                      : 'Observaciones o detalles adicionales (opcional)...'
+                  }
+                  required={formMotivo === 'otro'}
+                  rows={4}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-borde)', resize: 'vertical' }}
+                />
+              </div>
+
+              <div className="form-acciones">
+                <button
+                  type="submit"
+                  className="btn-guardar"
+                  disabled={guardandoNoRealizada}
+                >
+                  {guardandoNoRealizada ? 'Guardando...' : 'Guardar Justificación'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-cancelar"
+                  onClick={() => {
+                    setModalNoRealizadaAbierto(false);
+                    setTareaNoRealizadaSeleccionada(null);
+                    setFormMotivo('');
+                    setFormObservacion('');
+                  }}
+                  disabled={guardandoNoRealizada}
                 >
                   Cancelar
                 </button>

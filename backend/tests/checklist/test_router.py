@@ -296,3 +296,71 @@ def test_checklist_vencido_no_modificable(session: Session) -> None:
         json={"responsable_legajo": 1},
     )
     assert res_patch.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+
+def test_post_marcar_tarea_no_realizada_endpoint(session: Session) -> None:
+    res_crear = client.post(
+        "/checklist/generar",
+        json={"responsable_legajo": 1},
+    )
+    checklist_id = res_crear.json()["id"]
+    item_id = res_crear.json()["items"][0]["id"]
+
+    res_no_realizada = client.post(
+        f"/checklist/{checklist_id}/tareas/{item_id}/no-realizada",
+        json={
+            "motivo": "falta_de_insumo",
+            "observacion": "Falta químico desincrustante",
+        },
+    )
+    assert res_no_realizada.status_code == status.HTTP_200_OK
+    data = res_no_realizada.json()
+    assert data["estado"] == "no_realizado"
+    assert data["motivo_no_realizado"] == "falta_de_insumo"
+    assert data["observacion_no_realizado"] == "Falta químico desincrustante"
+    assert data["fecha_hora_no_realizado"] is not None
+
+
+def test_post_marcar_tarea_no_realizada_validacion_otro(session: Session) -> None:
+    res_crear = client.post(
+        "/checklist/generar",
+        json={"responsable_legajo": 1},
+    )
+    checklist_id = res_crear.json()["id"]
+    item_id = res_crear.json()["items"][0]["id"]
+
+    res_sin_obs = client.post(
+        f"/checklist/{checklist_id}/tareas/{item_id}/no-realizada",
+        json={"motivo": "otro", "observacion": ""},
+    )
+    assert res_sin_obs.status_code in (status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    res_con_obs = client.post(
+        f"/checklist/{checklist_id}/tareas/{item_id}/no-realizada",
+        json={"motivo": "otro", "observacion": "Parada imprevista de planta"},
+    )
+    assert res_con_obs.status_code == status.HTTP_200_OK
+    assert res_con_obs.json()["motivo_no_realizado"] == "otro"
+
+
+def test_no_permitir_modificar_justificacion_despues_de_hecha(session: Session) -> None:
+    res_crear = client.post(
+        "/checklist/generar",
+        json={"responsable_legajo": 1},
+    )
+    checklist_id = res_crear.json()["id"]
+    item_id = res_crear.json()["items"][0]["id"]
+
+    res_primera = client.post(
+        f"/checklist/{checklist_id}/tareas/{item_id}/no-realizada",
+        json={"motivo": "falta_de_insumo", "observacion": "Falta químico"},
+    )
+    assert res_primera.status_code == status.HTTP_200_OK
+
+    res_segunda = client.post(
+        f"/checklist/{checklist_id}/tareas/{item_id}/no-realizada",
+        json={"motivo": "equipo_fuera_de_uso", "observacion": "Cambio de motivo"},
+    )
+    assert res_segunda.status_code == status.HTTP_400_BAD_REQUEST
+
+

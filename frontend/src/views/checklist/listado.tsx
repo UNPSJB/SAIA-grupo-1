@@ -18,6 +18,20 @@ const obtenerFechaLocalHoy = (): string => {
   return `${anio}-${mes}-${dia}`;
 };
 
+const formatearMotivo = (motivo?: string | null): string => {
+  if (!motivo) return '';
+  switch (motivo) {
+    case 'equipo_fuera_de_uso':
+      return 'Equipo fuera de uso';
+    case 'falta_de_insumo':
+      return 'Falta de insumo';
+    case 'otro':
+      return 'Otro';
+    default:
+      return motivo;
+  }
+};
+
 export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   onDetalleClick,
 }) => {
@@ -387,9 +401,21 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                       </td>
                       <td>{c.fecha}</td>
                       <td>
-                        <span className={`badge-estado ${c.estado}`}>
-                          {c.estado}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-start' }}>
+                          <span className={`badge-estado ${c.estado}`}>
+                            {c.estado}
+                          </span>
+                          {(c.tareas_no_realizadas ?? 0) > 0 && (
+                            <span className="badge-justificada-pill" title={`${c.tareas_no_realizadas ?? 0} tarea(s) no realizada(s) justificada(s)`}>
+                              ✓ {c.tareas_no_realizadas ?? 0} justificada{(c.tareas_no_realizadas ?? 0) > 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {(c.tareas_vencidas ?? 0) > 0 && (
+                            <span className="badge-vencida-pill" title={`${c.tareas_vencidas ?? 0} tarea(s) vencida(s)`}>
+                              ✕ {c.tareas_vencidas ?? 0} vencida{(c.tareas_vencidas ?? 0) > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div className="barra-progreso-wrapper">
@@ -442,8 +468,31 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                                     <div className="tarea-expandida-top">
                                       <span className="tarea-expandida-nombre">{item.nombre_tarea}</span>
                                       <span className="tarea-expandida-plan">{item.nombre_plan}</span>
-                                      <span className={`badge-estado ${item.estado}`}>{item.estado}</span>
+                                      {item.estado === 'no_realizado' ? (
+                                        <span className="badge-estado no_realizado" title="Tarea justificada como no realizada">
+                                          Justificada
+                                        </span>
+                                      ) : item.estado === 'vencido' ? (
+                                        <span className="badge-estado vencido" title="Tarea vencida">
+                                          Vencida
+                                        </span>
+                                      ) : (
+                                        <span className={`badge-estado ${item.estado}`}>{item.estado}</span>
+                                      )}
                                     </div>
+                                    {item.estado === 'no_realizado' && (
+                                      <div className="tarea-justificacion-box">
+                                        <div className="tarea-justificacion-header">
+                                          <span className="tarea-justificacion-tag">Motivo de no realización:</span>
+                                          <span className="tarea-justificacion-motivo">{formatearMotivo(item.motivo_no_realizado)}</span>
+                                        </div>
+                                        {item.observacion_no_realizado && (
+                                          <p className="tarea-justificacion-texto">
+                                            <strong>Observación:</strong> {item.observacion_no_realizado}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
                                     {item.descripcion_tarea && (
                                       <div className="tarea-procedimiento-box">
                                         <div className="tarea-procedimiento-header">

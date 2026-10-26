@@ -135,6 +135,28 @@ async def completar_tarea_endpoint(
 
 
 @router.post(
+    "/{checklist_id}/tareas/{item_id}/no-realizada",
+    response_model=schemas.ChecklistItem,
+)
+@router.put(
+    "/{checklist_id}/tareas/{item_id}/no-realizada",
+    response_model=schemas.ChecklistItem,
+)
+async def marcar_tarea_no_realizada_endpoint(
+    checklist_id: int,
+    item_id: int,
+    datos: schemas.MarcarNoRealizadaSchema,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_operador),
+):
+    _verificar_tarea_propia(db, checklist_id, item_id, usuario)
+    return services.marcar_tarea_no_realizada(
+        db, checklist_id, item_id, datos, usuario.legajo
+    )
+
+
+
+@router.post(
     "/{checklist_id}/tareas/{item_id}/imagen",
     response_model=schemas.ChecklistItem,
 )

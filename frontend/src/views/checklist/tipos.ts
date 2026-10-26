@@ -1,6 +1,8 @@
 export type Frecuencia = 'diaria' | 'semanal' | 'mensual';
 
-export type EstadoTareaItem = 'pendiente' | 'realizado';
+export type EstadoTareaItem = 'pendiente' | 'realizado' | 'no_realizado' | 'vencido';
+
+export type MotivoNoRealizado = 'equipo_fuera_de_uso' | 'falta_de_insumo' | 'otro';
 
 export type EstadoGeneralChecklist = 'pendiente' | 'completado' | 'vencido';
 
@@ -27,6 +29,9 @@ export interface ChecklistItem {
   imagen?: string | null;
   insumos_utilizados: InsumoUtilizado[];
   fecha_hora_fin?: string | null;
+  motivo_no_realizado?: MotivoNoRealizado | null;
+  observacion_no_realizado?: string | null;
+  fecha_hora_no_realizado?: string | null;
 }
 
 export interface Checklist {
@@ -40,7 +45,9 @@ export interface Checklist {
   porcentaje_cumplimiento: number;
   total_tareas: number;
   tareas_completadas: number;
+  tareas_no_realizadas?: number;
   tareas_pendientes: number;
+  tareas_vencidas?: number;
   items: ChecklistItem[];
 }
 
@@ -60,4 +67,9 @@ export interface ChecklistGenerarPayload {
 export interface CompletarTareaPayload {
   responsable_legajo: number;
   insumos_utilizados?: InsumoUtilizado[];
+}
+
+export interface MarcarNoRealizadaPayload {
+  motivo: MotivoNoRealizado;
+  observacion?: string;
 }
