@@ -5,7 +5,6 @@ from tests.database import app, session
 
 client = TestClient(app)
 
-
 def test_get_dashboard_resumen(session: Session) -> None:
     response = client.get("/dashboard/resumen?periodo=semana")
     assert response.status_code == status.HTTP_200_OK
@@ -18,7 +17,6 @@ def test_get_dashboard_resumen(session: Session) -> None:
     assert "vencidas" in data["cumplimiento_actual"]
     assert "porcentaje" in data["cumplimiento_actual"]
 
-
 def test_get_dashboard_cumplimiento(session: Session) -> None:
     response = client.get("/dashboard/cumplimiento?periodo=dia")
     assert response.status_code == status.HTTP_200_OK
@@ -27,7 +25,6 @@ def test_get_dashboard_cumplimiento(session: Session) -> None:
     assert "pendientes" in data
     assert "vencidas" in data
     assert "porcentaje" in data
-
 
 def test_get_dashboard_consumo_insumos(session: Session) -> None:
     response = client.get("/dashboard/consumo-insumos?periodo=semana&unidad=L")

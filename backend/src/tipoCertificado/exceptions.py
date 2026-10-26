@@ -4,6 +4,8 @@ from src.exceptions import NotFound, BadRequest
 class NombreVacio(BadRequest):
     DETAIL = ErrorCode.NOMBRE_VACIO
 
+TipoVacio = NombreVacio
+
 class TipoCertificadoYaExiste(BadRequest):
     DETAIL = ErrorCode.TIPO_EXISTE
 

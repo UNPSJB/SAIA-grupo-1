@@ -28,21 +28,15 @@ const formatDate = (dateStr?: string | null) => {
 
 export const VerCalibracion : React.FC<VerCalibracionProps> = ({calibracionID, onCancel}) =>{
     const [calibracion, setCalibracion] = useState<CalibracionRealizadaConID | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState<boolean>(() => Boolean(calibracionID));
     const [error, setError] = useState<string | null>(null);
     const [modalArchivoUrl, setModalArchivoUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!calibracionID) {
-      setCalibracion(null);
-      setLoading(false);
-      return;
-    }
+    if (!calibracionID) return;
+    let cancelado = false;
 
     const fetchCalibracionRealizada = async () => {
-      setLoading(true);
-      setError(null);
-
       try {
         const res = await apiFetch(`/calibracion_realizada/${calibracionID}`);
 
@@ -51,18 +45,28 @@ export const VerCalibracion : React.FC<VerCalibracionProps> = ({calibracionID, o
         }
 
         const data = await res.json();
-        setCalibracion(data);
+        if (!cancelado) {
+          setCalibracion(data);
+          setError(null);
+        }
       } catch (err: unknown) {
-        setCalibracion(null);
-        setError(
-          err instanceof Error ? err.message : "La calibración realizada no existe."
-        );
+        if (!cancelado) {
+          setCalibracion(null);
+          setError(
+            err instanceof Error ? err.message : "La calibración realizada no existe."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
     };
 
     fetchCalibracionRealizada();
+    return () => {
+      cancelado = true;
+    };
   }, [calibracionID]);
 
   const obtenerUrlArchivo = (ruta?: string | null, inline: boolean = false) => {

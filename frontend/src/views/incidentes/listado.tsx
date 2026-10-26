@@ -7,7 +7,8 @@ import {
   formatearFecha,
 } from './tipos';
 import { DetalleIncidenteModal } from './detalleModal';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import '../../styles/formularioAlta.css';
 import '../../styles/incidentes.css';

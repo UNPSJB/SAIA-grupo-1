@@ -18,7 +18,7 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className = "", variant = "default", children, ...props }, ref) => {
-    let variantClass = "shadcn-badge";
+    let variantClass: string;
 
     switch (variant) {
       case "activo":

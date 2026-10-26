@@ -64,8 +64,8 @@ export const EditarDetalle: React.FC<Props> = ({ insumo, onVolver, onActualizado
       }
 
       onActualizado();
-    } catch (err: any) {
-      setError(err.message || 'Error de conexión');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error de conexión');
     } finally {
       setCargando(false);
     }

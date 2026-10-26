@@ -6,13 +6,11 @@ from src.checklist.services import generar_checklist, completar_tarea
 from src.checklist.schemas import ChecklistGenerar, CompletarTareaSchema, InsumoUtilizadoPlaceholder
 from src.dashboard import services
 
-
 def test_cumplimiento_actual_sin_checklists(session: Session) -> None:
     resumen = services.obtener_cumplimiento_actual(session, "semana")
     assert resumen.hechas == 0
     assert resumen.pendientes == 0
     assert resumen.porcentaje == 0.0
-
 
 def test_cumplimiento_actual_con_checklist_parcial(session: Session) -> None:
     checklist = generar_checklist(
@@ -30,7 +28,6 @@ def test_cumplimiento_actual_con_checklist_parcial(session: Session) -> None:
     assert resumen.hechas == 1
     assert resumen.pendientes == len(checklist.items) - 1
     assert resumen.porcentaje == round(100 / len(checklist.items), 1)
-
 
 def test_consumo_insumos_agrega_por_nombre(session: Session) -> None:
     checklist = generar_checklist(
@@ -67,12 +64,10 @@ def test_consumo_insumos_agrega_por_nombre(session: Session) -> None:
     esperado = 3 if len(items) > 1 else 2
     assert consumo[0].cantidad == esperado
 
-
 def test_resumen_combina_todo(session: Session) -> None:
     resumen = services.obtener_resumen(session, "mes")
     assert resumen.cumplimiento_actual.porcentaje == 0.0
     assert resumen.consumo_insumos == []
-
 
 def test_cumplimiento_periodo_dia(session: Session) -> None:
     checklist = generar_checklist(
@@ -83,14 +78,13 @@ def test_cumplimiento_periodo_dia(session: Session) -> None:
     assert resumen.pendientes == len(checklist.items)
     assert resumen.vencidas == 0
 
-
 def test_cumplimiento_refleja_tareas_vencidas(session: Session) -> None:
     from datetime import timedelta
     from src.checklist import models
     from src.tareas.models import Frecuencia
 
     hoy = date.today()
-    # Checklist de hace 3 dias con una diaria (vencida) y una semanal (pendiente aun)
+
     chk_pasado = models.Checklist(
         fecha=hoy - timedelta(days=3),
         responsable_legajo=1,
@@ -116,7 +110,6 @@ def test_cumplimiento_refleja_tareas_vencidas(session: Session) -> None:
     resumen = services.obtener_cumplimiento_actual(session, "semana")
     assert resumen.vencidas >= 1
     assert resumen.pendientes >= 1
-
 
 def test_consumo_insumos_filtra_por_unidad(session: Session) -> None:
     checklist = generar_checklist(
