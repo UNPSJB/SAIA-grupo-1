@@ -1,11 +1,43 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 from src.producto import exceptions, schemas
 from src.producto.models import Producto
 from src.documentos.models import Documento
 from src.documentos.constants import TipoDocumento
+
+def obtener_productos_para_csv(
+    db: Session,
+    activo: Optional[bool] = None
+) -> List[Dict[str, Any]]:
+    """
+    Obtiene la lista de productos (aplicando filtros si los hay) 
+    y los mapea a un formato legible para la exportación a CSV.
+    """
+    query = db.query(Producto)
+    
+    if activo is not None:
+        query = query.filter(Producto.activo == activo)
+        
+    productos = query.all()
+    
+    # Si la lista está vacía, retornar lista vacía (el helper generará solo los encabezados)
+    filas = []
+    for p in productos:
+        # Manejo de la unidad de medida (si es Enum o string)
+        unidad = p.unidadMedida.value if hasattr(p.unidadMedida, 'value') else str(p.unidadMedida)
+        
+        filas.append({
+            "id": p.id,
+            "nombre": p.nombre,
+            "unidadMedida": unidad,
+            "receta": p.receta.titulo if p.receta else "Sin receta",
+            "descripcion": p.descripcion or "",
+            "estado": "Activo" if p.activo else "Inactivo"
+        })
+        
+    return filas
 
 
 def validar_receta(db: Session, id_receta: int) -> Documento:

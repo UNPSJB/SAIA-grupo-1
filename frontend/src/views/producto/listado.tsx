@@ -4,6 +4,7 @@ import "../../styles/formularioAlta.css";
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
 import { Paginacion, usePaginacion } from "../../components/ui/paginacion";
 import { apiFetch } from "../../api/client";
+import { descargarCSV } from "../../utils/exportarCsv";
 
 interface ListadoProductosProps {
   onNuevoClick?: () => void;
@@ -18,6 +19,7 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
 }) => {
   const [productos, setProductos] = useState<ProductoConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
 
@@ -85,6 +87,26 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
     }
   };
 
+  const handleExportarCSV = async () => {
+    try {
+      setExportando(true);
+      let url = "/productos/exportar-csv";
+      if (filtroEstado === "activo") {
+        url += "?activo=true";
+      } else if (filtroEstado === "inactivo") {
+        url += "?activo=false";
+      }
+
+      await descargarCSV(url, "productos_elaborados.csv");
+    } catch (error) {
+      setErrorDialogMsg(
+        error instanceof Error ? error.message : "Error al exportar los productos a CSV."
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
   const productosFiltrados = productos.filter((p) => {
     const term = busqueda.toLowerCase().trim();
     const matchBusqueda =
@@ -121,11 +143,23 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Registrar Producto
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            type="button"
+            onClick={handleExportarCSV}
+            disabled={exportando}
+            className="btn-cancelar"
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <span>📥</span> {exportando ? "Exportando..." : "Exportar CSV"}
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Registrar Producto
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="filtros-top-bar">
