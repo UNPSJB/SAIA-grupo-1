@@ -1,8 +1,10 @@
+from datetime import date
 from typing import Optional
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from src.dashboard import schemas, services
+from src.dashboard.exceptions import RangoFechasInvalidoException
 from src.database import get_db
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -47,3 +49,27 @@ def obtener_consumo_insumos(
         unidades_disponibles=unidades_disp,
         unidad_actual=unidad_efectiva,
     )
+
+
+@router.get("/historico-consumo", response_model=schemas.ConsumoHistoricoResponse)
+def obtener_historico_consumo(
+    desde: Optional[date] = Query(None, description="Fecha de inicio del rango (YYYY-MM-DD)"),
+    hasta: Optional[date] = Query(None, description="Fecha de fin del rango (YYYY-MM-DD)"),
+    insumo_id: Optional[int] = Query(None, description="Filtrar por ID de insumo químico específico"),
+    agrupacion_tiempo: schemas.AgrupacionTiempo = Query("dia", description="Agrupación temporal: dia, semana o mes"),
+    unidad: Optional[str] = Query(None, description="Unidad de medida a filtrar (L, ML, KG, G, UN)"),
+    db: Session = Depends(get_db),
+):
+    try:
+        return services.obtener_historico_consumo(
+            db=db,
+            desde=desde,
+            hasta=hasta,
+            insumo_id=insumo_id,
+            agrupacion_tiempo=agrupacion_tiempo,
+            unidad=unidad,
+        )
+    except RangoFechasInvalidoException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

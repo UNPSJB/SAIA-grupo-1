@@ -20,7 +20,7 @@ import { NuevoInsumoQuimico } from './views/insumos_quimicos/nuevoInsumoQuimico'
 import { EditarDetalle as EditarInsumoQuimico } from './views/insumos_quimicos/editarDetalle';
 import { VerDetalle as VerDetalleInsumoQuimico } from './views/insumos_quimicos/verDetalle';
 import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
-import { ConsumoHistoricoInsumos } from './views/insumos_quimicos/ConsumoHistoricoInsumos';
+import { ConsumoHistoricoInsumos } from './views/dashboard/ConsumoHistoricoInsumos';
 
 import { Sidebar } from './components/Sidebar';
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar';

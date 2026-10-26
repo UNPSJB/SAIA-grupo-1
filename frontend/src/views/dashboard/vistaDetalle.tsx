@@ -1,4 +1,4 @@
-import { ConsumoHistoricoInsumos } from '../insumos_quimicos/ConsumoHistoricoInsumos';
+import { ConsumoHistoricoInsumos } from './ConsumoHistoricoInsumos';
 import React from 'react';
 import type { TipoDetalleEstadisticas } from './tipos';
 import '../../styles/dashboard.css';

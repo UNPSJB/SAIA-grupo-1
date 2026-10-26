@@ -34,3 +34,20 @@ def test_get_dashboard_consumo_insumos(session: Session) -> None:
     assert "unidades_disponibles" in data
     assert "unidad_actual" in data
     assert data["unidad_actual"] == "L"
+
+def test_get_dashboard_historico_consumo(session: Session) -> None:
+    response = client.get("/dashboard/historico-consumo")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert "metricas" in data
+    assert "evolucion" in data
+    assert "por_tipo" in data
+    assert "por_proveedor" in data
+    assert "movimientos" in data
+    assert "unidades_disponibles" in data
+    assert "consumo_total_periodo" in data["metricas"]
+
+def test_get_dashboard_historico_consumo_rango_invalido(session: Session) -> None:
+    response = client.get("/dashboard/historico-consumo?desde=2026-10-20&hasta=2026-10-10")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "desde" in response.json()["detail"].lower()
