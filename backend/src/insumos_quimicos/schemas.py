@@ -1,7 +1,17 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from .constants import TipoQuimicoEnum, UnidadMedidaEnum
+
+# Re-exportar esquemas analíticos de consumo que pertenecen al dashboard
+from src.dashboard.schemas import (  # noqa: F401
+    AgrupacionTiempo,
+    MovimientoInsumoQuimico,
+    PuntoEvolucionConsumo,
+    ConsumoAgrupadoItem,
+    MetricasConsumoHistorico,
+    ConsumoHistoricoResponse,
+)
 
 # Esquema base general (permite >= 0 para lectura y existencia histórica)
 class InsumoQuimicoBase(BaseModel):
@@ -9,6 +19,7 @@ class InsumoQuimicoBase(BaseModel):
     tipo: TipoQuimicoEnum
     unidad_medida: UnidadMedidaEnum
     stock_actual: float = Field(0.0, ge=0.0)
+    proveedor: Optional[str] = Field(None, max_length=150)
 
     @field_validator('nombre')
     @classmethod
@@ -16,6 +27,14 @@ class InsumoQuimicoBase(BaseModel):
         if not v or not v.strip():
             raise ValueError("El nombre no puede estar vacío ni contener solo espacios.")
         return v.strip()
+
+    @field_validator('proveedor')
+    @classmethod
+    def validar_proveedor(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v_strip = v.strip()
+            return v_strip if v_strip else None
+        return None
 
 # Solo al CREAR se exige estrictamente mayor a 0
 class InsumoQuimicoCreate(InsumoQuimicoBase):
@@ -26,6 +45,7 @@ class InsumoQuimicoUpdate(BaseModel):
     tipo: Optional[TipoQuimicoEnum] = None
     unidad_medida: Optional[UnidadMedidaEnum] = None
     stock_actual: Optional[float] = Field(None, ge=0.0)
+    proveedor: Optional[str] = Field(None, max_length=150)
     activo: Optional[bool] = None
 
 class InsumoQuimicoResponse(InsumoQuimicoBase):

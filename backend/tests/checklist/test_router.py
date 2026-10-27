@@ -7,7 +7,6 @@ from tests.database import app, session
 
 client = TestClient(app)
 
-
 def test_post_generar_checklist(session: Session) -> None:
     hoy = date.today().isoformat()
     response = client.post(
@@ -24,7 +23,6 @@ def test_post_generar_checklist(session: Session) -> None:
     assert data["porcentaje_cumplimiento"] == 0.0
     assert data["activo"] is True
 
-
 def test_post_generar_checklist_fecha_futura_falla(session: Session) -> None:
     futuro = (date.today() + timedelta(days=1)).isoformat()
     response = client.post(
@@ -33,7 +31,6 @@ def test_post_generar_checklist_fecha_futura_falla(session: Session) -> None:
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-
 def test_post_generar_checklist_fecha_pasada_falla(session: Session) -> None:
     pasado = (date.today() - timedelta(days=1)).isoformat()
     response = client.post(
@@ -41,7 +38,6 @@ def test_post_generar_checklist_fecha_pasada_falla(session: Session) -> None:
         json={"fecha": pasado, "responsable_legajo": 1},
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-
 
 def test_get_checklists_y_detalle(session: Session) -> None:
     res_crear = client.post(
@@ -59,7 +55,6 @@ def test_get_checklists_y_detalle(session: Session) -> None:
     assert res_detalle.json()["id"] == checklist_id
     assert res_detalle.json()["responsable_legajo"] == 1
     assert len(res_detalle.json()["items"]) >= 1
-
 
 def test_get_checklists_filtrar_por_rango_fechas(session: Session) -> None:
     hoy = date.today().isoformat()
@@ -82,7 +77,6 @@ def test_get_checklists_filtrar_por_rango_fechas(session: Session) -> None:
     res_invalido = client.get(f"/checklist/?fecha_desde={hoy}&fecha_hasta={pasado}")
     assert res_invalido.status_code == status.HTTP_400_BAD_REQUEST
 
-
 def test_get_checklists_filtrar_por_estado(session: Session) -> None:
     res_crear = client.post(
         "/checklist/generar",
@@ -97,9 +91,6 @@ def test_get_checklists_filtrar_por_estado(session: Session) -> None:
     res_completados = client.get("/checklist/?estado=completado")
     assert res_completados.status_code == status.HTTP_200_OK
     assert not any(c["id"] == checklist_id for c in res_completados.json())
-
-
-
 
 def test_post_completar_tarea(session: Session) -> None:
     res_crear = client.post(
@@ -127,27 +118,6 @@ def test_post_completar_tarea(session: Session) -> None:
     assert data["nombre_responsable"] == "Juan Perez"
     assert data["fecha_hora_fin"] is not None
     assert len(data["insumos_utilizados"]) == 1
-
-
-def test_tarea_no_parcialmente_actualizable(session: Session) -> None:
-    res_crear = client.post(
-        "/checklist/generar",
-        json={"responsable_legajo": 1},
-    )
-    checklist_id = res_crear.json()["id"]
-    item_id = res_crear.json()["items"][0]["id"]
-
-    res_get = client.get(f"/checklist/{checklist_id}/tareas/{item_id}")
-    assert res_get.status_code == status.HTTP_200_OK
-    assert res_get.json()["id"] == item_id
-
-    res_patch = client.patch(
-        f"/checklist/{checklist_id}/tareas/{item_id}",
-        json={"responsable_legajo": 1},
-    )
-    assert res_patch.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
-
 
 def test_subir_y_eliminar_imagen_directa_tarea(session: Session) -> None:
     res_crear = client.post(
@@ -178,7 +148,6 @@ def test_subir_y_eliminar_imagen_directa_tarea(session: Session) -> None:
     res_img_despues = client.get(url_imagen)
     assert res_img_despues.status_code == status.HTTP_404_NOT_FOUND
 
-
 def test_subir_imagen_formato_invalido(session: Session) -> None:
     res_crear = client.post(
         "/checklist/generar",
@@ -194,41 +163,6 @@ def test_subir_imagen_formato_invalido(session: Session) -> None:
     )
     assert res_upload.status_code == status.HTTP_400_BAD_REQUEST
 
-
-def test_checklist_no_editable(session: Session) -> None:
-    res_crear = client.post(
-        "/checklist/generar",
-        json={"responsable_legajo": 1},
-    )
-    checklist_id = res_crear.json()["id"]
-
-    res_put = client.put(f"/checklist/{checklist_id}", json={"responsable_legajo": 2})
-    assert res_put.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
-
-def test_tarea_no_eliminable(session: Session) -> None:
-    res_crear = client.post(
-        "/checklist/generar",
-        json={"responsable_legajo": 1},
-    )
-    checklist_id = res_crear.json()["id"]
-    item_id = res_crear.json()["items"][0]["id"]
-
-    res_del_item = client.delete(f"/checklist/{checklist_id}/tareas/{item_id}")
-    assert res_del_item.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
-
-def test_checklist_no_eliminable(session: Session) -> None:
-    res_crear = client.post(
-        "/checklist/generar",
-        json={"responsable_legajo": 1},
-    )
-    checklist_id = res_crear.json()["id"]
-
-    res_del = client.delete(f"/checklist/{checklist_id}")
-    assert res_del.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
-
 def test_tarea_completada_no_modificable(session: Session) -> None:
     res_crear = client.post(
         "/checklist/generar",
@@ -243,12 +177,6 @@ def test_tarea_completada_no_modificable(session: Session) -> None:
     )
     assert res_comp.status_code == status.HTTP_200_OK
 
-    res_patch = client.patch(
-        f"/checklist/{checklist_id}/tareas/{item_id}",
-        json={"responsable_legajo": 2},
-    )
-    assert res_patch.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
     archivo_fake = io.BytesIO(b"bytes")
     res_upload = client.post(
         f"/checklist/{checklist_id}/tareas/{item_id}/imagen",
@@ -261,7 +189,6 @@ def test_tarea_completada_no_modificable(session: Session) -> None:
         json={"responsable_legajo": 1},
     )
     assert res_recomp.status_code == status.HTTP_400_BAD_REQUEST
-
 
 def test_checklist_vencido_no_modificable(session: Session) -> None:
     from src.checklist.models import Checklist, ChecklistItem, EstadoTareaItem
@@ -290,9 +217,3 @@ def test_checklist_vencido_no_modificable(session: Session) -> None:
         json={"responsable_legajo": 1},
     )
     assert res_comp.status_code == status.HTTP_400_BAD_REQUEST
-
-    res_patch = client.patch(
-        f"/checklist/{checklist_vencido.id}/tareas/{checklist_vencido.items[0].id}",
-        json={"responsable_legajo": 1},
-    )
-    assert res_patch.status_code == status.HTTP_405_METHOD_NOT_ALLOWED

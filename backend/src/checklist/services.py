@@ -407,6 +407,11 @@ def completar_tarea(
             stock_previo = float(getattr(quimico, "stock_actual", 0.0))
             nuevo_stock = max(0.0, round(stock_previo - float(insumo_dto.cantidad), 2))
             setattr(quimico, "stock_actual", nuevo_stock)
+            try:
+                from src.notificaciones.services import notificar_stock_bajo_quimico_si_corresponde
+                notificar_stock_bajo_quimico_si_corresponde(db, quimico)
+            except Exception:
+                pass
 
             unidad_valor = getattr(quimico, "unidad_medida", None)
             unidad_str = str(getattr(unidad_valor, "value", unidad_valor or "L"))

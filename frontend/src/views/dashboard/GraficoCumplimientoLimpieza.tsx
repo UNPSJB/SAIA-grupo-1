@@ -120,7 +120,6 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
   const puntos = datos?.puntos || [];
   const hayDatos = puntos.length > 0;
 
-  // Detección del período con menor cumplimiento
   const menorPeriodo: PuntoCumplimiento | null = useMemo(() => {
     if (!hayDatos) return null;
     return puntos.reduce((min, p) => (p.porcentaje < min.porcentaje ? p : min), puntos[0]);
@@ -212,7 +211,7 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
   };
 
   return (
-    <Card className="dashboard-card-full" style={{ marginTop: '24px' }}>
+    <Card className="dashboard-card-full">
       <CardHeader style={{ paddingBottom: '12px' }}>
         <div
           style={{
@@ -246,9 +245,7 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
             </CardDescription>
           </div>
 
-          {/* Controles de Agrupación y Visualización */}
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
-            {/* Toggle Tipo de Gráfico */}
             <div
               style={{
                 display: 'inline-flex',
@@ -313,7 +310,6 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
               </button>
             </div>
 
-            {/* Toggle Agrupación */}
             <div
               style={{
                 display: 'inline-flex',
@@ -361,7 +357,6 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
           </div>
         </div>
 
-        {/* Barra de Filtro de Fechas */}
         <div
           style={{
             display: 'flex',
@@ -416,7 +411,6 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
             </div>
           </div>
 
-          {/* Accesos rápidos */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
             <span style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>Atajos:</span>
             {[
@@ -531,7 +525,6 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
           </div>
         ) : (
           <div>
-            {/* Tarjetas KPI Superiores */}
             <div
               style={{
                 display: 'grid',
@@ -640,7 +633,6 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
               )}
             </div>
 
-            {/* Gráfico Recharts */}
             <div style={{ width: '100%', height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
                 {tipoGrafico === 'lineas' ? (
@@ -754,7 +746,6 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
               </ResponsiveContainer>
             </div>
 
-            {/* Leyenda Semántica */}
             <div
               style={{
                 display: 'flex',
@@ -792,4 +783,3 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
     </Card>
   );
 };
-

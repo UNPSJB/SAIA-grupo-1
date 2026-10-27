@@ -1,3 +1,5 @@
+from src.dashboard.exceptions import RangoFechasInvalidoException  # noqa: F401
+
 class InsumoQuimicoException(Exception):
     """Excepción base para insumos químicos."""
     pass

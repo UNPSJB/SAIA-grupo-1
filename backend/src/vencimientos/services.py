@@ -26,14 +26,13 @@ def _a_fecha(valor: date | datetime) -> date:
     return valor
 
 
-def _calcular_plazo(fecha_venc: date, hoy: Optional[date] = None) -> tuple[int, EstadoVencimiento]:
+def _calcular_plazo(fecha_venc: date, hoy: Optional[date] = None, dias_alerta: int = 15) -> tuple[int, EstadoVencimiento]:
     fecha_hoy = hoy or date.today()
     dias_restantes = (fecha_venc - fecha_hoy).days
-    dias_alerta = getattr(settings, "DIAS_ALERTA_VENCIMIENTO", 15)
 
     if dias_restantes < 0:
         estado = EstadoVencimiento.VENCIDO
-    elif dias_restantes <= dias_alerta:
+    elif dias_restantes < dias_alerta:
         estado = EstadoVencimiento.PROXIMO
     else:
         estado = EstadoVencimiento.VIGENTE
@@ -92,7 +91,12 @@ def listar_vencimientos_consolidados(
             if plan.equipo and getattr(plan.equipo, "activo", True) is False:
                 continue
             fecha_v = _a_fecha(fecha_raw)
-            dias, est = _calcular_plazo(fecha_v, hoy)
+            periodo = plan.periodicidad_De_cambio
+            if not periodo or periodo <= 0:
+                if plan.fecha_vencimiento and plan.fecha_mantenimiento:
+                    periodo = (_a_fecha(plan.fecha_vencimiento) - _a_fecha(plan.fecha_mantenimiento)).days
+            dias_alerta = max(round((periodo or 0) * 0.1), 2)
+            dias, est = _calcular_plazo(fecha_v, hoy, dias_alerta=dias_alerta)
             responsable = plan.equipo.nombre if plan.equipo else f"Equipo #{plan.equipo_id}"
             items.append(
                 VencimientoConsolidadoItem(
@@ -107,28 +111,44 @@ def listar_vencimientos_consolidados(
                 )
             )
 
-    # 3. Documentos (Revisión anual a 365 días de la fecha de vigencia de la versión vigente)
     if origen in (None, OrigenVencimiento.DOCUMENTO):
-        documentos = db.query(Documento).filter(Documento.activo == True).all()  # noqa: E712
+        documentos = db.query(Documento).filter(Documento.activo == True).all()
         for doc in documentos:
-            ver = doc.version_vigente
-            if not ver:
-                continue
-            fecha_base = ver.fecha_vigencia or _a_fecha(ver.creado_el)
-            fecha_v = fecha_base + timedelta(days=365)
-            dias, est = _calcular_plazo(fecha_v, hoy)
-            items.append(
-                VencimientoConsolidadoItem(
-                    id=f"documento-{doc.id}",
-                    origen=OrigenVencimiento.DOCUMENTO,
-                    concepto=f"{doc.titulo} (v{ver.version})",
-                    responsable=ver.usuario or "admin",
-                    referencia_id=doc.id,
-                    fecha=fecha_v,
-                    dias_restantes=dias,
-                    estado=est,
-                )
-            )
+            if doc.version_vigente:
+                ver = doc.version_vigente
+                if ver.fecha_vencimiento:
+                    fecha_v = _a_fecha(ver.fecha_vencimiento)
+                    dias, est = _calcular_plazo(fecha_v, hoy)
+                    items.append(
+                        VencimientoConsolidadoItem(
+                            id=f"documento-{doc.id}",
+                            origen=OrigenVencimiento.DOCUMENTO,
+                            concepto=f"{doc.titulo} (v{ver.version})",
+                            responsable=ver.usuario or "admin",
+                            referencia_id=doc.id,
+                            fecha=fecha_v,
+                            dias_restantes=dias,
+                            estado=est,
+                        )
+                    )
+            else:
+                ultima = doc.ultima_version_vigente
+                if ultima and ultima.fecha_vencimiento:
+                    fecha_v = _a_fecha(ultima.fecha_vencimiento)
+                    if hoy > fecha_v:
+                        dias, _ = _calcular_plazo(fecha_v, hoy)
+                        items.append(
+                            VencimientoConsolidadoItem(
+                                id=f"documento-{doc.id}",
+                                origen=OrigenVencimiento.DOCUMENTO,
+                                concepto=f"{doc.titulo} (v{ultima.version})",
+                                responsable=ultima.usuario or "admin",
+                                referencia_id=doc.id,
+                                fecha=fecha_v,
+                                dias_restantes=dias,
+                                estado=EstadoVencimiento.VENCIDO,
+                            )
+                        )
 
     if estado is not None:
         items = [it for it in items if it.estado == estado]

@@ -7,6 +7,7 @@ export interface InsumoQuimico {
   tipo: TipoQuimico;
   unidad_medida: UnidadMedida;
   stock_actual: number;
+  proveedor?: string | null;
   activo: boolean;
   created_at?: string;
 }
@@ -16,6 +17,7 @@ export interface InsumoQuimicoCreateDTO {
   tipo: TipoQuimico;
   unidad_medida: UnidadMedida;
   stock_actual: number;
+  proveedor?: string | null;
 }
 
 export interface InsumoQuimicoUpdateDTO {
@@ -23,6 +25,7 @@ export interface InsumoQuimicoUpdateDTO {
   tipo?: TipoQuimico;
   unidad_medida?: UnidadMedida;
   stock_actual?: number;
+  proveedor?: string | null;
   activo?: boolean;
 }
 
@@ -41,3 +44,14 @@ export const OPCIONES_UNIDAD: { value: UnidadMedida; label: string }[] = [
   { value: 'G', label: 'Gramos (G)' },
   { value: 'UN', label: 'Unidades (UN)' },
 ];
+
+// Re-exportar tipos analíticos migrados al módulo dashboard
+export {
+  COLORES_TIPO_QUIMICO,
+  type AgrupacionTiempo,
+  type MovimientoInsumoQuimico,
+  type PuntoEvolucionConsumo,
+  type ConsumoAgrupadoItem,
+  type MetricasConsumoHistorico,
+  type ConsumoHistoricoResponse,
+} from '../dashboard/tipos';
