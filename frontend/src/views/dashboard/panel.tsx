@@ -24,6 +24,16 @@ import { apiFetch } from '../../api/client';
 import '../../styles/dashboard.css';
 import { useColoresTema } from './useColoresTema';
 
+const PALETA_PRODUCCION = [
+  '#3b82f6', // Azul
+  '#06b6d4', // Cian
+  '#10b981', // Verde esmeralda
+  '#f59e0b', // Ámbar cálido
+  '#8b5cf6', // Violeta
+  '#ec4899', // Rosa
+  '#6366f1', // Índigo
+];
+
 const UNIDADES_ESTANDAR = [
   { id: 'L', label: 'L' },
   { id: 'ML', label: 'ML' },
@@ -657,7 +667,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
             ) : (
               <div className="dashboard-grafico-contenedor">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={consumoInsumos} margin={{ top: 8, right: 16, left: 12, bottom: 8 }}>
+                  <BarChart data={consumoInsumos} margin={{ top: 8, right: 16, left: 12, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                     <XAxis
                       dataKey="nombre"
@@ -665,15 +675,10 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
                       fontSize={11}
                       interval={0}
                       tickLine={false}
-                      height={32}
-                      label={{
-                        value: 'Insumo',
-                        position: 'insideBottom',
-                        offset: -2,
-                        fill: colores.textoSec,
-                        fontSize: 11,
-                        fontWeight: 500,
-                      }}
+                      angle={-22}
+                      textAnchor="end"
+                      height={48}
+                      tickFormatter={(val: string) => (val && val.length > 15 ? `${val.slice(0, 14)}…` : val)}
                     />
                     <YAxis
                       stroke={colores.textoSec}
@@ -787,7 +792,14 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
                     formatter={(valor) => [`${valor} u.`, 'Producción']}
                     labelFormatter={(nombre) => `Período: ${nombre}`}
                   />
-                  <Bar dataKey="cantidad" fill={colores.primario} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="cantidad" radius={[4, 4, 0, 0]}>
+                    {datosProduccion.map((_, index) => (
+                      <Cell
+                        key={`produccion-bar-${index}`}
+                        fill={PALETA_PRODUCCION[index % PALETA_PRODUCCION.length]}
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
