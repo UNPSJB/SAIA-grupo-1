@@ -25,13 +25,13 @@ import '../../styles/dashboard.css';
 import { useColoresTema } from './useColoresTema';
 
 const PALETA_PRODUCCION = [
-  '#3b82f6', // Azul
-  '#06b6d4', // Cian
-  '#10b981', // Verde esmeralda
-  '#f59e0b', // Ámbar cálido
-  '#8b5cf6', // Violeta
-  '#ec4899', // Rosa
-  '#6366f1', // Índigo
+  '#3b82f6',
+  '#06b6d4',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ec4899',
+  '#6366f1',
 ];
 
 const UNIDADES_ESTANDAR = [

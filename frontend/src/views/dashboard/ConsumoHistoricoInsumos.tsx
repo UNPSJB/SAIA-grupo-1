@@ -89,10 +89,8 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
   const [cargando, setCargando] = useState<boolean>(true);
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
 
-  // Buscador de movimientos
   const [busquedaMovimiento, setBusquedaMovimiento] = useState<string>('');
 
-  // Validación de rango
   const errorRango = useMemo(() => {
     if (desde && hasta && desde > hasta) {
       return "La fecha 'Desde' no puede ser posterior a 'Hasta'.";
@@ -100,7 +98,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
     return null;
   }, [desde, hasta]);
 
-  // Cargar catálogo de químicos para el selector
   useEffect(() => {
     let cancelado = false;
     const fetchCatalogo = async () => {
@@ -111,7 +108,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
           setCatalogoQuimicos(list);
         }
       } catch {
-        // Silencioso
       }
     };
     fetchCatalogo();
@@ -120,7 +116,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
     };
   }, []);
 
-  // Cargar datos analíticos de consumo
   useEffect(() => {
     if (!esAdministrador) return;
     if (errorRango) {
@@ -184,7 +179,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
     setHasta(formatearFechaInput(fin));
   };
 
-  // Filtrado de movimientos por buscador
   const movimientosFiltrados = useMemo(() => {
     const list = datos?.movimientos || [];
     if (!busquedaMovimiento.trim()) return list;
@@ -200,7 +194,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
     );
   }, [datos?.movimientos, busquedaMovimiento]);
 
-  // Paginación de la tabla de movimientos
   const paginacionMovimientos = usePaginacion(movimientosFiltrados, 10);
 
   if (!esAdministrador) {
@@ -238,7 +231,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
         </nav>
       )}
 
-      {/* Encabezado Principal */}
       <div
         style={{
           display: 'flex',
@@ -281,7 +273,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
         </div>
       </div>
 
-      {/* Barra de Filtros */}
       <Card style={{ marginBottom: '24px' }}>
         <CardContent style={{ padding: '16px 20px' }}>
           <div
@@ -292,7 +283,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               gap: '14px',
             }}
           >
-            {/* Fechas */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-texto-sec)' }}>Período:</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -336,7 +326,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               </div>
             </div>
 
-            {/* Atajos Rápidos */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {[
                 { label: '7d', dias: 7 },
@@ -379,7 +368,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               </button>
             </div>
 
-            {/* Selector de Insumo Específico */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-texto-sec)' }}>Insumo:</label>
               <select
@@ -405,7 +393,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               </select>
             </div>
 
-            {/* Selector de Unidad */}
             {(datos?.unidades_disponibles?.length ?? 0) > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-texto-sec)' }}>Unidad:</label>
@@ -431,7 +418,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               </div>
             )}
 
-            {/* Agrupación temporal */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-texto-sec)' }}>Agrupar:</span>
               <div
@@ -493,7 +479,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
         </CardContent>
       </Card>
 
-      {/* Estado Cargando */}
       {cargando ? (
         <Card style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
           <svg
@@ -513,7 +498,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
           <div style={{ fontSize: '14px', fontWeight: 500 }}>Procesando histórico de consumo de insumos químicos...</div>
         </Card>
       ) : !hayDatos ? (
-        /* Validación de Existencia de Datos: Estado Vacío Formal */
         <Card style={{ padding: '48px 24px', textAlign: 'center', margin: '20px 0' }}>
           <div
             style={{
@@ -563,9 +547,7 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
           </button>
         </Card>
       ) : (
-        /* Contenido con Datos */
         <div>
-          {/* Tarjetas KPI Superiores */}
           <div
             style={{
               display: 'grid',
@@ -574,7 +556,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               marginBottom: '24px',
             }}
           >
-            {/* KPI 1: Consumo Total */}
             <Card>
               <CardContent style={{ padding: '16px 20px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-texto-sec)' }}>
@@ -589,7 +570,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               </CardContent>
             </Card>
 
-            {/* KPI 2: Variación vs Período Anterior */}
             <Card>
               <CardContent style={{ padding: '16px 20px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-texto-sec)' }}>
@@ -647,7 +627,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               </CardContent>
             </Card>
 
-            {/* KPI 3: Insumo Más Consumido */}
             <Card>
               <CardContent style={{ padding: '16px 20px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-texto-sec)' }}>
@@ -674,7 +653,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               </CardContent>
             </Card>
 
-            {/* KPI 4: Promedio Diario */}
             <Card>
               <CardContent style={{ padding: '16px 20px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-texto-sec)' }}>
@@ -693,7 +671,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
             </Card>
           </div>
 
-          {/* Gráficos Analíticos */}
           <Card style={{ marginBottom: '28px' }}>
             <CardHeader style={{ padding: '20px 24px 14px 24px' }}>
               <div
@@ -716,7 +693,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                   </CardDescription>
                 </div>
 
-                {/* Tabs de Dimensión */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div
                     style={{
@@ -753,7 +729,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                     ))}
                   </div>
 
-                  {/* Toggle Líneas / Barras (solo en evolución) */}
                   {pestañaGrafico === 'evolucion' && (
                     <div
                       style={{
@@ -936,7 +911,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                     </BarChart>
                   </ResponsiveContainer>
 
-                  {/* Leyenda y Desglose de Tipos */}
                   <div
                     style={{
                       display: 'flex',
@@ -1014,7 +988,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
             </CardContent>
           </Card>
 
-          {/* Listado Detallado de Movimientos */}
           <Card>
             <CardHeader style={{ padding: '20px 24px 14px 24px' }}>
               <div
@@ -1035,7 +1008,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                   </CardDescription>
                 </div>
 
-                {/* Buscador en la tabla */}
                 <div style={{ position: 'relative', width: '280px', maxWidth: '100%', flexShrink: 0, boxSizing: 'border-box' }}>
                   <input
                     type="text"
@@ -1144,7 +1116,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                 </table>
               </div>
 
-              {/* Controles de Paginación */}
               {movimientosFiltrados.length > 10 && (
                 <div style={{ padding: '14px 20px', borderTop: '1px solid var(--color-borde)', display: 'flex', justifyContent: 'flex-end' }}>
                   <Paginacion

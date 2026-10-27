@@ -7,8 +7,8 @@ para poder navegar y probar la app a mano y visualizar todas las estadísticas d
 - Consumo histórico de insumos químicos (todas las unidades L, ML, KG, G, UN; todos los tipos; variación porcentual entre períodos; desglose por proveedor y curvas temporales).
 
 Uso (parado en backend/, con el venv activado):
-    python scripts/seed_dev_db.py            # alimenta la base si esta vacia
-    python scripts/seed_dev_db.py --reset    # hace backup de la base actual y la regenera desde cero
+    python scripts/seed_dev_db.py
+    python scripts/seed_dev_db.py --reset
 """
 import io
 import json
@@ -22,11 +22,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.database import SessionLocal, engine, asegurar_migraciones_esquema
 from src.models import ModeloBase
 
-# Registra todos los modelos
-import src.plan_de_calibracion.models  # noqa: F401
-import src.calibracion_realizada.models  # noqa: F401
-import src.tipoCertificado.models  # noqa: F401
-import src.incidentes.models  # noqa: F401
+import src.plan_de_calibracion.models
+import src.calibracion_realizada.models
+import src.tipoCertificado.models
+import src.incidentes.models
 
 from src.personal.models import Personal
 from src.personal.services import crear_personal
@@ -69,18 +68,17 @@ from src.documentos.constants import TipoDocumento
 from src.auditoria.models import Auditoria
 from fastapi import UploadFile
 
-# (nombre, lote, dias desde recepcion, dias hasta vencimiento o None [negativo = vencido], cantidad recibida, stock, medida)
 INSUMOS = [
     ("Harina 000", "HAR3-2409", 12, 150, 250.0, 180.0, UnidadMedida.KILOGRAMOS),
     ("Harina 0000", "HAR4-2409", 12, 140, 100.0, 60.0, UnidadMedida.KILOGRAMOS),
-    ("Manteca", "MAN-2409", 6, 12, 40.0, 22.0, UnidadMedida.KILOGRAMOS),  # proximo
+    ("Manteca", "MAN-2409", 6, 12, 40.0, 22.0, UnidadMedida.KILOGRAMOS),
     ("Azucar Comun", "AZC-2408", 30, 365, 100.0, 75.0, UnidadMedida.KILOGRAMOS),
     ("Azucar Impalpable", "AZI-2408", 30, 300, 25.0, 14.0, UnidadMedida.KILOGRAMOS),
     ("Huevos", "HUE-2409", 4, 18, 360.0, 210.0, UnidadMedida.UNIDADES),
-    ("Leche Entera", "LEC-2409", 8, 4, 60.0, 34.0, UnidadMedida.LITROS),   # proximo
-    ("Crema de Leche", "CRE-2409", 14, -3, 20.0, 8.0, UnidadMedida.LITROS),  # VENCIDO
-    ("Queso Crema", "QCR-2409", 7, 5, 20.0, 6.0, UnidadMedida.KILOGRAMOS),   # proximo
-    ("Levadura Fresca", "LEV-2409", 6, 3, 5.0, 2.5, UnidadMedida.KILOGRAMOS),  # proximo
+    ("Leche Entera", "LEC-2409", 8, 4, 60.0, 34.0, UnidadMedida.LITROS),
+    ("Crema de Leche", "CRE-2409", 14, -3, 20.0, 8.0, UnidadMedida.LITROS),
+    ("Queso Crema", "QCR-2409", 7, 5, 20.0, 6.0, UnidadMedida.KILOGRAMOS),
+    ("Levadura Fresca", "LEV-2409", 6, 3, 5.0, 2.5, UnidadMedida.KILOGRAMOS),
     ("Sal Fina", "SAL-2407", 60, None, 25.0, 20.0, UnidadMedida.KILOGRAMOS),
     ("Dulce de Leche Repostero", "DDL-2409", 10, 90, 50.0, 30.0, UnidadMedida.KILOGRAMOS),
     ("Chocolate Cobertura Semiamargo", "CHO-2408", 20, 180, 20.0, 12.0, UnidadMedida.KILOGRAMOS),
@@ -88,8 +86,8 @@ INSUMOS = [
     ("Esencia de Vainilla", "VAI-2407", 45, 300, 2000.0, 1200.0, UnidadMedida.MILILITROS),
     ("Polvo de Hornear", "PHO-2408", 20, 240, 5000.0, 3500.0, UnidadMedida.GRAMOS),
     ("Membrillo", "MEM-2409", 8, 120, 30.0, 21.0, UnidadMedida.KILOGRAMOS),
-    ("Jamon Cocido", "JAM-2410", 10, -1, 10.0, 3.5, UnidadMedida.KILOGRAMOS),  # VENCIDO
-    ("Queso de Maquina", "QMA-2410", 5, 8, 12.0, 2.0, UnidadMedida.KILOGRAMOS),  # proximo
+    ("Jamon Cocido", "JAM-2410", 10, -1, 10.0, 3.5, UnidadMedida.KILOGRAMOS),
+    ("Queso de Maquina", "QMA-2410", 5, 8, 12.0, 2.0, UnidadMedida.KILOGRAMOS),
     ("Cacao Amargo en Polvo", "CAC-2408", 25, 270, 10.0, 7.5, UnidadMedida.KILOGRAMOS),
     ("Nueces Mariposa", "NUE-2408", 20, 150, 8.0, 1.2, UnidadMedida.KILOGRAMOS),
     ("Pasas de Uva", "PAS-2408", 18, 180, 10.0, 6.0, UnidadMedida.KILOGRAMOS),
@@ -99,36 +97,29 @@ INSUMOS = [
     ("Miel Pura", "MIE-2407", 35, 365, 12.0, 10.0, UnidadMedida.KILOGRAMOS),
 ]
 
-# (nombre, tipo, unidad, stock, proveedor)
 INSUMOS_QUIMICOS = [
-    # Líquidos en Litros (L)
     ("Lavandina Concentrada 55g", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 80.0, "Clorox Profesional"),
     ("Detergente Neutro Espumante", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 50.0, "Spartan Chemical"),
     ("Amonio Cuaternario 5ta Generacion", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 40.0, "Ecolab"),
     ("Desengrasante Alcalino Pesado", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.LITROS, 30.0, "Diversey"),
     ("Sanitizante Clorado Liquido", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.LITROS, 25.0, "Ecolab"),
 
-    # Líquidos y Sprays en Mililitros (ML)
     ("Alcohol Isopropilico 70 Spray", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.MILILITROS, 5000.0, "Química del Sur"),
     ("Limpiavidrios Antiestatico", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 3500.0, "Spartan Chemical"),
     ("Jabon Antibacterial Clorhexidina", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 4000.0, "Diversey"),
     ("Desinfectante Concentrado Peracetico", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.MILILITROS, 2000.0, "Ecolab"),
 
-    # Sólidos y Polvos en Kilogramos (KG)
     ("Soda Caustica en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 40.0, "Química Industrial"),
     ("Detergente en Polvo Enzimatico", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.KILOGRAMOS, 35.0, "Spartan Chemical"),
     ("Hipoclorito de Calcio Granulado", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.KILOGRAMOS, 20.0, "Clorox Profesional"),
 
-    # Sólidos en Gramos (G)
     ("Pastillas Efervescentes Cloradas", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.GRAMOS, 1500.0, "Química del Sur"),
     ("Polvo Abrasivo Sanitizante", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.GRAMOS, 2500.0, "Diversey"),
 
-    # Unidades y Paquetes (UN)
     ("Toallitas Desinfectantes con Alcohol", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.UNIDADES, 60.0, "Química del Sur"),
     ("Pastillas Sanitizantes de Cisterna", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.UNIDADES, 50.0, "Ecolab"),
     ("Bloque Desincrustante Quimico", TipoQuimicoEnum.OTRO, UnidadQuimico.UNIDADES, 24.0, "Spartan Chemical"),
 ]
-
 
 def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
     stream_content = (
@@ -159,7 +150,6 @@ def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
     trailer = b"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + str(xref_offset).encode() + b"\n%%EOF\n"
     return header + obj1 + obj2 + obj3 + obj4 + obj5 + xref + trailer
 
-
 def resetear_base() -> None:
     root_dir = Path(__file__).resolve().parent.parent.parent
     backend_dir = Path(__file__).resolve().parent.parent
@@ -175,7 +165,6 @@ def resetear_base() -> None:
             shutil.copy2(db_path, backup)
             print(f"Backup de {db_path.name} en: {backup}")
     ModeloBase.metadata.drop_all(bind=engine)
-
 
 def sincronizar_archivos_db() -> None:
     root_dir = Path(__file__).resolve().parent.parent.parent
@@ -193,7 +182,6 @@ def sincronizar_archivos_db() -> None:
             if target != db_actual:
                 shutil.copy2(db_actual, target)
         print("Base de datos sincronizada hacia todas las ubicaciones (app.db y db.sqlite3 en root y backend).")
-
 
 def main() -> None:
     if "--reset" in sys.argv:
@@ -273,12 +261,11 @@ def main() -> None:
     el5 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Escobillon Salon", frecuenciaDeCambio=30))
     el6 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Guantes de Nitrilo", frecuenciaDeCambio=None))
 
-    # Simulamos elementos vencidos, proximos y al dia
-    el1.fechaCambio = hoy - timedelta(days=2)  # Vencido
-    el2.fechaCambio = hoy - timedelta(days=1)  # Vencido
-    el3.fechaCambio = hoy + timedelta(days=1)  # Próximo
-    el4.fechaCambio = hoy + timedelta(days=2)  # Próximo
-    el5.fechaCambio = hoy + timedelta(days=20)  # Vigente
+    el1.fechaCambio = hoy - timedelta(days=2)
+    el2.fechaCambio = hoy - timedelta(days=1)
+    el3.fechaCambio = hoy + timedelta(days=1)
+    el4.fechaCambio = hoy + timedelta(days=2)
+    el5.fechaCambio = hoy + timedelta(days=20)
     el6.fechaCambio = None
     db.commit()
 
@@ -395,7 +382,6 @@ def main() -> None:
         ),
     )
 
-    # Tareas asignadas a las cuentas de desarrollo con capacidad de operar (operador y adminopp)
     op_dev = db.query(Personal).filter(Personal.usuario == "operador").first()
     adminop_dev = db.query(Personal).filter(Personal.usuario == "adminopp").first()
 
@@ -462,8 +448,6 @@ def main() -> None:
         responsable = responsables[offset % len(responsables)]
         checklist = Checklist(fecha=fecha, responsable_legajo=responsable.legajo, activo=True)
 
-        # Para simular variación positiva (+8%) en el período actual:
-        # El mes previo (días 75 a 38) tiene consumos ~8% menores que el mes actual (días 37 a 1)
         factor_consumo = 0.92 if offset >= 38 else 1.0
 
         items_del_dia = [
@@ -504,7 +488,6 @@ def main() -> None:
             ),
         ]
 
-        # Tareas semanales cada 3-4 días
         if offset % 7 in (0, 3):
             items_del_dia.append((
                 plan_heladera, t_heladera_semanal,
@@ -533,7 +516,6 @@ def main() -> None:
                 ]
             ))
 
-        # Tareas mensuales
         if offset % 25 == 0:
             items_del_dia.append((
                 plan_freezer, t_freezer_mensual,
@@ -550,7 +532,6 @@ def main() -> None:
             ))
 
         for j, (plan, tarea, insumos) in enumerate(items_del_dia):
-            # Tasa de cumplimiento ~85%
             realizada = not (offset % 6 == 0 and j == len(items_del_dia) - 1)
             item = ChecklistItem(
                 plan_id=plan.id,
@@ -571,7 +552,6 @@ def main() -> None:
     print("Generando checklist para hoy (con tareas completadas en L, ML y UN para probar el día en vivo)...")
     checklist_hoy_marcos = generar_checklist(db, ChecklistGenerar(responsable_legajo=marcos.legajo, fecha=date.today()))
     if checklist_hoy_marcos.items:
-        # Completamos la tarea de Marcos con insumos en Litros (L)
         completar_tarea(
             db,
             checklist_hoy_marcos.id,
@@ -585,7 +565,6 @@ def main() -> None:
             ),
         )
 
-    # Juan tiene su checklist de hoy: completamos la primera en ML y UN, y dejamos la segunda pendiente
     checklist_hoy_juan = generar_checklist(db, ChecklistGenerar(responsable_legajo=juan.legajo, fecha=date.today()))
     if checklist_hoy_juan.items:
         completar_tarea(
@@ -602,7 +581,6 @@ def main() -> None:
         )
 
     print("Creando documentos versionados con vencimientos...")
-    # 1. POES: versión vigente vencida hace 8 días (para ver documento VENCIDO en dashboard)
     pdf_poes = UploadFile(file=io.BytesIO(generar_pdf_valido("POES - Sanitizacion General", "Procedimiento Operativo Estandarizado de Saneamiento")), filename="poes_general.pdf")
     crear_documento(
         db,
@@ -616,7 +594,6 @@ def main() -> None:
         responsable_legajo=ana.legajo,
     )
 
-    # 2. MIP: versión vigente próxima a vencer en 5 días (para ver documento PROXIMO en dashboard)
     pdf_mip = UploadFile(file=io.BytesIO(generar_pdf_valido("Plan MIP - Control de Plagas", "Manejo Integrado de Plagas")), filename="plan_mip.pdf")
     crear_documento(
         db,
@@ -630,7 +607,6 @@ def main() -> None:
         responsable_legajo=ana.legajo,
     )
 
-    # 3. BPM: versión 1 archivada, versión 2 vigente vence en 180 días (VIGENTE)
     pdf1 = UploadFile(file=io.BytesIO(generar_pdf_valido("Manual de Buenas Practicas de Manufactura", "Version 1.0 (Archivada)")), filename="manual_bpm_v1.pdf")
     doc_bpm = crear_documento(
         db,
@@ -653,7 +629,6 @@ def main() -> None:
         responsable_legajo=ana.legajo,
     )
 
-    # 4. Receta Medialunas de Manteca (VIGENTE)
     pdf_receta = UploadFile(file=io.BytesIO(generar_pdf_valido("Receta Estandar: Medialunas de Manteca", "Version 1.0 (Vigente)")), filename="receta_medialunas.pdf")
     crear_documento(
         db,
@@ -675,12 +650,12 @@ def main() -> None:
     carpeta_calibraciones.mkdir(parents=True, exist_ok=True)
 
     planes_cal = [
-        ("Heladera Exhibidora", 180, 210),   # vencido hace 30 dias
-        ("Horno Convector", 180, 195),       # vencido hace 15 dias
-        ("Freezer Deposito", 180, 172),      # vence en 8 dias (proximo)
-        ("Termometro Pinche", 30, 26),       # vence en 4 dias (proximo)
-        ("Camara Frigorifica", 90, 20),      # vigente (vence en 70 dias)
-        ("Amasadora Industrial", 365, 90),   # vigente (vence en 275 dias)
+        ("Heladera Exhibidora", 180, 210),
+        ("Horno Convector", 180, 195),
+        ("Freezer Deposito", 180, 172),
+        ("Termometro Pinche", 30, 26),
+        ("Camara Frigorifica", 90, 20),
+        ("Amasadora Industrial", 365, 90),
     ]
     for nombre_equipo, periodicidad, dias_desde in planes_cal:
         equipo = db.query(Equipo).filter(Equipo.nombre == nombre_equipo).one()
@@ -711,20 +686,16 @@ def main() -> None:
     from src.incidentes.constants import EstadoIncidente
 
     incidentes = [
-        # Abiertos - Recientes (<24h)
         ("Se detecto una perdida de agua debajo de la bacha del sector de lavado.", EstadoIncidente.PENDIENTE, 0.25, juan, None, None, None),
         ("El cable de conexion de la batidora planetaria presenta desgaste exterior.", EstadoIncidente.PENDIENTE, 0.5, sofia, None, None, None),
 
-        # Abiertos - Atención Media (24h - 72h)
         ("La heladera exhibidora marca 9 grados, por encima del limite permitido.", EstadoIncidente.PENDIENTE, 2.0, lucia, None, None, None),
         ("Desvio en la medicion de humedad en camara de fermentacion de cuadra.", EstadoIncidente.EN_REVISION, 1.5, marcos, None, None, None),
 
-        # Abiertos - Críticos (+72h)
         ("Se encontro un envase de crema de leche abierto y sin rotular en la camara.", EstadoIncidente.EN_REVISION, 4.0, sofia, None, None, None),
         ("Cerradura del deposito secundario de quimicos trabada y sin llave de repuesto.", EstadoIncidente.PENDIENTE, 5.0, juan, None, None, None),
         ("El termometro digital de la camara frigorifica no enciende ni registra.", EstadoIncidente.REABIERTO, 6.0, lucia, None, None, "El reemplazo temporal volvio a apagarse repentinamente."),
 
-        # Cerrados y Descartados (Historial para métricas)
         ("Falta de jabon antibacterial en el lavamanos de la cocina.", EstadoIncidente.CERRADO, 9.0, marcos, ana, "Se repuso el jabon antibacterial y se agrego control al checklist diario.", None),
         ("Presencia de insectos cerca de la puerta del deposito.", EstadoIncidente.CERRADO, 15.0, juan, ana, "Se contrato fumigacion y se coloco cortina de aire en la puerta.", None),
         ("Un empleado ingreso a produccion sin cofia.", EstadoIncidente.DESCARTADO, 20.0, sofia, ana, "Se realizo apercibimiento y capacitacion verbal sobre BPM.", None),
@@ -759,18 +730,17 @@ def main() -> None:
         contenido = generar_pdf_valido(titulo, f"{persona.nombre} {persona.apellido} - Legajo {persona.legajo}")
         return UploadFile(file=io.BytesIO(contenido), filename=f"{titulo.lower().replace(' ', '_')}.pdf")
 
-    # (persona, tipo, dias hasta vencimiento, con archivo): vencidos (-12, -25), proximos (8, 4) y vigentes (>30)
     certificados = [
-        (marcos, t_manip, -12, True),   # VENCIDO
-        (sofia, t_hs, -25, True),       # VENCIDO
-        (juan, t_libreta, 8, False),    # PROXIMO
-        (lucia, t_libreta, 4, True),    # PROXIMO
-        (juan, t_manip, 180, True),     # VIGENTE
-        (ana, t_manip, 270, True),      # VIGENTE
-        (ana, t_curso, 90, True),       # VIGENTE
-        (marcos, t_hs, 45, False),      # VIGENTE
-        (lucia, t_curso, 350, True),    # VIGENTE
-        (sofia, t_manip, 30, False),    # VIGENTE
+        (marcos, t_manip, -12, True),
+        (sofia, t_hs, -25, True),
+        (juan, t_libreta, 8, False),
+        (lucia, t_libreta, 4, True),
+        (juan, t_manip, 180, True),
+        (ana, t_manip, 270, True),
+        (ana, t_curso, 90, True),
+        (marcos, t_hs, 45, False),
+        (lucia, t_curso, 350, True),
+        (sofia, t_manip, 30, False),
     ]
     for persona, tipo, dias, con_archivo in certificados:
         crear_certificado(
@@ -796,7 +766,6 @@ def main() -> None:
     print("  - Consumo Insumos Químicos: 75 días históricos en L, ML, KG, G, UN con variación calculada (+8%)")
     print("  - Cumplimiento de Limpieza: ~85% en semana y mes, y tareas completadas hoy en L, ML y UN")
     print("=======================================================\n")
-
 
 if __name__ == "__main__":
     main()

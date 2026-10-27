@@ -10,16 +10,14 @@ from src.dashboard import schemas
 from src.dashboard.exceptions import RangoFechasInvalidoException
 from src.insumos_quimicos.models import InsumoQuimico
 
-
 def _rango_periodo(periodo: str, hoy: date) -> Tuple[date, date]:
     p = str(periodo).lower()
     if p in ("dia", "diaria", "diario"):
         return hoy, hoy
     elif p in ("mes", "mensual"):
         return hoy - timedelta(days=30), hoy
-    else:  # semana, semanal o default
+    else:
         return hoy - timedelta(days=7), hoy
-
 
 def _resumen_checklists(checklists, hoy: date | None = None) -> schemas.CumplimientoResumen:
     hoy = hoy or date.today()
@@ -48,7 +46,6 @@ def _resumen_checklists(checklists, hoy: date | None = None) -> schemas.Cumplimi
         porcentaje=porcentaje,
     )
 
-
 def obtener_cumplimiento_actual(
     db: Session, periodo: schemas.Periodo, hoy: date | None = None
 ) -> schemas.CumplimientoResumen:
@@ -56,7 +53,6 @@ def obtener_cumplimiento_actual(
     desde, hasta = _rango_periodo(periodo, hoy)
     checklists = checklist_services.listar_checklists(db, fecha_desde=desde, fecha_hasta=hasta)
     return _resumen_checklists(checklists, hoy)
-
 
 def obtener_unidades_insumos(
     db: Session, periodo: schemas.Periodo, hoy: date | None = None
@@ -82,7 +78,6 @@ def obtener_unidades_insumos(
     orden_estandar = ["L", "ML", "KG", "G", "UN"]
     presentes = sorted(list(unidades_set))
     return [u for u in orden_estandar if u in unidades_set] + [u for u in presentes if u not in orden_estandar]
-
 
 def obtener_consumo_insumos(
     db: Session,
@@ -126,7 +121,6 @@ def obtener_consumo_insumos(
     consumo = sorted(acumulado.values(), key=lambda x: x["cantidad"], reverse=True)[:limite]
     return [schemas.ConsumoInsumo(**c) for c in consumo]
 
-
 def obtener_resumen(
     db: Session,
     periodo: schemas.Periodo = "semana",
@@ -149,7 +143,6 @@ def obtener_resumen(
         unidades_disponibles=unidades_disp,
         unidad_actual=unidad_efectiva,
     )
-
 
 def obtener_historico_consumo(
     db: Session,
@@ -175,12 +168,10 @@ def obtener_historico_consumo(
     prev_hasta = desde - timedelta(days=1)
     prev_desde = prev_hasta - timedelta(days=dias_periodo - 1)
 
-    # Catálogo de químicos para lookup
     quimicos = db.query(InsumoQuimico).all()
     quimicos_por_id = {q.id: q for q in quimicos}
     quimicos_por_nombre = {q.nombre.strip().lower(): q for q in quimicos}
 
-    # Consultar checklists de todo el lapso (período anterior + actual)
     checklists = checklist_services.listar_checklists(
         db, fecha_desde=prev_desde, fecha_hasta=hasta
     )
@@ -220,14 +211,12 @@ def obtener_historico_consumo(
 
                 u_unidad = str(u.get("unidad") or "L").strip().upper()
 
-                # Resolver objeto de químico
                 quimico_obj = None
                 if u_id and u_id in quimicos_por_id:
                     quimico_obj = quimicos_por_id[u_id]
                 elif u_nombre.lower() in quimicos_por_nombre:
                     quimico_obj = quimicos_por_nombre[u_nombre.lower()]
 
-                # Filtro por insumo específico si se solicitó
                 if insumo_id is not None:
                     if quimico_obj and quimico_obj.id != insumo_id:
                         continue
@@ -314,30 +303,25 @@ def obtener_historico_consumo(
                 )
             )
 
-            # Acumular en la unidad seleccionada para métricas y gráficos
             if m["unidad"] == unidad_seleccionada:
                 cant = m["cantidad"]
                 consumo_actual_unidad += cant
 
-                # Químico más consumido
                 q_key = m["insumo_nombre"]
                 consumo_por_quimico[q_key] = consumo_por_quimico.get(q_key, 0.0) + cant
 
-                # Agrupación por tipo
                 t_key = m["tipo"]
                 if t_key not in agrupado_tipo:
                     agrupado_tipo[t_key] = {"cantidad": 0.0, "movimientos": 0}
                 agrupado_tipo[t_key]["cantidad"] += cant
                 agrupado_tipo[t_key]["movimientos"] += 1
 
-                # Agrupación por proveedor
                 p_key = m["proveedor"]
                 if p_key not in agrupado_proveedor:
                     agrupado_proveedor[p_key] = {"cantidad": 0.0, "movimientos": 0}
                 agrupado_proveedor[p_key]["cantidad"] += cant
                 agrupado_proveedor[p_key]["movimientos"] += 1
 
-                # Agrupación temporal
                 f = m["fecha"]
                 if agrupacion_tiempo == "semana":
                     f_bucket = f - timedelta(days=f.weekday())
@@ -356,12 +340,10 @@ def obtener_historico_consumo(
         elif m["es_previo"] and m["unidad"] == unidad_seleccionada:
             consumo_previo_unidad += m["cantidad"]
 
-    # Ordenar movimientos del más reciente al más antiguo
     movimientos_actuales_dto.sort(
         key=lambda x: (x.fecha_hora or datetime.combine(x.fecha, datetime.min.time())), reverse=True
     )
 
-    # Construir puntos de evolución
     evolucion: List[schemas.PuntoEvolucionConsumo] = []
     for f_bucket in sorted(agrupado_tiempo.keys()):
         dato = agrupado_tiempo[f_bucket]
@@ -382,7 +364,6 @@ def obtener_historico_consumo(
             )
         )
 
-    # Construir agrupación por tipo
     total_tipo = sum(d["cantidad"] for d in agrupado_tipo.values())
     items_tipo: List[schemas.ConsumoAgrupadoItem] = []
     for t_key, d in sorted(agrupado_tipo.items(), key=lambda x: x[1]["cantidad"], reverse=True):
@@ -398,7 +379,6 @@ def obtener_historico_consumo(
             )
         )
 
-    # Construir agrupación por proveedor
     total_prov = sum(d["cantidad"] for d in agrupado_proveedor.values())
     items_proveedor: List[schemas.ConsumoAgrupadoItem] = []
     for p_key, d in sorted(agrupado_proveedor.items(), key=lambda x: x[1]["cantidad"], reverse=True):
@@ -414,7 +394,6 @@ def obtener_historico_consumo(
             )
         )
 
-    # Métricas y variación
     consumo_actual_redondeado = round(consumo_actual_unidad, 2)
     consumo_previo_redondeado = round(consumo_previo_unidad, 2)
 
@@ -453,7 +432,7 @@ def obtener_historico_consumo(
         insumo_id=insumo_id,
         unidad_seleccionada=unidad_seleccionada,
         unidades_disponibles=unidades_disponibles,
-        agrupacion_tiempo=agrupacion_tiempo,  # type: ignore
+        agrupacion_tiempo=agrupacion_tiempo,
         total_registros=len(movimientos_actuales_dto),
         metricas=metricas,
         evolucion=evolucion,
