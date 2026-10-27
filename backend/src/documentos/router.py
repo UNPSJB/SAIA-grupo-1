@@ -11,7 +11,7 @@ from src.database import get_db
 from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.documentos import exceptions, schemas, services
-from src.documentos.constants import TipoDocumento
+
 from src.autenticacion.dependencies import requiere_admin
 
 router = APIRouter(prefix="/documentos", tags=["Documentos Versionados"])
@@ -69,7 +69,7 @@ def _serializar_version(v) -> Optional[schemas.VersionDocumentoResponse]:
 )
 def crear_documento_endpoint(
     titulo: str = Form(...),
-    tipo: TipoDocumento = Form(...),
+    tipo: str = Form(...),
     version: Optional[str] = Form(None),
     archivo: UploadFile = File(...),
     descripcion: Optional[str] = Form(None),
@@ -158,7 +158,7 @@ def marcar_version_vigente_endpoint(
     response_model=List[schemas.DocumentoListItem],
 )
 def listar_documentos_endpoint(
-    tipo: Optional[TipoDocumento] = Query(None),
+    tipo: Optional[str] = Query(None),
     busqueda: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from tests.database import app, session
 from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate, Capacidades
-from src.documentos.constants import TipoDocumento
+
 
 client = TestClient(app)
 
@@ -24,7 +24,7 @@ def test_api_crear_documento_y_listar(session: Session):
     files = {"archivo": ("manual_limpieza.pdf", io.BytesIO(pdf_bytes), "application/pdf")}
     data = {
         "titulo": "Manual de Limpieza General",
-        "tipo": TipoDocumento.MANUAL_BPM.value,
+        "tipo": "Manual de BPM",
         "version": "1.0",
         "responsable_legajo": str(admin.legajo),
         "descripcion": "Manual descriptivo",
@@ -58,7 +58,7 @@ def test_api_subir_nueva_version(session: Session):
         "/documentos",
         data={
             "titulo": "Receta Alfajores de Maicena",
-            "tipo": TipoDocumento.RECETA.value,
+            "tipo": "Receta",
             "version": "1.0",
             "responsable_legajo": str(admin.legajo),
         },
@@ -102,7 +102,7 @@ def test_api_marcar_version_vigente_y_trazabilidad(session: Session):
         "/documentos",
         data={
             "titulo": "Receta Scons de Queso",
-            "tipo": TipoDocumento.RECETA.value,
+            "tipo": "Receta",
             "version": "1.0",
             "responsable_legajo": str(admin.legajo),
         },
@@ -178,7 +178,7 @@ def test_api_descargar_archivo_pdf(session: Session):
         "/documentos",
         data={
             "titulo": "Procedimiento de Calibracion",
-            "tipo": TipoDocumento.PROCEDIMIENTO.value,
+            "tipo": "Procedimiento",
             "version": "1.0",
             "responsable_legajo": str(admin.legajo),
         },
@@ -214,7 +214,7 @@ def test_api_operador_rechazado_con_403(session: Session):
     files = {"archivo": ("doc.pdf", io.BytesIO(b"%PDF-1.4 test"), "application/pdf")}
     data = {
         "titulo": "Doc Operador Intento",
-        "tipo": TipoDocumento.MANUAL_BPM.value,
+        "tipo": "Manual de BPM",
         "version": "1.0",
         "responsable_legajo": str(operador.legajo),
     }
@@ -227,7 +227,7 @@ def test_api_operador_rechazado_con_403(session: Session):
         "/documentos",
         data={
             "titulo": "Doc Para Probar Vigencia",
-            "tipo": TipoDocumento.MANUAL_BPM.value,
+            "tipo": "Manual de BPM",
             "version": "1.0",
         },
         files=files_admin,
@@ -260,7 +260,7 @@ def test_api_versionado_automatico_sin_campo_version(session: Session):
         "/documentos",
         data={
             "titulo": "Procedimiento Desinfeccion",
-            "tipo": TipoDocumento.PROCEDIMIENTO.value,
+            "tipo": "Procedimiento",
         },
         files=files_v1,
         headers={"X-User-Legajo": str(admin.legajo)},
@@ -305,7 +305,7 @@ def test_api_consultar_historial_versiones_cronologico(session: Session):
         "/documentos",
         data={
             "titulo": "Manual BPM Panaderia",
-            "tipo": TipoDocumento.MANUAL_BPM.value,
+            "tipo": "Manual de BPM",
             "version": "1",
             "responsable_legajo": str(admin.legajo),
         },
@@ -352,7 +352,7 @@ def test_api_descargar_archivo_archivado_e_inline(session: Session):
         "/documentos",
         data={
             "titulo": "Ficha Tecnica Sal",
-            "tipo": TipoDocumento.FICHA_TECNICA.value,
+            "tipo": "Ficha Técnica",
             "version": "1",
             "responsable_legajo": str(admin.legajo),
         },
@@ -396,7 +396,7 @@ def test_api_consultar_version_vigente_por_defecto(session: Session):
         "/documentos",
         data={
             "titulo": "Procedimiento Limpieza Hornos",
-            "tipo": TipoDocumento.PROCEDIMIENTO.value,
+            "tipo": "Procedimiento",
             "version": "1",
             "responsable_legajo": str(admin.legajo),
         },
@@ -437,7 +437,7 @@ def test_api_crear_documento_con_fecha_vencimiento_y_vencimiento(session: Sessio
         "/documentos",
         data={
             "titulo": "Receta Facturas Dulce",
-            "tipo": TipoDocumento.RECETA.value,
+            "tipo": "Receta",
             "version": "1.0",
             "responsable_legajo": str(admin.legajo),
             "fecha_vencimiento": "2026-12-31",
@@ -454,3 +454,34 @@ def test_api_crear_documento_con_fecha_vencimiento_y_vencimiento(session: Sessio
     item = next(it for it in items if it["id"] == data["id"])
     assert item["fecha_vencimiento"] == "2026-12-31"
     assert item["es_vigente"] is True
+
+def test_api_crear_documento_con_tipo_personalizado(session: Session):
+    admin = crear_personal(session, PersonalCreate(
+        documento=99911122,
+        nombre="AdminTest",
+        apellido="Personalizado",
+        email="admin.custom@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
+    ))
+
+    pdf_bytes = b"%PDF-1.4 contenido auditoria"
+    files = {"archivo": ("auditoria.pdf", io.BytesIO(pdf_bytes), "application/pdf")}
+    data = {
+        "titulo": "Informe Auditoria BPM",
+        "tipo": "Auditoría Externa",
+        "version": "1.0",
+        "responsable_legajo": str(admin.legajo),
+        "descripcion": "Auditoria anual",
+    }
+
+    res = client.post("/documentos", data=data, files=files)
+    assert res.status_code == status.HTTP_201_CREATED
+    body = res.json()
+    assert body["tipo"] == "Auditoría Externa"
+    doc_id = body["id"]
+
+    res_list = client.get("/documentos?tipo=Auditoría Externa")
+    assert res_list.status_code == status.HTTP_200_OK
+    items = res_list.json()
+    assert any(i["id"] == doc_id and i["tipo"] == "Auditoría Externa" for i in items)

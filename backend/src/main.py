@@ -48,6 +48,8 @@ async def db_creation_lifespan(app: FastAPI):
         # Usuarios admin, operador y adminopp compartidos por el equipo (cada integrante tiene su propia base)
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
+            from src.tipoDocumento.services import asegurar_tipos_base
+            asegurar_tipos_base(db)
     yield
 
 

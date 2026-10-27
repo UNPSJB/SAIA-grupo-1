@@ -25,20 +25,7 @@ const formatearFecha = (dateStr?: string | null) => {
   }
 };
 
-const getTipoLabel = (tipo: TipoDocumento) => {
-  switch (tipo) {
-    case "MANUAL_BPM":
-      return "Manual de BPM";
-    case "FICHA_TECNICA":
-      return "Ficha Técnica";
-    case "PROCEDIMIENTO":
-      return "Procedimiento";
-    case "RECETA":
-      return "Receta";
-    default:
-      return tipo;
-  }
-};
+const getTipoLabel = (tipo?: TipoDocumento | null) => tipo || "-";
 
 interface ListadoDocumentosProps {
   onNuevoClick?: () => void;

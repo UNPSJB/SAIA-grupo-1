@@ -45,3 +45,10 @@ def test_router_eliminar_tipo_documento(session: Session):
     res_check = client.get(f"/documentos/tipos/{tipo_id}")
     assert res_check.status_code == status.HTTP_404_NOT_FOUND
 
+def test_router_listar_incluye_tipos_por_defecto(session: Session):
+    res = client.get("/documentos/tipos/")
+    assert res.status_code == status.HTTP_200_OK
+    nombres = [t["nombre"] for t in res.json()]
+    for tipo_defecto in ["Manual de BPM", "Ficha Técnica", "Procedimiento", "Receta"]:
+        assert tipo_defecto in nombres
+

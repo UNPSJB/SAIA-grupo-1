@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 
 from src.config import settings
 from src.certificado.models import Certificado
+from src.tipoCertificado.models import TipoCertificado
 from src.personal.models import Personal
+from src.equipos.models import Equipo
 from src.plan_de_calibracion.models import Plan_de_Calibracion
 from src.documentos.models import Documento
 from src.vencimientos.schemas import (

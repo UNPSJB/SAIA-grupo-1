@@ -16,20 +16,7 @@ interface VencimientosDocumentosProps {
   filtroEstadoInicial?: FiltroEstado;
 }
 
-const getTipoLabel = (tipo: TipoDocumento) => {
-  switch (tipo) {
-    case 'MANUAL_BPM':
-      return 'Manual de BPM';
-    case 'FICHA_TECNICA':
-      return 'Ficha Técnica';
-    case 'PROCEDIMIENTO':
-      return 'Procedimiento';
-    case 'RECETA':
-      return 'Receta';
-    default:
-      return tipo;
-  }
-};
+const getTipoLabel = (tipo?: TipoDocumento | null): string => tipo || "";
 
 const formatearFecha = (dateStr?: string | null) => {
   if (!dateStr) return '—';
@@ -131,6 +118,12 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
     });
   }, [documentos]);
 
+  const nombresTipos = useMemo(() => {
+    return Array.from(
+      new Set(documentos.map((d) => getTipoLabel(d.tipo)))
+    ).filter(Boolean);
+  }, [documentos]);
+
   const resumen = useMemo(() => {
     let vencidos = 0;
     let proximos = 0;
@@ -145,7 +138,7 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
 
   const documentosFiltrados = useMemo(() => {
     return documentosConPlazo.filter(({ doc, estado }) => {
-      if (filtroTipo !== 'TODOS' && doc.tipo !== filtroTipo) return false;
+      if (filtroTipo !== 'TODOS' && doc.tipo !== filtroTipo && getTipoLabel(doc.tipo) !== filtroTipo) return false;
 
       if (filtroEstado === 'VENCIDOS' && estado !== 'vencido') return false;
       if (filtroEstado === 'PROXIMOS' && estado !== 'proximo') return false;
@@ -237,10 +230,14 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
           onChange={(e) => setFiltroTipo(e.target.value)}
         >
           <option value="TODOS">Todos los tipos</option>
-          <option value="MANUAL_BPM">Manual de BPM</option>
-          <option value="FICHA_TECNICA">Ficha Técnica</option>
-          <option value="PROCEDIMIENTO">Procedimiento</option>
-          <option value="RECETA">Receta</option>
+          {nombresTipos.map((nombre) => (
+            <option key={nombre} value={nombre}>
+              {nombre}
+            </option>
+          ))}
+
+
+
         </select>
 
         <select
