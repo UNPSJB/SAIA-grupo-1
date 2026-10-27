@@ -14,9 +14,13 @@ from qrcode import constants
 def CrearCodigoQr(db:Session,quickResponse:schemas.QRCodeCreate,nuevo_identificador):
 
     
-    BASE_URL_VERIFICACION = "http://192.168.1.42:8000/identificadorQR/verificar"
+    base_url = quickResponse.texto
     
-    contenido_qr = f"{BASE_URL_VERIFICACION}/{nuevo_identificador.id_alfanumerico}"
+    if "?" in base_url:
+        partes = base_url.split("?")
+        contenido_qr = f"{partes[0]}/{nuevo_identificador.id_alfanumerico}?{partes[1]}"
+    else:
+        contenido_qr = f"{base_url}/{nuevo_identificador.id_alfanumerico}"
 
     qr=qrcode.QRCode(
         version=quickResponse.version,

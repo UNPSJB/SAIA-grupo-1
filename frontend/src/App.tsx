@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import NuevoInsumo from './views/insumos/nuevoInsumo';
 import { ListadoInsumos } from './views/insumos/listado';
 import VerInsumo from './views/insumos/verInsumo';
@@ -20,7 +21,7 @@ import { NuevoInsumoQuimico } from './views/insumos_quimicos/nuevoInsumoQuimico'
 import { EditarDetalle as EditarInsumoQuimico } from './views/insumos_quimicos/editarDetalle';
 import { VerDetalle as VerDetalleInsumoQuimico } from './views/insumos_quimicos/verDetalle';
 import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
-
+import { Panel_Publico } from './views/vistaPublica/datosPublicos';
 import { Sidebar } from './components/Sidebar';
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar';
 import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
@@ -589,7 +590,25 @@ function App() {
   }, []);
 
   if (cargando) return null;
-  return usuario ? <Aplicacion /> : <Login />;
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/*1. Ruta pública para el QR (Sin cuenta, accesible por cualquiera) */}
+        <Route 
+          path="/vista-publica/:identificadorId" 
+          element={
+              <Panel_Publico />
+          } 
+        />
+
+        {/* 2. Ruta principal de la app (Pide login / Muestra la app interna) */}
+        <Route 
+          path="/*" 
+          element={usuario ? <Aplicacion /> : <Login />} 
+        />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;

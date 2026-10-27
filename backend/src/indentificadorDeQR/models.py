@@ -12,3 +12,4 @@ class IndentificadorUnico(ModeloBase):
     id_alfanumerico: Mapped[str]=mapped_column(String(37),index=True,primary_key=True)
     estado:Mapped[bool]=mapped_column(index=True)
     urldelQR:Mapped[str]
+    ver_grafico : Mapped[bool]=mapped_column(index=True)

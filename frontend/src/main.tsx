@@ -4,11 +4,14 @@ import './styles/tema.css'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
+import { VistaPublicaProvider } from './views/vistaPublica/contextDeVistaPublica.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <App />
+      <VistaPublicaProvider>
+        <App />
+      </VistaPublicaProvider>
     </AuthProvider>
   </StrictMode>,
 )

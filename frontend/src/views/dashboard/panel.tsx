@@ -17,6 +17,7 @@ import '../../styles/dashboard.css';
 import { useColoresTema } from './useColoresTema';
 import ActivarVista_Publica from '../vistaPublica/habilitarVista';
 import VistaPublica_Habilitada from '../vistaPublica/VistaHabilitada';
+import { VistaPublicaProvider } from '../vistaPublica/contextDeVistaPublica';
 
 const UNIDADES_ESTANDAR = [
   { id: 'L', label: 'L (Litros)' },
@@ -116,6 +117,7 @@ export const Panel: React.FC = () => {
   const datosFiltradosDona = datosDona.filter((d) => d.value > 0);
 
   return (
+    <VistaPublicaProvider>
     <div className="modulo-container dashboard-container">
 
       <div>
@@ -299,7 +301,7 @@ export const Panel: React.FC = () => {
         </div>
       </div>
     </div>
-
+  </VistaPublicaProvider>
   );
 };
 

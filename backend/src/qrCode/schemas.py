@@ -13,6 +13,7 @@ class QRCodeBASE(BaseModel):
     color_fill:str
     color_back:str
     texto:str
+    ver_grafico:bool=True
 
 
 

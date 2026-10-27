@@ -15,6 +15,8 @@ def crear_IdentificadorUnico(db:Session,ident:schemas.IdentificadorQRCreate,urld
     datos["id_alfanumerico"]=str(uuid.uuid4())
     datos["estado"]=True
     datos["urldelQR"]=urldelQR
+    if "ver_grafico" not in datos or datos["ver_grafico"] is None:
+        datos["ver_grafico"] = True
     _ident=IndentificadorUnico(**datos)
     db.add(_ident)
     db.commit()
@@ -44,3 +46,16 @@ def editar_identificadorQr(db:Session,identificador_id:str)-> schemas.Identifica
      db.refresh(db_identQR)
      return db_identQR
 
+def actualizar_ver_grafico(db: Session, identificador_id: str, ident: schemas.IdentifacadorQRUpdate) -> schemas.IdentificadorQR:
+    db_identQR = db.scalar(select(IndentificadorUnico).where(IndentificadorUnico.id_alfanumerico == identificador_id))
+    
+    if not db_identQR:
+        raise HTTPException(status_code=404, detail="El código QR no existe")
+
+    # Si viene el valor de ver_grafico, lo actualizamos
+    if ident.ver_grafico is not None:
+        db_identQR.ver_grafico = ident.ver_grafico
+
+    db.commit()
+    db.refresh(db_identQR)
+    return db_identQR

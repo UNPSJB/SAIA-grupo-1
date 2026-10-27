@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { useVistaPublica } from './contextDeVistaPublica';
 
 interface VistaHabilitadaProps{
     qrUrl: string | null;
@@ -14,6 +15,7 @@ export default function VistaPublica_Habilitada({qrUrl,identificadorUnico,onSucc
     const [loading,setLoading]=useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const { verGrafico, setVerGrafico } = useVistaPublica();
 
 function handleDescargarQR() {
         if (!qrUrl) return;
@@ -62,6 +64,23 @@ async function handleDesactivar(){
 
 
 }
+
+
+ async function handleToggleGrafico(nuevoValor: boolean) {
+    setVerGrafico(nuevoValor); // Lo cambia visualmente en tu PC al instante
+
+    try {
+        await apiFetch(`/identificadorQR/${identificadorUnico}/ver-grafico`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ver_grafico: nuevoValor }),
+        });
+    } catch (err) {
+        console.error("Error al actualizar el estado del gráfico:", err);
+    }
+}
 function handleCancelar() {
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -86,6 +105,24 @@ return(
                 {loading ? "Desactivando..." : "Desactivar Vista Publica"}
           </button>
         </div>
+
+
+       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: 'fit-content' }}>
+    <input 
+        type="checkbox" 
+        className="switch-input"
+        checked={verGrafico} 
+        // ✅ Pasamos correctamente el valor booleano del evento al hacer cambios
+        onChange={(e) => handleToggleGrafico(e.target.checked)} 
+    />
+    <span 
+        style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} 
+        // ✅ Hacemos que el texto también dispare la función que actualiza el backend
+        onClick={() => handleToggleGrafico(!verGrafico)}
+    >
+        Mostrar Gráfico de Tareas
+    </span>
+</div>
 
 
                 <div className="qr-preview-container" style={{ textAlign: 'center', padding: '5px', borderRadius: '8px' }}>

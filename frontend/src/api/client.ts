@@ -1,4 +1,7 @@
-export const API_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const host = window.location.hostname;
+const esLocal = host === 'localhost' || host === '127.0.0.1';
+
+export const API_URL: string = import.meta.env.VITE_API_URL || (esLocal ? 'http://localhost:8000' : `http://${host}:8000`);
 
 const CLAVE_TOKEN = 'saia_token';
 

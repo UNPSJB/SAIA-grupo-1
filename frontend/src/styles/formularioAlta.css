@@ -1066,3 +1066,53 @@ dialog .btn-guardar{
   gap: 4px;
 }
 
+
+
+.switch-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #fff;
+    user-select: none;
+    width: auto !important; /* Fuerza a que no se expanda */
+}
+
+/* La barrita del switch corta y compacta */
+.switch-input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    background-color: #475569;
+    border-radius: 9px;
+    position: relative;
+    outline: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin: 0 !important;
+    flex-shrink: 0;
+}
+
+.switch-input::before {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    background-color: white;
+    transition: transform 0.2s ease;
+}
+
+.switch-input:checked {
+    background-color: #2563eb;
+}
+
+.switch-input:checked::before {
+    transform: translateX(18px);
+}

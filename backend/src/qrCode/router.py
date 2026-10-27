@@ -14,7 +14,8 @@ router=APIRouter(prefix="/quickCode", tags=["quickCode"])
 async def createQR(quickResponse:schemas.QRCodeCreate,db: Session = Depends(get_db)):
     datos_ident = ident_schemas.IdentificadorQRCreate(
         urldelQR=quickResponse.texto,
-        estado=True 
+        estado=True,
+        ver_grafico=quickResponse.ver_grafico
     )
     ident_data = ident.crear_IdentificadorUnico(db,datos_ident,urldelQR=quickResponse.texto)
     imagen=services.CrearCodigoQr(db,quickResponse,ident_data)
