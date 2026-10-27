@@ -819,7 +819,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
         </div>
       </div>
 
-      <GraficoCumplimientoLimpieza />
+      <GraficoCumplimientoLimpieza onVerMas={() => setVistaDetalle('tareas')} />
     </div>
   );
 };

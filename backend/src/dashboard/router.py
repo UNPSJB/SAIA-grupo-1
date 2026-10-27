@@ -80,3 +80,25 @@ def obtener_historico_consumo(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/cumplimiento-detallado", response_model=schemas.CumplimientoDetalladoResponse)
+def obtener_cumplimiento_detallado(
+    desde: Optional[date] = Query(None, description="Fecha de inicio del rango (YYYY-MM-DD)"),
+    hasta: Optional[date] = Query(None, description="Fecha de fin del rango (YYYY-MM-DD)"),
+    sector_id: Optional[int] = Query(None, description="Filtrar por sector"),
+    turno: Optional[str] = Query(None, description="Filtrar por turno (MAÑANA, TARDE, NOCHE)"),
+    db: Session = Depends(get_db),
+):
+    try:
+        return services.obtener_cumplimiento_detallado(
+            db=db,
+            desde=desde,
+            hasta=hasta,
+            sector_id=sector_id,
+            turno=turno,
+        )
+    except RangoFechasInvalidoException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

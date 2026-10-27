@@ -547,3 +547,256 @@ def obtener_historico_consumo(
         por_proveedor=items_proveedor,
         movimientos=movimientos_actuales_dto,
     )
+
+
+def inferir_turno(dt: Optional[datetime]) -> str:
+    if not dt:
+        return "MAÑANA"
+    h = dt.hour
+    if 6 <= h < 14:
+        return "MAÑANA"
+    elif 14 <= h < 22:
+        return "TARDE"
+    return "NOCHE"
+
+def obtener_cumplimiento_detallado(
+    db: Session,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    sector_id: Optional[int] = None,
+    turno: Optional[str] = None,
+) -> schemas.CumplimientoDetalladoResponse:
+    if desde and hasta and desde > hasta:
+        raise RangoFechasInvalidoException("La fecha 'desde' no puede ser posterior a la fecha 'hasta'.")
+
+    from src.checklist.models import Checklist, ChecklistItem
+    from src.sectores.models import Sector
+    from src.equipos.models import Equipo
+
+    query = db.query(Checklist).filter(Checklist.activo == True)
+    if desde:
+        query = query.filter(Checklist.fecha >= desde)
+    if hasta:
+        query = query.filter(Checklist.fecha <= hasta)
+
+    checklists = query.order_by(Checklist.fecha.desc()).all()
+
+    items_crudos = []
+    for chk in checklists:
+        for it in chk.items:
+            sec_id = None
+            sec_nom = "Sin sector asignado"
+            eq_id = None
+            eq_nom = None
+            tipo_obj = "Sector"
+            sec_o_eq = "General"
+
+            if it.plan:
+                if it.plan.sector:
+                    sec_id = it.plan.sector.id
+                    sec_nom = it.plan.sector.nombre
+                    sec_o_eq = it.plan.sector.nombre
+                    tipo_obj = "Sector"
+                elif it.plan.equipo:
+                    eq_id = it.plan.equipo.id
+                    eq_nom = it.plan.equipo.nombre
+                    sec_o_eq = it.plan.equipo.nombre
+                    tipo_obj = "Equipo"
+                    if it.plan.equipo.ubicacion:
+                        sec_id = it.plan.equipo.ubicacion.id
+                        sec_nom = it.plan.equipo.ubicacion.nombre
+                    elif it.plan.equipo.sector_id:
+                        sec_id = it.plan.equipo.sector_id
+
+            turno_item = inferir_turno(it.fecha_hora_fin or chk.creado_en)
+
+            if sector_id and sec_id != sector_id:
+                continue
+
+            if turno and turno.strip().upper() not in ("TODOS", "") and turno_item != turno.strip().upper():
+                continue
+
+            items_crudos.append({
+                "item": it,
+                "checklist": chk,
+                "sector_id": sec_id,
+                "sector_nombre": sec_nom,
+                "equipo_id": eq_id,
+                "equipo_nombre": eq_nom,
+                "tipo_objeto": tipo_obj,
+                "sector_o_equipo": sec_o_eq,
+                "turno": turno_item,
+            })
+
+    total_tareas = len(items_crudos)
+    tareas_completadas = sum(1 for row in items_crudos if row["item"].estado == EstadoTareaItem.REALIZADO)
+    tareas_pendientes = total_tareas - tareas_completadas
+    pct_general = round((tareas_completadas / total_tareas) * 100.0, 1) if total_tareas > 0 else 0.0
+
+    chk_ids_unicos = len(set(row["checklist"].id for row in items_crudos))
+
+    por_fecha = {}
+    for row in items_crudos:
+        f = row["checklist"].fecha
+        if f not in por_fecha:
+            por_fecha[f] = {"total": 0, "completadas": 0}
+        por_fecha[f]["total"] += 1
+        if row["item"].estado == EstadoTareaItem.REALIZADO:
+            por_fecha[f]["completadas"] += 1
+
+    tendencia = []
+    for f in sorted(por_fecha.keys()):
+        tot = por_fecha[f]["total"]
+        comp = por_fecha[f]["completadas"]
+        pct = round((comp / tot) * 100.0, 1) if tot > 0 else 0.0
+        tendencia.append(schemas.PuntoTendenciaCumplimiento(
+            fecha=f,
+            etiqueta=f.strftime("%d/%m"),
+            total_tareas=tot,
+            tareas_completadas=comp,
+            tareas_pendientes=tot - comp,
+            porcentaje=pct,
+        ))
+
+    por_sector = {}
+    for row in items_crudos:
+        s_id = row["sector_id"] or 0
+        s_nom = row["sector_nombre"]
+        if s_id not in por_sector:
+            por_sector[s_id] = {"nombre": s_nom, "total": 0, "completadas": 0}
+        por_sector[s_id]["total"] += 1
+        if row["item"].estado == EstadoTareaItem.REALIZADO:
+            por_sector[s_id]["completadas"] += 1
+
+    desglose_sector = []
+    for s_id, data in por_sector.items():
+        tot = data["total"]
+        comp = data["completadas"]
+        pct = round((comp / tot) * 100.0, 1) if tot > 0 else 0.0
+        desglose_sector.append(schemas.CumplimientoDesgloseItem(
+            id=s_id,
+            nombre=data["nombre"],
+            total_tareas=tot,
+            tareas_completadas=comp,
+            tareas_pendientes=tot - comp,
+            porcentaje=pct,
+        ))
+    desglose_sector.sort(key=lambda x: (x.porcentaje, x.nombre))
+
+    por_equipo = {}
+    for row in items_crudos:
+        if row["equipo_id"]:
+            e_id = row["equipo_id"]
+            e_nom = row["equipo_nombre"]
+            s_nom = row["sector_nombre"]
+            if e_id not in por_equipo:
+                por_equipo[e_id] = {"nombre": e_nom, "sector": s_nom, "total": 0, "completadas": 0}
+            por_equipo[e_id]["total"] += 1
+            if row["item"].estado == EstadoTareaItem.REALIZADO:
+                por_equipo[e_id]["completadas"] += 1
+
+    desglose_equipo = []
+    for e_id, data in por_equipo.items():
+        tot = data["total"]
+        comp = data["completadas"]
+        pct = round((comp / tot) * 100.0, 1) if tot > 0 else 0.0
+        desglose_equipo.append(schemas.CumplimientoDesgloseItem(
+            id=e_id,
+            nombre=data["nombre"],
+            subtitulo=data["sector"],
+            total_tareas=tot,
+            tareas_completadas=comp,
+            tareas_pendientes=tot - comp,
+            porcentaje=pct,
+        ))
+    desglose_equipo.sort(key=lambda x: (x.porcentaje, x.nombre))
+
+    por_turno = {
+        "MAÑANA": {"total": 0, "completadas": 0},
+        "TARDE": {"total": 0, "completadas": 0},
+        "NOCHE": {"total": 0, "completadas": 0},
+    }
+    for row in items_crudos:
+        t_nombre = row["turno"]
+        if t_nombre in por_turno:
+            por_turno[t_nombre]["total"] += 1
+            if row["item"].estado == EstadoTareaItem.REALIZADO:
+                por_turno[t_nombre]["completadas"] += 1
+
+    desglose_turno = []
+    idx_t = 1
+    for t_nombre, data in por_turno.items():
+        tot = data["total"]
+        comp = data["completadas"]
+        pct = round((comp / tot) * 100.0, 1) if tot > 0 else 0.0
+        desglose_turno.append(schemas.CumplimientoDesgloseItem(
+            id=idx_t,
+            nombre=t_nombre.capitalize(),
+            total_tareas=tot,
+            tareas_completadas=comp,
+            tareas_pendientes=tot - comp,
+            porcentaje=pct,
+        ))
+        idx_t += 1
+
+    sec_menor = desglose_sector[0].nombre if desglose_sector else None
+    pct_sec_menor = desglose_sector[0].porcentaje if desglose_sector else None
+
+    eq_menor = desglose_equipo[0].nombre if desglose_equipo else None
+    pct_eq_menor = desglose_equipo[0].porcentaje if desglose_equipo else None
+
+    turnos_con_datos = [t for t in desglose_turno if t.total_tareas > 0]
+    turno_critico_item = min(turnos_con_datos, key=lambda x: x.porcentaje) if turnos_con_datos else None
+    turno_critico_nom = turno_critico_item.nombre if turno_critico_item else None
+    pct_turno_critico = turno_critico_item.porcentaje if turno_critico_item else None
+
+    kpis = schemas.KpisCumplimientoDetallado(
+        total_checklists=chk_ids_unicos,
+        total_tareas=total_tareas,
+        tareas_completadas=tareas_completadas,
+        tareas_pendientes=tareas_pendientes,
+        porcentaje_general=pct_general,
+        sector_menor_cumplimiento=sec_menor,
+        porcentaje_sector_menor=pct_sec_menor,
+        equipo_menor_cumplimiento=eq_menor,
+        porcentaje_equipo_menor=pct_eq_menor,
+        turno_critico=turno_critico_nom,
+        porcentaje_turno_critico=pct_turno_critico,
+    )
+
+    items_detalle = []
+    for row in items_crudos:
+        it = row["item"]
+        chk = row["checklist"]
+        frec_str = it.frecuencia.value if hasattr(it.frecuencia, "value") else str(it.frecuencia)
+        est_str = it.estado.value if hasattr(it.estado, "value") else str(it.estado)
+        h_fin = it.fecha_hora_fin.strftime("%H:%M") if it.fecha_hora_fin else None
+
+        items_detalle.append(schemas.ItemDetalleChecklist(
+            id=it.id,
+            checklist_id=chk.id,
+            fecha=chk.fecha,
+            nombre_tarea=it.nombre_tarea,
+            frecuencia=frec_str,
+            sector_o_equipo=row["sector_o_equipo"],
+            tipo_objeto=row["tipo_objeto"],
+            responsable=it.nombre_responsable or chk.nombre_responsable or "Sin responsable",
+            turno=row["turno"].capitalize(),
+            estado=est_str,
+            hora_fin=h_fin,
+        ))
+
+    items_detalle.sort(key=lambda x: (x.fecha, x.id), reverse=True)
+
+    return schemas.CumplimientoDetalladoResponse(
+        desde=desde,
+        hasta=hasta,
+        sector_id=sector_id,
+        turno=turno,
+        kpis=kpis,
+        tendencia_temporal=tendencia,
+        desglose_por_sector=desglose_sector,
+        desglose_por_equipo=desglose_equipo,
+        desglose_por_turno=desglose_turno,
+        items_detalle=items_detalle,
+    )

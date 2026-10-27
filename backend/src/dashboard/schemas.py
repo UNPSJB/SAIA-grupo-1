@@ -105,3 +105,58 @@ class ConsumoHistoricoResponse(BaseModel):
     por_tipo: List[ConsumoAgrupadoItem]
     por_proveedor: List[ConsumoAgrupadoItem]
     movimientos: List[MovimientoInsumoQuimico]
+
+class PuntoTendenciaCumplimiento(BaseModel):
+    fecha: date
+    etiqueta: str
+    total_tareas: int
+    tareas_completadas: int
+    tareas_pendientes: int
+    porcentaje: float
+
+class CumplimientoDesgloseItem(BaseModel):
+    id: int
+    nombre: str
+    subtitulo: Optional[str] = None
+    total_tareas: int
+    tareas_completadas: int
+    tareas_pendientes: int
+    porcentaje: float
+
+class ItemDetalleChecklist(BaseModel):
+    id: int
+    checklist_id: int
+    fecha: date
+    nombre_tarea: str
+    frecuencia: str
+    sector_o_equipo: str
+    tipo_objeto: str
+    responsable: str
+    turno: str
+    estado: str
+    hora_fin: Optional[str] = None
+
+class KpisCumplimientoDetallado(BaseModel):
+    total_checklists: int
+    total_tareas: int
+    tareas_completadas: int
+    tareas_pendientes: int
+    porcentaje_general: float
+    sector_menor_cumplimiento: Optional[str] = None
+    porcentaje_sector_menor: Optional[float] = None
+    equipo_menor_cumplimiento: Optional[str] = None
+    porcentaje_equipo_menor: Optional[float] = None
+    turno_critico: Optional[str] = None
+    porcentaje_turno_critico: Optional[float] = None
+
+class CumplimientoDetalladoResponse(BaseModel):
+    desde: Optional[date] = None
+    hasta: Optional[date] = None
+    sector_id: Optional[int] = None
+    turno: Optional[str] = None
+    kpis: KpisCumplimientoDetallado
+    tendencia_temporal: List[PuntoTendenciaCumplimiento]
+    desglose_por_sector: List[CumplimientoDesgloseItem]
+    desglose_por_equipo: List[CumplimientoDesgloseItem]
+    desglose_por_turno: List[CumplimientoDesgloseItem]
+    items_detalle: List[ItemDetalleChecklist]

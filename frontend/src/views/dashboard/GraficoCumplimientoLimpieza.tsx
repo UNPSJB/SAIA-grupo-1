@@ -19,6 +19,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
@@ -47,7 +48,13 @@ const formatearFechaVisual = (fechaIso: string): string => {
   return fechaIso;
 };
 
-export const GraficoCumplimientoLimpieza: React.FC = () => {
+interface GraficoCumplimientoLimpiezaProps {
+  onVerMas?: () => void;
+}
+
+export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaProps> = ({
+  onVerMas,
+}) => {
   const { esAdministrador } = useAuth();
   const colores = useColoresTema();
 
@@ -246,6 +253,15 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+            {onVerMas && (
+              <button
+                type="button"
+                className="dashboard-btn-detalle"
+                onClick={onVerMas}
+              >
+                Ver más &rarr;
+              </button>
+            )}
             <div
               style={{
                 display: 'inline-flex',
@@ -780,6 +796,17 @@ export const GraficoCumplimientoLimpieza: React.FC = () => {
           </div>
         )}
       </CardContent>
+      {onVerMas && (
+        <CardFooter style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 20px', borderTop: '1px solid var(--color-borde)' }}>
+          <button
+            type="button"
+            className="dashboard-btn-detalle"
+            onClick={onVerMas}
+          >
+            Ver vista detallada de cumplimiento &rarr;
+          </button>
+        </CardFooter>
+      )}
     </Card>
   );
 };

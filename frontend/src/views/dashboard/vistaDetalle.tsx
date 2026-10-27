@@ -1,4 +1,5 @@
 import { ConsumoHistoricoInsumos } from './ConsumoHistoricoInsumos';
+import { VistaDetalladaCumplimiento } from './VistaDetalladaCumplimiento';
 import React from 'react';
 import type { TipoDetalleEstadisticas } from './tipos';
 import '../../styles/dashboard.css';
@@ -63,6 +64,10 @@ export const VistaDetalleEstadisticas: React.FC<VistaDetalleEstadisticasProps> =
         mostrarBreadcrumbDashboard={true}
       />
     );
+  }
+
+  if (tipo === 'tareas') {
+    return <VistaDetalladaCumplimiento onVolver={onVolver} />;
   }
 
   const config = CONFIGURACION_VISTA[tipo];
@@ -151,4 +156,3 @@ export const VistaDetalleEstadisticas: React.FC<VistaDetalleEstadisticasProps> =
     </div>
   );
 };
-

@@ -160,3 +160,64 @@ export interface ConsumoHistoricoResponse {
   por_proveedor: ConsumoAgrupadoItem[];
   movimientos: MovimientoInsumoQuimico[];
 }
+
+
+export interface PuntoTendenciaCumplimiento {
+  fecha: string;
+  etiqueta: string;
+  total_tareas: number;
+  tareas_completadas: number;
+  tareas_pendientes: number;
+  porcentaje: number;
+}
+
+export interface CumplimientoDesgloseItem {
+  id: number;
+  nombre: string;
+  subtitulo?: string | null;
+  total_tareas: number;
+  tareas_completadas: number;
+  tareas_pendientes: number;
+  porcentaje: number;
+}
+
+export interface ItemDetalleChecklist {
+  id: number;
+  checklist_id: number;
+  fecha: string;
+  nombre_tarea: string;
+  frecuencia: string;
+  sector_o_equipo: string;
+  tipo_objeto: string;
+  responsable: string;
+  turno: string;
+  estado: string;
+  hora_fin?: string | null;
+}
+
+export interface KpisCumplimientoDetallado {
+  total_checklists: number;
+  total_tareas: number;
+  tareas_completadas: number;
+  tareas_pendientes: number;
+  porcentaje_general: number;
+  sector_menor_cumplimiento?: string | null;
+  porcentaje_sector_menor?: number | null;
+  equipo_menor_cumplimiento?: string | null;
+  porcentaje_equipo_menor?: number | null;
+  turno_critico?: string | null;
+  porcentaje_turno_critico?: number | null;
+}
+
+export interface CumplimientoDetalladoResponse {
+  desde?: string | null;
+  hasta?: string | null;
+  sector_id?: number | null;
+  turno?: string | null;
+  kpis: KpisCumplimientoDetallado;
+  tendencia_temporal: PuntoTendenciaCumplimiento[];
+  desglose_por_sector: CumplimientoDesgloseItem[];
+  desglose_por_equipo: CumplimientoDesgloseItem[];
+  desglose_por_turno: CumplimientoDesgloseItem[];
+  items_detalle: ItemDetalleChecklist[];
+}
