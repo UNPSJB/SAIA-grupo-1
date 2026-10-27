@@ -60,7 +60,9 @@ export const DetalleElementoDeLimpieza: React.FC<DetalleElementoProps> = ({
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Detalle de Elemento de Limpieza</h1>
+        <h1 style={{ lineHeight: '1.25', marginBottom: '6px' }}>
+          Detalle de Elemento de Limpieza
+        </h1>
         <div className="subtitulo">
           {elemento ? `${elemento.nombre} (ID #${elemento.id})` : `ID: ${elementoId}`}
         </div>

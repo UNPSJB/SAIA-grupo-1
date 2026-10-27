@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { Badge } from '../../components/ui/badge';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoElementosLimpiezaProps {
   onNuevoClick: () => void;
@@ -19,6 +22,8 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
 }) => {
   const [elementos, setElementos] = useState<ElementoDeLimpieza[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   // Estados para filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,7 +61,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     fetchElementos();
   }, []);
 
-  // Formatear la fecha que viene en formato ISO desde el backend
   const formatearFecha = (fechaStr?: string | null) => {
     if (!fechaStr) return 'Sin fecha';
     try {
@@ -73,7 +77,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     }
   };
 
-  // Chequea si la fecha ya expiró para resaltar la alerta
   type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia' | 'sin_fecha';
 
   const calcularEstadoVencimiento = (fechaCambioStr?: string | null): EstadoVencimiento => {
@@ -165,7 +168,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     }
   };
 
-  // Filtrado reactivo en memoria
   const elementosFiltrados = elementos.filter((elem) => {
     const term = searchTerm.toLowerCase().trim();
     const matchNombre = !term || elem.nombre.toLowerCase().includes(term);
@@ -176,6 +178,33 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
 
     return matchNombre && matchEstado;
   });
+
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (searchTerm.trim()) params.append('busqueda', searchTerm.trim());
+      if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
+
+      const queryString = params.toString();
+      const url = `/elementosDeLimpieza/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'elementos_de_limpieza.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar elementos de limpieza a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (searchTerm.trim()) partes.push(`Búsqueda: "${searchTerm}"`);
+    if (filtroEstado !== 'TODOS') partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
 
   const {
     itemsPaginados: elementosPaginados,
@@ -197,14 +226,24 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Agregar Elemento
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Agregar Elemento
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Barra de Filtros */}
       <div className="filtros-top-bar">
         <input
           type="text"
@@ -337,6 +376,15 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="elementos"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={elementosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ConfirmAlertDialog

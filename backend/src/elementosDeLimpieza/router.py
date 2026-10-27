@@ -3,8 +3,34 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.elementosDeLimpieza import schemas, services
+from typing import Optional
+from src.autenticacion.dependencies import get_usuario_actual
+from src.utils.csv import generar_respuesta_csv
 
 router = APIRouter(prefix="/elementosDeLimpieza", tags=["elementosDeLimpieza"])
+
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_elementos_csv(
+    busqueda: Optional[str] = None,
+    estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    
+    datos = services.obtener_elementos_para_csv(db, busqueda=busqueda, estado=estado)
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Elemento",
+        "frecuenciaDeCambio": "Frecuencia de Cambio",
+        "proximoRecambio": "Próximo Recambio",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="elementos_de_limpieza.csv",
+    )
 
 @router.post("/", response_model=schemas.ElementoDeLimpieza)
 async def create_elementoDeLimpieza(equipo: schemas.ElementoDeLimpiezaCreate, db: Session = Depends(get_db)):
