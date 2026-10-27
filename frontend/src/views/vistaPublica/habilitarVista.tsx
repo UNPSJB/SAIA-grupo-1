@@ -14,7 +14,7 @@ export default function ActivarVista_Publica({onSuccess,onCancel}:ActivarVistaPr
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
-    const { verGrafico, setVerGrafico } = useVistaPublica();
+    const { config, actualizarConfig } = useVistaPublica();
 
     const payload = {
         version: 1,
@@ -22,8 +22,8 @@ export default function ActivarVista_Publica({onSuccess,onCancel}:ActivarVistaPr
         boder: 4,
         color_fill: "black", 
         color_back: "white",
-        texto:`http://192.168.1.42:5173/vista-publica?verGrafico=${verGrafico}`,
-        ver_grafico: verGrafico
+        texto:`http://192.168.1.42:5173/vista-publica?verGrafico=${config.verGrafico}`,
+        ver_grafico: config.verGrafico
     }
 
     const modulosBase = 21 + ((payload.version - 1) * 4);
@@ -110,10 +110,10 @@ export default function ActivarVista_Publica({onSuccess,onCancel}:ActivarVistaPr
         <input 
             type="checkbox" 
             className="switch-input"
-            checked={verGrafico} 
-            onChange={() => setVerGrafico(!verGrafico)} 
+            checked={config.verGrafico} 
+            onChange={(e) => actualizarConfig('verGrafico', e.target.checked)} 
         />
-        <span style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => setVerGrafico(!verGrafico)}>
+        <span style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => actualizarConfig('verGrafico', !config.verGrafico)}>
             Mostrar Gráfico de Tareas
         </span>
     </div>

@@ -20,7 +20,7 @@ export const Panel_Publico: React.FC = () => {
   const colores = useColoresTema();
   
   // Consumimos el estado global del switch para ver si se muestra o no el gráfico
-  const { verGrafico,setVerGrafico } = useVistaPublica();
+  const { config,setConfig } = useVistaPublica();
 
   // Estado para el período del gráfico de tareas
   const [periodoCumplimiento, setPeriodoCumplimiento] = useState<Periodo>('semana');
@@ -63,7 +63,7 @@ export const Panel_Publico: React.FC = () => {
         
         // 3. ACTUALIZAMOS EL CONTEXTO CON EL ESTADO REAL GUARDADO EN LA BD
         if (typeof data.ver_grafico === 'boolean') {
-          setVerGrafico(data.ver_grafico);
+          setConfig(prev => ({ ...prev, verGrafico: data.ver_grafico }));
         }
 
         setQrValido(true);
@@ -124,12 +124,12 @@ export const Panel_Publico: React.FC = () => {
     <div className="modulo-container dashboard-container">
 
       <div className="modulo-header">
-        <h1>Inicio</h1>
-        <div className="subtitulo">Panel de estadísticas</div>
+        <h1>Estadisticas</h1>
+        <div className="subtitulo">Cumplimiento de limpieza Ultimos 7 dias</div>
       </div>
       <div className="dashboard-grid">
         {/* Tarjeta condicional: Se muestra u oculta según el interruptor global */}
-        {verGrafico && (
+        {config.verGrafico && (
           <div className="dashboard-card" style={{ width: '100%', maxWidth: '600px' }}>
             <div className="dashboard-card-header">
               <h2>Cumplimiento de Tareas</h2>

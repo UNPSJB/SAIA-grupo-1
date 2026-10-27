@@ -24,6 +24,7 @@ import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
 import { Panel_Publico } from './views/vistaPublica/datosPublicos';
 import { Sidebar } from './components/Sidebar';
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar';
+import { NavbarPublica, type ModuloPublico } from './components/navbarVistaPublica';
 import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
 import { NuevoElementoDeLimpieza } from './views/elementosDeLimpieza/nuevoElemento';
 import { EditarElementoDeLimpieza } from './views/elementosDeLimpieza/editarDetalle';
@@ -597,7 +598,7 @@ function App() {
         <Route 
           path="/vista-publica/:identificadorId" 
           element={
-              <Panel_Publico />
+              <LayoutVistaPublica />
           } 
         />
 
@@ -612,3 +613,37 @@ function App() {
 }
 
 export default App;
+
+
+function LayoutVistaPublica() {
+  const [moduloPublico, setModuloPublico] = useState<ModuloPublico>('estadisticas');
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-fondo, #f8fafc)' }}>
+      {/* Barra de navegación superior sin botón de ingresar */}
+      <NavbarPublica 
+        moduloActivo={moduloPublico} 
+        onCambiarModulo={(modulo) => setModuloPublico(modulo)} 
+      />
+
+      {/* Contenido principal de la página */}
+      <main style={{ padding: '32px 36px', maxWidth: '1200px', margin: '0 auto' }}>
+        {moduloPublico === 'estadisticas' && <Panel_Publico />}
+        
+        {moduloPublico === 'productos' && (
+          <div className="modulo-container" style={{ background: '#fff', padding: '24px', borderRadius: '12px' }}>
+            <h1>Productos en venta</h1>
+            <p>Aquí se mostrará el catálogo de productos.</p>
+          </div>
+        )}
+
+        {moduloPublico === 'nosotros' && (
+          <div className="modulo-container" style={{ background: '#fff', padding: '24px', borderRadius: '12px' }}>
+            <h1>Acerca de nosotros</h1>
+            <p>Somos un equipo dedicado a la higiene y la inocuidad en la producción de alimentos.</p>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

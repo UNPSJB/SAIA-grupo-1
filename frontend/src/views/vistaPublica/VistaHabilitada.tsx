@@ -15,7 +15,7 @@ export default function VistaPublica_Habilitada({qrUrl,identificadorUnico,onSucc
     const [loading,setLoading]=useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
-    const { verGrafico, setVerGrafico } = useVistaPublica();
+    const { config, actualizarConfig } = useVistaPublica();
 
 function handleDescargarQR() {
         if (!qrUrl) return;
@@ -67,7 +67,7 @@ async function handleDesactivar(){
 
 
  async function handleToggleGrafico(nuevoValor: boolean) {
-    setVerGrafico(nuevoValor); // Lo cambia visualmente en tu PC al instante
+    actualizarConfig('verGrafico',nuevoValor); // Lo cambia visualmente en tu PC al instante
 
     try {
         await apiFetch(`/identificadorQR/${identificadorUnico}/ver-grafico`, {
@@ -111,14 +111,14 @@ return(
     <input 
         type="checkbox" 
         className="switch-input"
-        checked={verGrafico} 
+        checked={config.verGrafico} 
         // ✅ Pasamos correctamente el valor booleano del evento al hacer cambios
         onChange={(e) => handleToggleGrafico(e.target.checked)} 
     />
     <span 
         style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} 
         // ✅ Hacemos que el texto también dispare la función que actualiza el backend
-        onClick={() => handleToggleGrafico(!verGrafico)}
+        onClick={() => handleToggleGrafico(!config.verGrafico)}
     >
         Mostrar Gráfico de Tareas
     </span>
