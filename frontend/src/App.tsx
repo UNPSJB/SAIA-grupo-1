@@ -41,6 +41,10 @@ import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
 import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibracion';
 import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
+import { EstadisticasIncidentes } from './views/incidentes/estadisticasIncidentes';
+import { ListadoCategoriasIncidentes } from './views/incidentes/categorias/listado';
+import { NotificacionesPopover } from './components/alertas/NotificacionesPopover';
+import type { NotificacionItem } from './hooks/useNotificaciones';
 import { ListadoDocumentos } from './views/documentos/listado';
 import { DetalleDocumento } from './views/documentos/verDetalle';
 import NuevoDocumento from './views/documentos/nuevoDocumento';
@@ -82,7 +86,6 @@ type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
   const [moduloElegido, setModulo] = useState<Modulo>(moduloInicial(esAdministrador));
-  // el backend ya rechaza lo que el rol no puede ver; acá evitamos mostrar pantallas rotas
   const modulo = puedeVerModulo(moduloElegido, esAdministrador) ? moduloElegido : moduloInicial(esAdministrador);
 
   
@@ -115,7 +118,7 @@ function Aplicacion() {
 
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
-  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial' | 'nuevo'>('abiertos');
+  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial' | 'estadisticas' | 'categorias' | 'nuevo'>('abiertos');
   const [vistaVencimientos, setVistaVencimientos] = useState<'consolidado' | 'personal' | 'documentos'>('consolidado');
   const [origenVencimientos, setOrigenVencimientos] = useState<'consolidado' | 'personal' | 'documentos' | null>(null);
 
@@ -183,14 +186,15 @@ function Aplicacion() {
     setModulo('vencimientos');
   };
 
-  // Desde la vista consolidada: salta a la pantalla del registro que vence
-  const irAlRegistroDeVencimiento = (v: {
-    origen?: string;
-    tipo?: string;
-    referenciaId?: number;
-    referencia_id?: number;
-    responsable?: string;
-  }) => {
+interface RegistroVencimientoRef {
+  origen?: string;
+  tipo?: string;
+  referenciaId?: number;
+  referencia_id?: number;
+  responsable?: string;
+}
+
+  const irAlRegistroDeVencimiento = (v: RegistroVencimientoRef) => {
     const origen = v.origen || v.tipo;
     const refId = v.referenciaId ?? v.referencia_id ?? null;
     setOrigenVencimientos('consolidado');
@@ -414,11 +418,103 @@ function Aplicacion() {
     );
   };
 
+const irANotificacion = (notif: NotificacionItem) => {
+    const { entidad_tipo, entidad_id, tipo } = notif;
+
+    if (entidad_tipo === 'personal' && entidad_id && esAdministrador) {
+      setModulo('personas');
+      setLegajoSeleccionado(entidad_id);
+      setVistaPersonas('certificados');
+      return;
+    }
+
+    if (entidad_tipo === 'equipo' && entidad_id && esAdministrador) {
+      setModulo('planDeCalibracion');
+      setPlanCalibracionSeleccionado(entidad_id);
+      setVistaPlanCalibracion('detalle');
+      return;
+    }
+
+    if (entidad_tipo === 'documento' && entidad_id) {
+      setModulo('documentos');
+      setDocumentoSeleccionado(entidad_id);
+      setVistaDocumentos('detalle');
+      return;
+    }
+
+    if (entidad_tipo === 'elemento_limpieza' && esAdministrador) {
+      setModulo('elementosDeLimpieza');
+      if (entidad_id) {
+        setElementoSeleccionado(entidad_id);
+        setVistaElementos('detalle');
+      } else {
+        setVistaElementos('listado');
+      }
+      return;
+    }
+
+    if (entidad_tipo === 'insumo_quimico' && esAdministrador) {
+      setModulo('insumos_quimicos');
+      setVistaInsumosQuimicos('listado');
+      return;
+    }
+
+    if (entidad_tipo === 'checklist' && entidad_id) {
+      setModulo('checklist');
+      setChecklistSeleccionado(entidad_id);
+      setVistaChecklist('detalle');
+      return;
+    }
+
+    if (entidad_tipo === 'tarea') {
+      setModulo('checklist');
+      setVistaChecklist('listado');
+      return;
+    }
+
+    if ((entidad_tipo === 'incidente' || tipo === 'incidente_critico' || tipo === 'evento_incidente') && esAdministrador) {
+      setModulo('incidentes');
+      setVistaIncidentesAdmin('abiertos');
+      return;
+    }
+
+    if (tipo.startsWith('vencimiento_') && esAdministrador) {
+      cambiarModulo('vencimientos');
+      return;
+    }
+
+    if (tipo === 'evento_stock_quimico' && esAdministrador) {
+      cambiarModulo('insumos_quimicos');
+      return;
+    }
+
+    if (tipo === 'evento_tarea_revision' || tipo === 'evento_tarea_reasignada') {
+      cambiarModulo('checklist');
+      return;
+    }
+  };
+
   return (
     <SidebarProvider>
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
-      <SidebarInset style={{ padding: modulo === 'dashboard' ? '14px 24px' : '32px 36px' }}>
+      <SidebarInset style={{ padding: modulo === 'dashboard' ? '14px 24px' : '32px 36px', position: 'relative' }}>
+        <div
+          className="saia-top-campana"
+          style={{
+            position: 'absolute',
+            top: modulo === 'dashboard' ? '14px' : '24px',
+            right: '36px',
+            zIndex: 50,
+          }}
+        >
+          <NotificacionesPopover
+            onNavegar={irANotificacion}
+            onIrAIncidentes={() => cambiarModulo('incidentes')}
+            onIrAVencimientos={() => cambiarModulo('vencimientos')}
+          />
+        </div>
+
         {renderBreadcrumb()}
         {modulo === 'dashboard' ? (
           <PanelDashboard
@@ -759,11 +855,27 @@ function Aplicacion() {
             ) : vistaIncidentesAdmin === 'historial' ? (
               <ListadoIncidentes
                 onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
+                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
                 onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
+              />
+            ) : vistaIncidentesAdmin === 'estadisticas' ? (
+              <EstadisticasIncidentes
+                onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onVerHistorial={() => setVistaIncidentesAdmin('historial')}
+                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
+              />
+            ) : vistaIncidentesAdmin === 'categorias' ? (
+              <ListadoCategoriasIncidentes
+                onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onVerHistorial={() => setVistaIncidentesAdmin('historial')}
+                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
               />
             ) : (
               <IncidentesAbiertos
                 onVerHistorialCompleto={() => setVistaIncidentesAdmin('historial')}
+                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
+                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
                 onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
               />
             )

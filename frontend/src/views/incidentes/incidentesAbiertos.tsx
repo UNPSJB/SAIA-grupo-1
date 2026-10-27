@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { Incidente, IncidenteAbierto, IncidentesMetricas, NivelUrgencia } from './tipos';
 import {
   ETIQUETAS_ESTADO,
+  EtiquetaCategoria,
   formatearAntiguedad,
   formatearFecha,
 } from './tipos';
@@ -91,11 +92,15 @@ const FotoMiniatura: React.FC<FotoMiniaturaProps> = ({ incidenteId, descripcion,
 
 export interface IncidentesAbiertosProps {
   onVerHistorialCompleto?: () => void;
+  onVerEstadisticas?: () => void;
+  onVerCategorias?: () => void;
   onRegistrarClick?: () => void;
 }
 
 export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
   onVerHistorialCompleto,
+  onVerEstadisticas,
+  onVerCategorias,
   onRegistrarClick,
 }) => {
   const [incidentes, setIncidentes] = useState<IncidenteAbierto[]>([]);
@@ -146,12 +151,14 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
   const incidentesFiltrados = incidentes.filter((inc) => {
     const termino = busqueda.toLowerCase().trim();
     const desc = (inc.descripcion || '').toLowerCase();
+    const cat = (inc.categoria_nombre || inc.nombre_tipo || '').toLowerCase();
     const rep = (inc.nombre_reportante || '').toLowerCase();
     const legajo = (inc.reportado_por_id ?? '').toString();
 
     const coincideBusqueda =
       !termino ||
       desc.includes(termino) ||
+      cat.includes(termino) ||
       rep.includes(termino) ||
       legajo.includes(termino);
 
@@ -223,13 +230,13 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
         )}
       </div>
 
-      {onVerHistorialCompleto && (
-        <div className="tabs-incidentes-header">
-          <button type="button" className="tab-incidente-btn activo">
-            <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
-            Abiertos
-            <span className="badge-tab-contador abiertos">{incidentes.length}</span>
-          </button>
+      <div className="tabs-incidentes-header">
+        <button type="button" className="tab-incidente-btn activo">
+          <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
+          Abiertos
+          <span className="badge-tab-contador abiertos">{incidentes.length}</span>
+        </button>
+        {onVerHistorialCompleto && (
           <button
             type="button"
             className="tab-incidente-btn"
@@ -237,8 +244,31 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
           >
             Historial Completo
           </button>
-        </div>
-      )}
+        )}
+        {onVerEstadisticas && (
+          <button
+            type="button"
+            className="tab-incidente-btn"
+            onClick={onVerEstadisticas}
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10" />
+              <line x1="12" y1="20" x2="12" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
+            Estadísticas por Tipo
+          </button>
+        )}
+        {onVerCategorias && (
+          <button
+            type="button"
+            className="tab-incidente-btn"
+            onClick={onVerCategorias}
+          >
+            Categorías
+          </button>
+        )}
+      </div>
 
       <div className="tablero-metricas-grid">
         <div className="tarjeta-metrica">
@@ -367,7 +397,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
               <th style={{ width: '13%' }}>Antigüedad</th>
               <th style={{ width: '11%' }}>Fecha</th>
               <th style={{ width: '16%' }}>Reportado Por</th>
-              <th style={{ width: '31%' }}>Descripción</th>
+              <th style={{ width: '31%' }}>Categoría</th>
               <th style={{ width: '9%', textAlign: 'center' }}>Evidencia</th>
               <th style={{ width: '9%', textAlign: 'center' }}>Estado</th>
               <th className="acciones-col" style={{ width: '11%', textAlign: 'center' }}>Acciones</th>
@@ -468,21 +498,11 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                       </div>
                     </td>
                     <td>
-                      <div
-                        title={inc.descripcion}
-                        style={{
-                          color: 'var(--text-h)',
-                          fontSize: '13px',
-                          lineHeight: '1.45',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {inc.descripcion}
-                      </div>
+                      <EtiquetaCategoria
+                        nombre={inc.categoria_nombre || inc.nombre_tipo || 'General'}
+                        id={inc.categoria_id}
+                        size="sm"
+                      />
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {inc.foto_url ? (

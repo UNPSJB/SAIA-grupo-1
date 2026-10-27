@@ -2,25 +2,23 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
-from src.database import engine, SessionLocal, asegurar_migraciones_esquema
+from src.database import engine, SessionLocal, asegurar_migraciones_esquema, migrar_esquema
 from src.models import ModeloBase
 
 from src.config import settings
-
 from src.logger import setup_logging
 
 from src.insumos.router import router as insumos_router
 from src.equipos.router import router as equipos_router
 from src.personal.router import router as personal_router
-from src.elementosDeLimpieza.router import router as elementoDeLimpieza_router
 from src.plan_De_limpieza.router import router as planLimpieza_router
 from src.tareas.router import router as tarea_router
-from src.auditoria.router import router as auditoria_router
 from src.checklist.router import router as checklist_router
 from src.plan_de_calibracion.router import router as plan_de_calibracion_router
 from src.dashboard.router import router as dashboard_router
 from src.autenticacion.router import router as autenticacion_router
 from src.incidentes.router import router as incidentes_router
+from src.categorias_incidentes.router import router as categorias_incidentes_router
 from src.sectores.router import router as sectores_router
 from src.calibracion_realizada.router import router as calibracion_realizada_router
 from src.certificado.router import router as certificado_router
@@ -31,6 +29,7 @@ from src.vencimientos.router import router as vencimientos_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 from src.documentos.router import router as documentos_router
+from src.notificaciones.router import router as notificaciones_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -41,23 +40,28 @@ setup_logging()
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
     asegurar_migraciones_esquema(engine)
+    migrar_esquema(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
+    with SessionLocal() as db:
+        try:
+            from src.notificaciones.services import revisar_y_generar_vencimientos
+            revisar_y_generar_vencimientos(db)
+        except Exception:
+            pass
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
 
 origins = [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,17 +70,16 @@ app.add_middleware(
 SOLO_ADMIN = [Depends(requiere_admin)]
 SESION = [Depends(get_usuario_actual)]
 
-app.include_router(insumos_router, prefix="/insumos", tags=["Insumos"], dependencies=SOLO_ADMIN)
-app.include_router(equipos_router, prefix="/equipos", tags=["Equipos"], dependencies=SOLO_ADMIN)
-app.include_router(personal_router, prefix="/personal", tags=["Personal"], dependencies=SOLO_ADMIN)
-app.include_router(elementoDeLimpieza_router, dependencies=SOLO_ADMIN)
 app.include_router(insumos_quimicos_router, dependencies=SESION)
-app.include_router(auditoria_router, dependencies=SOLO_ADMIN)
+app.include_router(insumos_router, dependencies=SOLO_ADMIN)
+app.include_router(equipos_router, dependencies=SOLO_ADMIN)
+app.include_router(personal_router, dependencies=SOLO_ADMIN)
 app.include_router(planLimpieza_router, dependencies=SOLO_ADMIN)
 app.include_router(tarea_router, dependencies=SOLO_ADMIN)
 app.include_router(checklist_router)
 app.include_router(dashboard_router, dependencies=SOLO_ADMIN)
 app.include_router(incidentes_router, dependencies=SESION)
+app.include_router(categorias_incidentes_router, dependencies=SESION)
 app.include_router(certificado_router, dependencies=SOLO_ADMIN)
 app.include_router(archivos_router)
 app.include_router(tipoCertificado_router, dependencies=SOLO_ADMIN)
@@ -87,3 +90,4 @@ app.include_router(plan_de_calibracion_router)
 app.include_router(sectores_router, prefix="/sectores", tags=["Sectores"], dependencies=SOLO_ADMIN)
 app.include_router(calibracion_realizada_router)
 app.include_router(documentos_router, dependencies=SESION)
+app.include_router(notificaciones_router, dependencies=SESION)

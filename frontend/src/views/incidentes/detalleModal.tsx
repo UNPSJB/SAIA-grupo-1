@@ -3,6 +3,7 @@ import type { EstadoIncidente, Incidente } from './tipos';
 import {
   ACCION_CORRECTIVA_MAX,
   ETIQUETAS_ESTADO,
+  EtiquetaCategoria,
   MOTIVO_REAPERTURA_MAX,
   esIncidenteAbierto,
   formatearFecha,
@@ -246,6 +247,17 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                 <span className="incidente-dato-label">Reportado Por</span>
                 <span className="incidente-dato-valor">
                   {incidente.nombre_reportante || 'Operador anónimo'} (Legajo #{incidente.reportado_por_id ?? '-'})
+                </span>
+              </div>
+
+              <div className="incidente-dato-item">
+                <span className="incidente-dato-label">Categoría</span>
+                <span className="incidente-dato-valor">
+                  <EtiquetaCategoria
+                    nombre={incidente.categoria_nombre || incidente.nombre_tipo || 'General'}
+                    id={incidente.categoria_id}
+                    size="md"
+                  />
                 </span>
               </div>
 

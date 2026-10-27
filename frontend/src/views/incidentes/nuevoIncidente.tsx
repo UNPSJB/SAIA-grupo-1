@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
 import {
+  type CategoriaIncidente,
   DESCRIPCION_MAX,
+  EtiquetaCategoria,
   FOTO_MAX_BYTES,
   TIPOS_FOTO,
   mensajeDeError,
@@ -22,6 +24,9 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
   const { usuario, esOperador } = useAuth();
   const [descripcion, setDescripcion] = useState('');
   const [foto, setFoto] = useState<File | null>(null);
+  const [categorias, setCategorias] = useState<CategoriaIncidente[]>([]);
+  const [categoriaId, setCategoriaId] = useState<number | null>(null);
+  const [cargandoCategorias, setCargandoCategorias] = useState(true);
   const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
   const [errorFoto, setErrorFoto] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -36,6 +41,28 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
       if (vistaPrevia) URL.revokeObjectURL(vistaPrevia);
     };
   }, [vistaPrevia]);
+
+  useEffect(() => {
+    let activo = true;
+    apiFetch('/incidentes/categorias/')
+      .then(async (res) => {
+        if (!activo) return;
+        if (res.ok) {
+          const data: CategoriaIncidente[] = await res.json();
+          setCategorias(data);
+          if (data.length > 0) {
+            setCategoriaId(data[0].id);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (activo) setCargandoCategorias(false);
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   const quitarFoto = () => {
     setFoto(null);
@@ -94,6 +121,9 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
 
     const datos = new FormData();
     datos.append('descripcion', descripcionLimpia);
+    if (categoriaId) {
+      datos.append('categoria_id', String(categoriaId));
+    }
     if (foto) datos.append('foto', foto);
 
     setLoading(true);
@@ -205,6 +235,80 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
       {successMsg && <div className="alerta-exito" style={{ marginBottom: '1.25rem' }}>{successMsg}</div>}
 
       <form onSubmit={handleGuardar} noValidate>
+        <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+          <label htmlFor="categoria-incidente" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Categoría del Incidente *</span>
+            <span style={{ fontSize: '11px', color: 'var(--inc-text-muted)', fontWeight: 500 }}>
+              Tipificación requerida
+            </span>
+          </label>
+          {cargandoCategorias ? (
+            <div style={{ fontSize: '13px', color: 'var(--color-texto-sec)', padding: '0.5rem 0' }}>
+              Cargando listado de categorías...
+            </div>
+          ) : (
+            <>
+              <select
+                id="categoria-incidente"
+                className="input-custom"
+                value={categoriaId ?? ''}
+                onChange={(e) => setCategoriaId(Number(e.target.value))}
+                disabled={loading || !esOperador}
+                style={{
+                  width: '100%',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-borde)',
+                  backgroundColor: 'var(--color-superficie)',
+                  color: 'var(--color-texto)',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  outline: 'none',
+                }}
+              >
+                {categorias.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.nombre} {cat.descripcion ? `— ${cat.descripcion}` : ''}
+                  </option>
+                ))}
+              </select>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                {categorias.map((cat) => {
+                  const seleccionado = categoriaId === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setCategoriaId(cat.id)}
+                      disabled={loading || !esOperador}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        opacity: seleccionado ? 1 : 0.65,
+                        transform: seleccionado ? 'scale(1.04)' : 'scale(1)',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title={cat.descripcion || cat.nombre}
+                    >
+                      <EtiquetaCategoria
+                        nombre={cat.nombre}
+                        id={cat.id}
+                        size="md"
+                        style={{
+                          boxShadow: seleccionado ? '0 0 0 2px var(--color-primario)' : 'none',
+                        }}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
         <div className="form-group">
           <label htmlFor="descripcion" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Descripción del Incidente *</span>

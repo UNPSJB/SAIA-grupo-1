@@ -19,9 +19,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.database import SessionLocal, engine, asegurar_migraciones_esquema
+from src.database import SessionLocal, engine, asegurar_migraciones_esquema, migrar_esquema
 from src.models import ModeloBase
 
+import src.categorias_incidentes.models
+import src.notificaciones.models
 import src.plan_de_calibracion.models
 import src.calibracion_realizada.models
 import src.tipoCertificado.models
@@ -189,6 +191,7 @@ def main() -> None:
 
     ModeloBase.metadata.create_all(bind=engine)
     asegurar_migraciones_esquema(engine)
+    migrar_esquema(engine)
     db = SessionLocal()
 
     ya_hay_datos = db.query(Insumo).count() > 0
