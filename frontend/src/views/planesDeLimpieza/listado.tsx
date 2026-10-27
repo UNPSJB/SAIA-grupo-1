@@ -3,12 +3,16 @@ import type { PlanConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 
 interface ListadoPlanesProps {
   onNuevoClick?: () => void;
   onDetalleClick?: (id: number) => void;
   onEditarClick?: (id: number) => void;
 }
+
 export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
   onNuevoClick,
   onDetalleClick,
@@ -16,6 +20,9 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
 }) => {
   const [planes, setPlanes] = useState<PlanConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroFrecuencia, setFiltroFrecuencia] = useState('TODOS');
   const [filtroTareas, setFiltroTareas] = useState('TODOS');
@@ -60,6 +67,38 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
     return coincideBusqueda && coincideFrecuencia && coincideTareas;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+
+      // Construcción dinámica de la URL con los filtros activos
+      const params = new URLSearchParams();
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroFrecuencia !== 'TODOS') params.append('frecuencia', filtroFrecuencia);
+      if (filtroTareas !== 'TODOS') params.append('tareas', filtroTareas);
+
+      const queryString = params.toString();
+      const url = `/plan_De_limpieza/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, "planes_de_limpieza.csv");
+      setDialogExportarAbierto(false);
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "Error al exportar los planes de limpieza a CSV."
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroFrecuencia !== 'TODOS') partes.push(`Frecuencia: ${filtroFrecuencia}`);
+    if (filtroTareas !== 'TODOS') partes.push(`Tareas: ${filtroTareas}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: planesPaginados,
     paginaActual,
@@ -80,11 +119,22 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Crear Plan
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Crear Plan
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="filtros-top-bar">
@@ -185,7 +235,15 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="planes de limpieza"
       />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={planesFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
     </div>
   );
 };
-

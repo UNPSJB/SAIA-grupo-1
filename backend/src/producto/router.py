@@ -10,8 +10,12 @@ from src.utils.csv import generar_respuesta_csv
 router = APIRouter(prefix="/productos", tags=["productos"])
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
-def exportar_productos_csv(activo: Optional[bool] = None, db: Session = Depends(get_db)):
-    datos = services.obtener_productos_para_csv(db, activo=activo)
+def exportar_productos_csv(
+    activo: Optional[bool] = None,
+    busqueda: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_productos_para_csv(db, activo=activo, busqueda=busqueda)
     
     columnas = {
         "id": "ID",

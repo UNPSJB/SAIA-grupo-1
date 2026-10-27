@@ -9,31 +9,42 @@ from src.documentos.constants import TipoDocumento
 
 def obtener_productos_para_csv(
     db: Session,
-    activo: Optional[bool] = None
+    activo: Optional[bool] = None,
+    busqueda: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    """
-    Obtiene la lista de productos (aplicando filtros si los hay) 
-    y los mapea a un formato legible para la exportación a CSV.
-    """
+    
     query = db.query(Producto)
     
     if activo is not None:
         query = query.filter(Producto.activo == activo)
         
     productos = query.all()
-    
-    # Si la lista está vacía, retornar lista vacía (el helper generará solo los encabezados)
     filas = []
+    term = busqueda.lower().strip() if busqueda else None
+    
     for p in productos:
-        # Manejo de la unidad de medida (si es Enum o string)
+        nombre = p.nombre or ""
+        descripcion = p.descripcion or ""
+        nombre_receta = p.receta.titulo if p.receta else ""
+
+        # Filtro opcional por búsqueda
+        if term:
+            coincide = (
+                term in nombre.lower()
+                or term in descripcion.lower()
+                or term in nombre_receta.lower()
+            )
+            if not coincide:
+                continue
+
         unidad = p.unidadMedida.value if hasattr(p.unidadMedida, 'value') else str(p.unidadMedida)
         
         filas.append({
             "id": p.id,
-            "nombre": p.nombre,
+            "nombre": nombre,
             "unidadMedida": unidad,
-            "receta": p.receta.titulo if p.receta else "Sin receta",
-            "descripcion": p.descripcion or "",
+            "receta": nombre_receta or "Sin receta",
+            "descripcion": descripcion,
             "estado": "Activo" if p.activo else "Inactivo"
         })
         

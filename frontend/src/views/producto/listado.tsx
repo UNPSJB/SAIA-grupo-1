@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import type { ProductoConId } from "./tipos";
 import "../../styles/formularioAlta.css";
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
+import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
+import { CsvIcon } from "../../components/icons/CsvIcon";
 import { Paginacion, usePaginacion } from "../../components/ui/paginacion";
 import { apiFetch } from "../../api/client";
 import { descargarCSV } from "../../utils/exportarCsv";
@@ -20,6 +22,8 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
   const [productos, setProductos] = useState<ProductoConId[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
 
@@ -87,26 +91,6 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
     }
   };
 
-  const handleExportarCSV = async () => {
-    try {
-      setExportando(true);
-      let url = "/productos/exportar-csv";
-      if (filtroEstado === "activo") {
-        url += "?activo=true";
-      } else if (filtroEstado === "inactivo") {
-        url += "?activo=false";
-      }
-
-      await descargarCSV(url, "productos_elaborados.csv");
-    } catch (error) {
-      setErrorDialogMsg(
-        error instanceof Error ? error.message : "Error al exportar los productos a CSV."
-      );
-    } finally {
-      setExportando(false);
-    }
-  };
-
   const productosFiltrados = productos.filter((p) => {
     const term = busqueda.toLowerCase().trim();
     const matchBusqueda =
@@ -122,6 +106,42 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
 
     return matchBusqueda && matchEstado;
   });
+
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (filtroEstado === "activo") {
+        params.append("activo", "true");
+      } else if (filtroEstado === "inactivo") {
+        params.append("activo", "false");
+      }
+
+      if (busqueda.trim()) {
+        params.append("busqueda", busqueda.trim());
+      }
+
+      const queryString = params.toString();
+      const url = `/productos/exportar-csv${queryString ? `?${queryString}` : ""}`;
+
+      await descargarCSV(url, "productos_elaborados.csv");
+      setDialogExportarAbierto(false);
+    } catch (error) {
+      setErrorDialogMsg(
+        error instanceof Error ? error.message : "Error al exportar los productos a CSV."
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroEstado !== "TODOS") partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(" | ") : "Sin filtros aplicados";
+  };
 
   const {
     itemsPaginados: productosPaginados,
@@ -146,12 +166,11 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
         <div style={{ display: "flex", gap: "10px" }}>
           <button
             type="button"
-            onClick={handleExportarCSV}
-            disabled={exportando}
+            onClick={() => setDialogExportarAbierto(true)}
             className="btn-cancelar"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <span>📥</span> {exportando ? "Exportando..." : "Exportar CSV"}
+            <CsvIcon /> Exportar CSV
           </button>
 
           {onNuevoClick && (
@@ -261,6 +280,15 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="productos"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={productosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ConfirmAlertDialog
