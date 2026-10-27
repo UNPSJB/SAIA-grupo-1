@@ -688,28 +688,34 @@ def main() -> None:
     from src.incidentes.models import Incidente
     from src.incidentes.constants import EstadoIncidente
 
+    from src.incidentes.constants import TipoIncidente
+    from src.categorias_incidentes.models import CategoriaIncidente
+    cats = {c.nombre: c.id for c in db.query(CategoriaIncidente).all()}
+
     incidentes = [
-        ("Se detecto una perdida de agua debajo de la bacha del sector de lavado.", EstadoIncidente.PENDIENTE, 0.25, juan, None, None, None),
-        ("El cable de conexion de la batidora planetaria presenta desgaste exterior.", EstadoIncidente.PENDIENTE, 0.5, sofia, None, None, None),
+        ("Se detecto una perdida de agua debajo de la bacha del sector de lavado.", EstadoIncidente.PENDIENTE, 0.25, juan, None, None, None, TipoIncidente.EDILICIO, cats.get("Edilicio e Infraestructura", 3)),
+        ("El cable de conexion de la batidora planetaria presenta desgaste exterior.", EstadoIncidente.PENDIENTE, 0.5, sofia, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
 
-        ("La heladera exhibidora marca 9 grados, por encima del limite permitido.", EstadoIncidente.PENDIENTE, 2.0, lucia, None, None, None),
-        ("Desvio en la medicion de humedad en camara de fermentacion de cuadra.", EstadoIncidente.EN_REVISION, 1.5, marcos, None, None, None),
+        ("La heladera exhibidora marca 9 grados, por encima del limite permitido.", EstadoIncidente.PENDIENTE, 2.0, lucia, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
+        ("Desvio en la medicion de humedad en camara de fermentacion de cuadra.", EstadoIncidente.EN_REVISION, 1.5, marcos, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
 
-        ("Se encontro un envase de crema de leche abierto y sin rotular en la camara.", EstadoIncidente.EN_REVISION, 4.0, sofia, None, None, None),
-        ("Cerradura del deposito secundario de quimicos trabada y sin llave de repuesto.", EstadoIncidente.PENDIENTE, 5.0, juan, None, None, None),
-        ("El termometro digital de la camara frigorifica no enciende ni registra.", EstadoIncidente.REABIERTO, 6.0, lucia, None, None, "El reemplazo temporal volvio a apagarse repentinamente."),
+        ("Se encontro un envase de crema de leche abierto y sin rotular en la camara.", EstadoIncidente.EN_REVISION, 4.0, sofia, None, None, None, TipoIncidente.MATERIA_PRIMA, cats.get("Materia Prima e Insumos", 4)),
+        ("Cerradura del deposito secundario de quimicos trabada y sin llave de repuesto.", EstadoIncidente.PENDIENTE, 5.0, juan, None, None, None, TipoIncidente.EDILICIO, cats.get("Edilicio e Infraestructura", 3)),
+        ("El termometro digital de la camara frigorifica no enciende ni registra.", EstadoIncidente.REABIERTO, 6.0, lucia, None, None, "El reemplazo temporal volvio a apagarse repentinamente.", TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
 
-        ("Falta de jabon antibacterial en el lavamanos de la cocina.", EstadoIncidente.CERRADO, 9.0, marcos, ana, "Se repuso el jabon antibacterial y se agrego control al checklist diario.", None),
-        ("Presencia de insectos cerca de la puerta del deposito.", EstadoIncidente.CERRADO, 15.0, juan, ana, "Se contrato fumigacion y se coloco cortina de aire en la puerta.", None),
-        ("Un empleado ingreso a produccion sin cofia.", EstadoIncidente.DESCARTADO, 20.0, sofia, ana, "Se realizo apercibimiento y capacitacion verbal sobre BPM.", None),
-        ("Envase de desengrasante con rotulo secundario semiborrado.", EstadoIncidente.CERRADO, 25.0, marcos, ana, "Se reimprimio y coloco etiqueta normalizada segun norma SGA.", None),
+        ("Falta de jabon antibacterial en el lavamanos de la cocina.", EstadoIncidente.CERRADO, 9.0, marcos, ana, "Se repuso el jabon antibacterial y se agrego control al checklist diario.", None, TipoIncidente.LIMPIEZA, cats.get("Higiene y Limpieza", 2)),
+        ("Presencia de insectos cerca de la puerta del deposito.", EstadoIncidente.CERRADO, 15.0, juan, ana, "Se contrato fumigacion y se coloco cortina de aire en la puerta.", None, TipoIncidente.PLAGAS, cats.get("Control de Plagas", 5)),
+        ("Un empleado ingreso a produccion sin cofia.", EstadoIncidente.DESCARTADO, 20.0, sofia, ana, "Se realizo apercibimiento y capacitacion verbal sobre BPM.", None, TipoIncidente.CONDUCTA, cats.get("Conducta y Buenas Prácticas", 6)),
+        ("Envase de desengrasante con rotulo secundario semiborrado.", EstadoIncidente.CERRADO, 25.0, marcos, ana, "Se reimprimio y coloco etiqueta normalizada segun norma SGA.", None, TipoIncidente.LIMPIEZA, cats.get("Higiene y Limpieza", 2)),
     ]
 
-    for desc, estado, dias, reporta, resuelve, accion, motivo in incidentes:
+    for desc, estado, dias, reporta, resuelve, accion, motivo, tipo_inc, cat_id in incidentes:
         creado = hoy - timedelta(days=dias)
         cerrado = creado + timedelta(days=1) if estado in (EstadoIncidente.CERRADO, EstadoIncidente.DESCARTADO) else None
         db.add(Incidente(
             descripcion=desc,
+            tipo=tipo_inc,
+            categoria_id=cat_id,
             estado=estado,
             creado_el=creado,
             reportado_por_id=reporta.legajo,

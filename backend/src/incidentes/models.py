@@ -16,7 +16,10 @@ class Incidente(ModeloBase):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     descripcion: Mapped[str] = mapped_column(Text)
     tipo: Mapped[TipoIncidente] = mapped_column(
-        SQLEnum(TipoIncidente), default=TipoIncidente.OTRO, nullable=False, index=True
+        SQLEnum(TipoIncidente, values_callable=lambda obj: [e.value for e in obj]),
+        default=TipoIncidente.OTRO,
+        nullable=False,
+        index=True
     )
     foto: Mapped[Optional[str]] = mapped_column(nullable=True)
     estado: Mapped[EstadoIncidente] = mapped_column(
