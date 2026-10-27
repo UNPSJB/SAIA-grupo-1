@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoQuimico } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface Props {
   onNuevo: () => void;
@@ -14,6 +17,8 @@ interface Props {
 export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onVerDetalle }) => {
   const [insumos, setInsumos] = useState<InsumoQuimico[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
+  const [exportando, setExportando] = useState<boolean>(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [busqueda, setBusqueda] = useState<string>('');
@@ -72,6 +77,35 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
       })
     : [];
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroTipo !== 'TODOS') params.append('tipo', filtroTipo);
+      if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
+
+      const queryString = params.toString();
+      const url = `/api/insumos-quimicos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'insumos_quimicos.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al exportar insumos químicos a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroTipo !== 'TODOS') partes.push(`Tipo: ${filtroTipo}`);
+    if (filtroEstado !== 'TODOS') partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: insumosPaginados,
     paginaActual,
@@ -92,9 +126,20 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        <button onClick={onNuevo} className="btn-guardar">
-          + Agregar Insumo Químico
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
+          </button>
+
+          <button onClick={onNuevo} className="btn-guardar">
+            + Agregar Insumo Químico
+          </button>
+        </div>
       </div>
 
       <div className="filtros-top-bar">
@@ -205,6 +250,15 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="insumos químicos"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={insumosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ConfirmAlertDialog
