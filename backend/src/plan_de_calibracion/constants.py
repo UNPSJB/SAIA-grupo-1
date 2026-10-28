@@ -6,3 +6,4 @@ class ErrorCode:
     PERIODICIDAD_ERROR="LA PERIODICIDAD DEBE SER MAYOR A 0"
     NOSE_ENCONTRO_PLAN="NO SE ENCONTRO EL PLAN DE CALIBRACION"
     DESCRIPCION_VACIA="La descripcion no puede estar vacia"
+    POSEE_PLAN = "El equipo seleccionado ya posee un plan de calibración asignado."

@@ -80,7 +80,9 @@ export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Detalle de Plan de Calibración</h1>
+        <h1 style={{ lineHeight: '1.25', marginBottom: '6px' }}>
+          Detalle de Plan de Calibración
+        </h1>
         <div className="subtitulo">
           {planCalibracion
             ? `${planCalibracion.nombre} (ID #${planCalibracion.id})`

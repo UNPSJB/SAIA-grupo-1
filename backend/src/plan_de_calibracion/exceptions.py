@@ -21,4 +21,7 @@ class PlanNoEncontrado(BadRequest):
     DETAIL=ErrorCode.NOSE_ENCONTRO_PLAN
 
 class DescripcionVacia(BadRequest):
-    DETAIL=ErrorCode.DESCRIPCION_VACIA
+    DETAIL=ErrorCode.DESCRIPCION_VACIA 
+
+class PoseePlan(BadRequest):
+    DETAIL = ErrorCode.POSEE_PLAN
