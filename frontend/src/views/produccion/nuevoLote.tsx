@@ -5,6 +5,8 @@ import {
   NOMBRE_PRODUCTO_MAX,
   NUEVO_PRODUCTO,
   UNIDADES_MEDIDA,
+  formatearFecha,
+  obtenerFechaLocalHoy,
 } from './tipos';
 import type { LoteForm, LoteProduccion } from './tipos';
 import { useProductos } from './useProductos';
@@ -14,26 +16,18 @@ import '../../styles/produccion.css';
 interface NuevoLoteProps {
   /** Acceso directo para asociar insumos al lote recién guardado */
   onAsociarInsumos: (lote: LoteProduccion) => void;
+  onVolver: () => void;
 }
-
-// Fecha de hoy en hora local (toISOString usa UTC y de noche daría la de mañana)
-const obtenerFechaLocalHoy = (): string => {
-  const ahora = new Date();
-  const anio = ahora.getFullYear();
-  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-  const dia = String(ahora.getDate()).padStart(2, '0');
-  return `${anio}-${mes}-${dia}`;
-};
 
 const formularioInicial = (): LoteForm => ({
   producto: '',
   productoNuevo: '',
+  unidadProductoNuevo: '',
   fecha: obtenerFechaLocalHoy(),
   cantidad: '',
-  unidad_medida: '',
 });
 
-export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos }) => {
+export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos, onVolver }) => {
   const { productos, cargando, error: errorProductos, recargar } = useProductos();
   const [form, setForm] = useState<LoteForm>(formularioInicial);
   const [loading, setLoading] = useState(false);
@@ -43,6 +37,10 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos }) => {
   // Si todavía no hay productos, la única opción posible es crear uno
   const productoElegido = form.producto || (!cargando && productos.length === 0 ? NUEVO_PRODUCTO : '');
   const creaProducto = productoElegido === NUEVO_PRODUCTO;
+  // la cantidad se carga en la unidad del producto: la del existente o la que se elija para el nuevo
+  const unidad = creaProducto
+    ? form.unidadProductoNuevo
+    : productos.find((p) => String(p.id) === productoElegido)?.unidad_medida ?? '';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -62,12 +60,12 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos }) => {
       if (nombre.length > NOMBRE_PRODUCTO_MAX) {
         return `El nombre del producto no puede superar los ${NOMBRE_PRODUCTO_MAX} caracteres.`;
       }
+      if (!form.unidadProductoNuevo) return 'Debe indicar la unidad de medida del producto nuevo.';
     }
     if (!form.fecha) return 'Debe indicar la fecha del lote.';
     if (form.fecha > obtenerFechaLocalHoy()) return 'La fecha del lote no puede ser posterior a la fecha actual.';
     if (form.cantidad === '') return 'Debe indicar la cantidad producida.';
     if (Number(form.cantidad) <= 0) return 'La cantidad producida debe ser mayor a cero.';
-    if (!form.unidad_medida) return 'Debe seleccionar la unidad de medida.';
     return null;
   };
 
@@ -81,14 +79,13 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos }) => {
       return;
     }
 
-    // Un producto existente viaja por id; uno nuevo, por nombre (el backend lo crea junto con el lote)
+    // Un producto existente viaja por id; uno nuevo, por nombre y unidad (el backend lo crea junto con el lote)
     const payload = {
       ...(creaProducto
-        ? { producto_nombre: form.productoNuevo.trim() }
+        ? { producto_nombre: form.productoNuevo.trim(), producto_unidad_medida: form.unidadProductoNuevo }
         : { producto_id: Number(productoElegido) }),
       fecha: form.fecha,
       cantidad: Number(form.cantidad),
-      unidad_medida: form.unidad_medida,
     };
 
     setLoading(true);
@@ -132,10 +129,10 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos }) => {
             <dt>Producto</dt>
             <dd>{loteCreado.producto.nombre}</dd>
             <dt>Fecha</dt>
-            <dd>{loteCreado.fecha.split('-').reverse().join('/')}</dd>
+            <dd>{formatearFecha(loteCreado.fecha)}</dd>
             <dt>Cantidad</dt>
             <dd>
-              {loteCreado.cantidad} {loteCreado.unidad_medida}
+              {loteCreado.cantidad} {loteCreado.producto.unidad_medida}
             </dd>
           </dl>
         </div>
@@ -146,6 +143,9 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos }) => {
           </button>
           <button type="button" className="btn-cancelar" onClick={registrarOtro}>
             Registrar otro lote
+          </button>
+          <button type="button" className="btn-cancelar" onClick={onVolver}>
+            Volver al historial
           </button>
         </div>
       </div>
@@ -202,6 +202,27 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos }) => {
           </div>
         )}
 
+        {creaProducto && (
+          <div className="form-group">
+            <label htmlFor="unidadProductoNuevo">Unidad de medida del producto</label>
+            <select
+              id="unidadProductoNuevo"
+              name="unidadProductoNuevo"
+              value={form.unidadProductoNuevo}
+              onChange={handleChange}
+            >
+              <option value="" disabled>
+                Seleccione una unidad
+              </option>
+              {UNIDADES_MEDIDA.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="form-group">
           <label htmlFor="fecha">Fecha de producción</label>
           <input
@@ -215,7 +236,7 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="cantidad">Cantidad producida</label>
+          <label htmlFor="cantidad">Cantidad producida{unidad && ` (${unidad})`}</label>
           <input
             id="cantidad"
             name="cantidad"
@@ -228,23 +249,12 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos }) => {
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="unidad_medida">Unidad de medida</label>
-          <select id="unidad_medida" name="unidad_medida" value={form.unidad_medida} onChange={handleChange}>
-            <option value="" disabled>
-              Seleccione una unidad
-            </option>
-            {UNIDADES_MEDIDA.map((unidad) => (
-              <option key={unidad} value={unidad}>
-                {unidad}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
             {loading ? 'Guardando...' : 'Guardar lote'}
+          </button>
+          <button type="button" className="btn-cancelar" onClick={onVolver}>
+            Cancelar
           </button>
         </div>
       </form>

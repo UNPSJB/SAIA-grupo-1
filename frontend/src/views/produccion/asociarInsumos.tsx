@@ -45,10 +45,16 @@ export const AsociarInsumos: React.FC<AsociarInsumosProps> = ({ lote: loteInicia
             Lote {lote.codigo} · {lote.producto.nombre}
           </div>
         </div>
-        <button type="button" className="btn-agregar" onClick={() => setModalAbierto(true)}>
-          + Agregar insumos
-        </button>
+        {lote.editable && (
+          <button type="button" className="btn-agregar" onClick={() => setModalAbierto(true)}>
+            + Agregar insumos
+          </button>
+        )}
       </div>
+
+      {!lote.editable && (
+        <div className="alerta-error">Este lote es de un día anterior: está cerrado y ya no se puede modificar.</div>
+      )}
 
       <div className="tabla-wrapper">
         <table className="tabla-custom">
@@ -57,13 +63,13 @@ export const AsociarInsumos: React.FC<AsociarInsumosProps> = ({ lote: loteInicia
               <th>Insumo</th>
               <th>Lote del proveedor</th>
               <th>Cantidad utilizada</th>
-              <th className="acciones-col">Acciones</th>
+              {lote.editable && <th className="acciones-col">Acciones</th>}
             </tr>
           </thead>
           <tbody>
             {lote.insumos.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={lote.editable ? 4 : 3} style={{ textAlign: 'center', padding: '2rem' }}>
                   Todavía no hay insumos asociados a este lote.
                 </td>
               </tr>
@@ -75,19 +81,21 @@ export const AsociarInsumos: React.FC<AsociarInsumosProps> = ({ lote: loteInicia
                   <td>
                     {i.cantidad} {i.insumo.medida}
                   </td>
-                  <td className="acciones-col">
-                    <div className="acciones-btns">
-                      <button
-                        type="button"
-                        className="btn-icon btn-eliminar"
-                        title="Quitar insumo"
-                        aria-label={`Quitar ${i.insumo.nombre}`}
-                        onClick={() => setAQuitar(i)}
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  </td>
+                  {lote.editable && (
+                    <td className="acciones-col">
+                      <div className="acciones-btns">
+                        <button
+                          type="button"
+                          className="btn-icon btn-eliminar"
+                          title="Quitar insumo"
+                          aria-label={`Quitar ${i.insumo.nombre}`}
+                          onClick={() => setAQuitar(i)}
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
@@ -97,7 +105,7 @@ export const AsociarInsumos: React.FC<AsociarInsumosProps> = ({ lote: loteInicia
 
       <div className="form-acciones">
         <button type="button" className="btn-cancelar" onClick={onVolver}>
-          Volver a registrar lotes
+          Volver
         </button>
       </div>
 

@@ -60,6 +60,8 @@ import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 import { NuevoLote } from './views/produccion/nuevoLote';
 import { AsociarInsumos } from './views/produccion/asociarInsumos';
+import { HistorialLotes } from './views/produccion/historialLotes';
+import { DetalleLote } from './views/produccion/detalleLote';
 import type { LoteProduccion } from './views/produccion/tipos';
 
 type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'produccion';
@@ -74,6 +76,7 @@ type VistaChecklist = 'listado' | 'detalle';
 type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
+type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -124,11 +127,26 @@ function Aplicacion() {
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
 
-  // lote recién registrado al que se le van a asociar insumos (null = se está en el formulario)
+  const [vistaProduccion, setVistaProduccion] = useState<VistaProduccion>('historial');
+  const [loteSeleccionado, setLoteSeleccionado] = useState<number | null>(null);
+  // lote al que se le están asociando insumos (recién registrado o abierto desde el detalle)
   const [loteParaAsociar, setLoteParaAsociar] = useState<LoteProduccion | null>(null);
+
+  const verLote = (loteId: number) => {
+    setLoteSeleccionado(loteId);
+    setVistaProduccion('detalle');
+  };
+
+  const gestionarInsumos = (lote: LoteProduccion) => {
+    setLoteParaAsociar(lote);
+    setLoteSeleccionado(lote.id); // al volver se ve el detalle del lote con sus insumos
+    setVistaProduccion('insumos');
+  };
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
+    setVistaProduccion('historial');
+    setLoteSeleccionado(null);
     setLoteParaAsociar(null);
     setOrigenVencimientos(null);
     setVistaEquipos('listado');
@@ -483,21 +501,23 @@ function Aplicacion() {
             <NuevoIncidente />
           )
         ) : modulo === 'produccion' ? (
-          // registrar lotes es del operador; un administrador puro solo consulta (el historial es otra historia)
-          !esOperador ? (
-            <div className="modulo-container formulario-box">
-              <div className="modulo-header">
-                <h1>Producción</h1>
-                <div className="subtitulo">Solo consulta</div>
-              </div>
-              <div className="alerta-error">
-                Tu perfil solo permite consultar. El registro de lotes lo hace el personal operativo.
-              </div>
-            </div>
-          ) : loteParaAsociar ? (
-            <AsociarInsumos lote={loteParaAsociar} onVolver={() => setLoteParaAsociar(null)} />
+          // todos consultan el historial; registrar lotes y asociar insumos es del personal operativo
+          vistaProduccion === 'nuevo' && esOperador ? (
+            <NuevoLote onAsociarInsumos={gestionarInsumos} onVolver={() => setVistaProduccion('historial')} />
+          ) : vistaProduccion === 'insumos' && esOperador && loteParaAsociar ? (
+            <AsociarInsumos lote={loteParaAsociar} onVolver={() => verLote(loteParaAsociar.id)} />
+          ) : vistaProduccion === 'detalle' && loteSeleccionado !== null ? (
+            <DetalleLote
+              key={loteSeleccionado}
+              loteId={loteSeleccionado}
+              onVolver={() => setVistaProduccion('historial')}
+              onGestionarInsumos={esOperador ? gestionarInsumos : undefined}
+            />
           ) : (
-            <NuevoLote onAsociarInsumos={setLoteParaAsociar} />
+            <HistorialLotes
+              onVerLote={verLote}
+              onRegistrarClick={esOperador ? () => setVistaProduccion('nuevo') : undefined}
+            />
           )
         ) : modulo === 'documentos' ? (
           vistaDocumentos === 'listado' ? (

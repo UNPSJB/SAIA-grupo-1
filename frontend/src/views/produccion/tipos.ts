@@ -6,6 +6,8 @@ export const NOMBRE_PRODUCTO_MAX = 100;
 export interface Producto {
   id: number;
   nombre: string;
+  /** todos los lotes del producto se miden en esta unidad */
+  unidad_medida: string;
 }
 
 /** Insumo del maestro tal como se muestra dentro de un lote */
@@ -34,11 +36,13 @@ export interface LoteProduccion {
   codigo: string;
   producto: Producto;
   fecha: string;
+  /** en la unidad de medida del producto; no se edita */
   cantidad: number;
-  unidad_medida: string;
   responsable_legajo: number;
   nombre_responsable: string;
   creado_en: string;
+  /** false para los lotes de días anteriores: quedan de solo lectura */
+  editable: boolean;
   insumos: InsumoDelLote[];
 }
 
@@ -46,10 +50,23 @@ export interface LoteForm {
   /** id del producto elegido, o NUEVO_PRODUCTO si se va a crear uno, o '' si todavía no eligió */
   producto: string;
   productoNuevo: string;
+  /** solo se pide para un producto nuevo; uno existente ya tiene la suya */
+  unidadProductoNuevo: string;
   fecha: string;
   cantidad: number | '';
-  unidad_medida: string;
 }
 
 /** Valor del selector que representa "Crear producto nuevo…" */
 export const NUEVO_PRODUCTO = '__nuevo__';
+
+// Fecha de hoy en hora local (toISOString usa UTC y de noche daría la de mañana)
+export const obtenerFechaLocalHoy = (): string => {
+  const ahora = new Date();
+  const anio = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+};
+
+/** "2026-10-26" → "26/10/2026" */
+export const formatearFecha = (fechaIso: string): string => fechaIso.split('-').reverse().join('/');
