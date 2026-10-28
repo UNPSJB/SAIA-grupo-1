@@ -1,5 +1,5 @@
-from typing import List
-from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Any
+from datetime import datetime, timedelta, date
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from src.insumos.models import Insumo
@@ -8,6 +8,69 @@ from src.insumos import schemas, exceptions
 
 # operaciones CRUD para Insumo
 
+def obtener_insumos_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None,
+    unidad: Optional[str] = None,
+    vencimiento: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    
+    query = select(Insumo)
+    insumos = db.scalars(query).all()
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+
+    for i in insumos:
+        nombre = getattr(i, "nombre", "") or ""
+        lote = getattr(i, "lote", "") or ""
+        medida_val = i.medida.value if hasattr(i.medida, "value") else str(i.medida or "")
+
+        # Filtro por término de búsqueda (nombre o lote)
+        if term and (term not in nombre.lower() and term not in lote.lower()):
+            continue
+
+        # Filtro por unidad de medida
+        if unidad and unidad != "TODOS":
+            if medida_val.upper() != unidad.upper():
+                continue
+
+        # Calcular estado de vencimiento para filtro y reporte
+        f_venc = getattr(i, "fechaVencimiento", None)
+        f_rec = getattr(i, "fechaRecepcion", None)
+
+        str_venc = f_venc.strftime("%Y-%m-%d") if isinstance(f_venc, (datetime, date)) else "No aplica"
+        str_rec = f_rec.strftime("%Y-%m-%d") if isinstance(f_rec, (datetime, date)) else "No aplica"
+
+        estado_venc = "SIN_VENCIMIENTO"
+        if f_venc:
+            now_dt = datetime.now()
+            f_venc_dt = datetime.combine(f_venc, datetime.min.time()) if isinstance(f_venc, date) and not isinstance(f_venc, datetime) else f_venc
+            dias = (f_venc_dt - now_dt).total_seconds() / (1000 * 60 * 60 * 24)
+            if dias < 0:
+                estado_venc = "VENCIDO"
+            elif dias <= 15:
+                estado_venc = "POR_VENCER"
+            else:
+                estado_venc = "VIGENTE"
+
+        # Filtro por vencimiento
+        if vencimiento and vencimiento != "TODOS":
+            if estado_venc != vencimiento.upper():
+                continue
+
+        filas.append({
+            "id": i.id,
+            "nombre": nombre,
+            "lote": lote,
+            "stock": getattr(i, "stock", 0),
+            "cantRecibida": getattr(i, "cantRecibida", 0),
+            "medida": medida_val,
+            "fechaRecepcion": str_rec,
+            "fechaVencimiento": str_venc,
+            "estadoVencimiento": estado_venc.replace("_", " ").capitalize(),
+        })
+
+    return filas
 
 def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> Insumo:
     if not insumo.nombre or insumo.nombre.strip() == "":

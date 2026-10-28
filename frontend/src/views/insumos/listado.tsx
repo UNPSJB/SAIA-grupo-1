@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoInsumosProps {
   onNuevoClick?: () => void;
@@ -34,6 +37,9 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
 }) => {
   const [insumos, setInsumos] = useState<InsumoConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroUnidad, setFiltroUnidad] = useState('TODOS');
   const [filtroVencimiento, setFiltroVencimiento] = useState('TODOS');
@@ -110,6 +116,35 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     return coincideBusqueda && coincideUnidad && coincideVencimiento;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroUnidad !== 'TODOS') params.append('unidad', filtroUnidad);
+      if (filtroVencimiento !== 'TODOS') params.append('vencimiento', filtroVencimiento);
+
+      const queryString = params.toString();
+      const url = `/insumos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'ingredientes.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar ingredientes a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroUnidad !== 'TODOS') partes.push(`Unidad: ${filtroUnidad}`);
+    if (filtroVencimiento !== 'TODOS') partes.push(`Vencimiento: ${filtroVencimiento}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: insumosPaginados,
     paginaActual,
@@ -130,11 +165,22 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Agregar Ingrediente
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Agregar Ingrediente
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="filtros-top-bar">
@@ -253,6 +299,15 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="ingredientes"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={insumosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ConfirmAlertDialog
