@@ -1,8 +1,32 @@
-from typing import List
+from typing import List, Dict, Any, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from src.sectores.models import Sector
 from src.sectores import schemas, exceptions
+
+def obtener_sectores_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    
+    query = select(Sector).order_by(Sector.nombre)
+    sectores = db.scalars(query).all()
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+
+    for s in sectores:
+        nombre = getattr(s, "nombre", "") or ""
+
+        # Aplicar filtro por término de búsqueda
+        if term and term not in nombre.lower():
+            continue
+
+        filas.append({
+            "id": s.id,
+            "nombre": nombre,
+        })
+
+    return filas
 
 def crear_sector(db: Session, sector: schemas.SectorCreate) -> Sector:
     existente = db.scalar(select(Sector).where(Sector.nombre == sector.nombre))
