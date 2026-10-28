@@ -8,7 +8,6 @@ from src.personal.models import Personal
 from src.produccion import schemas, services
 
 lotes_router = APIRouter(prefix="/lotes", tags=["Producción"])
-productos_router = APIRouter(prefix="/productos", tags=["Producción"])
 
 
 @lotes_router.post("/", response_model=schemas.LoteProduccion, status_code=status.HTTP_201_CREATED)
@@ -62,8 +61,3 @@ def quitar_insumo_endpoint(
     _: Personal = Depends(requiere_operador),
 ):
     return services.quitar_insumo(db, lote_id, insumo_id)
-
-
-@productos_router.get("/", response_model=List[schemas.Producto])
-def listar_productos_endpoint(db: Session = Depends(get_db)):
-    return services.listar_productos(db)

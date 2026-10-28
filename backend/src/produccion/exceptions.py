@@ -6,20 +6,8 @@ class ProductoNoEncontrado(NotFound):
     DETAIL = ErrorCode.PRODUCTO_NO_ENCONTRADO
 
 
-class ProductoRequerido(BadRequest):
-    DETAIL = ErrorCode.PRODUCTO_REQUERIDO
-
-
-class ProductoAmbiguo(BadRequest):
-    DETAIL = ErrorCode.PRODUCTO_AMBIGUO
-
-
-class NombreProductoVacio(BadRequest):
-    DETAIL = ErrorCode.NOMBRE_PRODUCTO_VACIO
-
-
-class NombreProductoDemasiadoLargo(BadRequest):
-    DETAIL = ErrorCode.NOMBRE_PRODUCTO_DEMASIADO_LARGO
+class ProductoInactivo(BadRequest):
+    DETAIL = ErrorCode.PRODUCTO_INACTIVO
 
 
 class CantidadInvalida(BadRequest):
@@ -64,18 +52,6 @@ class StockInsuficiente(BadRequest):
 
 class InsumoNoAsociado(NotFound):
     DETAIL = ErrorCode.INSUMO_NO_ASOCIADO
-
-
-class UnidadProductoRequerida(BadRequest):
-    DETAIL = ErrorCode.UNIDAD_PRODUCTO_REQUERIDA
-
-
-class UnidadDeProductoExistente(BadRequest):
-    DETAIL = ErrorCode.UNIDAD_DE_PRODUCTO_EXISTENTE
-
-
-class ProductoConOtraUnidad(BadRequest):
-    DETAIL = ErrorCode.PRODUCTO_CON_OTRA_UNIDAD
 
 
 class LoteCerrado(BadRequest):

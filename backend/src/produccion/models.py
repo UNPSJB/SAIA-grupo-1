@@ -1,24 +1,11 @@
 from datetime import date, datetime
 from typing import List
-from sqlalchemy import Date, DateTime, ForeignKey, Index, String, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from src.insumos.models import Insumo, UnidadMedida
+from src.insumos.models import Insumo
 from src.models import ModeloBase
 from src.personal.models import Personal
-from src.produccion.constants import NOMBRE_PRODUCTO_MAX
-
-
-class Producto(ModeloBase):
-    __tablename__ = "productos"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    nombre: Mapped[str] = mapped_column(String(NOMBRE_PRODUCTO_MAX))
-    # en qué se mide lo que se produce: todos los lotes del producto usan esta unidad
-    unidad_medida: Mapped[UnidadMedida] = mapped_column()
-
-
-# Un producto no puede repetirse aunque cambien las mayusculas ("Pan" y "pan" son el mismo).
-Index("ix_productos_nombre_lower", func.lower(Producto.nombre), unique=True)
+from src.producto.models import Producto
 
 
 class LoteProduccion(ModeloBase):

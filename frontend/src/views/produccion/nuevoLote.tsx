@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { mensajeDeError } from '../incidentes/tipos';
-import {
-  NOMBRE_PRODUCTO_MAX,
-  NUEVO_PRODUCTO,
-  UNIDADES_MEDIDA,
-  formatearFecha,
-  obtenerFechaLocalHoy,
-} from './tipos';
+import { formatearFecha, obtenerFechaLocalHoy } from './tipos';
 import type { LoteForm, LoteProduccion } from './tipos';
 import { useProductos } from './useProductos';
 import '../../styles/formularioAlta.css';
@@ -21,26 +15,22 @@ interface NuevoLoteProps {
 
 const formularioInicial = (): LoteForm => ({
   producto: '',
-  productoNuevo: '',
-  unidadProductoNuevo: '',
   fecha: obtenerFechaLocalHoy(),
   cantidad: '',
 });
 
 export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos, onVolver }) => {
-  const { productos, cargando, error: errorProductos, recargar } = useProductos();
+  const { productos, cargando, error: errorProductos } = useProductos();
   const [form, setForm] = useState<LoteForm>(formularioInicial);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loteCreado, setLoteCreado] = useState<LoteProduccion | null>(null);
 
-  // Si todavía no hay productos, la única opción posible es crear uno
-  const productoElegido = form.producto || (!cargando && productos.length === 0 ? NUEVO_PRODUCTO : '');
-  const creaProducto = productoElegido === NUEVO_PRODUCTO;
-  // la cantidad se carga en la unidad del producto: la del existente o la que se elija para el nuevo
-  const unidad = creaProducto
-    ? form.unidadProductoNuevo
-    : productos.find((p) => String(p.id) === productoElegido)?.unidad_medida ?? '';
+  // a un producto dado de baja no se le registran lotes
+  const productosActivos = productos.filter((p) => p.activo);
+  const sinProductos = !cargando && !errorProductos && productosActivos.length === 0;
+  // la cantidad se carga en la unidad del producto
+  const unidad = productosActivos.find((p) => String(p.id) === form.producto)?.unidadMedida ?? '';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -53,15 +43,7 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos, onVolver
 
   // Mismas reglas que el backend; devuelve el mensaje del primer problema o null si está todo bien
   const validar = (): string | null => {
-    if (!productoElegido) return 'Debe seleccionar un producto o crear uno nuevo.';
-    if (creaProducto) {
-      const nombre = form.productoNuevo.trim();
-      if (!nombre) return 'El nombre del producto no puede estar vacío.';
-      if (nombre.length > NOMBRE_PRODUCTO_MAX) {
-        return `El nombre del producto no puede superar los ${NOMBRE_PRODUCTO_MAX} caracteres.`;
-      }
-      if (!form.unidadProductoNuevo) return 'Debe indicar la unidad de medida del producto nuevo.';
-    }
+    if (!form.producto) return 'Debe seleccionar un producto.';
     if (!form.fecha) return 'Debe indicar la fecha del lote.';
     if (form.fecha > obtenerFechaLocalHoy()) return 'La fecha del lote no puede ser posterior a la fecha actual.';
     if (form.cantidad === '') return 'Debe indicar la cantidad producida.';
@@ -79,11 +61,8 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos, onVolver
       return;
     }
 
-    // Un producto existente viaja por id; uno nuevo, por nombre y unidad (el backend lo crea junto con el lote)
     const payload = {
-      ...(creaProducto
-        ? { producto_nombre: form.productoNuevo.trim(), producto_unidad_medida: form.unidadProductoNuevo }
-        : { producto_id: Number(productoElegido) }),
+      producto_id: Number(form.producto),
       fecha: form.fecha,
       cantidad: Number(form.cantidad),
     };
@@ -100,7 +79,6 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos, onVolver
         throw new Error(mensajeDeError(errorData.detail, 'Error al registrar el lote.'));
       }
       setLoteCreado(await res.json());
-      recargar(); // el producto nuevo (si hubo) tiene que aparecer en el selector
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Error de conexión con el servidor.');
     } finally {
@@ -132,7 +110,7 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos, onVolver
             <dd>{formatearFecha(loteCreado.fecha)}</dd>
             <dt>Cantidad</dt>
             <dd>
-              {loteCreado.cantidad} {loteCreado.producto.unidad_medida}
+              {loteCreado.cantidad} {loteCreado.producto.unidadMedida}
             </dd>
           </dl>
         </div>
@@ -160,8 +138,11 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos, onVolver
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
-      {errorProductos && (
-        <div className="alerta-error">No se pudo cargar la lista de productos. Podés crear uno nuevo igualmente.</div>
+      {errorProductos && <div className="alerta-error">No se pudo cargar la lista de productos.</div>}
+      {sinProductos && (
+        <div className="alerta-error">
+          No hay productos activos. Un administrador tiene que darlos de alta en Productos Elaborados.
+        </div>
       )}
 
       <form onSubmit={handleGuardar} noValidate>
@@ -170,58 +151,20 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({ onAsociarInsumos, onVolver
           <select
             id="producto"
             name="producto"
-            value={productoElegido}
+            value={form.producto}
             onChange={handleChange}
-            disabled={cargando}
+            disabled={cargando || sinProductos}
           >
             <option value="" disabled>
               {cargando ? 'Cargando productos...' : 'Seleccione un producto'}
             </option>
-            {productos.map((p) => (
+            {productosActivos.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nombre}
               </option>
             ))}
-            <option value={NUEVO_PRODUCTO}>➕ Crear producto nuevo…</option>
           </select>
         </div>
-
-        {creaProducto && (
-          <div className="form-group">
-            <label htmlFor="productoNuevo">Nombre del producto nuevo</label>
-            <input
-              id="productoNuevo"
-              name="productoNuevo"
-              type="text"
-              placeholder="Ej: Pan lactal"
-              maxLength={NOMBRE_PRODUCTO_MAX}
-              value={form.productoNuevo}
-              onChange={handleChange}
-              autoFocus
-            />
-          </div>
-        )}
-
-        {creaProducto && (
-          <div className="form-group">
-            <label htmlFor="unidadProductoNuevo">Unidad de medida del producto</label>
-            <select
-              id="unidadProductoNuevo"
-              name="unidadProductoNuevo"
-              value={form.unidadProductoNuevo}
-              onChange={handleChange}
-            >
-              <option value="" disabled>
-                Seleccione una unidad
-              </option>
-              {UNIDADES_MEDIDA.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         <div className="form-group">
           <label htmlFor="fecha">Fecha de producción</label>

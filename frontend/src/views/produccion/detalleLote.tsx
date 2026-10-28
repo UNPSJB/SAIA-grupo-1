@@ -81,7 +81,7 @@ export const DetalleLote: React.FC<DetalleLoteProps> = ({ loteId, onVolver, onGe
         <dd>{formatearFecha(lote.fecha)}</dd>
         <dt>Cantidad producida</dt>
         <dd>
-          {lote.cantidad} {lote.producto.unidad_medida}
+          {lote.cantidad} {lote.producto.unidadMedida}
         </dd>
         <dt>Responsable</dt>
         <dd>

@@ -1,21 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import type { Producto } from './tipos';
 
 interface UseProductos {
+  /** Todos los productos del ABM (también los dados de baja), ordenados por nombre. */
   productos: Producto[];
   cargando: boolean;
   error: boolean;
-  /** Vuelve a pedir la lista (por ejemplo después de crear un producto nuevo con un lote). */
-  recargar: () => void;
 }
 
-/** Productos ya registrados, para el selector del formulario de lotes. */
+/** Productos registrados en el ABM de Productos Elaborados, para los selectores de lotes. */
 export function useProductos(): UseProductos {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
-  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let cancelado = false;
@@ -23,7 +21,8 @@ export function useProductos(): UseProductos {
       .then(async (res) => {
         if (cancelado) return;
         if (res.ok) {
-          setProductos(await res.json());
+          const lista: Producto[] = await res.json();
+          setProductos(lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })));
           setError(false);
         } else {
           setError(true);
@@ -38,9 +37,7 @@ export function useProductos(): UseProductos {
     return () => {
       cancelado = true;
     };
-  }, [version]);
+  }, []);
 
-  const recargar = useCallback(() => setVersion((v) => v + 1), []);
-
-  return { productos, cargando, error, recargar };
+  return { productos, cargando, error };
 }

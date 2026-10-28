@@ -36,15 +36,18 @@ def test_pasa_la_unidad_del_lote_al_producto_sin_perder_datos(tmp_path: Path) ->
     actualizar_tablas_produccion(engine)  # correrla de nuevo no rompe nada
 
     assert "unidad_medida" not in _columnas(engine, "lotes_produccion")
+    assert _columnas(engine, "productos") == {"id", "nombre", "unidadMedida", "descripcion", "activo", "id_receta"}
     with engine.begin() as conexion:
-        productos = conexion.execute(text("SELECT id, nombre, unidad_medida FROM productos ORDER BY id")).all()
-        assert [tuple(p) for p in productos] == [(1, "Pan", "KILOGRAMOS"), (2, "Tarta", "LITROS"), (3, "Alfajor", "UNIDADES")]
+        productos = conexion.execute(text("SELECT id, nombre, unidadMedida, activo FROM productos ORDER BY id")).all()
+        assert [tuple(p) for p in productos] == [
+            (1, "Pan", "KILOGRAMOS", 1), (2, "Tarta", "LITROS", 1), (3, "Alfajor", "UNIDADES", 1)
+        ]
         lotes = conexion.execute(text("SELECT id, cantidad FROM lotes_produccion ORDER BY id")).all()
         assert [tuple(l) for l in lotes] == [(1, 10), (2, 12), (3, 5)]
     engine.dispose()
 
 
-def test_sin_tabla_de_lotes_solo_agrega_la_unidad_al_producto(tmp_path: Path) -> None:
+def test_sin_tabla_de_lotes_los_productos_quedan_en_unidades(tmp_path: Path) -> None:
     engine = _engine(tmp_path)
     with engine.begin() as conexion:
         conexion.execute(text(TABLAS_VIEJAS[0]))
@@ -53,7 +56,29 @@ def test_sin_tabla_de_lotes_solo_agrega_la_unidad_al_producto(tmp_path: Path) ->
     actualizar_tablas_produccion(engine)
 
     with engine.begin() as conexion:
-        assert conexion.execute(text("SELECT unidad_medida FROM productos")).scalar() == "UNIDADES"
+        assert conexion.execute(text("SELECT unidadMedida FROM productos")).scalar() == "UNIDADES"
+    engine.dispose()
+
+
+def test_pasa_la_unidad_del_producto_al_esquema_del_abm(tmp_path: Path) -> None:
+    # productos como los creaba create_all cuando la unidad ya era del producto pero no existia el ABM
+    engine = _engine(tmp_path)
+    with engine.begin() as conexion:
+        conexion.execute(text(
+            "CREATE TABLE productos (id INTEGER NOT NULL, nombre VARCHAR(100) NOT NULL, "
+            "unidad_medida VARCHAR(10) NOT NULL, PRIMARY KEY (id))"
+        ))
+        conexion.execute(text("INSERT INTO productos VALUES (1, 'Pan', 'KILOGRAMOS'), (2, 'Leche', 'LITROS')"))
+
+    actualizar_tablas_produccion(engine)
+    actualizar_tablas_produccion(engine)
+
+    assert _columnas(engine, "productos") == {"id", "nombre", "unidadMedida", "descripcion", "activo", "id_receta"}
+    with engine.begin() as conexion:
+        productos = conexion.execute(
+            text("SELECT id, unidadMedida, activo, descripcion, id_receta FROM productos ORDER BY id")
+        ).all()
+        assert [tuple(p) for p in productos] == [(1, "KILOGRAMOS", 1, None, None), (2, "LITROS", 1, None, None)]
     engine.dispose()
 
 

@@ -1,41 +1,27 @@
 from datetime import date, datetime
-from typing import List, Optional, Self
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from src.insumos.models import UnidadMedida
 from src.produccion import exceptions
-from src.produccion.constants import NOMBRE_PRODUCTO_MAX
-
-
-def normalizar_nombre_producto(nombre: str) -> str:
-    """Quita espacios sobrantes (también los internos) y valida que no quede vacío ni largo de más."""
-    nombre = " ".join((nombre or "").split())
-    if not nombre:
-        raise exceptions.NombreProductoVacio()
-    if len(nombre) > NOMBRE_PRODUCTO_MAX:
-        raise exceptions.NombreProductoDemasiadoLargo()
-    return nombre
 
 
 class Producto(BaseModel):
+    """Lo que el lote muestra del producto; el resto se consulta en /productos."""
+
     id: int
     nombre: str
-    unidad_medida: UnidadMedida
+    # todos los lotes del producto se miden en esta unidad
+    unidadMedida: UnidadMedida
+    activo: bool
     model_config = ConfigDict(from_attributes=True)
 
 
 class LoteProduccionCreate(BaseModel):
-    producto_id: Optional[int] = None
-    producto_nombre: Optional[str] = None
-    # solo para un producto nuevo; uno existente ya tiene la suya
-    producto_unidad_medida: Optional[UnidadMedida] = None
+    # un producto activo dado de alta en el ABM de productos
+    producto_id: int
     fecha: date
     # en la unidad de medida del producto
     cantidad: float = Field(allow_inf_nan=False)
-
-    @field_validator("producto_nombre")
-    @classmethod
-    def validar_nombre_producto(cls, v: Optional[str]) -> Optional[str]:
-        return None if v is None else normalizar_nombre_producto(v)
 
     @field_validator("fecha")
     @classmethod
@@ -50,18 +36,6 @@ class LoteProduccionCreate(BaseModel):
         if v <= 0:
             raise exceptions.CantidadInvalida()
         return v
-
-    @model_validator(mode="after")
-    def validar_producto(self) -> Self:
-        if self.producto_id is None and self.producto_nombre is None:
-            raise exceptions.ProductoRequerido()
-        if self.producto_id is not None and self.producto_nombre is not None:
-            raise exceptions.ProductoAmbiguo()
-        if self.producto_nombre is not None and self.producto_unidad_medida is None:
-            raise exceptions.UnidadProductoRequerida()
-        if self.producto_id is not None and self.producto_unidad_medida is not None:
-            raise exceptions.UnidadDeProductoExistente()
-        return self
 
 
 class InsumoLoteCreate(BaseModel):

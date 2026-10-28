@@ -3,37 +3,21 @@ from typing import List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from src.insumos.models import Insumo, UnidadMedida
+from src.insumos.models import Insumo
 from src.insumos.services import leer_insumo
 from src.produccion import exceptions, schemas
 from src.produccion.constants import INTENTOS_CODIGO_LOTE
-from src.produccion.models import InsumoLote, LoteProduccion, Producto
+from src.produccion.models import InsumoLote, LoteProduccion
+from src.producto.models import Producto
 
 
-def listar_productos(db: Session) -> List[Producto]:
-    return list(db.scalars(select(Producto).order_by(func.lower(Producto.nombre))).all())
-
-
-def leer_producto(db: Session, producto_id: int) -> Producto:
+def leer_producto_activo(db: Session, producto_id: int) -> Producto:
+    """Los productos se dan de alta en el ABM de productos; a uno dado de baja no se le registran lotes."""
     producto = db.get(Producto, producto_id)
     if producto is None:
         raise exceptions.ProductoNoEncontrado()
-    return producto
-
-
-def obtener_o_crear_producto(db: Session, nombre: str, unidad_medida: UnidadMedida) -> Producto:
-    """Devuelve el producto con ese nombre (sin distinguir mayúsculas) o lo crea. No hace commit.
-
-    Si ya existe tiene que medirse en la misma unidad: no se le cambia la unidad a un producto con lotes.
-    """
-    nombre = schemas.normalizar_nombre_producto(nombre)
-    producto = db.scalar(select(Producto).where(func.lower(Producto.nombre) == nombre.lower()))
-    if producto is None:
-        producto = Producto(nombre=nombre, unidad_medida=unidad_medida)
-        db.add(producto)
-        db.flush()
-    elif producto.unidad_medida != unidad_medida:
-        raise exceptions.ProductoConOtraUnidad()
+    if not producto.activo:
+        raise exceptions.ProductoInactivo()
     return producto
 
 
@@ -46,13 +30,9 @@ def _siguiente_codigo(db: Session, fecha: date) -> str:
 
 
 def registrar_lote(db: Session, legajo_responsable: int, datos: schemas.LoteProduccionCreate) -> LoteProduccion:
-    """Registra el lote (y el producto, si es nuevo) en una única transacción."""
+    producto = leer_producto_activo(db, datos.producto_id)
     for _ in range(INTENTOS_CODIGO_LOTE):
         try:
-            if datos.producto_id is not None:
-                producto = leer_producto(db, datos.producto_id)
-            else:
-                producto = obtener_o_crear_producto(db, datos.producto_nombre, datos.producto_unidad_medida)
             lote = LoteProduccion(
                 codigo=_siguiente_codigo(db, datos.fecha),
                 producto_id=producto.id,
@@ -65,7 +45,7 @@ def registrar_lote(db: Session, legajo_responsable: int, datos: schemas.LoteProd
             db.refresh(lote)
             return lote
         except IntegrityError:
-            # código repetido (o producto creado en paralelo): se descarta todo y se reintenta
+            # código repetido (otro lote del mismo día registrado en paralelo): se reintenta
             db.rollback()
     raise exceptions.CodigoLoteNoGenerado()
 

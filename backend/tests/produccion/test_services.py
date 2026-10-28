@@ -7,27 +7,32 @@ from src.insumos.exceptions import InsumoNoEncontrado
 from src.insumos.models import Insumo, UnidadMedida
 from src.insumos.services import eliminar_insumo
 from src.produccion import exceptions, schemas, services
-from src.produccion.models import InsumoLote, LoteProduccion, Producto
+from src.produccion.models import InsumoLote, LoteProduccion
+from src.producto.models import Producto
 from tests.database import session  # noqa: F401  (session es una fixture)
 
 LEGAJO = 1  # Juan Perez, el del seed de tests
 # ids de los insumos del seed de tests: 80 kg de harina, 35 l de aceite y 1500 g de levadura
 HARINA, ACEITE, LEVADURA = 1, 2, 3
+# ids de los productos que crea la fixture `productos`
+PAN, TARTA, DADO_DE_BAJA = 1, 2, 3
+
+
+@pytest.fixture(autouse=True)
+def productos(session: Session) -> None:
+    """Productos como los da de alta el ABM de productos; el lote solo los referencia."""
+    session.add_all([
+        Producto(id=PAN, nombre="Pan lactal", unidadMedida=UnidadMedida.KILOGRAMOS),
+        Producto(id=TARTA, nombre="Tarta", unidadMedida=UnidadMedida.UNIDADES),
+        Producto(id=DADO_DE_BAJA, nombre="Budín", unidadMedida=UnidadMedida.UNIDADES, activo=False),
+    ])
+    session.commit()
 
 
 def _datos(**cambios: Any) -> schemas.LoteProduccionCreate:
-    base: dict[str, Any] = dict(
-        producto_nombre="Pan lactal",
-        fecha=date.today(),
-        cantidad=120.5,
-        producto_unidad_medida=UnidadMedida.KILOGRAMOS,
-    )
+    base: dict[str, Any] = dict(producto_id=PAN, fecha=date.today(), cantidad=120.5)
     base.update(cambios)
     return schemas.LoteProduccionCreate(**base)
-
-
-def _de_producto_existente(producto_id: int, **cambios: Any) -> schemas.LoteProduccionCreate:
-    return _datos(producto_nombre=None, producto_unidad_medida=None, producto_id=producto_id, **cambios)
 
 
 def _cantidad_de(db: Session, modelo: type) -> int:
@@ -37,52 +42,41 @@ def _cantidad_de(db: Session, modelo: type) -> int:
 # ------------------------------------------------------------------ registro
 
 
-def test_registrar_lote_con_producto_nuevo(session: Session) -> None:
+def test_registrar_lote(session: Session) -> None:
     lote = services.registrar_lote(session, LEGAJO, _datos())
 
     assert lote.id is not None
+    assert lote.producto_id == PAN
     assert lote.producto.nombre == "Pan lactal"
     assert lote.fecha == date.today()
     assert lote.cantidad == 120.5
-    assert lote.producto.unidad_medida == UnidadMedida.KILOGRAMOS
+    # la unidad del lote es la del producto
+    assert lote.producto.unidadMedida == UnidadMedida.KILOGRAMOS
     assert lote.responsable_legajo == LEGAJO
     assert lote.nombre_responsable == "Juan Perez"
-    assert _cantidad_de(session, Producto) == 1
-
-
-def test_registrar_lote_con_producto_existente(session: Session) -> None:
-    producto = services.obtener_o_crear_producto(session, "Galletitas", UnidadMedida.UNIDADES)
-    session.commit()
-
-    lote = services.registrar_lote(session, LEGAJO, _de_producto_existente(producto.id))
-
-    assert lote.producto_id == producto.id
-    # la unidad del lote es la del producto
-    assert lote.producto.unidad_medida == UnidadMedida.UNIDADES
-    assert _cantidad_de(session, Producto) == 1
-
-
-def test_producto_repetido_con_otras_mayusculas_y_espacios_se_reutiliza(session: Session) -> None:
-    primero = services.registrar_lote(session, LEGAJO, _datos(producto_nombre="Pan Lactal"))
-    segundo = services.registrar_lote(session, LEGAJO, _datos(producto_nombre="  pan   LACTAL "))
-
-    assert segundo.producto_id == primero.producto_id
-    assert _cantidad_de(session, Producto) == 1
-    assert primero.producto.nombre == "Pan Lactal"
-
-
-def test_producto_existente_con_otra_unidad(session: Session) -> None:
-    services.registrar_lote(session, LEGAJO, _datos(producto_nombre="Pan"))
-
-    with pytest.raises(exceptions.ProductoConOtraUnidad):
-        services.registrar_lote(session, LEGAJO, _datos(producto_nombre="pan", producto_unidad_medida=UnidadMedida.UNIDADES))
-    assert _cantidad_de(session, LoteProduccion) == 1
+    # registrar un lote no crea productos
+    assert _cantidad_de(session, Producto) == 3
 
 
 def test_producto_inexistente(session: Session) -> None:
     with pytest.raises(exceptions.ProductoNoEncontrado):
-        services.registrar_lote(session, LEGAJO, _de_producto_existente(999))
+        services.registrar_lote(session, LEGAJO, _datos(producto_id=999))
     assert _cantidad_de(session, LoteProduccion) == 0
+
+
+def test_producto_dado_de_baja(session: Session) -> None:
+    with pytest.raises(exceptions.ProductoInactivo):
+        services.registrar_lote(session, LEGAJO, _datos(producto_id=DADO_DE_BAJA))
+    assert _cantidad_de(session, LoteProduccion) == 0
+
+
+def test_los_lotes_de_un_producto_dado_de_baja_se_siguen_consultando(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    session.get(Producto, PAN).activo = False
+    session.commit()
+
+    assert services.leer_lote(session, lote.id).producto.activo is False
+    assert [l.id for l in services.listar_lotes(session, producto_id=PAN)] == [lote.id]
 
 
 def test_se_puede_registrar_con_fecha_pasada(session: Session) -> None:
@@ -94,44 +88,22 @@ def test_se_puede_registrar_con_fecha_pasada(session: Session) -> None:
 # ------------------------------------------------------------------ validaciones
 
 
-def test_no_se_permite_lote_sin_producto() -> None:
-    with pytest.raises(exceptions.ProductoRequerido):
-        _datos(producto_nombre=None)
-
-
-def test_no_se_permite_producto_existente_y_nuevo_a_la_vez() -> None:
-    with pytest.raises(exceptions.ProductoAmbiguo):
-        _datos(producto_id=1)
-
-
-@pytest.mark.parametrize("nombre", ["", "   "])
-def test_nombre_de_producto_vacio(nombre: str) -> None:
-    with pytest.raises(exceptions.NombreProductoVacio):
-        _datos(producto_nombre=nombre)
-
-
-def test_nombre_de_producto_demasiado_largo() -> None:
-    with pytest.raises(exceptions.NombreProductoDemasiadoLargo):
-        _datos(producto_nombre="x" * 101)
-
-
-def test_un_producto_nuevo_necesita_unidad_de_medida() -> None:
-    with pytest.raises(exceptions.UnidadProductoRequerida):
-        _datos(producto_unidad_medida=None)
-
-
-def test_a_un_producto_existente_no_se_le_indica_unidad() -> None:
-    with pytest.raises(exceptions.UnidadDeProductoExistente):
-        _datos(producto_nombre=None, producto_id=1)
-
-
-@pytest.mark.parametrize("campo", ["fecha", "cantidad"])
-def test_no_se_permite_lote_sin_fecha_o_cantidad(campo: str) -> None:
-    datos = dict(producto_nombre="Pan", producto_unidad_medida="kilogramos", fecha=date.today(), cantidad=1)
+@pytest.mark.parametrize("campo", ["producto_id", "fecha", "cantidad"])
+def test_no_se_permite_lote_sin_producto_fecha_o_cantidad(campo: str) -> None:
+    datos = dict(producto_id=PAN, fecha=date.today(), cantidad=1)
     del datos[campo]
     with pytest.raises(Exception) as error:
         schemas.LoteProduccionCreate(**datos)
     assert campo in str(error.value)
+
+
+def test_ya_no_se_crean_productos_desde_el_lote() -> None:
+    # los campos del producto nuevo se ignoran: sin producto_id el lote no es valido
+    with pytest.raises(Exception) as error:
+        schemas.LoteProduccionCreate(
+            producto_nombre="Pan", producto_unidad_medida="kilogramos", fecha=date.today(), cantidad=1
+        )
+    assert "producto_id" in str(error.value)
 
 
 @pytest.mark.parametrize("cantidad", [0, -1, -0.01])
@@ -163,9 +135,8 @@ def test_el_correlativo_se_reinicia_cada_dia_y_usa_la_fecha_del_lote(session: Se
 
 def test_el_correlativo_pasa_de_99_sin_romper_el_orden(session: Session) -> None:
     fecha = date(2026, 10, 22)
-    producto = services.obtener_o_crear_producto(session, "Pan", UnidadMedida.KILOGRAMOS)
     for n in range(1, 100):
-        session.add(LoteProduccion(codigo=f"L-20261022-{n:02d}", producto_id=producto.id, fecha=fecha,
+        session.add(LoteProduccion(codigo=f"L-20261022-{n:02d}", producto_id=PAN, fecha=fecha,
                                    cantidad=1, responsable_legajo=LEGAJO))
     session.commit()
 
@@ -189,15 +160,13 @@ def test_si_el_codigo_se_repite_se_reintenta(session: Session, monkeypatch: pyte
 
 
 def test_si_nunca_se_genera_un_codigo_no_queda_nada_guardado(session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-    existente = services.registrar_lote(session, LEGAJO, _datos(producto_nombre="Pan"))
+    existente = services.registrar_lote(session, LEGAJO, _datos())
     monkeypatch.setattr(services, "_siguiente_codigo", lambda db, fecha: existente.codigo)
 
     with pytest.raises(exceptions.CodigoLoteNoGenerado):
-        services.registrar_lote(session, LEGAJO, _datos(producto_nombre="Producto nuevo"))
+        services.registrar_lote(session, LEGAJO, _datos(producto_id=TARTA))
 
-    # el producto nuevo se descarta junto con el lote: no queda un producto huérfano
     assert _cantidad_de(session, LoteProduccion) == 1
-    assert [p.nombre for p in services.listar_productos(session)] == ["Pan"]
 
 
 # ------------------------------------------------------------------ consultas
@@ -208,13 +177,6 @@ def test_leer_lote(session: Session) -> None:
     assert services.leer_lote(session, lote.id).codigo == lote.codigo
     with pytest.raises(exceptions.LoteNoEncontrado):
         services.leer_lote(session, 999)
-
-
-def test_listar_productos_ordenados_por_nombre(session: Session) -> None:
-    for nombre in ["Tarta", "alfajor", "Budín"]:
-        services.obtener_o_crear_producto(session, nombre, UnidadMedida.UNIDADES)
-    session.commit()
-    assert [p.nombre for p in services.listar_productos(session)] == ["alfajor", "Budín", "Tarta"]
 
 
 def test_listar_lotes_del_mas_reciente_al_mas_antiguo(session: Session) -> None:
@@ -228,9 +190,9 @@ def test_listar_lotes_del_mas_reciente_al_mas_antiguo(session: Session) -> None:
 
 def test_listar_lotes_filtra_por_producto_y_fechas(session: Session) -> None:
     hoy = date.today()
-    pan = services.registrar_lote(session, LEGAJO, _datos(producto_nombre="Pan", fecha=hoy - timedelta(days=10)))
-    pan_hoy = services.registrar_lote(session, LEGAJO, _datos(producto_nombre="Pan", fecha=hoy))
-    tarta = services.registrar_lote(session, LEGAJO, _datos(producto_nombre="Tarta", fecha=hoy))
+    pan = services.registrar_lote(session, LEGAJO, _datos(fecha=hoy - timedelta(days=10)))
+    pan_hoy = services.registrar_lote(session, LEGAJO, _datos(fecha=hoy))
+    tarta = services.registrar_lote(session, LEGAJO, _datos(producto_id=TARTA, fecha=hoy))
 
     assert {l.id for l in services.listar_lotes(session, producto_id=pan.producto_id)} == {pan.id, pan_hoy.id}
     assert {l.id for l in services.listar_lotes(session, desde=hoy - timedelta(days=1))} == {pan_hoy.id, tarta.id}

@@ -35,7 +35,8 @@ from src.vencimientos.router import router as vencimientos_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 from src.documentos.router import router as documentos_router
-from src.produccion.router import lotes_router, productos_router
+from src.produccion.router import lotes_router
+from src.producto.router import router as producto_router
 
 
 ENV = settings.ENV.upper()
@@ -105,5 +106,6 @@ app.include_router(calibracion_realizada_router)
 app.include_router(documentos_router, dependencies=SESION)
 # registrar un lote lo define el endpoint (solo operadores); consultar alcanza con estar logueado
 app.include_router(lotes_router, dependencies=SESION)
-app.include_router(productos_router, dependencies=SESION)
+# el ABM de productos es de administradores, pero el operador necesita listarlos para registrar lotes
+app.include_router(producto_router, dependencies=SESION)
 

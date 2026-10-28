@@ -1,13 +1,11 @@
-// Mismos valores que el enum UnidadMedida del backend (src/insumos/models.py)
-export const UNIDADES_MEDIDA = ['kilogramos', 'gramos', 'litros', 'mililitros', 'unidades'] as const;
-
-export const NOMBRE_PRODUCTO_MAX = 100;
-
+/** Lo que el lote usa del producto; los productos se dan de alta en el ABM de Productos Elaborados */
 export interface Producto {
   id: number;
   nombre: string;
   /** todos los lotes del producto se miden en esta unidad */
-  unidad_medida: string;
+  unidadMedida: string;
+  /** a un producto dado de baja no se le registran lotes, pero sus lotes viejos se siguen consultando */
+  activo: boolean;
 }
 
 /** Insumo del maestro tal como se muestra dentro de un lote */
@@ -47,17 +45,11 @@ export interface LoteProduccion {
 }
 
 export interface LoteForm {
-  /** id del producto elegido, o NUEVO_PRODUCTO si se va a crear uno, o '' si todavía no eligió */
+  /** id del producto elegido, o '' si todavía no eligió */
   producto: string;
-  productoNuevo: string;
-  /** solo se pide para un producto nuevo; uno existente ya tiene la suya */
-  unidadProductoNuevo: string;
   fecha: string;
   cantidad: number | '';
 }
-
-/** Valor del selector que representa "Crear producto nuevo…" */
-export const NUEVO_PRODUCTO = '__nuevo__';
 
 // Fecha de hoy en hora local (toISOString usa UTC y de noche daría la de mañana)
 export const obtenerFechaLocalHoy = (): string => {

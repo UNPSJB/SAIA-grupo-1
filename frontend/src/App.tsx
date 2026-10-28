@@ -63,8 +63,12 @@ import { AsociarInsumos } from './views/produccion/asociarInsumos';
 import { HistorialLotes } from './views/produccion/historialLotes';
 import { DetalleLote } from './views/produccion/detalleLote';
 import type { LoteProduccion } from './views/produccion/tipos';
+import { ListadoProductos } from './views/producto/listado';
+import NuevoProducto  from './views/producto/nuevoProducto';
+import EditarProducto from './views/producto/editarDetalle';
+import { DetalleProducto } from './views/producto/verDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'produccion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'productos' | 'produccion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -77,6 +81,7 @@ type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
+type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -143,6 +148,9 @@ function Aplicacion() {
     setVistaProduccion('insumos');
   };
 
+  const [vistaProductos, setVistaProductos] = useState<VistaProductos>('listado');
+  const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null);
+
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
     setVistaProduccion('historial');
@@ -163,6 +171,7 @@ function Aplicacion() {
     setVistaDocumentos('listado');
     setCertificadoSeleccionado(null);
     setVistaTipoCertificado('listado');
+    setVistaProductos('listado');
   };
 
   const volverAVencimientos = () => {
@@ -618,7 +627,37 @@ function Aplicacion() {
               onCancel={() => setVistaTipoCertificado('listado')}
             />
           ) : null
-        ) : null}
+        ) : modulo === 'productos' ? (
+          vistaProductos === 'listado' ? (
+            <ListadoProductos
+              onNuevoClick={() => setVistaProductos('alta')}
+              onDetalleClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('detalle');
+              }}
+              onEditarClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('editar');
+              }}
+            />
+          ) : vistaProductos === 'alta' ? (
+            <NuevoProducto
+              onSuccess={() => setVistaProductos('listado')}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          ) : vistaProductos === 'detalle' ? (
+            <DetalleProducto
+              productoId={productoSeleccionado}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          ) : (
+            <EditarProducto
+              productoId={productoSeleccionado}
+              onSuccess={() => setVistaProductos('listado')}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          )
+        ): null}
       </SidebarInset>
     </SidebarProvider>
   );

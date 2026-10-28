@@ -136,7 +136,7 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
               <option value="">Todos los productos</option>
               {productos.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nombre}
+                  {p.activo ? p.nombre : `${p.nombre} (dado de baja)`}
                 </option>
               ))}
             </select>
@@ -211,7 +211,7 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
                   <td>{formatearFecha(l.fecha)}</td>
                   <td>{l.producto.nombre}</td>
                   <td>
-                    {l.cantidad} {l.producto.unidad_medida}
+                    {l.cantidad} {l.producto.unidadMedida}
                   </td>
                   <td>{l.nombre_responsable}</td>
                   <td>{l.insumos.length}</td>
