@@ -6,6 +6,8 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Pie,
+  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -15,14 +17,6 @@ import {
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
 import { Badge } from '../../components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card';
 import type { AgrupacionGrafico, GraficoCumplimientoResponse, PuntoCumplimiento } from './tipos';
 import { useColoresTema } from './useColoresTema';
 
@@ -63,6 +57,7 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
   const [hasta, setHasta] = useState<string>(() => formatearFechaInput(hoy));
   const [agrupacion, setAgrupacion] = useState<AgrupacionGrafico>('dia');
   const [tipoGrafico, setTipoGrafico] = useState<'lineas' | 'barras'>('lineas');
+  const [rangoRapido, setRangoRapido] = useState<string>('30');
 
   const [datos, setDatos] = useState<GraficoCumplimientoResponse | null>(null);
   const [cargando, setCargando] = useState<boolean>(true);
@@ -74,6 +69,18 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
     }
     return null;
   }, [desde, hasta]);
+
+  const aplicarRango = (valor: string) => {
+    setRangoRapido(valor);
+    if (valor === 'custom') return;
+    const dias = parseInt(valor, 10);
+    if (!isNaN(dias)) {
+      const fin = new Date();
+      const inicio = restarDias(fin, dias);
+      setDesde(formatearFechaInput(inicio));
+      setHasta(formatearFechaInput(fin));
+    }
+  };
 
   useEffect(() => {
     if (!esAdministrador) return;
@@ -144,12 +151,16 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
     return 'vencido';
   };
 
-  const aplicarRangoRapido = (dias: number) => {
-    const fin = new Date();
-    const inicio = restarDias(fin, dias);
-    setDesde(formatearFechaInput(inicio));
-    setHasta(formatearFechaInput(fin));
-  };
+  const tareasCompletadas = datos?.tareas_completadas || 0;
+  const totalTareas = datos?.total_tareas || 0;
+  const tareasPendientes = Math.max(0, totalTareas - tareasCompletadas);
+
+  const datosDona = totalTareas === 0
+    ? [{ name: 'Sin tareas', value: 1, color: colores.borde }]
+    : [
+        { name: 'Realizadas', value: tareasCompletadas, color: colores.exito },
+        { name: 'Pendientes', value: tareasPendientes, color: colores.alerta },
+      ].filter((d) => d.value > 0);
 
   interface TooltipPayloadItem {
     payload: PuntoCumplimiento;
@@ -170,26 +181,26 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
           style={{
             backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
             border: '1px solid var(--color-borde)',
-            borderRadius: '10px',
-            padding: '12px 14px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            minWidth: '200px',
+            borderRadius: '8px',
+            padding: '8px 12px',
+            boxShadow: 'var(--shadow)',
+            minWidth: '170px',
           }}
         >
-          <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-h)', marginBottom: '6px' }}>
+          <div style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-h)', marginBottom: '4px' }}>
             {data.etiqueta}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--color-texto-sec)' }}>Cumplimiento:</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text)' }}>Cumplimiento:</span>
             <span
               style={{
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: 700,
                 color,
-                backgroundColor: 'var(--color-fondo)',
-                padding: '2px 8px',
-                borderRadius: '6px',
+                backgroundColor: 'var(--code-bg)',
+                padding: '1px 6px',
+                borderRadius: '4px',
                 border: `1px solid ${color}`,
               }}
             >
@@ -197,18 +208,18 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
             </span>
           </div>
 
-          <div style={{ borderTop: '1px solid var(--color-borde)', paddingTop: '6px', fontSize: '11.5px', color: 'var(--color-texto-sec)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '4px', fontSize: '11px', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Tareas realizadas:</span>
-              <strong style={{ color: 'var(--color-texto)' }}>{data.tareas_completadas} / {data.total_tareas}</strong>
+              <span>Realizadas:</span>
+              <strong style={{ color: 'var(--text-h)' }}>{data.tareas_completadas} / {data.total_tareas}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Tareas pendientes:</span>
-              <strong style={{ color: 'var(--color-texto)' }}>{data.tareas_pendientes}</strong>
+              <span>Pendientes:</span>
+              <strong style={{ color: 'var(--text-h)' }}>{data.tareas_pendientes}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Checklists registrados:</span>
-              <strong style={{ color: 'var(--color-texto)' }}>{data.total_checklists}</strong>
+              <span>Checklists:</span>
+              <strong style={{ color: 'var(--text-h)' }}>{data.total_checklists}</strong>
             </div>
           </div>
         </div>
@@ -218,441 +229,195 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
   };
 
   return (
-    <Card className="dashboard-card-full">
-      <CardHeader style={{ paddingBottom: '12px' }}>
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '16px',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--color-primario)"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                <polyline points="16 7 22 7 22 13" />
-              </svg>
-              <CardTitle>Cumplimiento de Limpieza en el Tiempo</CardTitle>
-            </div>
-            <CardDescription>
-              Evolución cronológica del porcentaje de cumplimiento de checklists reales para detectar bajas de desempeño.
-            </CardDescription>
-          </div>
+    <div className="dashboard-card dashboard-card-cumplimiento">
+      <div className="dashboard-card-header">
+        <h2>Cumplimiento de Limpieza</h2>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
-            {onVerMas && (
-              <button
-                type="button"
-                className="dashboard-btn-detalle"
-                onClick={onVerMas}
-              >
-                Ver más &rarr;
-              </button>
-            )}
-            <div
-              style={{
-                display: 'inline-flex',
-                borderRadius: '8px',
-                padding: '3px',
-                backgroundColor: 'var(--color-fondo)',
-                border: '1px solid var(--color-borde)',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setTipoGrafico('lineas')}
-                style={{
-                  padding: '5px 10px',
-                  fontSize: '12px',
-                  fontWeight: tipoGrafico === 'lineas' ? 600 : 500,
-                  backgroundColor: tipoGrafico === 'lineas' ? 'var(--color-superficie)' : 'transparent',
-                  color: tipoGrafico === 'lineas' ? 'var(--text-h)' : 'var(--color-texto-sec)',
-                  borderRadius: '6px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: tipoGrafico === 'lineas' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  transition: 'background-color 0.15s ease',
-                }}
-                title="Gráfico de líneas"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M3 3v18h18" />
-                  <path d="m19 9-5 5-4-4-3 3" />
-                </svg>
-                Líneas
-              </button>
-              <button
-                type="button"
-                onClick={() => setTipoGrafico('barras')}
-                style={{
-                  padding: '5px 10px',
-                  fontSize: '12px',
-                  fontWeight: tipoGrafico === 'barras' ? 600 : 500,
-                  backgroundColor: tipoGrafico === 'barras' ? 'var(--color-superficie)' : 'transparent',
-                  color: tipoGrafico === 'barras' ? 'var(--text-h)' : 'var(--color-texto-sec)',
-                  borderRadius: '6px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: tipoGrafico === 'barras' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  transition: 'background-color 0.15s ease',
-                }}
-                title="Gráfico de barras"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <line x1="18" y1="20" x2="18" y2="10" />
-                  <line x1="12" y1="20" x2="12" y2="4" />
-                  <line x1="6" y1="20" x2="6" y2="14" />
-                </svg>
-                Barras
-              </button>
-            </div>
+        <div className="dashboard-header-controles">
+          <select
+            className="dashboard-select"
+            value={rangoRapido}
+            onChange={(e) => aplicarRango(e.target.value)}
+            title="Seleccionar período de análisis"
+          >
+            <option value="7">Últimos 7 días</option>
+            <option value="14">Últimos 14 días</option>
+            <option value="30">Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+            <option value="custom">Personalizado</option>
+          </select>
 
-            <div
-              style={{
-                display: 'inline-flex',
-                borderRadius: '8px',
-                padding: '3px',
-                backgroundColor: 'var(--color-fondo)',
-                border: '1px solid var(--color-borde)',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setAgrupacion('dia')}
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '12px',
-                  fontWeight: agrupacion === 'dia' ? 600 : 500,
-                  backgroundColor: agrupacion === 'dia' ? 'var(--color-superficie)' : 'transparent',
-                  color: agrupacion === 'dia' ? 'var(--text-h)' : 'var(--color-texto-sec)',
-                  borderRadius: '6px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: agrupacion === 'dia' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                }}
-              >
-                Por Día
-              </button>
-              <button
-                type="button"
-                onClick={() => setAgrupacion('semana')}
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '12px',
-                  fontWeight: agrupacion === 'semana' ? 600 : 500,
-                  backgroundColor: agrupacion === 'semana' ? 'var(--color-superficie)' : 'transparent',
-                  color: agrupacion === 'semana' ? 'var(--text-h)' : 'var(--color-texto-sec)',
-                  borderRadius: '6px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: agrupacion === 'semana' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                }}
-              >
-                Por Semana
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: '12px',
-            marginTop: '16px',
-            padding: '10px 14px',
-            backgroundColor: 'var(--color-fondo)',
-            borderRadius: '10px',
-            border: '1px solid var(--color-borde)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-texto-sec)' }}>Rango:</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <label style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)' }}>Desde</label>
+          {rangoRapido === 'custom' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <input
                 type="date"
+                className="dashboard-select"
                 value={desde}
                 max={hasta || undefined}
                 onChange={(e) => setDesde(e.target.value)}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--color-borde)',
-                  backgroundColor: 'var(--color-superficie)',
-                  color: 'var(--color-texto)',
-                  fontSize: '12px',
-                  outline: 'none',
-                }}
+                title="Fecha desde"
               />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <label style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)' }}>Hasta</label>
+              <span style={{ fontSize: '11px', color: 'var(--text)' }}>-</span>
               <input
                 type="date"
+                className="dashboard-select"
                 value={hasta}
                 min={desde || undefined}
                 onChange={(e) => setHasta(e.target.value)}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--color-borde)',
-                  backgroundColor: 'var(--color-superficie)',
-                  color: 'var(--color-texto)',
-                  fontSize: '12px',
-                  outline: 'none',
-                }}
+                title="Fecha hasta"
               />
             </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+            <button
+              type="button"
+              className={`dashboard-badge dashboard-badge-btn ${tipoGrafico === 'lineas' ? 'dashboard-badge-info' : 'dashboard-badge-al-dia'}`}
+              onClick={() => setTipoGrafico('lineas')}
+              title="Ver en gráfico de líneas"
+            >
+              Líneas
+            </button>
+            <button
+              type="button"
+              className={`dashboard-badge dashboard-badge-btn ${tipoGrafico === 'barras' ? 'dashboard-badge-info' : 'dashboard-badge-al-dia'}`}
+              onClick={() => setTipoGrafico('barras')}
+              title="Ver en gráfico de barras"
+            >
+              Barras
+            </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
-            <span style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>Atajos:</span>
-            {[
-              { label: '7 días', dias: 7 },
-              { label: '14 días', dias: 14 },
-              { label: '30 días', dias: 30 },
-              { label: '90 días', dias: 90 },
-            ].map((btn) => (
-              <button
-                key={btn.dias}
-                type="button"
-                onClick={() => aplicarRangoRapido(btn.dias)}
-                style={{
-                  padding: '3px 8px',
-                  fontSize: '11px',
-                  borderRadius: '4px',
-                  border: '1px solid var(--color-borde)',
-                  backgroundColor: 'var(--color-superficie)',
-                  color: 'var(--color-texto-sec)',
-                  cursor: 'pointer',
-                }}
-              >
-                {btn.label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+            <button
+              type="button"
+              className={`dashboard-badge dashboard-badge-btn ${agrupacion === 'dia' ? 'dashboard-badge-info' : 'dashboard-badge-al-dia'}`}
+              onClick={() => setAgrupacion('dia')}
+              title="Agrupar por día"
+            >
+              Día
+            </button>
+            <button
+              type="button"
+              className={`dashboard-badge dashboard-badge-btn ${agrupacion === 'semana' ? 'dashboard-badge-info' : 'dashboard-badge-al-dia'}`}
+              onClick={() => setAgrupacion('semana')}
+              title="Agrupar por semana"
+            >
+              Semana
+            </button>
           </div>
         </div>
+      </div>
 
-        {errorValidacion && (
-          <div
-            style={{
-              marginTop: '10px',
-              padding: '8px 12px',
-              backgroundColor: 'var(--color-error-bg, rgba(239, 68, 68, 0.1))',
-              color: 'var(--color-error, #dc2626)',
-              borderRadius: '8px',
-              border: '1px solid var(--color-error)',
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <span>{errorValidacion}</span>
-          </div>
-        )}
-      </CardHeader>
+      {errorValidacion && (
+        <div
+          style={{
+            margin: '4px 0',
+            padding: '4px 8px',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            color: '#ef4444',
+            borderRadius: '6px',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            fontSize: '11.5px',
+          }}
+        >
+          {errorValidacion}
+        </div>
+      )}
 
-      <CardContent>
+      <div className="dashboard-card-cuerpo">
         {cargando ? (
-          <div style={{ padding: '60px 16px', textAlign: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--color-primario)"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ animation: 'spin 1s linear infinite', marginBottom: '10px', display: 'inline-block' }}
-              aria-hidden="true"
-            >
-              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-            <div>Calculando porcentaje de cumplimiento histórico...</div>
-          </div>
+          <p className="dashboard-sin-datos">Cargando cumplimiento...</p>
         ) : !hayDatos ? (
-          <div
-            style={{
-              padding: '48px 16px',
-              textAlign: 'center',
-              color: 'var(--color-texto-sec)',
-              backgroundColor: 'var(--color-fondo)',
-              borderRadius: '12px',
-              border: '1px dashed var(--color-borde)',
-              margin: '8px 0',
-            }}
-          >
-            <div style={{ display: 'inline-flex', padding: '12px', borderRadius: '50%', backgroundColor: 'var(--color-superficie)', border: '1px solid var(--color-borde)', marginBottom: '10px' }}>
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--color-texto-sec)"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-                <line x1="10" y1="14" x2="14" y2="18" />
-                <line x1="14" y1="14" x2="10" y2="18" />
-              </svg>
-            </div>
-            <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-h)', marginBottom: '4px' }}>
+          <div className="dashboard-sin-datos" style={{ padding: '2rem 1rem' }}>
+            <strong style={{ display: 'block', fontSize: '13px', color: 'var(--text-h)', marginBottom: '4px' }}>
               Sin registros en el período
             </strong>
-            <p style={{ fontSize: '12.5px', maxWidth: '420px', margin: '0 auto' }}>
-              No se encontraron registros de checklist de limpieza entre el {formatearFechaVisual(desde)} y el {formatearFechaVisual(hasta)}.
-              Prueba seleccionando otro rango de fechas.
-            </p>
+            <span>
+              No se encontraron checklists entre el {formatearFechaVisual(desde)} y el {formatearFechaVisual(hasta)}.
+            </span>
           </div>
         ) : (
-          <div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: '12px',
-                marginBottom: '20px',
-              }}
-            >
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--color-borde)',
-                  backgroundColor: 'var(--color-fondo)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}
-              >
-                <span style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', fontWeight: 500 }}>
-                  Promedio Cumplimiento
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-h)' }}>
-                    {datos?.promedio_cumplimiento}%
-                  </span>
-                  <Badge variant={obtenerBadgeVariante(datos?.promedio_cumplimiento || 0)}>
-                    {(datos?.promedio_cumplimiento || 0) >= 80 ? 'Óptimo' : (datos?.promedio_cumplimiento || 0) >= 50 ? 'Regular' : 'Crítico'}
-                  </Badge>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--color-borde)',
-                  backgroundColor: 'var(--color-fondo)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}
-              >
-                <span style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', fontWeight: 500 }}>
-                  Total Tareas Ejecutadas
-                </span>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                  <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-primario)' }}>
-                    {datos?.tareas_completadas}
-                  </span>
-                  <span style={{ fontSize: '12px', color: 'var(--color-texto-sec)' }}>
-                    / {datos?.total_tareas} programadas
-                  </span>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--color-borde)',
-                  backgroundColor: 'var(--color-fondo)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}
-              >
-                <span style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', fontWeight: 500 }}>
-                  Checklists Evaluados
-                </span>
-                <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-h)' }}>
-                  {datos?.total_checklists} <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--color-texto-sec)' }}>registros</span>
-                </span>
-              </div>
-
-              {menorPeriodo && (
-                <div
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--color-borde)',
-                    backgroundColor: 'var(--color-fondo)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                  }}
-                >
-                  <span style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', fontWeight: 500 }}>
-                    Menor Cumplimiento
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-h)' }}>
-                      {menorPeriodo.etiqueta}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        color: obtenerColorPorcentaje(menorPeriodo.porcentaje),
-                      }}
-                    >
-                      {menorPeriodo.porcentaje}%
-                    </span>
+          <div className="dashboard-cumplimiento-cuerpo">
+            <div className="dashboard-cumplimiento-resumen-bloque">
+              <div className="dashboard-cumplimiento-dona-box">
+                <div className="dashboard-cumplimiento-dona-wrapper">
+                  <ResponsiveContainer width={115} height={115}>
+                    <PieChart>
+                      <Pie
+                        data={datosDona}
+                        dataKey="value"
+                        innerRadius={32}
+                        outerRadius={47}
+                        paddingAngle={datosDona.length > 1 ? 2 : 0}
+                        stroke="none"
+                      >
+                        {datosDona.map((entry, index) => (
+                          <Cell key={`dona-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-superficie-elevada)',
+                          borderColor: 'var(--color-borde)',
+                          color: 'var(--color-texto)',
+                          fontSize: '11px',
+                          padding: '4px 8px',
+                        }}
+                        itemStyle={{ color: 'var(--color-texto)' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="dashboard-cumplimiento-dona-centro">
+                    {datos ? `${datos.promedio_cumplimiento}%` : '0%'}
                   </div>
                 </div>
-              )}
+
+                <Badge variant={obtenerBadgeVariante(datos?.promedio_cumplimiento || 0)}>
+                  {(datos?.promedio_cumplimiento || 0) >= 80 ? 'Óptimo' : (datos?.promedio_cumplimiento || 0) >= 50 ? 'Regular' : 'Crítico'}
+                </Badge>
+              </div>
+
+              <div className="dashboard-cumplimiento-metricas-box">
+                <div className="dashboard-cumplimiento-metrica-item">
+                  <span>
+                    <i className="dashboard-cumplimiento-metrica-punto" style={{ backgroundColor: colores.exito }} />
+                    Realizadas
+                  </span>
+                  <strong style={{ color: colores.exito }}>{tareasCompletadas}</strong>
+                </div>
+                <div className="dashboard-cumplimiento-metrica-item">
+                  <span>
+                    <i className="dashboard-cumplimiento-metrica-punto" style={{ backgroundColor: colores.alerta }} />
+                    Pendientes
+                  </span>
+                  <strong style={{ color: tareasPendientes > 0 ? colores.alerta : 'inherit' }}>
+                    {tareasPendientes}
+                  </strong>
+                </div>
+                <div className="dashboard-cumplimiento-metrica-item">
+                  <span>Total programadas</span>
+                  <strong>{totalTareas}</strong>
+                </div>
+                <div className="dashboard-cumplimiento-metrica-item">
+                  <span>Checklists</span>
+                  <strong>{datos?.total_checklists || 0}</strong>
+                </div>
+                {menorPeriodo && (
+                  <div className="dashboard-cumplimiento-metrica-item" style={{ borderTop: '1px solid var(--border)', paddingTop: '4px', marginTop: '2px' }}>
+                    <span>Mínimo</span>
+                    <strong style={{ color: obtenerColorPorcentaje(menorPeriodo.porcentaje) }}>
+                      {menorPeriodo.porcentaje}%
+                    </strong>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div style={{ width: '100%', height: 320 }}>
+            <div className="dashboard-cumplimiento-grafico-box">
               <ResponsiveContainer width="100%" height="100%">
                 {tipoGrafico === 'lineas' ? (
-                  <AreaChart data={puntos} margin={{ top: 16, right: 16, left: 6, bottom: 25 }}>
+                  <AreaChart data={puntos} margin={{ top: 10, right: 14, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorCumplimiento" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
@@ -670,20 +435,20 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                         return val;
                       }}
                       stroke={colores.textoSec}
-                      fontSize={11.5}
+                      fontSize={11}
                       tickLine={false}
                       interval={puntos.length > 14 ? 'preserveStartEnd' : 0}
                       angle={puntos.length > 8 ? -25 : 0}
                       textAnchor={puntos.length > 8 ? 'end' : 'middle'}
-                      height={puntos.length > 8 ? 40 : 25}
+                      height={puntos.length > 8 ? 28 : 20}
                     />
                     <YAxis
                       domain={[0, 100]}
-                      ticks={[0, 20, 40, 60, 80, 100]}
+                      ticks={[0, 25, 50, 75, 100]}
                       stroke={colores.textoSec}
-                      fontSize={11.5}
+                      fontSize={11}
                       tickLine={false}
-                      width={42}
+                      width={38}
                       unit="%"
                     />
                     <Tooltip content={<CustomTooltip />} />
@@ -695,7 +460,7 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                         value: 'Meta: 80%',
                         position: 'top',
                         fill: colores.exito,
-                        fontSize: 10.5,
+                        fontSize: 10,
                         fontWeight: 600,
                       }}
                     />
@@ -703,15 +468,15 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                       type="monotone"
                       dataKey="porcentaje"
                       stroke={colores.primario}
-                      strokeWidth={2.5}
+                      strokeWidth={2}
                       fillOpacity={1}
                       fill="url(#colorCumplimiento)"
-                      dot={{ r: 4, fill: colores.primario, strokeWidth: 2, stroke: 'var(--color-superficie)' }}
-                      activeDot={{ r: 6, stroke: colores.primario, strokeWidth: 2, fill: 'var(--color-superficie)' }}
+                      dot={{ r: 3.5, fill: colores.primario, strokeWidth: 1.5, stroke: 'var(--bg)' }}
+                      activeDot={{ r: 5, stroke: colores.primario, strokeWidth: 2, fill: 'var(--bg)' }}
                     />
                   </AreaChart>
                 ) : (
-                  <BarChart data={puntos} margin={{ top: 16, right: 16, left: 6, bottom: 25 }}>
+                  <BarChart data={puntos} margin={{ top: 10, right: 14, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                     <XAxis
                       dataKey="etiqueta"
@@ -723,20 +488,20 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                         return val;
                       }}
                       stroke={colores.textoSec}
-                      fontSize={11.5}
+                      fontSize={11}
                       tickLine={false}
                       interval={puntos.length > 14 ? 'preserveStartEnd' : 0}
                       angle={puntos.length > 8 ? -25 : 0}
                       textAnchor={puntos.length > 8 ? 'end' : 'middle'}
-                      height={puntos.length > 8 ? 40 : 25}
+                      height={puntos.length > 8 ? 28 : 20}
                     />
                     <YAxis
                       domain={[0, 100]}
-                      ticks={[0, 20, 40, 60, 80, 100]}
+                      ticks={[0, 25, 50, 75, 100]}
                       stroke={colores.textoSec}
-                      fontSize={11.5}
+                      fontSize={11}
                       tickLine={false}
-                      width={42}
+                      width={38}
                       unit="%"
                     />
                     <Tooltip content={<CustomTooltip />} />
@@ -748,11 +513,11 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                         value: 'Meta: 80%',
                         position: 'top',
                         fill: colores.exito,
-                        fontSize: 10.5,
+                        fontSize: 10,
                         fontWeight: 600,
                       }}
                     />
-                    <Bar dataKey="porcentaje" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="porcentaje" radius={[4, 4, 0, 0]}>
                       {puntos.map((entry, index) => (
                         <Cell key={`bar-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
                       ))}
@@ -761,52 +526,42 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                 )}
               </ResponsiveContainer>
             </div>
-
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '20px',
-                marginTop: '14px',
-                paddingTop: '12px',
-                borderTop: '1px solid var(--color-borde)',
-                fontSize: '12px',
-                color: 'var(--color-texto-sec)',
-              }}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: colores.exito, display: 'inline-block' }} />
-                Óptimo (≥ 80%)
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: colores.alerta, display: 'inline-block' }} />
-                Atención (50% - 79%)
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: colores.error, display: 'inline-block' }} />
-                Crítico (&lt; 50%)
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontStyle: 'italic' }}>
-                <span style={{ width: '16px', height: '2px', backgroundColor: colores.exito, borderBottom: '2px dashed', display: 'inline-block' }} />
-                Meta de cumplimiento: 80%
-              </span>
-            </div>
           </div>
         )}
-      </CardContent>
-      {onVerMas && (
-        <CardFooter style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 20px', borderTop: '1px solid var(--color-borde)' }}>
-          <button
-            type="button"
-            className="dashboard-btn-detalle"
-            onClick={onVerMas}
-          >
-            Ver vista detallada de cumplimiento &rarr;
-          </button>
-        </CardFooter>
-      )}
-    </Card>
+      </div>
+
+      <div className="dashboard-card-footer">
+        <div className="dashboard-cumplimiento-footer">
+          <div className="dashboard-cumplimiento-leyenda">
+            <span className="dashboard-cumplimiento-leyenda-item">
+              <i className="dashboard-cumplimiento-leyenda-punto" style={{ backgroundColor: colores.exito }} />
+              Óptimo (≥ 80%)
+            </span>
+            <span className="dashboard-cumplimiento-leyenda-item">
+              <i className="dashboard-cumplimiento-leyenda-punto" style={{ backgroundColor: colores.alerta }} />
+              Atención (50% - 79%)
+            </span>
+            <span className="dashboard-cumplimiento-leyenda-item">
+              <i className="dashboard-cumplimiento-leyenda-punto" style={{ backgroundColor: colores.error }} />
+              Crítico (&lt; 50%)
+            </span>
+            <span className="dashboard-cumplimiento-leyenda-item" style={{ fontStyle: 'italic' }}>
+              <i className="dashboard-cumplimiento-leyenda-linea" style={{ borderColor: colores.exito }} />
+              Meta: 80%
+            </span>
+          </div>
+
+          {onVerMas && (
+            <button
+              type="button"
+              className="dashboard-btn-detalle"
+              onClick={onVerMas}
+            >
+              Ver más &rarr;
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };

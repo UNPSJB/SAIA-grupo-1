@@ -4,8 +4,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,7 +11,6 @@ import {
 } from 'recharts';
 import type {
   ConsumoInsumo,
-  CumplimientoResumen,
   IncidentesMetricasDashboard,
   PanelDashboardProps,
   Periodo,
@@ -47,9 +44,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
   const colores = useColoresTema();
   const [vistaDetalle, setVistaDetalle] = useState<TipoDetalleEstadisticas | null>(null);
 
-  const [periodoCumplimiento, setPeriodoCumplimiento] = useState<Periodo>('semana');
-  const [cumplimiento, setCumplimiento] = useState<CumplimientoResumen | null>(null);
-  const [loadingCumplimiento, setLoadingCumplimiento] = useState(true);
 
   const [periodoInsumos, setPeriodoInsumos] = useState<Periodo>('semana');
   const [unidadInsumos, setUnidadInsumos] = useState<string>('L');
@@ -68,26 +62,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
   const [metricasIncidentes, setMetricasIncidentes] = useState<IncidentesMetricasDashboard | null>(null);
   const [loadingIncidentes, setLoadingIncidentes] = useState(true);
 
-  useEffect(() => {
-    let cancelado = false;
-    const cargarCumplimiento = async () => {
-      setLoadingCumplimiento(true);
-      try {
-        const res = await apiFetch(`/dashboard/cumplimiento?periodo=${periodoCumplimiento}`);
-        if (!cancelado && res.ok) {
-          setCumplimiento(await res.json());
-        }
-      } catch (e) {
-        console.error('Error al cargar cumplimiento del dashboard:', e);
-      } finally {
-        if (!cancelado) setLoadingCumplimiento(false);
-      }
-    };
-    cargarCumplimiento();
-    return () => {
-      cancelado = true;
-    };
-  }, [periodoCumplimiento]);
 
   useEffect(() => {
     let cancelado = false;
@@ -218,18 +192,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
       .map((u) => ({ id: u, label: u })),
   ];
 
-  const totalTareas =
-    (cumplimiento?.hechas || 0) +
-    (cumplimiento?.pendientes || 0) +
-    (cumplimiento?.vencidas || 0);
-
-  const datosDonaTareas = [
-    { name: 'Hechas', value: cumplimiento?.hechas || 0, color: colores.exito },
-    { name: 'Pendientes', value: cumplimiento?.pendientes || 0, color: colores.alerta },
-    { name: 'Vencidas', value: cumplimiento?.vencidas || 0, color: colores.error },
-  ];
-
-  const datosFiltradosTareas = datosDonaTareas.filter((d) => d.value > 0);
 
   const incCriticos = metricasIncidentes?.por_antiguedad?.mas_72h || 0;
   const incEnAtencion = metricasIncidentes?.por_antiguedad?.entre_24h_y_72h || 0;
@@ -409,99 +371,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
                 if (onNavegar) onNavegar('vencimientos', 'consolidado');
                 else setVistaDetalle('vencimientos');
               }}
-            >
-              Ver más &rarr;
-            </button>
-          </div>
-        </div>
-
-        <div className="dashboard-card">
-          <div className="dashboard-card-header">
-            <h2>Cumplimiento de Tareas</h2>
-            <select
-              className="dashboard-select"
-              value={periodoCumplimiento}
-              onChange={(e) => setPeriodoCumplimiento(e.target.value as Periodo)}
-              title="Seleccionar período de cumplimiento"
-            >
-              <option value="dia">Diario</option>
-              <option value="semana">Semanal</option>
-              <option value="mes">Mensual</option>
-            </select>
-          </div>
-
-          <div className="dashboard-card-cuerpo">
-            {loadingCumplimiento ? (
-              <p className="dashboard-sin-datos">Cargando cumplimiento...</p>
-            ) : (
-              <div className="dashboard-dona-fila">
-                <div className="dashboard-dona-bloque">
-                  <div className="dashboard-dona-wrapper">
-                    <ResponsiveContainer width={120} height={120}>
-                      <PieChart>
-                        {totalTareas === 0 ? (
-                          <Pie
-                            data={[{ name: 'Sin tareas', value: 1 }]}
-                            dataKey="value"
-                            innerRadius={33}
-                            outerRadius={48}
-                            stroke="none"
-                          >
-                            <Cell fill={colores.borde} />
-                          </Pie>
-                        ) : (
-                          <Pie
-                            data={datosFiltradosTareas}
-                            dataKey="value"
-                            innerRadius={33}
-                            outerRadius={48}
-                            paddingAngle={datosFiltradosTareas.length > 1 ? 2 : 0}
-                            stroke="none"
-                          >
-                            {datosFiltradosTareas.map((entry, index) => (
-                              <Cell key={`tarea-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        )}
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-superficie-elevada)',
-                            borderColor: 'var(--color-borde)',
-                            color: 'var(--color-texto)',
-                          }}
-                          itemStyle={{ color: 'var(--color-texto)' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="dashboard-dona-centro">
-                      {cumplimiento ? `${cumplimiento.porcentaje}%` : '0%'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="dashboard-dona-leyenda">
-                  <span className="dashboard-dona-leyenda-item">
-                    <i style={{ backgroundColor: colores.exito }} /> Hechas
-                    <strong>{cumplimiento?.hechas || 0}</strong>
-                  </span>
-                  <span className="dashboard-dona-leyenda-item">
-                    <i style={{ backgroundColor: colores.alerta }} /> Pendientes
-                    <strong>{cumplimiento?.pendientes || 0}</strong>
-                  </span>
-                  <span className="dashboard-dona-leyenda-item">
-                    <i style={{ backgroundColor: colores.error }} /> Vencidas
-                    <strong>{cumplimiento?.vencidas || 0}</strong>
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="dashboard-card-footer">
-            <button
-              type="button"
-              className="dashboard-btn-detalle"
-              onClick={() => setVistaDetalle('tareas')}
             >
               Ver más &rarr;
             </button>
@@ -819,7 +688,9 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
         </div>
       </div>
 
-      <GraficoCumplimientoLimpieza onVerMas={() => setVistaDetalle('tareas')} />
+      <div className="dashboard-fila-3">
+        <GraficoCumplimientoLimpieza onVerMas={() => setVistaDetalle('tareas')} />
+      </div>
     </div>
   );
 };
