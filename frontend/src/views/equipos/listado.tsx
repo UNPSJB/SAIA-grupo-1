@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoEquiposProps {
     onNuevoClick?: () => void;
@@ -18,6 +21,9 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
 }) => {
     const [equipos, setEquipos] = useState<EquipoConId[]>([]);
     const [loading, setLoading] = useState(true);
+    const [exportando, setExportando] = useState(false);
+    const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
     const [busqueda, setBusqueda] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('TODOS');
     const [filtroCategoria, setFiltroCategoria] = useState('TODOS');
@@ -104,6 +110,35 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
         return matchBusqueda && matchEstado && matchCat;
     });
 
+    const ejecutarExportacion = async () => {
+        try {
+            setExportando(true);
+            const params = new URLSearchParams();
+
+            if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+            if (filtroCategoria !== 'TODOS') params.append('categoria', filtroCategoria);
+            if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
+
+            const queryString = params.toString();
+            const url = `/equipos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+            await descargarCSV(url, 'equipos.csv');
+            setDialogExportarAbierto(false);
+        } catch (err) {
+            setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar los equipos a CSV.');
+        } finally {
+            setExportando(false);
+        }
+    };
+
+    const obtenerResumenFiltros = () => {
+        const partes: string[] = [];
+        if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+        if (filtroCategoria !== 'TODOS') partes.push(`Categoría: ${filtroCategoria}`);
+        if (filtroEstado !== 'TODOS') partes.push(`Estado: ${filtroEstado}`);
+        return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+    };
+
     const {
         itemsPaginados: equiposPaginados,
         paginaActual,
@@ -124,11 +159,22 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                     <div className="subtitulo">01 · Listado</div>
                 </div>
 
-                {onNuevoClick && (
-                    <button onClick={onNuevoClick} className="btn-guardar">
-                        + Registrar Equipo
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                        type="button"
+                        onClick={() => setDialogExportarAbierto(true)}
+                        className="btn-cancelar"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                        <CsvIcon /> Exportar CSV
                     </button>
-                )}
+
+                    {onNuevoClick && (
+                        <button onClick={onNuevoClick} className="btn-guardar">
+                            + Registrar Equipo
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="filtros-top-bar">
@@ -243,6 +289,15 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                 onCambiarPagina={setPaginaActual}
                 onCambiarFilasPorPagina={setFilasPorPagina}
                 etiqueta="equipos"
+            />
+
+            <ConfirmExportDialog
+                open={dialogExportarAbierto}
+                totalRegistros={equiposFiltrados.length}
+                filtrosAplicados={obtenerResumenFiltros()}
+                loading={exportando}
+                onConfirm={ejecutarExportacion}
+                onCancel={() => setDialogExportarAbierto(false)}
             />
 
             <ConfirmAlertDialog
