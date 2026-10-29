@@ -1,18 +1,18 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional 
+from src.tipoCertificado.models import TipoCertificado
 
 if TYPE_CHECKING:
     from src.personal.models import Personal
-    
+
 class Certificado(ModeloBase):
     __tablename__ = "certificados"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    id_tipo : Mapped[int] = mapped_column(Integer, ForeignKey("tipos_certificados.id"), nullable=False)
+    id_tipo: Mapped[int] = mapped_column(Integer, ForeignKey("tipos_certificados.id"), nullable=False)
     fechaVencimiento: Mapped[datetime] = mapped_column(DateTime, index=True, nullable=False)
 
     foto_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
