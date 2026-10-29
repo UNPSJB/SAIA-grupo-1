@@ -60,6 +60,7 @@ import { ListadoTiposCertificados } from './views/tipoCertificado/listado';
 import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertificado';
 import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
+import { AcercaDeNosotros } from './views/vistaPublica/AcercaDeNosotros';
 
 type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
@@ -637,12 +638,7 @@ function LayoutVistaPublica() {
           </div>
         )}
 
-        {moduloPublico === 'nosotros' && (
-          <div className="modulo-container" style={{ background: '#fff', padding: '24px', borderRadius: '12px' }}>
-            <h1>Acerca de nosotros</h1>
-            <p>Somos un equipo dedicado a la higiene y la inocuidad en la producción de alimentos.</p>
-          </div>
-        )}
+        {moduloPublico === 'nosotros' && <AcercaDeNosotros/>}
       </main>
     </div>
   );

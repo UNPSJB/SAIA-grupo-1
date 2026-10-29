@@ -13,3 +13,4 @@ class IndentificadorUnico(ModeloBase):
     estado:Mapped[bool]=mapped_column(index=True)
     urldelQR:Mapped[str]
     ver_grafico : Mapped[bool]=mapped_column(index=True)
+    verAcercaDeNosotros: Mapped[bool]=mapped_column(index=True)

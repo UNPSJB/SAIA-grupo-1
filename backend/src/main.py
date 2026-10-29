@@ -35,6 +35,7 @@ from .insumos_quimicos.router import router as insumos_quimicos_router
 from src.documentos.router import router as documentos_router
 from src.qrCode.router import router as qrCode_router
 from src.indentificadorDeQR.router import router as IdentificadorQR
+from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 
 
 ENV = settings.ENV.upper()
@@ -103,3 +104,4 @@ app.include_router(calibracion_realizada_router)
 app.include_router(documentos_router, dependencies=SESION)
 app.include_router(qrCode_router)
 app.include_router(IdentificadorQR)
+app.include_router(AcercaDeNostrosRouter)

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 import { useVistaPublica } from './contextDeVistaPublica';
+import type { AcercaDeNosotrosConId } from './tipos';
 
 interface VistaHabilitadaProps{
     qrUrl: string | null;
@@ -10,6 +11,10 @@ interface VistaHabilitadaProps{
     onCancel?: () => void;
 }
 
+const ACERCADENOSOTROS_INICIAL: AcercaDeNosotrosConId = {
+    id: 0,
+    descripcion: ""
+};
 
 export default function VistaPublica_Habilitada({qrUrl,identificadorUnico,onSuccess,onCancel}:VistaHabilitadaProps){
     const [loading,setLoading]=useState(false);
@@ -17,6 +22,96 @@ export default function VistaPublica_Habilitada({qrUrl,identificadorUnico,onSucc
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const { config, actualizarConfig } = useVistaPublica();
 
+    const [formNosotros, setFormNosotros] = useState<AcercaDeNosotrosConId>(ACERCADENOSOTROS_INICIAL);
+    const [editando, setEditando] = useState(false);
+    const handleDescripcionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        handleChange(e);
+        const target = e.target;
+        target.style.height = "auto";
+        target.style.height = `${target.scrollHeight}px`;
+};
+
+    useEffect(() => {
+        async function cargarAcercaDeNosotros() {
+            try {
+                const res = await apiFetch(`/acercaDeNosotros/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const registro = Array.isArray(data) ? data[0] : data;
+                    if (registro) {
+                        setFormNosotros({
+                            id: registro.id,
+                            descripcion: registro.descripcion || ""
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Error al cargar la descripción de nosotros:", err);
+            }
+        }
+        cargarAcercaDeNosotros();
+    }, []);
+
+function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
+    setFormNosotros({...formNosotros, [e.target.name]: e.target.value})
+
+}
+
+async function handleGuardarEdicion() {
+        setErrorMsg(null);
+        setSuccessMsg(null);
+
+        function soloLetrasYNumeros(nombre: string): boolean {
+            const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s-]+$/;
+            return patron.test(nombre);
+        }
+
+        if (!formNosotros.descripcion.trim()) {
+            setErrorMsg("La descripción no puede estar vacía.");
+            return;
+        }
+
+        if (!soloLetrasYNumeros(formNosotros.descripcion.trim())) {
+            setErrorMsg("La descripción solo puede contener letras, números, espacios y guiones.");
+            return;
+        }
+
+        if (!formNosotros.id || formNosotros.id === 0) {
+            setErrorMsg("No se encontró el ID del registro para actualizar.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await apiFetch(`/acercaDeNosotros/${formNosotros.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ descripcion: formNosotros.descripcion }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                let mensaje = "Error al actualizar la descripción.";
+                if (typeof errorData.detail === "string") {
+                    mensaje = errorData.detail;
+                } else if (Array.isArray(errorData.detail)) {
+                    mensaje = errorData.detail
+                        .map((err: { msg?: string }) => err.msg || JSON.stringify(err))
+                        .join(", ");
+                }
+                throw new Error(mensaje);
+            }
+
+            setSuccessMsg("Descripción actualizada exitosamente.");
+            setEditando(false);
+        } catch (err: unknown) {
+            setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
+        } finally {
+            setLoading(false);
+        }
+    }
 function handleDescargarQR() {
         if (!qrUrl) return;
 
@@ -81,6 +176,22 @@ async function handleDesactivar(){
         console.error("Error al actualizar el estado del gráfico:", err);
     }
 }
+
+async function handleToggleAcercaDeNosotros(nuevoValor: boolean) {
+    actualizarConfig('verAcercaDeNosotros',nuevoValor); // Lo cambia visualmente en tu PC al instante
+
+    try {
+        await apiFetch(`/identificadorQR/${identificadorUnico}/ver-acercaDeNosotros`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ verAcercaDeNosotros: nuevoValor }),
+        });
+    } catch (err) {
+        console.error("Error al actualizar el estado del gráfico:", err);
+    }
+}
 function handleCancelar() {
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -108,21 +219,70 @@ return(
 
 
        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: 'fit-content' }}>
-    <input 
+            <input 
         type="checkbox" 
         className="switch-input"
         checked={config.verGrafico} 
         // ✅ Pasamos correctamente el valor booleano del evento al hacer cambios
         onChange={(e) => handleToggleGrafico(e.target.checked)} 
     />
-    <span 
-        style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} 
+        <span 
+         style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} 
         // ✅ Hacemos que el texto también dispare la función que actualiza el backend
-        onClick={() => handleToggleGrafico(!config.verGrafico)}
-    >
-        Mostrar Gráfico de Tareas
-    </span>
-</div>
+            onClick={() => handleToggleGrafico(!config.verGrafico)}
+            >
+                Mostrar Gráfico de Tareas
+            </span>
+        </div>
+
+        <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label htmlFor="descripcion" style={{ color: '#fff', fontSize: '13px' }}>Descripción</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: 'fit-content' }}>
+                            <input 
+                                type="checkbox" 
+                                className="switch-input"
+                                checked={config.verAcercaDeNosotros} 
+                                onChange={(e) => handleToggleAcercaDeNosotros(e.target.checked)}
+                                />
+                            <span style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => handleToggleGrafico(!config.verGrafico)}>
+                                Mostrar
+                                </span>
+                        </div>
+                        <button 
+                            type="button" 
+                            onClick={() => setEditando(!editando)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '2px 5px' }}
+                            title="Editar descripción"
+                        >
+                            ✏️
+                        </button>
+                    </div>
+
+                    <textarea
+                        className="descripcion"
+                        id="descripcion"
+                        name="descripcion"
+                        rows={4}
+                        placeholder="Introduce la descripción"
+                        value={formNosotros.descripcion}
+                        onChange={handleDescripcionChange}
+                        
+                        required
+                    />
+
+                    {editando && (
+                        <button 
+                            type="button" 
+                            className="btn-guardar" 
+                            onClick={handleGuardarEdicion}
+                            disabled={loading}
+                            style={{ marginTop: '5px', alignSelf: 'flex-end' }}
+                        >
+                            {loading ? "Guardando..." : "Guardar Descripción 💾"}
+                        </button>
+                    )}
+                </div>
 
 
                 <div className="qr-preview-container" style={{ textAlign: 'center', padding: '5px', borderRadius: '8px' }}>

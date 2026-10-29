@@ -30,6 +30,7 @@ export const Panel_Publico: React.FC = () => {
   const [verificando, setVerificando] = useState(true);
   const [qrValido, setQrValido] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [acercaDeNosotrosTexto, setAcercaDeNosotrosTexto] = useState<string>("");
   //const [identQR,setIdentQR] = useState<IdentificadorUnico | null>(null);
 
   useEffect(() => {
@@ -66,6 +67,10 @@ export const Panel_Publico: React.FC = () => {
           setConfig(prev => ({ ...prev, verGrafico: data.ver_grafico }));
         }
 
+        if(typeof data.verAcercaDeNosotros === 'boolean'){
+          setConfig(prev => ({...prev, verAcercaDeNosotros:data.verAcercaDeNosotros}))
+        }
+
         setQrValido(true);
       } catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
@@ -83,6 +88,24 @@ export const Panel_Publico: React.FC = () => {
       setErrorMsg('No se encontró ningún identificador en el enlace.');
     }
   }, [identificadorId]);
+
+  useEffect(() => {
+    async function cargarAcercaDeNosotros() {
+      try {
+        const res = await apiFetch(`/acercaDeNosotros/`);
+        if (res.ok) {
+          const data = await res.json();
+          // Como el backend devuelve el primer objeto gracias al .first()
+          if (data && data.descripcion) {
+            setAcercaDeNosotrosTexto(data.descripcion);
+          }
+        }
+      } catch (err) {
+        console.error("Error al cargar acerca de nosotros en la vista pública:", err);
+      }
+    }
+    cargarAcercaDeNosotros();
+  }, []);
 
   // Datos estáticos para el cumplimiento de tareas (sin carga pendiente)
   const loadingCumplimiento = false;
@@ -203,7 +226,14 @@ export const Panel_Publico: React.FC = () => {
           </div>
         )}
       </div>
-
+    {config.verAcercaDeNosotros &&(
+      <footer style={{ marginTop: '40px', borderTop: '1px solid #e2e8f0', paddingTop: '20px', paddingBottom: '20px', textAlign: 'center' }}>
+        <h3 style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--color-texto, #333)' }}>Acerca de Nosotros</h3>
+        <p style={{ fontSize: '14px', color: '#64748b', maxWidth: '800px', margin: '0 auto', padding: '0 15px' }}>
+          {acercaDeNosotrosTexto || "Información institucional no disponible por el momento."}
+        </p>
+      </footer>
+      )}
     </div>
   );
 };

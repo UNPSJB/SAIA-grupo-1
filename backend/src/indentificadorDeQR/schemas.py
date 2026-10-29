@@ -9,6 +9,7 @@ class IdentificadorQRBase(BaseModel):
     estado:bool
     urldelQR:str
     ver_grafico:bool
+    verAcercaDeNosotros:bool
 
 
 
@@ -18,11 +19,13 @@ class IdentificadorQRCreate(IdentificadorQRBase):
     estado:Optional[bool]=None
     urldelQR:Optional[str]=None
     ver_grafico:Optional[bool]= True
+    verAcercaDeNosotros:Optional[bool]=True
 
 
 class IdentifacadorQRUpdate(BaseModel):
     estado: Optional[bool] = None
     ver_grafico: Optional[bool] = None
+    verAcercaDeNosotros:Optional[bool]=None
     urldelQR: Optional[str] = None
 
 

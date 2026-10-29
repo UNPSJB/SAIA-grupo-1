@@ -30,9 +30,9 @@ async def editar_identificadorQR(identificador_id: str, db: Session = Depends(ge
     return services.editar_identificadorQr(db, identificador_id)
 
 @router.put("/{identificador_id}/ver-grafico", response_model=schemas.IdentificadorQR)
-async def actualizar_estado_grafico(
-    identificador_id: str, 
-    ident_update: schemas.IdentifacadorQRUpdate, 
-    db: Session = Depends(get_db)
-):
+async def actualizar_estado_grafico(identificador_id: str, ident_update: schemas.IdentifacadorQRUpdate, db: Session = Depends(get_db)):
     return services.actualizar_ver_grafico(db, identificador_id, ident_update)
+
+@router.put("/{identificador_id}/ver-acercaDeNosotros", response_model=schemas.IdentificadorQR)
+async def actualizar_estado_acercaDeNosotros(identificador_id: str, ident_update: schemas.IdentifacadorQRUpdate, db: Session = Depends(get_db)):
+    return services.actualizar_ver_acercaDeNosotros(db, identificador_id, ident_update)

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, type ReactNode } from 'reac
 
 interface VistaPublicaConfig{
     verGrafico: boolean;
+    verAcercaDeNosotros:boolean
 
     // ACA AGREGAMOS LOS DEMAS SWITCHS POR SI QUEREMOS MOSTRAR ALGO MAS EN LA VISTA PUBLICA
 
@@ -26,7 +27,8 @@ const VistaPublicaContext = createContext<VistaPublicaContextType | undefined>(u
 
 export const VistaPublicaProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [config, setConfig] = useState<VistaPublicaConfig>({
-        verGrafico: true
+        verGrafico: true,
+        verAcercaDeNosotros:true,
 
         //TODO LO QUE AGREGUEMOS EN EL VISTAPUBILICACONFIG VA ACA TAMBIEN INICIALIZADO EN TRU O FALSE DEPENDIENDO DE CADA UNO
     });

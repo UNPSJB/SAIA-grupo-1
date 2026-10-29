@@ -9,8 +9,22 @@ export interface ActivarVistaPublica{
     color_back:string
     texto:string
     ver_grafico:boolean
+    verAcercaDeNosotros:boolean
 }
 
+export interface AcercaDeNosotros{
+    id:number
+    descripcion:string
+}
+
+export interface AcercaDeNosotrosConId extends AcercaDeNosotros{
+    id:number
+}
+
+export interface AcercaDeNosotrosForm{
+    descripcion:string |"";
+
+}
 /*
 export interface IdentificadorUnico{
     id_alfanumerico:string
