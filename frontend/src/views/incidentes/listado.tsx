@@ -7,8 +7,11 @@ import {
   formatearFecha,
 } from './tipos';
 import { DetalleIncidenteModal } from './detalleModal';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 import '../../styles/formularioAlta.css';
 import '../../styles/incidentes.css';
 
@@ -86,7 +89,10 @@ export interface ListadoIncidentesProps {
 export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbiertos, onRegistrarClick }) => {
   const [incidentes, setIncidentes] = useState<Incidente[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoGrupo>('TODOS');
   const [incidenteSeleccionado, setIncidenteSeleccionado] = useState<Incidente | null>(null);
@@ -163,6 +169,33 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
     return coincideBusqueda && coincideEstado;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroEstado !== 'TODOS') params.append('estado_grupo', filtroEstado);
+
+      const queryString = params.toString();
+      const url = `/incidentes/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'historial_incidentes.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al exportar el historial de incidentes a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroEstado !== 'TODOS') partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: incidentesPaginados,
     paginaActual,
@@ -189,11 +222,22 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
           <div className="subtitulo">01 · Supervisión y gestión de incidentes reportados en planta</div>
         </div>
 
-        {onRegistrarClick && (
-          <button type="button" onClick={onRegistrarClick} className="btn-guardar">
-            + Registrar Incidente
+        <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto'}}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onRegistrarClick && (
+            <button type="button" onClick={onRegistrarClick} className="btn-guardar">
+              + Registrar Incidente
+            </button>
+          )}
+        </div>
       </div>
 
       {onVerAbiertos && (
@@ -425,6 +469,15 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="incidentes"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={incidentesFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       {incidenteSeleccionado && (
