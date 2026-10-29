@@ -328,7 +328,5 @@ sketch
 
 seed_db.py
 
-# Archivos que se suben desde la app (certificados de calibracion)
-backend/uploads/
 
 # End of https://www.toptal.com/developers/gitignore/api/react,node,python

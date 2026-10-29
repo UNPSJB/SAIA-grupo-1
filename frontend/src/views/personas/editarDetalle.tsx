@@ -78,7 +78,6 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strVal)) error = "Correo inválido.";
         break;
       case "contrasenia":
-        // opcional: vacío = no se cambia la contraseña actual
         if (value && String(value).length < 8) error = "Mínimo 8 caracteres.";
         else if (value && String(value).length > 72) error = "Máximo 72 caracteres.";
         break;
@@ -126,7 +125,6 @@ export const EditarPersona: React.FC<EditarPersonaProps> = ({
         documento: parseInt(String(formData.documento), 10),
         email: formData.email?.trim(),
         capacidad: formData.capacidad,
-        // solo se manda si se escribió una nueva: si no, el servidor deja la actual
         ...(contrasenia ? { contrasenia } : {}),
       };
 

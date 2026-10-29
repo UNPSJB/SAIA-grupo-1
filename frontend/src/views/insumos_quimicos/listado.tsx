@@ -5,14 +5,22 @@ import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
+import { useAuth } from '../../auth/useAuth';
 
 interface Props {
   onNuevo: () => void;
   onEditar: (insumo: InsumoQuimico) => void;
   onVerDetalle: (insumo: InsumoQuimico) => void;
+  onVerConsumoHistorico?: (insumo?: InsumoQuimico) => void;
 }
 
-export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onVerDetalle }) => {
+export const ListadoInsumosQuimicos: React.FC<Props> = ({
+  onNuevo,
+  onEditar,
+  onVerDetalle,
+  onVerConsumoHistorico,
+}) => {
+  const { esAdministrador } = useAuth();
   const [insumos, setInsumos] = useState<InsumoQuimico[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,23 +79,22 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
     }
   };
 
-  const insumosFiltrados = Array.isArray(insumos)
-    ? insumos.filter((item) => {
-        const coincideNombre = item.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ?? false;
-        const coincideTipo = filtroTipo === 'TODOS' || item.tipo === filtroTipo;
-        const coincideEstado =
-          filtroEstado === 'TODOS' ||
-          (filtroEstado === 'ACTIVO' && item.activo) ||
-          (filtroEstado === 'INACTIVO' && !item.activo);
-        return coincideNombre && coincideTipo && coincideEstado;
-      })
-    : [];
+  const insumosFiltrados = insumos.filter((item) => {
+    const cumpleBusqueda = item.nombre.toLowerCase().includes(busqueda.toLowerCase().trim());
+    const cumpleTipo = filtroTipo === 'TODOS' || item.tipo === filtroTipo;
+    const cumpleEstado =
+      filtroEstado === 'TODOS' ||
+      (filtroEstado === 'ACTIVO' && item.activo) ||
+      (filtroEstado === 'INACTIVO' && !item.activo);
+
+    return cumpleBusqueda && cumpleTipo && cumpleEstado;
+  });
 
   const {
-    itemsPaginados: insumosPaginados,
     paginaActual,
-    setPaginaActual,
     filasPorPagina,
+    itemsPaginados: insumosPaginados,
+    setPaginaActual,
     setFilasPorPagina,
     totalRegistros,
     totalPaginas,
@@ -103,9 +110,36 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        <button onClick={onNuevo} className="btn-guardar">
-          + Agregar Insumo Químico
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {esAdministrador && onVerConsumoHistorico && (
+            <button
+              type="button"
+              onClick={() => onVerConsumoHistorico()}
+              className="btn-cancelar"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              title="Ver análisis y gráfico histórico de consumo de químicos"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+              Consumo Histórico
+            </button>
+          )}
+
+          <button onClick={onNuevo} className="btn-guardar">
+            + Agregar Insumo Químico
+          </button>
+        </div>
       </div>
 
       <div className="filtros-top-bar">
@@ -151,6 +185,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
               <th>Tipo</th>
               <th>Stock Actual</th>
               <th>Unidad de Medida</th>
+              <th>Proveedor</th>
               <th>Estado</th>
               <th className="acciones-col">Acciones</th>
             </tr>
@@ -158,25 +193,26 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           <tbody>
             {cargando ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando insumos químicos...
                 </td>
               </tr>
             ) : insumosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
                   {busqueda || filtroTipo !== 'TODOS' || filtroEstado !== 'TODOS'
                     ? 'No se encontraron insumos químicos que coincidan con los filtros.'
                     : 'No hay insumos químicos registrados.'}
                 </td>
               </tr>
             ) : (
-              insumosPaginados.map((item) => (
+              insumosPaginados.map((item: InsumoQuimico) => (
                 <tr key={item.id}>
                   <td style={{ fontWeight: 500 }}>{item.nombre}</td>
                   <td>{item.tipo}</td>
                   <td>{item.stock_actual}</td>
                   <td>{item.unidad_medida}</td>
+                  <td style={{ color: 'var(--color-texto-sec)' }}>{item.proveedor || '-'}</td>
                   <td>
                     <span className={`badge-status ${item.activo ? 'activo' : 'inactivo'}`}>
                       {item.activo ? 'Activo' : 'Inactivo'}
@@ -184,6 +220,24 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
+                      {esAdministrador && onVerConsumoHistorico && (
+                        <button
+                          className="btn-icon"
+                          title="Ver consumo histórico de este insumo"
+                          onClick={() => onVerConsumoHistorico && onVerConsumoHistorico(item)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <line x1="18" y1="20" x2="18" y2="10" />
+                            <line x1="12" y1="20" x2="12" y2="4" />
+                            <line x1="6" y1="20" x2="6" y2="14" />
+                          </svg>
+                        </button>
+                      )}
                       <button className="btn-icon btn-ver" title="Ver Detalle" onClick={() => onVerDetalle(item)}>
                         👁
                       </button>

@@ -44,7 +44,6 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
   const [certificadoAEliminar, setCertificadoAEliminar] = useState<{ id: number; tipo: string } | null>(null);
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
-  // Estado para el modal de evidencia
   const [modalArchivoUrl, setModalArchivoUrl] = useState<string | null>(null);
 
   useEffect(() => {

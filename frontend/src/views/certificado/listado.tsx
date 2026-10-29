@@ -43,7 +43,6 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>(filtroEstadoInicial || 'TODOS');
 
-  // Estado para el modal de evidencia flotante
   const [modalArchivoUrl, setModalArchivoUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,7 +57,6 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         const dataCerts: Certificado[] = resCerts.ok ? await resCerts.json() : [];
         const dataPers: PersonalInfo[] = resPers.ok ? await resPers.json() : [];
 
-        // Diccionario de personal por legajo
         const dict: Record<number, PersonalInfo> = {};
         if (Array.isArray(dataPers)) {
           dataPers.forEach((p) => {
@@ -67,7 +65,6 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         }
         setPersonalMap(dict);
 
-        // Ordenar por urgencia cronológica
         if (Array.isArray(dataCerts)) {
           const ordenados = [...dataCerts].sort((a, b) => {
             const dateA = a.fechaVencimiento ? new Date(a.fechaVencimiento).getTime() : Infinity;
@@ -237,7 +234,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         <span className="venc-chip venc-chip--vigente">✓ {resumen.vigentes} vigentes</span>
       </div>
 
-      {/* Barra de Filtros */}
+      {}
       <div className="filtros-top-bar">
         <input
           type="text"

@@ -21,11 +21,9 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Estados para búsqueda y ordenamiento
   const [searchTerm, setSearchTerm] = useState('');
   const [ordenarPor, setOrdenarPor] = useState<CriterioOrden>('id');
 
-  // Estado para diálogo de confirmación de eliminación física
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tipoAEliminar, setTipoAEliminar] = useState<TipoCertificado | null>(null);
 
@@ -84,7 +82,6 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
     }
   };
 
-  // Filtrado reactivo en memoria por nombre y ordenamiento por ID o Nombre
   const tiposFiltradosYOrdenados = tipos
     .filter((t) => {
       const term = searchTerm.toLowerCase().trim();
@@ -130,7 +127,7 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
         </div>
       )}
 
-      {/* Barra de Filtros con búsqueda y desplegable de orden */}
+      {}
       <div className="filtros-top-bar">
         <input
           type="text"

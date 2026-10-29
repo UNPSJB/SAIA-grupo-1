@@ -4,8 +4,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,16 +11,27 @@ import {
 } from 'recharts';
 import type {
   ConsumoInsumo,
-  CumplimientoResumen,
   IncidentesMetricasDashboard,
   PanelDashboardProps,
   Periodo,
   TipoDetalleEstadisticas,
+  VencimientoItemDashboard,
 } from './tipos';
 import { VistaDetalleEstadisticas } from './vistaDetalle';
+import { GraficoCumplimientoLimpieza } from './GraficoCumplimientoLimpieza';
 import { apiFetch } from '../../api/client';
 import '../../styles/dashboard.css';
 import { useColoresTema } from './useColoresTema';
+
+const PALETA_PRODUCCION = [
+  '#3b82f6',
+  '#06b6d4',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ec4899',
+  '#6366f1',
+];
 
 const UNIDADES_ESTANDAR = [
   { id: 'L', label: 'L' },
@@ -32,13 +41,12 @@ const UNIDADES_ESTANDAR = [
   { id: 'UN', label: 'UN' },
 ];
 
-export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
+export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro }) => {
   const colores = useColoresTema();
   const [vistaDetalle, setVistaDetalle] = useState<TipoDetalleEstadisticas | null>(null);
 
-  const [periodoCumplimiento, setPeriodoCumplimiento] = useState<Periodo>('semana');
-  const [cumplimiento, setCumplimiento] = useState<CumplimientoResumen | null>(null);
-  const [loadingCumplimiento, setLoadingCumplimiento] = useState(true);
+  const [tabVencimientos, setTabVencimientos] = useState<'urgentes' | 'area'>('urgentes');
+  const [itemsUrgentes, setItemsUrgentes] = useState<VencimientoItemDashboard[]>([]);
 
   const [periodoInsumos, setPeriodoInsumos] = useState<Periodo>('semana');
   const [unidadInsumos, setUnidadInsumos] = useState<string>('L');
@@ -57,26 +65,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
   const [metricasIncidentes, setMetricasIncidentes] = useState<IncidentesMetricasDashboard | null>(null);
   const [loadingIncidentes, setLoadingIncidentes] = useState(true);
 
-  useEffect(() => {
-    let cancelado = false;
-    const cargarCumplimiento = async () => {
-      setLoadingCumplimiento(true);
-      try {
-        const res = await apiFetch(`/dashboard/cumplimiento?periodo=${periodoCumplimiento}`);
-        if (!cancelado && res.ok) {
-          setCumplimiento(await res.json());
-        }
-      } catch (e) {
-        console.error('Error al cargar cumplimiento del dashboard:', e);
-      } finally {
-        if (!cancelado) setLoadingCumplimiento(false);
-      }
-    };
-    cargarCumplimiento();
-    return () => {
-      cancelado = true;
-    };
-  }, [periodoCumplimiento]);
 
   useEffect(() => {
     let cancelado = false;
@@ -120,6 +108,11 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
         if (resVencSettled.status === 'fulfilled' && resVencSettled.value.ok) {
           const itemsVenc = await resVencSettled.value.json();
           if (Array.isArray(itemsVenc)) {
+            const urgentes = itemsVenc
+              .filter((x: { estado: string }) => x.estado === 'vencido' || x.estado === 'proximo')
+              .slice(0, 4);
+            setItemsUrgentes(urgentes);
+
             const persVenc = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'personal' && x.estado === 'vencido').length;
             const persProx = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'personal' && x.estado === 'proximo').length;
             setVencPersonal({ vencidos: persVenc, proximos: persProx });
@@ -207,17 +200,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
       .map((u) => ({ id: u, label: u })),
   ];
 
-  const totalTareas =
-    (cumplimiento?.hechas || 0) +
-    (cumplimiento?.pendientes || 0) +
-    (cumplimiento?.vencidas || 0);
-
-  const datosDonaTareas = [
-    { name: 'Hechas', value: cumplimiento?.hechas || 0, color: colores.exito },
-    { name: 'Pendientes', value: cumplimiento?.pendientes || 0, color: colores.alerta },
-    { name: 'Vencidas', value: cumplimiento?.vencidas || 0, color: colores.error },
-  ];
-  const datosFiltradosTareas = datosDonaTareas.filter((d) => d.value > 0);
 
   const incCriticos = metricasIncidentes?.por_antiguedad?.mas_72h || 0;
   const incEnAtencion = metricasIncidentes?.por_antiguedad?.entre_24h_y_72h || 0;
@@ -299,11 +281,101 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
         <div className="dashboard-card">
           <div className="dashboard-card-header">
             <h2>Vencimientos</h2>
+            <div className="dashboard-toggle-mini">
+              <button
+                type="button"
+                className={`dashboard-toggle-btn ${tabVencimientos === 'urgentes' ? 'activo' : ''}`}
+                onClick={() => setTabVencimientos('urgentes')}
+              >
+                Más urgentes
+              </button>
+              <button
+                type="button"
+                className={`dashboard-toggle-btn ${tabVencimientos === 'area' ? 'activo' : ''}`}
+                onClick={() => setTabVencimientos('area')}
+              >
+                Por área
+              </button>
+            </div>
           </div>
 
           <div className="dashboard-card-cuerpo">
             {loadingVencimientos ? (
               <p className="dashboard-sin-datos">Cargando vencimientos...</p>
+            ) : tabVencimientos === 'urgentes' ? (
+              <div className="dashboard-lista-urgentes">
+                {itemsUrgentes.length === 0 ? (
+                  <div className="dashboard-urgentes-vacio">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                    <span>Todos los vencimientos están al día</span>
+                  </div>
+                ) : (
+                  itemsUrgentes.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className="dashboard-item-urgente"
+                      onClick={() => {
+                        if (onIrAlRegistro) {
+                          onIrAlRegistro(item);
+                        } else if (onNavegar) {
+                          if (item.origen === 'personal') onNavegar('personas');
+                          else if (item.origen === 'equipo') onNavegar('planDeCalibracion');
+                          else if (item.origen === 'documento') onNavegar('documentos');
+                        }
+                      }}
+                      title="Hacer clic para ver detalle"
+                    >
+                      <div className="dashboard-item-urgente-icono">
+                        {item.origen === 'personal' && (
+                          <span className="badge-icono-origen personal" title="Personal">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                              <circle cx="12" cy="7" r="4" />
+                            </svg>
+                          </span>
+                        )}
+                        {item.origen === 'equipo' && (
+                          <span className="badge-icono-origen equipo" title="Calibración">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="3" />
+                              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                            </svg>
+                          </span>
+                        )}
+                        {item.origen === 'documento' && (
+                          <span className="badge-icono-origen documento" title="Documento">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                              <line x1="16" y1="13" x2="8" y2="13" />
+                              <line x1="16" y1="17" x2="8" y2="17" />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
+                      <div className="dashboard-item-urgente-info">
+                        <div className="dashboard-item-urgente-titulo">{item.concepto}</div>
+                        <div className="dashboard-item-urgente-sub">{item.responsable}</div>
+                      </div>
+                      <div className="dashboard-item-urgente-estado">
+                        {item.estado === 'vencido' ? (
+                          <span className="dashboard-badge dashboard-badge-vencido">
+                            {item.dias_restantes < 0 ? `Vencido hace ${Math.abs(item.dias_restantes)}d` : 'Vencido'}
+                          </span>
+                        ) : (
+                          <span className="dashboard-badge dashboard-badge-proximo">
+                            {item.dias_restantes === 0 ? 'Vence hoy' : `En ${item.dias_restantes}d`}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
             ) : (
               <div className="dashboard-lista-resumen">
                 <div className="dashboard-item-resumen">
@@ -398,100 +470,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
                 else setVistaDetalle('vencimientos');
               }}
             >
-              Ver más &rarr;
-            </button>
-          </div>
-        </div>
-
-        <div className="dashboard-card">
-          <div className="dashboard-card-header">
-            <h2>Cumplimiento de Tareas</h2>
-            <select
-              className="dashboard-select"
-              value={periodoCumplimiento}
-              onChange={(e) => setPeriodoCumplimiento(e.target.value as Periodo)}
-              title="Seleccionar período de cumplimiento"
-            >
-              <option value="dia">Diario</option>
-              <option value="semana">Semanal</option>
-              <option value="mes">Mensual</option>
-            </select>
-          </div>
-
-          <div className="dashboard-card-cuerpo">
-            {loadingCumplimiento ? (
-              <p className="dashboard-sin-datos">Cargando cumplimiento...</p>
-            ) : (
-              <div className="dashboard-dona-fila">
-                <div className="dashboard-dona-bloque">
-                  <div className="dashboard-dona-wrapper">
-                    <ResponsiveContainer width={120} height={120}>
-                      <PieChart>
-                        {totalTareas === 0 ? (
-                          <Pie
-                            data={[{ name: 'Sin tareas', value: 1 }]}
-                            dataKey="value"
-                            innerRadius={33}
-                            outerRadius={48}
-                            stroke="none"
-                          >
-                            <Cell fill={colores.borde} />
-                          </Pie>
-                        ) : (
-                          <Pie
-                            data={datosFiltradosTareas}
-                            dataKey="value"
-                            innerRadius={33}
-                            outerRadius={48}
-                            paddingAngle={datosFiltradosTareas.length > 1 ? 2 : 0}
-                            stroke="none"
-                          >
-                            {datosFiltradosTareas.map((entry, index) => (
-                              <Cell key={`tarea-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        )}
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-superficie-elevada)',
-                            borderColor: 'var(--color-borde)',
-                            color: 'var(--color-texto)',
-                          }}
-                          itemStyle={{ color: 'var(--color-texto)' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="dashboard-dona-centro">
-                      {cumplimiento ? `${cumplimiento.porcentaje}%` : '0%'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="dashboard-dona-leyenda">
-                  <span className="dashboard-dona-leyenda-item">
-                    <i style={{ backgroundColor: colores.exito }} /> Hechas
-                    <strong>{cumplimiento?.hechas || 0}</strong>
-                  </span>
-                  <span className="dashboard-dona-leyenda-item">
-                    <i style={{ backgroundColor: colores.alerta }} /> Pendientes
-                    <strong>{cumplimiento?.pendientes || 0}</strong>
-                  </span>
-                  <span className="dashboard-dona-leyenda-item">
-                    <i style={{ backgroundColor: colores.error }} /> Vencidas
-                    <strong>{cumplimiento?.vencidas || 0}</strong>
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="dashboard-card-footer">
-            <button
-              type="button"
-              className="dashboard-btn-detalle"
-              onClick={() => setVistaDetalle('tareas')}
-            >
-              Ver más &rarr;
+              Ver consolidado completo &rarr;
             </button>
           </div>
         </div>
@@ -657,7 +636,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
             ) : (
               <div className="dashboard-grafico-contenedor">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={consumoInsumos} margin={{ top: 8, right: 16, left: 12, bottom: 8 }}>
+                  <BarChart data={consumoInsumos} margin={{ top: 8, right: 16, left: 12, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                     <XAxis
                       dataKey="nombre"
@@ -665,15 +644,10 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
                       fontSize={11}
                       interval={0}
                       tickLine={false}
-                      height={32}
-                      label={{
-                        value: 'Insumo',
-                        position: 'insideBottom',
-                        offset: -2,
-                        fill: colores.textoSec,
-                        fontSize: 11,
-                        fontWeight: 500,
-                      }}
+                      angle={-22}
+                      textAnchor="end"
+                      height={48}
+                      tickFormatter={(val: string) => (val && val.length > 15 ? `${val.slice(0, 14)}…` : val)}
                     />
                     <YAxis
                       stroke={colores.textoSec}
@@ -787,7 +761,14 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
                     formatter={(valor) => [`${valor} u.`, 'Producción']}
                     labelFormatter={(nombre) => `Período: ${nombre}`}
                   />
-                  <Bar dataKey="cantidad" fill={colores.primario} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="cantidad" radius={[4, 4, 0, 0]}>
+                    {datosProduccion.map((_, index) => (
+                      <Cell
+                        key={`produccion-bar-${index}`}
+                        fill={PALETA_PRODUCCION[index % PALETA_PRODUCCION.length]}
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -803,6 +784,10 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar }) => {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="dashboard-fila-3">
+        <GraficoCumplimientoLimpieza onVerMas={() => setVistaDetalle('tareas')} />
       </div>
     </div>
   );

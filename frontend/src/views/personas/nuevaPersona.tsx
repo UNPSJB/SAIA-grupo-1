@@ -120,7 +120,6 @@ export const NuevaPersona: React.FC<NuevoPersonaProps> = ({ onSuccess, onCancel 
         return;
       }
 
-      // el usuario lo genera el servidor: se lo mostramos al administrador para que se lo comunique
       setPersonaCreada(await res.json());
     } catch (err: unknown) {
       setApiError(err instanceof Error ? err.message : "Error de conexión con el servidor.");

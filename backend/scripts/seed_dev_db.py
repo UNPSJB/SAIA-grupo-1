@@ -1,17 +1,16 @@
 """
-Alimenta la base local (db.sqlite3, la que usa `fastapi dev` / `uvicorn`) con datos
-de ejemplo para poder navegar y probar la app a mano.
-
-Los insumos son materias primas alimenticias (harina, manteca, huevos, etc.).
-Los productos de limpieza (lavandina, detergente, etc.) van como insumos quimicos.
-
-No toca la base de tests (esa la maneja tests/database.py con su propia base en
-memoria) ni pisa datos: si ya existe algo, se frena para no duplicar.
+Alimenta la base local (db.sqlite3 / app.db) con datos realistas, variados y cohesivos
+para poder navegar y probar la app a mano y visualizar todas las estadísticas del Dashboard:
+- Vencimientos consolidados (personal, calibraciones, elementos de limpieza, documentos y materias primas).
+- Cumplimiento de tareas de limpieza (diario, semanal, mensual con tasas de ~85% y estado actual).
+- Incidentes (críticos +72h, media urgencia 24h-72h, recientes <24h, reabiertos y cerrados con acción correctiva).
+- Consumo histórico de insumos químicos (todas las unidades L, ML, KG, G, UN; todos los tipos; variación porcentual entre períodos; desglose por proveedor y curvas temporales).
 
 Uso (parado en backend/, con el venv activado):
-    python scripts/seed_dev_db.py            # alimenta la base si esta vacia
-    python scripts/seed_dev_db.py --reset    # hace backup de la base actual y la regenera desde cero
+    python scripts/seed_dev_db.py
+    python scripts/seed_dev_db.py --reset
 """
+import io
 import json
 import shutil
 import sys
@@ -23,12 +22,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.database import SessionLocal, engine
 from src.models import ModeloBase
 
-# registra todos los modelos (Equipo referencia a los de calibracion e incidentes)
-import src.plan_de_calibracion.models  # noqa: F401
-import src.calibracion_realizada.models  # noqa: F401
-import src.tipoCertificado.models  # noqa: F401
-import src.incidentes.models  # noqa: F401
+import src.categorias_incidentes.models
+import src.notificaciones.models
+import src.plan_de_calibracion.models
+import src.calibracion_realizada.models
+import src.tipoCertificado.models
+import src.incidentes.models
 
+from src.personal.models import Personal
 from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate
 from src.autenticacion.services import asegurar_usuarios_dev
@@ -37,13 +38,14 @@ from src.insumos.services import crear_insumo
 from src.insumos.schemas import InsumoCreate
 from src.insumos.models import UnidadMedida, Insumo
 
+from src.insumos_quimicos.models import InsumoQuimico
 from src.insumos_quimicos.services import InsumoQuimicoService
 from src.insumos_quimicos.schemas import InsumoQuimicoCreate
 from src.insumos_quimicos.constants import TipoQuimicoEnum, UnidadMedidaEnum as UnidadQuimico
 
 from src.equipos.services import crear_equipo
 from src.equipos.schemas import EquipoCreate
-from src.equipos.models import Categoria, Estado
+from src.equipos.models import Categoria, Estado, Equipo
 
 from src.sectores.services import crear_sector
 from src.sectores.schemas import SectorCreate
@@ -63,21 +65,22 @@ from src.checklist.services import generar_checklist, completar_tarea
 from src.checklist.schemas import ChecklistGenerar, CompletarTareaSchema, InsumoUtilizadoPlaceholder
 from src.checklist.models import Checklist, ChecklistItem, EstadoTareaItem
 from src.documentos.models import Documento, VersionDocumento
+from src.documentos.services import crear_documento, subir_nueva_version
+from src.documentos.constants import TipoDocumento
 from src.auditoria.models import Auditoria
+from fastapi import UploadFile
 
-
-# (nombre, lote, dias desde recepcion, dias hasta vencimiento o None, cantidad recibida, stock, medida)
 INSUMOS = [
     ("Harina 000", "HAR3-2409", 12, 150, 250.0, 180.0, UnidadMedida.KILOGRAMOS),
     ("Harina 0000", "HAR4-2409", 12, 140, 100.0, 60.0, UnidadMedida.KILOGRAMOS),
-    ("Manteca", "MAN-2409", 6, 25, 40.0, 22.0, UnidadMedida.KILOGRAMOS),
+    ("Manteca", "MAN-2409", 6, 12, 40.0, 22.0, UnidadMedida.KILOGRAMOS),
     ("Azucar Comun", "AZC-2408", 30, 365, 100.0, 75.0, UnidadMedida.KILOGRAMOS),
     ("Azucar Impalpable", "AZI-2408", 30, 300, 25.0, 14.0, UnidadMedida.KILOGRAMOS),
     ("Huevos", "HUE-2409", 4, 18, 360.0, 210.0, UnidadMedida.UNIDADES),
-    ("Leche Entera", "LEC-2409", 3, 9, 60.0, 34.0, UnidadMedida.LITROS),
-    ("Crema de Leche", "CRE-2409", 5, 12, 20.0, 8.0, UnidadMedida.LITROS),
-    ("Queso Crema", "QCR-2409", 5, 11, 20.0, 6.0, UnidadMedida.KILOGRAMOS),
-    ("Levadura Fresca", "LEV-2409", 2, 10, 5.0, 2.5, UnidadMedida.KILOGRAMOS),
+    ("Leche Entera", "LEC-2409", 8, 4, 60.0, 34.0, UnidadMedida.LITROS),
+    ("Crema de Leche", "CRE-2409", 14, -3, 20.0, 8.0, UnidadMedida.LITROS),
+    ("Queso Crema", "QCR-2409", 7, 5, 20.0, 6.0, UnidadMedida.KILOGRAMOS),
+    ("Levadura Fresca", "LEV-2409", 6, 3, 5.0, 2.5, UnidadMedida.KILOGRAMOS),
     ("Sal Fina", "SAL-2407", 60, None, 25.0, 20.0, UnidadMedida.KILOGRAMOS),
     ("Dulce de Leche Repostero", "DDL-2409", 10, 90, 50.0, 30.0, UnidadMedida.KILOGRAMOS),
     ("Chocolate Cobertura Semiamargo", "CHO-2408", 20, 180, 20.0, 12.0, UnidadMedida.KILOGRAMOS),
@@ -85,9 +88,8 @@ INSUMOS = [
     ("Esencia de Vainilla", "VAI-2407", 45, 300, 2000.0, 1200.0, UnidadMedida.MILILITROS),
     ("Polvo de Hornear", "PHO-2408", 20, 240, 5000.0, 3500.0, UnidadMedida.GRAMOS),
     ("Membrillo", "MEM-2409", 8, 120, 30.0, 21.0, UnidadMedida.KILOGRAMOS),
-    # fiambres y lacteos frescos: vencen pronto o tienen poco stock, para ver los avisos
-    ("Jamon Cocido", "JAM-2410", 2, 7, 10.0, 3.5, UnidadMedida.KILOGRAMOS),
-    ("Queso de Maquina", "QMA-2410", 2, 8, 12.0, 2.0, UnidadMedida.KILOGRAMOS),
+    ("Jamon Cocido", "JAM-2410", 10, -1, 10.0, 3.5, UnidadMedida.KILOGRAMOS),
+    ("Queso de Maquina", "QMA-2410", 5, 8, 12.0, 2.0, UnidadMedida.KILOGRAMOS),
     ("Cacao Amargo en Polvo", "CAC-2408", 25, 270, 10.0, 7.5, UnidadMedida.KILOGRAMOS),
     ("Nueces Mariposa", "NUE-2408", 20, 150, 8.0, 1.2, UnidadMedida.KILOGRAMOS),
     ("Pasas de Uva", "PAS-2408", 18, 180, 10.0, 6.0, UnidadMedida.KILOGRAMOS),
@@ -97,45 +99,91 @@ INSUMOS = [
     ("Miel Pura", "MIE-2407", 35, 365, 12.0, 10.0, UnidadMedida.KILOGRAMOS),
 ]
 
-# (nombre, tipo, unidad, stock)
 INSUMOS_QUIMICOS = [
-    # Líquidos en Litros (L)
-    ("Lavandina Concentrada 55g", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 80.0),
-    ("Detergente Neutro Espumante", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 50.0),
-    ("Amonio Cuaternario 5ta Generacion", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 40.0),
-    ("Desengrasante Alcalino Pesado", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.LITROS, 30.0),
-    ("Sanitizante Clorado Liquido", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.LITROS, 25.0),
-    
-    # Líquidos y Sprays en Mililitros (ML)
-    ("Alcohol Isopropilico 70 Spray", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.MILILITROS, 5000.0),
-    ("Limpiavidrios Antiestatico", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 3500.0),
-    ("Jabon Antibacterial Clorhexidina", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 4000.0),
-    ("Desinfectante Concentrado Peracetico", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.MILILITROS, 2000.0),
-    
-    # Sólidos y Polvos en Kilogramos (KG)
-    ("Soda Caustica en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 40.0),
-    ("Detergente en Polvo Enzimatico", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.KILOGRAMOS, 35.0),
-    ("Hipoclorito de Calcio Granulado", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.KILOGRAMOS, 20.0),
-    
-    # Sólidos en Gramos (G)
-    ("Pastillas Efervescentes Cloradas", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.GRAMOS, 1500.0),
-    ("Polvo Abrasivo Sanitizante", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.GRAMOS, 2500.0),
-    
-    # Unidades y Paquetes (UN)
-    ("Toallitas Desinfectantes con Alcohol", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.UNIDADES, 60.0),
-    ("Pastillas Sanitizantes de Cisterna", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.UNIDADES, 50.0),
-    ("Bloque Desincrustante Quimico", TipoQuimicoEnum.OTRO, UnidadQuimico.UNIDADES, 24.0),
+    ("Lavandina Concentrada 55g", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 80.0, "Clorox Profesional"),
+    ("Detergente Neutro Espumante", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 50.0, "Spartan Chemical"),
+    ("Amonio Cuaternario 5ta Generacion", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 40.0, "Ecolab"),
+    ("Desengrasante Alcalino Pesado", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.LITROS, 30.0, "Diversey"),
+    ("Sanitizante Clorado Liquido", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.LITROS, 25.0, "Ecolab"),
+
+    ("Alcohol Isopropilico 70 Spray", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.MILILITROS, 5000.0, "Química del Sur"),
+    ("Limpiavidrios Antiestatico", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 3500.0, "Spartan Chemical"),
+    ("Jabon Antibacterial Clorhexidina", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 4000.0, "Diversey"),
+    ("Desinfectante Concentrado Peracetico", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.MILILITROS, 2000.0, "Ecolab"),
+
+    ("Soda Caustica en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 40.0, "Química Industrial"),
+    ("Detergente en Polvo Enzimatico", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.KILOGRAMOS, 35.0, "Spartan Chemical"),
+    ("Hipoclorito de Calcio Granulado", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.KILOGRAMOS, 20.0, "Clorox Profesional"),
+
+    ("Pastillas Efervescentes Cloradas", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.GRAMOS, 1500.0, "Química del Sur"),
+    ("Polvo Abrasivo Sanitizante", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.GRAMOS, 2500.0, "Diversey"),
+
+    ("Toallitas Desinfectantes con Alcohol", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.UNIDADES, 60.0, "Química del Sur"),
+    ("Pastillas Sanitizantes de Cisterna", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.UNIDADES, 50.0, "Ecolab"),
+    ("Bloque Desincrustante Quimico", TipoQuimicoEnum.OTRO, UnidadQuimico.UNIDADES, 24.0, "Spartan Chemical"),
 ]
 
+def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
+    stream_content = (
+        f"BT\n/F1 18 Tf\n50 720 Td\n({titulo}) Tj\n"
+        f"/F1 12 Tf\n0 -30 Td\n({subtitulo}) Tj\nET\n"
+    ).encode("latin-1")
+    obj5 = b"5 0 obj\n<< /Length " + str(len(stream_content)).encode() + b" >>\nstream\n" + stream_content + b"endstream\nendobj\n"
+    obj1 = b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+    obj2 = b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+    obj3 = b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n"
+    obj4 = b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+    header = b"%PDF-1.4\n"
+    o1 = len(header)
+    o2 = o1 + len(obj1)
+    o3 = o2 + len(obj2)
+    o4 = o3 + len(obj3)
+    o5 = o4 + len(obj4)
+    xref_offset = o5 + len(obj5)
+    xref = (
+        b"xref\n0 6\n"
+        b"0000000000 65535 f \n"
+        + f"{o1:010d} 00000 n \n".encode()
+        + f"{o2:010d} 00000 n \n".encode()
+        + f"{o3:010d} 00000 n \n".encode()
+        + f"{o4:010d} 00000 n \n".encode()
+        + f"{o5:010d} 00000 n \n".encode()
+    )
+    trailer = b"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + str(xref_offset).encode() + b"\n%%EOF\n"
+    return header + obj1 + obj2 + obj3 + obj4 + obj5 + xref + trailer
 
 def resetear_base() -> None:
-    db_path = Path(engine.url.database or "")
-    if db_path.is_file():
-        backup = db_path.with_name(f"{db_path.name}.bak-{datetime.now():%Y%m%d-%H%M%S}")
-        shutil.copy2(db_path, backup)
-        print(f"Backup de la base anterior en: {backup}")
+    root_dir = Path(__file__).resolve().parent.parent.parent
+    backend_dir = Path(__file__).resolve().parent.parent
+    all_dbs = [
+        root_dir / "app.db",
+        backend_dir / "app.db",
+        root_dir / "db.sqlite3",
+        backend_dir / "db.sqlite3",
+    ]
+    for db_path in all_dbs:
+        if db_path.is_file():
+            backup = db_path.with_name(f"{db_path.name}.bak-{datetime.now():%Y%m%d-%H%M%S}")
+            shutil.copy2(db_path, backup)
+            print(f"Backup de {db_path.name} en: {backup}")
     ModeloBase.metadata.drop_all(bind=engine)
 
+def sincronizar_archivos_db() -> None:
+    root_dir = Path(__file__).resolve().parent.parent.parent
+    backend_dir = Path(__file__).resolve().parent.parent
+    all_dbs = [
+        (root_dir / "app.db").resolve(),
+        (backend_dir / "app.db").resolve(),
+        (root_dir / "db.sqlite3").resolve(),
+        (backend_dir / "db.sqlite3").resolve(),
+    ]
+
+    db_actual = Path(engine.url.database or "").resolve()
+    if db_actual.exists():
+        for target in all_dbs:
+            if target != db_actual:
+                shutil.copy2(db_actual, target)
+        print("Base de datos sincronizada hacia todas las ubicaciones (app.db y db.sqlite3 en root y backend).")
 
 def main() -> None:
     if "--reset" in sys.argv:
@@ -147,8 +195,9 @@ def main() -> None:
     ya_hay_datos = db.query(Insumo).count() > 0
     if ya_hay_datos:
         print("La base ya tiene datos (hay insumos cargados). No hago nada para no duplicar.")
-        print("Si querés regenerarla desde cero, corré: python scripts/seed_dev_db.py --reset")
+        print("Si querés regenerarla desde cero con todas las estadísticas, corré: python scripts/seed_dev_db.py --reset")
         db.close()
+        sincronizar_archivos_db()
         return
 
     hoy = datetime.now()
@@ -161,18 +210,29 @@ def main() -> None:
     sofia = crear_personal(db, PersonalCreate(documento="30555666", nombre="Sofia", apellido="Martinez", email="sofia.martinez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
     asegurar_usuarios_dev(db)
 
-    print("Creando insumos (materias primas)...")
+    print("Creando insumos (materias primas alimenticias)...")
     for nombre, lote, dias_recepcion, dias_venc, cant, stock, medida in INSUMOS:
-        crear_insumo(db, InsumoCreate(
-            nombre=nombre, lote=lote,
+        db.add(Insumo(
+            nombre=nombre,
+            lote=lote,
             fechaRecepcion=hoy - timedelta(days=dias_recepcion),
             fechaVencimiento=hoy + timedelta(days=dias_venc) if dias_venc is not None else None,
-            cantRecibida=cant, stock=stock, medida=medida,
+            cantRecibida=cant,
+            stock=stock,
+            medida=medida,
         ))
+    db.commit()
 
-    print("Creando insumos quimicos...")
-    for nombre, tipo, unidad, stock in INSUMOS_QUIMICOS:
-        InsumoQuimicoService.create(db, InsumoQuimicoCreate(nombre=nombre, tipo=tipo, unidad_medida=unidad, stock_actual=stock))
+    print("Creando catálogo de insumos químicos...")
+    for item in INSUMOS_QUIMICOS:
+        if len(item) == 5:
+            nombre, tipo, unidad, stock, proveedor = item
+        else:
+            nombre, tipo, unidad, stock = item
+            proveedor = None
+        InsumoQuimicoService.create(db, InsumoQuimicoCreate(
+            nombre=nombre, tipo=tipo, unidad_medida=unidad, stock_actual=stock, proveedor=proveedor
+        ))
 
     print("Creando sectores...")
     s_salon = crear_sector(db, SectorCreate(nombre="Salon Principal"))
@@ -195,15 +255,23 @@ def main() -> None:
     crear_equipo(db, EquipoCreate(nombre="Freidora Electrica", categoria=Categoria.MANTENIMIENTO, sector_id=s_cocina.id, estado=Estado.INACTIVO, plan_de_calibracion="Anual"))
 
     print("Creando elementos de limpieza...")
-    crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Trapo de Piso", frecuenciaDeCambio=1))
-    crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Escobillon", frecuenciaDeCambio=30))
-    crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Repasador", frecuenciaDeCambio=3))
-    crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Esponja", frecuenciaDeCambio=7))
-    crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Cepillo de Mesada", frecuenciaDeCambio=60))
-    crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Guantes Limpieza", frecuenciaDeCambio=None))
+    el1 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Trapo de Piso Bacha", frecuenciaDeCambio=1))
+    el2 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Esponja de Fibra Verde", frecuenciaDeCambio=7))
+    el3 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Repasador Cuadra", frecuenciaDeCambio=3))
+    el4 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Cepillo de Mesada", frecuenciaDeCambio=60))
+    el5 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Escobillon Salon", frecuenciaDeCambio=30))
+    el6 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Guantes de Nitrilo", frecuenciaDeCambio=None))
 
-    print("Creando planes de limpieza y tareas (con procedimientos paso a paso)...")
-    fecha_inicio_planes = hoy.date() - timedelta(days=21)
+    el1.fechaCambio = hoy - timedelta(days=2)
+    el2.fechaCambio = hoy - timedelta(days=1)
+    el3.fechaCambio = hoy + timedelta(days=1)
+    el4.fechaCambio = hoy + timedelta(days=2)
+    el5.fechaCambio = hoy + timedelta(days=20)
+    el6.fechaCambio = None
+    db.commit()
+
+    print("Creando planes de limpieza y tareas...")
+    fecha_inicio_planes = hoy.date() - timedelta(days=80)
     plan_heladera = crear_plan(db, PlanDeLimpiezaCreate(nombre="Plan Heladera", fecha_inicio=fecha_inicio_planes, equipo_id=heladera.id))
     plan_freezer = crear_plan(db, PlanDeLimpiezaCreate(nombre="Plan Freezer", fecha_inicio=fecha_inicio_planes, equipo_id=freezer.id))
     plan_camara = crear_plan(db, PlanDeLimpiezaCreate(nombre="Plan Camara", fecha_inicio=fecha_inicio_planes, equipo_id=camara.id))
@@ -214,7 +282,7 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Desinfeccion de Superficies",
-            descripcion="Paso 1. Retirar temporalmente alimentos del estante. Paso 2. Pulverizar Alcohol Isopropilico 70 Spray a 20 cm de distancia. Paso 3. Dejar actuar durante 5 minutos para eliminar carga microbiana. Paso 4. Secar con paño descartable y restablecer la mercaderia.",
+            descripcion="Paso 1. Pulverizar Alcohol Isopropilico 70 Spray a 20 cm. Paso 2. Dejar actuar 5 minutos. Paso 3. Secar con toallitas desinfectantes.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_heladera.id,
             personal_id=juan.legajo,
@@ -224,7 +292,7 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Descongelado y Lavado Profundo",
-            descripcion="Paso 1. Desconectar la unidad electrica. Paso 2. Trasladar productos a camara auxiliar. Paso 3. Retirar rejillas y lavar en bacha con Detergente Neutro Espumante diluido. Paso 4. Enjuagar con agua caliente a 60°. Paso 5. Aplicar Sanitizante Clorado Liquido en paredes y dejar secar.",
+            descripcion="Paso 1. Desconectar unidad. Paso 2. Lavar rejillas con Detergente Neutro Espumante. Paso 3. Aplicar Sanitizante Clorado Liquido en paredes.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_heladera.id,
             personal_id=juan.legajo,
@@ -235,7 +303,7 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Sanitizacion Diaria de Puerta y Manija",
-            descripcion="Paso 1. Limpiar manija exterior y panel con Toallitas Desinfectantes con Alcohol. Paso 2. Rociar marco con Alcohol Isopropilico 70 Spray. Paso 3. Dejar evaporar al aire sin frotar con trapo sucio.",
+            descripcion="Paso 1. Limpiar manija exterior con Toallitas Desinfectantes con Alcohol. Paso 2. Rociar marco con Alcohol Isopropilico 70 Spray.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_freezer.id,
             personal_id=lucia.legajo,
@@ -245,7 +313,7 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Desinfeccion Mensual y Control de Burletes",
-            descripcion="Paso 1. Inspeccionar burletes de goma imantada. Paso 2. Lavar con Detergente Neutro Espumante tibio usando esponja suave. Paso 3. Secar minuciosamente los pliegues para evitar moho. Paso 4. Pulverizar solucion de Amonio Cuaternario 5ta Generacion y cerrar hermeticamente.",
+            descripcion="Paso 1. Inspeccionar burletes de goma. Paso 2. Lavar con Amonio Cuaternario 5ta Generacion. Paso 3. Aplicar Polvo Abrasivo Sanitizante.",
             frecuencia=Frecuencia.MENSUAL,
             plan_id=plan_freezer.id,
             personal_id=lucia.legajo,
@@ -256,7 +324,7 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Lavado y Sanitizacion de Pisos",
-            descripcion="Paso 1. Barrer residuos solidos hacia la salida. Paso 2. Preparar solucion de Lavandina Concentrada 55g al 1 por ciento en balde con agua fria. Paso 3. Fregar con cepillo duro desde el fondo hacia el desague. Paso 4. Dejar actuar 10 minutos y escurrir.",
+            descripcion="Paso 1. Barrer residuos. Paso 2. Preparar solucion de Lavandina Concentrada 55g y Detergente Neutro Espumante. Paso 3. Fregar y escurrir.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_camara.id,
             personal_id=marcos.legajo,
@@ -266,7 +334,7 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Desinfeccion de Estanterias y Racks",
-            descripcion="Paso 1. Despejar bandejas de cada nivel. Paso 2. Preparar solucion de Amonio Cuaternario 5ta Generacion a razon de 5 ml por litro de agua. Paso 3. Pulverizar sobre todos los perfiles de acero inoxidable. Paso 4. Respetar 10 minutos de contacto antes de reubicar insumos.",
+            descripcion="Paso 1. Despejar estantes. Paso 2. Pulverizar Amonio Cuaternario 5ta Generacion. Paso 3. Dejar actuar 10 minutos.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_camara.id,
             personal_id=marcos.legajo,
@@ -277,7 +345,7 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Limpieza y Desinfeccion de Batea",
-            descripcion="Paso 1. Cortar energia electrica y accionar parada de emergencia. Paso 2. Retirar restos secos de harina y masa con espatula plastica. Paso 3. Disolver 150 gramos de Detergente en Polvo Enzimatico en agua tibia a 45°. Paso 4. Cepillar batea y gancho espiral. Paso 5. Enjuagar con abundante agua potable y rociar con Alcohol Isopropilico 70 Spray.",
+            descripcion="Paso 1. Retirar restos de masa. Paso 2. Lavar con Detergente en Polvo Enzimatico. Paso 3. Rociar con Alcohol Isopropilico 70 Spray.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_amasadora.id,
             personal_id=sofia.legajo,
@@ -287,7 +355,7 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Desengrase General de Motor y Guardas",
-            descripcion="Paso 1. Verificar motor apagado. Paso 2. Aplicar Desengrasante Alcalino Pesado con trapo humedo sobre carcasa externa. Paso 3. Retirar gratitud acumulada frotando en movimientos circulares. Paso 4. Repasar con paño humedo limpio y secar.",
+            descripcion="Paso 1. Aplicar Desengrasante Alcalino Pesado con trapo humedo. Paso 2. Emulsionar grasas y retirar con paño limpio.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_amasadora.id,
             personal_id=sofia.legajo,
@@ -298,7 +366,7 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Limpieza de Vidrio y Burlete Frontal",
-            descripcion="Paso 1. Pulverizar Limpiavidrios Antiestatico sobre el cristal exterior e interior. Paso 2. Limpiar con papel tissue descartable. Paso 3. Repasar la goma selladora con Detergente Neutro Espumante y secar suavemente.",
+            descripcion="Paso 1. Pulverizar Limpiavidrios Antiestatico sobre cristal. Paso 2. Repasar burlete con Detergente Neutro Espumante.",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_horno.id,
             personal_id=juan.legajo,
@@ -308,98 +376,164 @@ def main() -> None:
         db,
         TareaCreate(
             nombre="Desengrase Intensivo de Camara",
-            descripcion="Paso 1. Esperar a que el horno baje a temperatura tibia menor a 50°. Paso 2. Colocar guantes y proteccion ocular. Paso 3. Pulverizar Desengrasante Alcalino Pesado en paredes, turbina y techo interno. Paso 4. Dejar actuar 15 minutos para emulsionar grasas. Paso 5. Fregar con fibra abrasiva y enjuagar 3 veces con agua limpia.",
+            descripcion="Paso 1. Aplicar Desengrasante Alcalino Pesado y Soda Caustica en Escamas diluida. Paso 2. Fregar paredes y enjuagar.",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_horno.id,
             personal_id=juan.legajo,
         ),
     )
 
+    op_dev = db.query(Personal).filter(Personal.usuario == "operador").first()
+    adminop_dev = db.query(Personal).filter(Personal.usuario == "adminopp").first()
+
+    if op_dev:
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Sanitizacion Diaria de Bandejas y Rejillas",
+                descripcion="Paso 1. Pulverizar Alcohol Isopropilico 70 Spray. Paso 2. Secar con toallitas desinfectantes descartables.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_heladera.id,
+                personal_id=op_dev.legajo,
+            ),
+        )
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Control Semanal de Condensador y Filtros",
+                descripcion="Paso 1. Cepillar rejilla trasera y aspirar polvo acumulado.",
+                frecuencia=Frecuencia.SEMANAL,
+                plan_id=plan_heladera.id,
+                personal_id=op_dev.legajo,
+            ),
+        )
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Desinfeccion Diaria de Manijas y Burletes",
+                descripcion="Paso 1. Limpiar manija exterior con Toallitas Desinfectantes con Alcohol. Paso 2. Dejar secar al aire.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_freezer.id,
+                personal_id=op_dev.legajo,
+            ),
+        )
+
+    if adminop_dev:
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Limpieza Diaria de Tolva y Protector",
+                descripcion="Paso 1. Desconectar y retirar restos secos de harina. Paso 2. Pulverizar sanitizante neutro.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_amasadora.id,
+                personal_id=adminop_dev.legajo,
+            ),
+        )
+        crear_tarea(
+            db,
+            TareaCreate(
+                nombre="Sanitizacion Diaria de Puerta y Cristales",
+                descripcion="Paso 1. Pulverizar Limpiavidrios Antiestatico. Paso 2. Repasar con papel tissue.",
+                frecuencia=Frecuencia.DIARIA,
+                plan_id=plan_horno.id,
+                personal_id=adminop_dev.legajo,
+            ),
+        )
     db.commit()
 
-    print("Generando historial de checklists completados (dias anteriores con insumos y procedimientos)...")
-    tareas_diarias = [
-        {
-            "plan": plan_heladera,
-            "tarea": t_heladera_diaria,
-            "insumos": [
-                {"nombre": "Alcohol Isopropilico 70 Spray", "cantidad": 200.0, "unidad": "ML"}
-            ]
-        },
-        {
-            "plan": plan_freezer,
-            "tarea": t_freezer_diaria,
-            "insumos": [
-                {"nombre": "Toallitas Desinfectantes con Alcohol", "cantidad": 2.0, "unidad": "UN"},
-                {"nombre": "Alcohol Isopropilico 70 Spray", "cantidad": 50.0, "unidad": "ML"}
-            ]
-        },
-        {
-            "plan": plan_camara,
-            "tarea": t_camara_diaria,
-            "insumos": [
-                {"nombre": "Lavandina Concentrada 55g", "cantidad": 0.25, "unidad": "L"}
-            ]
-        },
-        {
-            "plan": plan_amasadora,
-            "tarea": t_amasadora_diaria,
-            "insumos": [
-                {"nombre": "Detergente en Polvo Enzimatico", "cantidad": 150.0, "unidad": "G"},
-                {"nombre": "Alcohol Isopropilico 70 Spray", "cantidad": 100.0, "unidad": "ML"}
-            ]
-        },
-        {
-            "plan": plan_horno,
-            "tarea": t_horno_diaria,
-            "insumos": [
-                {"nombre": "Limpiavidrios Antiestatico", "cantidad": 80.0, "unidad": "ML"},
-                {"nombre": "Detergente Neutro Espumante", "cantidad": 0.05, "unidad": "L"}
-            ]
-        },
-    ]
-
-    tareas_semanales = [
-        {
-            "plan": plan_heladera,
-            "tarea": t_heladera_semanal,
-            "insumos": [
-                {"nombre": "Detergente Neutro Espumante", "cantidad": 0.4, "unidad": "L"},
-                {"nombre": "Sanitizante Clorado Liquido", "cantidad": 0.2, "unidad": "L"}
-            ]
-        },
-        {
-            "plan": plan_camara,
-            "tarea": t_camara_semanal,
-            "insumos": [
-                {"nombre": "Amonio Cuaternario 5ta Generacion", "cantidad": 0.4, "unidad": "L"}
-            ]
-        },
-        {
-            "plan": plan_horno,
-            "tarea": t_horno_semanal,
-            "insumos": [
-                {"nombre": "Desengrasante Alcalino Pesado", "cantidad": 0.5, "unidad": "L"},
-                {"nombre": "Soda Caustica en Escamas", "cantidad": 0.25, "unidad": "KG"}
-            ]
-        },
-    ]
-
+    print("Generando historial de 75 días de checklists con insumos químicos variados...")
     responsables = [juan, ana, marcos, lucia, sofia]
-    for i, offset in enumerate(range(12, 0, -1)):
-        fecha = datetime.now().date() - timedelta(days=offset)
-        responsable = responsables[i % len(responsables)]
+
+    for offset in range(75, 0, -1):
+        fecha = hoy.date() - timedelta(days=offset)
+        responsable = responsables[offset % len(responsables)]
         checklist = Checklist(fecha=fecha, responsable_legajo=responsable.legajo, activo=True)
 
-        lista_tareas_del_dia = list(tareas_diarias)
-        if offset % 7 == 0:
-            lista_tareas_del_dia.extend(tareas_semanales)
+        factor_consumo = 0.92 if offset >= 38 else 1.0
 
-        for j, t_info in enumerate(lista_tareas_del_dia):
-            plan = t_info["plan"]
-            tarea = t_info["tarea"]
-            # En algunos dias dejamos 1 tarea sin hacer para variacion realista de metricas
-            realizada = not (i % 4 == 0 and j == len(lista_tareas_del_dia) - 1)
+        items_del_dia = [
+            (
+                plan_heladera, t_heladera_diaria,
+                [
+                    {"nombre": "Alcohol Isopropilico 70 Spray", "cantidad": round(180.0 * factor_consumo, 1), "unidad": "ML"},
+                    {"nombre": "Toallitas Desinfectantes con Alcohol", "cantidad": 2.0, "unidad": "UN"},
+                ]
+            ),
+            (
+                plan_freezer, t_freezer_diaria,
+                [
+                    {"nombre": "Alcohol Isopropilico 70 Spray", "cantidad": round(60.0 * factor_consumo, 1), "unidad": "ML"},
+                    {"nombre": "Toallitas Desinfectantes con Alcohol", "cantidad": 1.0, "unidad": "UN"},
+                ]
+            ),
+            (
+                plan_camara, t_camara_diaria,
+                [
+                    {"nombre": "Lavandina Concentrada 55g", "cantidad": round(0.3 * factor_consumo, 2), "unidad": "L"},
+                    {"nombre": "Detergente Neutro Espumante", "cantidad": round(0.08 * factor_consumo, 2), "unidad": "L"},
+                ]
+            ),
+            (
+                plan_amasadora, t_amasadora_diaria,
+                [
+                    {"nombre": "Detergente en Polvo Enzimatico", "cantidad": round(140.0 * factor_consumo, 1), "unidad": "G"},
+                    {"nombre": "Alcohol Isopropilico 70 Spray", "cantidad": round(100.0 * factor_consumo, 1), "unidad": "ML"},
+                ]
+            ),
+            (
+                plan_horno, t_horno_diaria,
+                [
+                    {"nombre": "Limpiavidrios Antiestatico", "cantidad": round(75.0 * factor_consumo, 1), "unidad": "ML"},
+                    {"nombre": "Detergente Neutro Espumante", "cantidad": round(0.05 * factor_consumo, 2), "unidad": "L"},
+                ]
+            ),
+        ]
+
+        if offset % 7 in (0, 3):
+            items_del_dia.append((
+                plan_heladera, t_heladera_semanal,
+                [
+                    {"nombre": "Detergente Neutro Espumante", "cantidad": round(0.45 * factor_consumo, 2), "unidad": "L"},
+                    {"nombre": "Sanitizante Clorado Liquido", "cantidad": round(0.2 * factor_consumo, 2), "unidad": "L"},
+                ]
+            ))
+            items_del_dia.append((
+                plan_camara, t_camara_semanal,
+                [
+                    {"nombre": "Amonio Cuaternario 5ta Generacion", "cantidad": round(0.4 * factor_consumo, 2), "unidad": "L"},
+                ]
+            ))
+            items_del_dia.append((
+                plan_horno, t_horno_semanal,
+                [
+                    {"nombre": "Desengrasante Alcalino Pesado", "cantidad": round(0.55 * factor_consumo, 2), "unidad": "L"},
+                    {"nombre": "Soda Caustica en Escamas", "cantidad": round(0.3 * factor_consumo, 2), "unidad": "KG"},
+                ]
+            ))
+            items_del_dia.append((
+                plan_amasadora, t_amasadora_semanal,
+                [
+                    {"nombre": "Desengrasante Alcalino Pesado", "cantidad": round(0.35 * factor_consumo, 2), "unidad": "L"},
+                ]
+            ))
+
+        if offset % 25 == 0:
+            items_del_dia.append((
+                plan_freezer, t_freezer_mensual,
+                [
+                    {"nombre": "Amonio Cuaternario 5ta Generacion", "cantidad": round(0.25 * factor_consumo, 2), "unidad": "L"},
+                    {"nombre": "Polvo Abrasivo Sanitizante", "cantidad": round(180.0 * factor_consumo, 1), "unidad": "G"},
+                    {"nombre": "Bloque Desincrustante Quimico", "cantidad": 1.0, "unidad": "UN"},
+                    {"nombre": "Desinfectante Concentrado Peracetico", "cantidad": round(200.0 * factor_consumo, 1), "unidad": "ML"},
+                    {"nombre": "Pastillas Sanitizantes de Cisterna", "cantidad": 2.0, "unidad": "UN"},
+                    {"nombre": "Hipoclorito de Calcio Granulado", "cantidad": round(0.5 * factor_consumo, 2), "unidad": "KG"},
+                    {"nombre": "Pastillas Efervescentes Cloradas", "cantidad": round(40.0 * factor_consumo, 1), "unidad": "G"},
+                    {"nombre": "Jabon Antibacterial Clorhexidina", "cantidad": round(90.0 * factor_consumo, 1), "unidad": "ML"},
+                ]
+            ))
+
+        for j, (plan, tarea, insumos) in enumerate(items_del_dia):
+            realizada = not (offset % 6 == 0 and j == len(items_del_dia) - 1)
             item = ChecklistItem(
                 plan_id=plan.id,
                 nombre_plan=plan.nombre,
@@ -409,71 +543,71 @@ def main() -> None:
                 frecuencia=tarea.frecuencia,
                 estado=EstadoTareaItem.REALIZADO if realizada else EstadoTareaItem.PENDIENTE,
                 responsable_legajo=responsable.legajo if realizada else None,
-                insumos_utilizados=json.dumps(
-                    t_info["insumos"],
-                    ensure_ascii=False,
-                ) if realizada else None,
+                insumos_utilizados=json.dumps(insumos, ensure_ascii=False) if realizada else None,
                 fecha_hora_fin=datetime.combine(fecha, datetime.min.time()) + timedelta(hours=9, minutes=15 * j) if realizada else None,
             )
             checklist.items.append(item)
         db.add(checklist)
     db.commit()
 
-    print("Generando el checklist de hoy (para probarlo en la app)...")
-    checklist_hoy = generar_checklist(db, ChecklistGenerar(responsable_legajo=marcos.legajo, fecha=date.today()))
-    if checklist_hoy.items:
+    print("Generando checklist para hoy (con tareas completadas en L, ML y UN para probar el día en vivo)...")
+    checklist_hoy_marcos = generar_checklist(db, ChecklistGenerar(responsable_legajo=marcos.legajo, fecha=date.today()))
+    if checklist_hoy_marcos.items:
         completar_tarea(
             db,
-            checklist_hoy.id,
-            checklist_hoy.items[0].id,
+            checklist_hoy_marcos.id,
+            checklist_hoy_marcos.items[0].id,
             CompletarTareaSchema(
                 responsable_legajo=marcos.legajo,
                 insumos_utilizados=[
-                    InsumoUtilizadoPlaceholder(nombre="Alcohol Isopropilico 70 Spray", cantidad=200.0, unidad="ML")
+                    InsumoUtilizadoPlaceholder(nombre="Lavandina Concentrada 55g", cantidad=0.35, unidad="L"),
+                    InsumoUtilizadoPlaceholder(nombre="Detergente Neutro Espumante", cantidad=0.15, unidad="L"),
                 ],
             ),
         )
 
-    # Juan es operador: su checklist de hoy trae solo las tareas que tiene asignadas
-    generar_checklist(db, ChecklistGenerar(responsable_legajo=juan.legajo, fecha=date.today()))
-
-    id_checklist_hoy = checklist_hoy.id
-
-    import io
-    from fastapi import UploadFile
-    from src.documentos.services import crear_documento, subir_nueva_version
-    from src.documentos.constants import TipoDocumento
-
-    def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
-        stream_content = (
-            f"BT\n/F1 18 Tf\n50 720 Td\n({titulo}) Tj\n"
-            f"/F1 12 Tf\n0 -30 Td\n({subtitulo}) Tj\nET\n"
-        ).encode("latin-1")
-        obj5 = b"5 0 obj\n<< /Length " + str(len(stream_content)).encode() + b" >>\nstream\n" + stream_content + b"endstream\nendobj\n"
-        obj1 = b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
-        obj2 = b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
-        obj3 = b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n"
-        obj4 = b"4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
-        header = b"%PDF-1.4\n"
-        o1 = len(header)
-        o2 = o1 + len(obj1)
-        o3 = o2 + len(obj2)
-        o4 = o3 + len(obj3)
-        o5 = o4 + len(obj4)
-        xref_offset = o5 + len(obj5)
-        xref = (
-            b"xref\n0 6\n"
-            b"0000000000 65535 f \n"
-            + f"{o1:010d} 00000 n \n".encode()
-            + f"{o2:010d} 00000 n \n".encode()
-            + f"{o3:010d} 00000 n \n".encode()
-            + f"{o4:010d} 00000 n \n".encode()
-            + f"{o5:010d} 00000 n \n".encode()
+    checklist_hoy_juan = generar_checklist(db, ChecklistGenerar(responsable_legajo=juan.legajo, fecha=date.today()))
+    if checklist_hoy_juan.items:
+        completar_tarea(
+            db,
+            checklist_hoy_juan.id,
+            checklist_hoy_juan.items[0].id,
+            CompletarTareaSchema(
+                responsable_legajo=juan.legajo,
+                insumos_utilizados=[
+                    InsumoUtilizadoPlaceholder(nombre="Alcohol Isopropilico 70 Spray", cantidad=200.0, unidad="ML"),
+                    InsumoUtilizadoPlaceholder(nombre="Toallitas Desinfectantes con Alcohol", cantidad=2.0, unidad="UN"),
+                ],
+            ),
         )
-        trailer = b"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + str(xref_offset).encode() + b"\n%%EOF\n"
-        return header + obj1 + obj2 + obj3 + obj4 + obj5 + xref + trailer
 
-    print("Creando documentos versionados de ejemplo...")
+    print("Creando documentos versionados con vencimientos...")
+    pdf_poes = UploadFile(file=io.BytesIO(generar_pdf_valido("POES - Sanitizacion General", "Procedimiento Operativo Estandarizado de Saneamiento")), filename="poes_general.pdf")
+    crear_documento(
+        db,
+        titulo="POES - Procedimiento Operativo Estandarizado de Saneamiento",
+        tipo=TipoDocumento.PROCEDIMIENTO,
+        version="1.0",
+        file=pdf_poes,
+        descripcion="Procedimientos de limpieza y desinfeccion de superficies en contacto con alimentos",
+        fecha_vigencia=hoy.date() - timedelta(days=180),
+        fecha_vencimiento=hoy.date() - timedelta(days=8),
+        responsable_legajo=ana.legajo,
+    )
+
+    pdf_mip = UploadFile(file=io.BytesIO(generar_pdf_valido("Plan MIP - Control de Plagas", "Manejo Integrado de Plagas")), filename="plan_mip.pdf")
+    crear_documento(
+        db,
+        titulo="Plan MIP - Manejo Integrado de Plagas",
+        tipo=TipoDocumento.PROCEDIMIENTO,
+        version="1.0",
+        file=pdf_mip,
+        descripcion="Programa de monitoreo, cebaderas, trampas de luz y barreras fisicas",
+        fecha_vigencia=hoy.date() - timedelta(days=90),
+        fecha_vencimiento=hoy.date() + timedelta(days=5),
+        responsable_legajo=ana.legajo,
+    )
+
     pdf1 = UploadFile(file=io.BytesIO(generar_pdf_valido("Manual de Buenas Practicas de Manufactura", "Version 1.0 (Archivada)")), filename="manual_bpm_v1.pdf")
     doc_bpm = crear_documento(
         db,
@@ -482,7 +616,8 @@ def main() -> None:
         version="1.0",
         file=pdf1,
         descripcion="Procedimientos operativos y sanitarios de produccion",
-        fecha_vigencia=date.today() - timedelta(days=90),
+        fecha_vigencia=hoy.date() - timedelta(days=365),
+        fecha_vencimiento=hoy.date() - timedelta(days=60),
         responsable_legajo=ana.legajo,
     )
     pdf2 = UploadFile(file=io.BytesIO(generar_pdf_valido("Manual de Buenas Practicas de Manufactura", "Version 2.0 (Vigente)")), filename="manual_bpm_v2.pdf")
@@ -491,6 +626,7 @@ def main() -> None:
         documento_id=doc_bpm.id,
         version="2.0",
         file=pdf2,
+        fecha_vencimiento=hoy.date() + timedelta(days=180),
         responsable_legajo=ana.legajo,
     )
 
@@ -502,27 +638,25 @@ def main() -> None:
         version="1.0",
         file=pdf_receta,
         descripcion="Formulacion oficial para panificados",
-        fecha_vigencia=date.today() - timedelta(days=30),
+        fecha_vigencia=hoy.date() - timedelta(days=30),
+        fecha_vencimiento=hoy.date() + timedelta(days=335),
         responsable_legajo=marcos.legajo,
     )
 
     print("Creando planes de calibracion y calibraciones realizadas...")
-    from src.equipos.models import Equipo
     from src.plan_de_calibracion.models import Plan_de_Calibracion
     from src.calibracion_realizada.models import Calibracion_Realizada
 
-    # El archivo de la calibracion se guarda donde lo deja el endpoint de subida (uploads/certificados).
-    carpeta_calibraciones = Path("uploads") / "certificados"
+    from src.calibracion_realizada.services import ARCHIVOS_DIR as carpeta_calibraciones
     carpeta_calibraciones.mkdir(parents=True, exist_ok=True)
 
-    # (equipo, periodicidad en dias, dias desde el ultimo mantenimiento): hay vencidos, por vencer y vigentes
     planes_cal = [
-        ("Heladera Exhibidora", 180, 200),   # vencido
-        ("Freezer Deposito", 180, 170),      # vence en 10 dias
-        ("Camara Frigorifica", 90, 30),      # vigente
-        ("Amasadora Industrial", 365, 100),  # vigente
-        ("Horno Convector", 180, 185),       # vencido
-        ("Termometro Pinche", 30, 25),       # vence en 5 dias
+        ("Heladera Exhibidora", 180, 210),
+        ("Horno Convector", 180, 195),
+        ("Freezer Deposito", 180, 172),
+        ("Termometro Pinche", 30, 26),
+        ("Camara Frigorifica", 90, 20),
+        ("Amasadora Industrial", 365, 90),
     ]
     for nombre_equipo, periodicidad, dias_desde in planes_cal:
         equipo = db.query(Equipo).filter(Equipo.nombre == nombre_equipo).one()
@@ -537,44 +671,63 @@ def main() -> None:
         )
         db.add(plan_cal)
         db.flush()
-        # el ultimo mantenimiento queda registrado como calibracion realizada, con su certificado en PDF
         nombre_archivo = f"calibracion_{plan_cal.id}_{ultimo:%Y%m%d}.pdf"
         (carpeta_calibraciones / nombre_archivo).write_bytes(
             generar_pdf_valido(f"Certificado de calibracion: {nombre_equipo}", f"Realizada el {ultimo:%d/%m/%Y}")
         )
         db.add(Calibracion_Realizada(
             fecha_d_realizacion=ultimo,
-            formato_archivo=str(carpeta_calibraciones / nombre_archivo).replace("\\", "/"),
+            formato_archivo=f"/calibracion_realizada/archivos/{nombre_archivo}",
             plan_calibracion_id=plan_cal.id,
         ))
     db.commit()
 
-    print("Creando incidentes...")
+    print("Creando incidentes (críticos, medios, recientes y resueltos)...")
     from src.incidentes.models import Incidente
     from src.incidentes.constants import EstadoIncidente
+
+    from src.incidentes.constants import TipoIncidente
+    from src.categorias_incidentes.models import CategoriaIncidente
+    cats = {c.nombre: c.id for c in db.query(CategoriaIncidente).all()}
+
     incidentes = [
-        ("Se detecto una perdida de agua debajo de la bacha del sector de lavado.", EstadoIncidente.PENDIENTE, 0, juan, None, None),
-        ("La heladera exhibidora marca 9 grados, por encima del limite permitido.", EstadoIncidente.PENDIENTE, 2, lucia, None, None),
-        ("Se encontro un envase de crema de leche abierto y sin rotular en la camara.", EstadoIncidente.EN_REVISION, 4, sofia, None, None),
-        ("Falta de jabon antibacterial en el lavamanos de la cocina.", EstadoIncidente.CERRADO, 9, marcos, ana, "Se repuso el jabon y se agrego el control al checklist diario."),
-        ("Presencia de insectos cerca de la puerta del deposito.", EstadoIncidente.CERRADO, 15, juan, ana, "Se contrato fumigacion y se coloco malla en la puerta."),
-        ("Un empleado ingreso a produccion sin cofia.", EstadoIncidente.DESCARTADO, 20, sofia, ana, None),
-        ("El termometro de la camara frigorifica no enciende.", EstadoIncidente.REABIERTO, 6, lucia, None, None),
+        ("Se detecto una perdida de agua debajo de la bacha del sector de lavado.", EstadoIncidente.PENDIENTE, 0.25, juan, None, None, None, TipoIncidente.EDILICIO, cats.get("Edilicio e Infraestructura", 3)),
+        ("El cable de conexion de la batidora planetaria presenta desgaste exterior.", EstadoIncidente.PENDIENTE, 0.5, sofia, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
+
+        ("La heladera exhibidora marca 9 grados, por encima del limite permitido.", EstadoIncidente.PENDIENTE, 2.0, lucia, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
+        ("Desvio en la medicion de humedad en camara de fermentacion de cuadra.", EstadoIncidente.EN_REVISION, 1.5, marcos, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
+
+        ("Se encontro un envase de crema de leche abierto y sin rotular en la camara.", EstadoIncidente.EN_REVISION, 4.0, sofia, None, None, None, TipoIncidente.MATERIA_PRIMA, cats.get("Materia Prima e Insumos", 4)),
+        ("Cerradura del deposito secundario de quimicos trabada y sin llave de repuesto.", EstadoIncidente.PENDIENTE, 5.0, juan, None, None, None, TipoIncidente.EDILICIO, cats.get("Edilicio e Infraestructura", 3)),
+        ("El termometro digital de la camara frigorifica no enciende ni registra.", EstadoIncidente.REABIERTO, 6.0, lucia, None, None, "El reemplazo temporal volvio a apagarse repentinamente.", TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
+
+        ("Falta de jabon antibacterial en el lavamanos de la cocina.", EstadoIncidente.CERRADO, 9.0, marcos, ana, "Se repuso el jabon antibacterial y se agrego control al checklist diario.", None, TipoIncidente.LIMPIEZA, cats.get("Higiene y Limpieza", 2)),
+        ("Presencia de insectos cerca de la puerta del deposito.", EstadoIncidente.CERRADO, 15.0, juan, ana, "Se contrato fumigacion y se coloco cortina de aire en la puerta.", None, TipoIncidente.PLAGAS, cats.get("Control de Plagas", 5)),
+        ("Un empleado ingreso a produccion sin cofia.", EstadoIncidente.DESCARTADO, 20.0, sofia, ana, "Se realizo apercibimiento y capacitacion verbal sobre BPM.", None, TipoIncidente.CONDUCTA, cats.get("Conducta y Buenas Prácticas", 6)),
+        ("Envase de desengrasante con rotulo secundario semiborrado.", EstadoIncidente.CERRADO, 25.0, marcos, ana, "Se reimprimio y coloco etiqueta normalizada segun norma SGA.", None, TipoIncidente.LIMPIEZA, cats.get("Higiene y Limpieza", 2)),
     ]
-    for desc, estado, dias, reporta, resuelve, accion in incidentes:
+
+    for desc, estado, dias, reporta, resuelve, accion, motivo, tipo_inc, cat_id in incidentes:
         creado = hoy - timedelta(days=dias)
         cerrado = creado + timedelta(days=1) if estado in (EstadoIncidente.CERRADO, EstadoIncidente.DESCARTADO) else None
         db.add(Incidente(
-            descripcion=desc, estado=estado, creado_el=creado, reportado_por_id=reporta.legajo,
-            accion_correctiva=accion, cerrado_el=cerrado,
+            descripcion=desc,
+            tipo=tipo_inc,
+            categoria_id=cat_id,
+            estado=estado,
+            creado_el=creado,
+            reportado_por_id=reporta.legajo,
+            accion_correctiva=accion,
+            cerrado_el=cerrado,
             resuelto_por_id=resuelve.legajo if resuelve else None,
-            motivo_reapertura="El problema volvio a aparecer." if estado == EstadoIncidente.REABIERTO else None,
+            motivo_reapertura=motivo,
         ))
     db.commit()
 
     print("Creando tipos de certificado y certificados del personal...")
     from src.tipoCertificado.services import crear_tipo_certificado
     from src.certificado.services import crear_certificado
+
     t_manip = crear_tipo_certificado(db, "Carnet de Manipulacion de Alimentos")
     t_libreta = crear_tipo_certificado(db, "Libreta Sanitaria")
     t_curso = crear_tipo_certificado(db, "Curso de BPM")
@@ -584,13 +737,17 @@ def main() -> None:
         contenido = generar_pdf_valido(titulo, f"{persona.nombre} {persona.apellido} - Legajo {persona.legajo}")
         return UploadFile(file=io.BytesIO(contenido), filename=f"{titulo.lower().replace(' ', '_')}.pdf")
 
-    # (persona, tipo, dias hasta vencimiento, con archivo): hay vencidos, por vencer y vigentes
     certificados = [
-        (juan, t_manip, 200, True), (juan, t_libreta, 12, False),
-        (ana, t_manip, 300, True), (ana, t_curso, 90, True),
-        (marcos, t_manip, -10, True), (marcos, t_hs, 45, False),
-        (lucia, t_libreta, 5, True), (lucia, t_curso, 400, True),
-        (sofia, t_manip, 25, False), (sofia, t_hs, -30, True),
+        (marcos, t_manip, -12, True),
+        (sofia, t_hs, -25, True),
+        (juan, t_libreta, 8, False),
+        (lucia, t_libreta, 4, True),
+        (juan, t_manip, 180, True),
+        (ana, t_manip, 270, True),
+        (ana, t_curso, 90, True),
+        (marcos, t_hs, 45, False),
+        (lucia, t_curso, 350, True),
+        (sofia, t_manip, 30, False),
     ]
     for persona, tipo, dias, con_archivo in certificados:
         crear_certificado(
@@ -603,13 +760,19 @@ def main() -> None:
     db.commit()
 
     db.close()
-    print("\nListo. Base alimentada exitosamente:")
-    print(f"  - 5 personas, {len(INSUMOS)} insumos (materias primas), {len(INSUMOS_QUIMICOS)} insumos quimicos con unidades variadas (L, ML, KG, G, UN)")
-    print("  - 10 equipos, 6 elementos de limpieza, 6 planes de calibracion, 7 incidentes, 4 tipos de certificado y 10 certificados")
-    print("  - 5 planes de limpieza con 10 tareas con procedimientos paso a paso")
-    print("  - 12 checklists historicos completados con registro detallado de insumos")
-    print(f"  - 1 checklist de hoy (checklist #{id_checklist_hoy}), con tarea inicial completada y restantes pendientes para prueba en vivo")
+    sincronizar_archivos_db()
 
+    print("\n=======================================================")
+    print("Base de datos poblada exitosamente para todas las estadísticas:")
+    print("  - Vencimientos de Personal: 2 vencidos, 2 próximos, 6 vigentes")
+    print("  - Calibraciones de Equipos: 2 vencidos, 2 próximos, 2 vigentes")
+    print("  - Recambio de Elementos: 2 vencidos, 2 próximos, 1 vigente, 1 sin vencimiento")
+    print("  - Vencimiento de Documentos: 1 vencido (POES), 1 próximo (MIP), 2 vigentes (BPM v2, Receta)")
+    print("  - Insumos Alimenticios: 2 vencidos (Crema, Jamón), 4 próximos, 20 vigentes")
+    print("  - Incidentes: 3 críticos (+72h), 2 urgencia media (24-72h), 2 recientes (<24h), 1 reabierto, 4 resueltos")
+    print("  - Consumo Insumos Químicos: 75 días históricos en L, ML, KG, G, UN con variación calculada (+8%)")
+    print("  - Cumplimiento de Limpieza: ~85% en semana y mes, y tareas completadas hoy en L, ML y UN")
+    print("=======================================================\n")
 
 if __name__ == "__main__":
     main()

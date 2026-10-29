@@ -22,12 +22,10 @@ const obtenerFechaLocalHoy = (): string => {
 export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   onDetalleClick,
 }) => {
-  // El administrador ve los checklists de todos; cada operador genera y ve solo los suyos.
   const { esAdministrador, esOperador, usuario } = useAuth();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // operadores para el filtro del administrador
   const [personal, setPersonal] = useState<PersonalResumen[]>([]);
   const [modalGenerar, setModalGenerar] = useState(false);
   const [generando, setGenerando] = useState(false);
@@ -38,7 +36,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   const [responsableFiltro, setResponsableFiltro] = useState('');
   const [checklistHoyId, setChecklistHoyId] = useState<number | null>(null);
   const [checklistExpandido, setChecklistExpandido] = useState<number | null>(null);
-  // el operador solo ve los suyos: la columna de responsable únicamente le sirve al administrador
   const columnas = esAdministrador ? 6 : 5;
 
   const [errorDialog, setErrorDialog] = useState<{
@@ -94,7 +91,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     let cancelado = false;
 
     const cargarDatos = async () => {
-      // 1. Cargar Checklists de forma aislada
       try {
         const resChecklists = await apiFetch(`/checklist/`);
         if (!cancelado) {
@@ -102,7 +98,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             const data: Checklist[] = await resChecklists.json();
             setChecklists(data);
             const hoyIso = obtenerFechaLocalHoy();
-            // el administrador recibe los de todos: el "del día" es el propio
             const encontrado = data.find(
               (c) => c.fecha === hoyIso && c.responsable_legajo === usuario?.legajo
             );
@@ -125,7 +120,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         }
       }
 
-      // 2. Cargar los operadores (solo para el filtro del administrador; el listado de personal es suyo)
       if (!esAdministrador) return;
       try {
         const resPersonal = await apiFetch(`/personal`);
@@ -202,7 +196,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     e.preventDefault();
     setGenerando(true);
     try {
-      // el responsable lo define la sesión: cada operador genera el suyo
       const res = await apiFetch(`/checklist/generar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

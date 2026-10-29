@@ -23,20 +23,16 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
   const [elementos, setElementos] = useState<ElementoDeLimpieza[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados para filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
   const [filtroVencimiento, setFiltroVencimiento] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>(filtroVencimientoInicial || 'TODOS');
 
-  // Estado para diálogo de confirmación de recambio
   const [dialogOpen, setDialogOpen] = useState(false);
   const [elementoACambiar, setElementoACambiar] = useState<{ id: number; nombre: string } | null>(null);
 
-  // Estado para diálogo de baja / reactivación
   const [dialogToggleOpen, setDialogToggleOpen] = useState(false);
   const [elementoAToggle, setElementoAToggle] = useState<ElementoDeLimpieza | null>(null);
 
-  // Estado para alerta de error
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,7 +58,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     };
   }, []);
 
-  // Formatear la fecha que viene en formato ISO desde el backend
   const formatearFecha = (fechaStr?: string | null) => {
     if (!fechaStr) return 'Sin fecha';
     try {
@@ -79,7 +74,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     }
   };
 
-  // Chequea si la fecha ya expiró para resaltar la alerta
   type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia' | 'sin_fecha';
 
   const calcularEstadoVencimiento = (fechaCambioStr?: string | null): EstadoVencimiento => {
@@ -175,7 +169,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     }
   };
 
-  // Filtrado reactivo en memoria
   const elementosFiltrados = elementos.filter((elem) => {
     const term = searchTerm.toLowerCase().trim();
     const matchNombre = !term || elem.nombre.toLowerCase().includes(term);
@@ -221,7 +214,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
         )}
       </div>
 
-      {/* Barra de Filtros */}
+      {}
       <div className="filtros-top-bar">
         <input
           type="text"

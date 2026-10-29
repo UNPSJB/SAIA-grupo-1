@@ -66,7 +66,6 @@ def tarea_corresponde_a_fecha(
 
     dias = (fecha_checklist - fecha_inicio_plan).days
 
-    # Si no se pasó db o tarea_id (p. ej. en invocaciones aisladas de pruebas), se usa cálculo clásico
     if db is None or tarea_id is None:
         if frecuencia == Frecuencia.SEMANAL:
             return dias % 7 == 0
@@ -76,7 +75,6 @@ def tarea_corresponde_a_fecha(
             )
         return False
 
-    # Buscamos la última fecha en que esta tarea fue generada en un checklist activo hasta fecha_checklist
     ultima_fecha = db.scalar(
         select(func.max(models.Checklist.fecha))
         .join(models.ChecklistItem, models.ChecklistItem.checklist_id == models.Checklist.id)
@@ -88,17 +86,14 @@ def tarea_corresponde_a_fecha(
     )
 
     if ultima_fecha is not None and ultima_fecha == fecha_checklist:
-        # Ya está incluida en un checklist generado para esta misma fecha
         return False
 
     if frecuencia == Frecuencia.SEMANAL:
         if ultima_fecha is None:
-            # Nunca se generó aún para este plan activo: corresponde generarla
             return True
         dias_desde_ultima = (fecha_checklist - ultima_fecha).days
         ciclo_hoy = dias // 7
         ciclo_ultima = (ultima_fecha - fecha_inicio_plan).days // 7
-        # Corresponde si pasaron 7 o más días, o si estamos en un ciclo semanal posterior con al menos 4 días de separación
         return dias_desde_ultima >= 7 or (ciclo_hoy > ciclo_ultima and dias_desde_ultima >= 4)
 
     elif frecuencia == Frecuencia.MENSUAL:
@@ -161,7 +156,6 @@ def generar_checklist(
 
     for plan in planes:
         for tarea in plan.tareas:
-            # cada persona genera su checklist solo con las tareas que tiene asignadas
             if tarea.personal_id != datos.responsable_legajo:
                 continue
             if tarea_corresponde_a_fecha(
@@ -407,6 +401,11 @@ def completar_tarea(
             stock_previo = float(getattr(quimico, "stock_actual", 0.0))
             nuevo_stock = max(0.0, round(stock_previo - float(insumo_dto.cantidad), 2))
             setattr(quimico, "stock_actual", nuevo_stock)
+            try:
+                from src.notificaciones.services import notificar_stock_bajo_quimico_si_corresponde
+                notificar_stock_bajo_quimico_si_corresponde(db, quimico)
+            except Exception:
+                pass
 
             unidad_valor = getattr(quimico, "unidad_medida", None)
             unidad_str = str(getattr(unidad_valor, "value", unidad_valor or "L"))

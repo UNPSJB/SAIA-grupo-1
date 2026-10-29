@@ -15,6 +15,7 @@ def _crear_plan_aux(session: Session, equipo_id: int = 1):
             fecha_mantenimiento=datetime.now() + timedelta(days=2),
             descripcion="Plan aux",
             equipo_id=equipo_id,
+            fecha_vencimiento=None,
         ),
     )
 

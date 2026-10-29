@@ -1,4 +1,4 @@
-/* Alias de la paleta (styles/tema.css): valen para el tema claro y el oscuro */
+
 :root {
   --inc-primary: var(--color-primario);
   --inc-primary-hover: var(--color-primario-hover);
@@ -1229,4 +1229,13 @@
   background-color: var(--color-exito);
   transform: translateY(-1px);
   box-shadow: 0 3px 8px color-mix(in srgb, var(--color-exito) 25%, transparent);
+}
+
+.etiqueta-categoria {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  user-select: none;
+}
+
+.etiqueta-categoria:hover {
+  filter: brightness(1.03);
 }

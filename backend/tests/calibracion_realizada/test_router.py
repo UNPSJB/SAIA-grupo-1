@@ -18,6 +18,7 @@ def _crear_plan_aux(session: Session, equipo_id: int = 1):
             fecha_mantenimiento=datetime.now() + timedelta(days=5),
             descripcion="Plan para tests",
             equipo_id=equipo_id,
+            fecha_vencimiento=None,
         ),
     )
 
@@ -73,6 +74,7 @@ def test_router_upload_certificado_calibracion(session: Session):
     res_404 = client.get("/calibracion_realizada/archivos/no_existe.pdf")
     assert res_404.status_code == status.HTTP_404_NOT_FOUND
 
-    import os
-    if os.path.exists(ruta):
-        os.remove(ruta)
+    from src.calibracion_realizada.services import ARCHIVOS_DIR
+    archivo_creado = ARCHIVOS_DIR / "certificado_patron.pdf"
+    if archivo_creado.exists():
+        archivo_creado.unlink()

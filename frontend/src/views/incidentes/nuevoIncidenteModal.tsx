@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
 import {
+  type CategoriaIncidente,
   DESCRIPCION_MAX,
+  EtiquetaCategoria,
   FOTO_MAX_BYTES,
   TIPOS_FOTO,
   mensajeDeError,
@@ -24,6 +26,9 @@ export const NuevoIncidenteModal: React.FC<NuevoIncidenteModalProps> = ({
   const { esOperador } = useAuth();
   const [descripcion, setDescripcion] = useState('');
   const [foto, setFoto] = useState<File | null>(null);
+  const [categorias, setCategorias] = useState<CategoriaIncidente[]>([]);
+  const [categoriaId, setCategoriaId] = useState<number | null>(null);
+  const [cargandoCategorias, setCargandoCategorias] = useState(true);
   const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
   const [errorFoto, setErrorFoto] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -35,6 +40,29 @@ export const NuevoIncidenteModal: React.FC<NuevoIncidenteModalProps> = ({
       if (vistaPrevia) URL.revokeObjectURL(vistaPrevia);
     };
   }, [vistaPrevia]);
+
+  useEffect(() => {
+    if (!open) return;
+    let activo = true;
+    apiFetch('/incidentes/categorias/')
+      .then(async (res) => {
+        if (!activo) return;
+        if (res.ok) {
+          const data: CategoriaIncidente[] = await res.json();
+          setCategorias(data);
+          if (data.length > 0) {
+            setCategoriaId(data[0].id);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (activo) setCargandoCategorias(false);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [open]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -94,6 +122,9 @@ export const NuevoIncidenteModal: React.FC<NuevoIncidenteModalProps> = ({
 
     const datos = new FormData();
     datos.append('descripcion', descripcionLimpia);
+    if (categoriaId) {
+      datos.append('categoria_id', String(categoriaId));
+    }
     if (foto) datos.append('foto', foto);
 
     setLoading(true);
@@ -143,6 +174,70 @@ export const NuevoIncidenteModal: React.FC<NuevoIncidenteModalProps> = ({
               </div>
             )}
             {errorMsg && <div className="alerta-error">{errorMsg}</div>}
+
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <label htmlFor="modal-categoria-incidente">Categoría del Incidente *</label>
+              {cargandoCategorias ? (
+                <div style={{ fontSize: '13px', color: 'var(--color-texto-sec)' }}>Cargando categorías...</div>
+              ) : (
+                <>
+                  <select
+                    id="modal-categoria-incidente"
+                    className="input-custom"
+                    value={categoriaId ?? ''}
+                    onChange={(e) => setCategoriaId(Number(e.target.value))}
+                    disabled={loading || !esOperador}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.8rem',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-borde)',
+                      backgroundColor: 'var(--color-superficie)',
+                      color: 'var(--color-texto)',
+                      fontSize: '13.5px',
+                    }}
+                  >
+                    {categorias.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.nombre}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                    {categorias.map((cat) => {
+                      const sel = categoriaId === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setCategoriaId(cat.id)}
+                          disabled={loading || !esOperador}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: 'pointer',
+                            opacity: sel ? 1 : 0.65,
+                            transform: sel ? 'scale(1.03)' : 'scale(1)',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <EtiquetaCategoria
+                            nombre={cat.nombre}
+                            id={cat.id}
+                            size="sm"
+                            style={{
+                              boxShadow: sel ? '0 0 0 2px var(--color-primario)' : 'none',
+                            }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
 
             <div className="form-group">
               <label htmlFor="descripcion">Descripción del Incidente *</label>

@@ -1,3 +1,4 @@
+export { usePaginacion } from './usePaginacion';
 import React from 'react';
 import '../../styles/formularioAlta.css';
 
