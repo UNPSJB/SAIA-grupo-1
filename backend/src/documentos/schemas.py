@@ -1,7 +1,7 @@
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 from pydantic import BaseModel, ConfigDict
-from src.documentos.constants import TipoDocumento
+
 
 class VersionDocumentoResponse(BaseModel):
     id: int
@@ -13,6 +13,7 @@ class VersionDocumentoResponse(BaseModel):
     archivado: bool
     es_vigente: bool = False
     fecha_vigencia: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None
     fecha_archivo: Optional[date] = None
     usuario: Optional[str] = None
     creado_el: datetime
@@ -31,6 +32,7 @@ class VersionHistorialItem(BaseModel):
     archivado: bool
     es_vigente: bool
     fecha_vigencia: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None
     fecha_archivo: Optional[date] = None
     usuario: Optional[str] = None
     creado_el: datetime
@@ -42,7 +44,7 @@ class VersionHistorialItem(BaseModel):
 class DocumentoResponse(BaseModel):
     id: int
     titulo: str
-    tipo: TipoDocumento
+    tipo: str
     descripcion: Optional[str] = None
     activo: bool
     creado_el: datetime
@@ -55,7 +57,7 @@ class DocumentoResponse(BaseModel):
 class DocumentoListItem(BaseModel):
     id: int
     titulo: str
-    tipo: TipoDocumento
+    tipo: str
     descripcion: Optional[str] = None
     activo: bool
     creado_el: datetime
@@ -68,9 +70,11 @@ class DocumentoListItem(BaseModel):
     usuario: Optional[str] = None
     es_vigente: bool = False
     fecha_vigencia: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None
     total_versiones: int = 1
 
     model_config = ConfigDict(from_attributes=True)
 
 class MarcarVigenteRequest(BaseModel):
     fecha_vigencia: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None

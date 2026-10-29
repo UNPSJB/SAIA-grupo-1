@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import type { DocumentoListItem, TipoDocumento } from "./tipos";
 import { ModalHistorialVersiones } from "./modalHistorial";
 import { DetalleDocumento } from "./verDetalle";
-import { Paginacion, usePaginacion } from "../../components/ui/paginacion";
+import { Paginacion } from "../../components/ui/paginacion";
+import { usePaginacion } from "../../components/ui/usePaginacion";
 import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
 import { CsvIcon } from "../../components/icons/CsvIcon";
 import { apiFetch } from "../../api/client";
@@ -27,20 +28,7 @@ const formatearFecha = (dateStr?: string | null) => {
   }
 };
 
-const getTipoLabel = (tipo: TipoDocumento) => {
-  switch (tipo) {
-    case "MANUAL_BPM":
-      return "Manual de BPM";
-    case "FICHA_TECNICA":
-      return "Ficha Técnica";
-    case "PROCEDIMIENTO":
-      return "Procedimiento";
-    case "RECETA":
-      return "Receta";
-    default:
-      return tipo;
-  }
-};
+const getTipoLabel = (tipo?: TipoDocumento | null) => tipo || "-";
 
 interface ListadoDocumentosProps {
   onNuevoClick?: () => void;
@@ -87,22 +75,27 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
     }
   };
 
-  const cargarDatos = async () => {
-    try {
-      const resDocs = await apiFetch("/documentos");
-      if (resDocs.ok) {
-        const dataDocs = await resDocs.json();
-        setDocumentos(dataDocs);
-      }
-    } catch {
-      setDocumentos([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let cancelado = false;
+    const cargarDatos = async () => {
+      try {
+        const resDocs = await apiFetch("/documentos");
+        if (!cancelado && resDocs.ok) {
+          const dataDocs = await resDocs.json();
+          setDocumentos(dataDocs);
+        } else if (!cancelado) {
+          setDocumentos([]);
+        }
+      } catch {
+        if (!cancelado) setDocumentos([]);
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     cargarDatos();
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   const abrirHistorial = (doc: DocumentoListItem) => {
@@ -231,6 +224,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
               <th>Tipo</th>
               <th>Versión Vigente</th>
               <th>Entrada en Vigencia</th>
+              <th>Vencimiento</th>
               <th>Peso</th>
               <th className="acciones-col">Acciones</th>
             </tr>
@@ -238,13 +232,13 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
                   Cargando documentos...
                 </td>
               </tr>
             ) : documentosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
                   {busqueda || filtroTipo !== "TODOS"
                     ? "No se encontraron documentos que coincidan con los filtros."
                     : "No hay documentos registrados."}
@@ -256,17 +250,30 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                   <td style={{ fontWeight: 500 }}>{doc.titulo}</td>
                   <td>{getTipoLabel(doc.tipo)}</td>
                   <td>
-                    <span style={{
-                      fontWeight: 600,
-                      color: "var(--color-exito-texto)",
-                      backgroundColor: "var(--color-exito-bg)",
-                      padding: "2px 8px",
-                      borderRadius: "4px",
-                    }}>
-                      v{doc.version_actual ?? 1}
-                    </span>
+                    {doc.es_vigente ? (
+                      <span style={{
+                        fontWeight: 600,
+                        color: "var(--color-exito-texto)",
+                        backgroundColor: "var(--color-exito-bg)",
+                        padding: "2px 8px",
+                        borderRadius: "4px",
+                      }}>
+                        v{doc.version_actual ?? 1}
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontWeight: 600,
+                        color: "var(--color-peligro-texto, #991b1b)",
+                        backgroundColor: "var(--color-peligro-bg, #fee2e2)",
+                        padding: "2px 8px",
+                        borderRadius: "4px",
+                      }}>
+                        Sin versión vigente
+                      </span>
+                    )}
                   </td>
                   <td>{formatearFecha(doc.fecha_vigencia)}</td>
+                  <td>{formatearFecha(doc.fecha_vencimiento)}</td>
                   <td style={{ color: "var(--color-texto-sec)", fontSize: "0.85rem" }}>
                     {doc.tamanio_formateado || (doc.tamanio_bytes ? `${(doc.tamanio_bytes / 1024).toFixed(1)} KB` : "—")}
                   </td>
@@ -290,7 +297,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                         <button
                           type="button"
                           className="btn-icon btn-descargar"
-                          title="Descargar versión vigente"
+                          title="Descargar versión"
                           onClick={() => handleDescargar(doc.version_actual_id, doc.archivo_nombre_original)}
                         >
                           ⬇

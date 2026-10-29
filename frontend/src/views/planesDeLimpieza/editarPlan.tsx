@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { PlanConId } from "./tipos";
 import type { EquipoConId } from '../equipos/tipos';
 import type { Sector } from '../sectores/tipos';
@@ -56,29 +56,34 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
-  const fetchPlanLimp = useCallback(async () => {
-    if (!planlimpiezaID) return;
-    try {
-      const res = await apiFetch(`/plan_De_limpieza/${planlimpiezaID}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPlanLimp(data);
-        if (data.sector_id) {
-          setTipoObjetivo('sector');
-        } else {
-          setTipoObjetivo('equipo');
-        }
-      }
-    } catch {
-      setErrorDialogMsg('El Plan de limpieza no existe.');
-    } finally {
-      setLoading(false);
-    }
-  }, [planlimpiezaID]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    if (!planlimpiezaID) return;
+    let cancelado = false;
+    const fetchPlanLimp = async () => {
+      try {
+        const res = await apiFetch(`/plan_De_limpieza/${planlimpiezaID}`);
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setPlanLimp(data);
+          if (data.sector_id) {
+            setTipoObjetivo('sector');
+          } else {
+            setTipoObjetivo('equipo');
+          }
+        }
+      } catch {
+        if (!cancelado) setErrorDialogMsg('El Plan de limpieza no existe.');
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     fetchPlanLimp();
-  }, [fetchPlanLimp]);
+    return () => {
+      cancelado = true;
+    };
+  }, [planlimpiezaID, refreshKey]);
 
   useEffect(() => {
     let cancelado = false;
@@ -201,7 +206,7 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
     try {
       const res = await apiFetch(`/tareas/${tareaAConfirmar.id}`, { method: 'DELETE' });
       if (res.ok) {
-        await fetchPlanLimp();
+        setRefreshKey((k) => k + 1);
       } else {
         setErrorDialogMsg('No se pudo eliminar la tarea.');
       }
@@ -404,7 +409,7 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
         <DialogContent>
           <NuevaTarea
             planID={planLimpieza?.id}
-            onSuccess={() => { setModal(false); fetchPlanLimp(); }}
+            onSuccess={() => { setModal(false); setRefreshKey((k) => k + 1); }}
             onCancel={() => setModal(false)}
           />
         </DialogContent>
@@ -415,7 +420,7 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
           <EditarTarea
             tareaID={tareaSeleccionada}
             planID={planLimpieza.id}
-            onSuccess={() => { setModalEditar(false); fetchPlanLimp(); }}
+            onSuccess={() => { setModalEditar(false); setRefreshKey((k) => k + 1); }}
             onCancel={() => setModalEditar(false)}
           />
         </DialogContent>

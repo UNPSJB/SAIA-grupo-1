@@ -37,20 +37,7 @@ const formatearFecha = (fechaStr?: string | null) => {
   }
 };
 
-const getTipoLabel = (tipo: TipoDocumento): string => {
-  switch (tipo) {
-    case "MANUAL_BPM":
-      return "Manual de BPM";
-    case "FICHA_TECNICA":
-      return "Ficha Técnica";
-    case "PROCEDIMIENTO":
-      return "Procedimiento";
-    case "RECETA":
-      return "Receta";
-    default:
-      return tipo;
-  }
-};
+const getTipoLabel = (tipo?: TipoDocumento | null): string => tipo || "";
 
 const formatearPeso = (bytes?: number | null, formato?: string | null) => {
   if (formato) return formato;
@@ -74,27 +61,35 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
   const [modalHistorialAbierto, setModalHistorialAbierto] = useState(false);
   const [modalVisorAbierto, setModalVisorAbierto] = useState(false);
 
-  const cargar = async () => {
-    if (!documentoId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`/documentos/${documentoId}`);
-      if (!res.ok) {
-        throw new Error("No se pudo cargar la información del documento.");
-      }
-      const data = await res.json();
-      setDocumento(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error al conectar con el servidor.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    if (!documentoId) return;
+    let cancelado = false;
+    const cargar = async () => {
+      try {
+        const res = await apiFetch(`/documentos/${documentoId}`);
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setDocumento(data);
+        } else if (!cancelado) {
+          setError("No se pudo cargar la información del documento.");
+        }
+      } catch (err: unknown) {
+        if (!cancelado) {
+          setError(err instanceof Error ? err.message : "Error al conectar con el servidor.");
+        }
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
+      }
+    };
     cargar();
-  }, [documentoId]);
+    return () => {
+      cancelado = true;
+    };
+  }, [documentoId, refreshKey]);
 
   const versionParaDescarga = documento?.version_vigente || documento?.version_actual;
   const pesoStr = versionParaDescarga
@@ -123,33 +118,37 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
   };
 
   const [visorUrl, setVisorUrl] = useState<string | null>(null);
-  const [cargandoVisor, setCargandoVisor] = useState(false);
+  const cargandoVisor = Boolean(versionParaDescarga?.id && !visorUrl);
 
   useEffect(() => {
-    if (!versionParaDescarga?.id) {
-      setVisorUrl(null);
-      return;
-    }
+    const versionId = versionParaDescarga?.id;
+    if (!versionId) return;
+    let cancelado = false;
     let urlCreada: string | null = null;
+
     const cargarVisor = async () => {
-      setCargandoVisor(true);
       try {
-        const res = await apiFetch(`/documentos/archivo/${versionParaDescarga.id}?inline=true`);
-        if (res.ok) {
+        const res = await apiFetch(`/documentos/archivo/${versionId}?inline=true`);
+        if (!cancelado && res.ok) {
           const rawBlob = await res.blob();
           const contentType = res.headers.get("content-type") || "application/pdf";
           const blob = new Blob([rawBlob], { type: contentType });
           urlCreada = window.URL.createObjectURL(blob);
           setVisorUrl(urlCreada);
+        } else if (!cancelado) {
+          setVisorUrl(null);
         }
       } catch {
-        setVisorUrl(null);
-      } finally {
-        setCargandoVisor(false);
+        if (!cancelado) {
+          setVisorUrl(null);
+        }
       }
     };
+
     cargarVisor();
+
     return () => {
+      cancelado = true;
       if (urlCreada) {
         window.URL.revokeObjectURL(urlCreada);
       }
@@ -396,7 +395,7 @@ export const DetalleDocumento: React.FC<DetalleDocumentoProps> = ({
           isOpen={modalVigenteAbierto}
           onClose={() => setModalVigenteAbierto(false)}
           onSuccess={() => {
-            cargar();
+            setRefreshKey((k) => k + 1);
           }}
           documento={docParaModalVigente}
         />

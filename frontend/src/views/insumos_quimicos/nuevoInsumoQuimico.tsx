@@ -59,8 +59,8 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
       }
 
       onCreado();
-    } catch (err: any) {
-      setError(err.message || 'Error de conexión con el backend');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error de conexión con el backend');
     } finally {
       setCargando(false);
     }

@@ -8,7 +8,8 @@ import {
 import { DetalleIncidenteModal } from './detalleModal';
 import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
 import { CsvIcon } from '../../components/icons/CsvIcon';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
 import '../../styles/formularioAlta.css';
@@ -113,36 +114,39 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
   const [incidenteSeleccionado, setIncidenteSeleccionado] = useState<Incidente | null>(null);
   const [abrirConCierre, setAbrirConCierre] = useState(false);
 
-  const cargarDatos = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [resAbiertos, resMetricas] = await Promise.all([
-        apiFetch('/incidentes/abiertos'),
-        apiFetch('/incidentes/abiertos/metricas'),
-      ]);
-
-      if (resAbiertos.ok) {
-        const dataAbiertos: IncidenteAbierto[] = await resAbiertos.json();
-        setIncidentes(dataAbiertos);
-      } else {
-        setError('No se pudo obtener el listado de incidentes abiertos.');
-      }
-
-      if (resMetricas.ok) {
-        const dataMetricas: IncidentesMetricas = await resMetricas.json();
-        setMetricas(dataMetricas);
-      }
-    } catch {
-      setError('Error de conexión al cargar los incidentes abiertos.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let cancelado = false;
+    const cargarDatos = async () => {
+      try {
+        const [resAbiertos, resMetricas] = await Promise.all([
+          apiFetch('/incidentes/abiertos'),
+          apiFetch('/incidentes/abiertos/metricas'),
+        ]);
+
+        if (resAbiertos.ok) {
+          const dataAbiertos: IncidenteAbierto[] = await resAbiertos.json();
+          if (!cancelado) setIncidentes(dataAbiertos);
+        } else if (!cancelado) {
+          setError('No se pudo obtener el listado de incidentes abiertos.');
+        }
+
+        if (resMetricas.ok) {
+          const dataMetricas: IncidentesMetricas = await resMetricas.json();
+          if (!cancelado) setMetricas(dataMetricas);
+        }
+      } catch {
+        if (!cancelado) setError('Error de conexión al cargar los incidentes abiertos.');
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     cargarDatos();
-  }, []);
+    return () => {
+      cancelado = true;
+    };
+  }, [refreshKey]);
 
   const incidentesFiltrados = incidentes.filter((inc) => {
     const termino = busqueda.toLowerCase().trim();
@@ -323,7 +327,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             <span className="tarjeta-metrica-valor" style={{ color: 'var(--color-alerta-texto)' }}>
               {metricas?.por_antiguedad.entre_24h_y_72h ?? incidentes.filter((i) => i.nivel_urgencia === 'ATENCION').length}
             </span>
-            <span className="tarjeta-metrica-label">En Atención (24h - 72h)</span>
+            <span className="tarjeta-metrica-label">Urgencia Media (24h - 72h)</span>
           </div>
         </div>
 
@@ -384,7 +388,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             onClick={() => setFiltroUrgencia('ATENCION')}
           >
             <span className="status-dot" style={{ backgroundColor: 'var(--color-alerta)' }} />
-            En Atención
+            Urgencia Media
             <span className="badge-conteo">{incidentes.filter((i) => i.nivel_urgencia === 'ATENCION').length}</span>
           </button>
           <button
@@ -433,7 +437,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                       type="button"
                       className="btn-guardar"
                       style={{ padding: '0.4rem 1rem', fontSize: '13px' }}
-                      onClick={cargarDatos}
+                      onClick={() => setRefreshKey((k) => k + 1)}
                     >
                       Reintentar
                     </button>

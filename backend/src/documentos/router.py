@@ -11,7 +11,7 @@ from src.database import get_db
 from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.documentos import exceptions, schemas, services
-from src.documentos.constants import TipoDocumento
+
 from src.autenticacion.dependencies import requiere_admin, get_usuario_actual
 from src.utils.csv import generar_respuesta_csv
 
@@ -83,6 +83,7 @@ def _serializar_version(v) -> Optional[schemas.VersionDocumentoResponse]:
         archivado=v.archivado,
         es_vigente=v.es_vigente,
         fecha_vigencia=v.fecha_vigencia,
+        fecha_vencimiento=v.fecha_vencimiento,
         fecha_archivo=v.fecha_archivo,
         usuario=v.usuario,
         creado_el=v.creado_el,
@@ -97,11 +98,12 @@ def _serializar_version(v) -> Optional[schemas.VersionDocumentoResponse]:
 )
 def crear_documento_endpoint(
     titulo: str = Form(...),
-    tipo: TipoDocumento = Form(...),
+    tipo: str = Form(...),
     version: Optional[str] = Form(None),
     archivo: UploadFile = File(...),
     descripcion: Optional[str] = Form(None),
     fecha_vigencia: Optional[date] = Form(None),
+    fecha_vencimiento: Optional[date] = Form(None),
     responsable_legajo: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     usuario: Personal = Depends(obtener_usuario_actual),
@@ -114,6 +116,7 @@ def crear_documento_endpoint(
         file=archivo,
         descripcion=descripcion,
         fecha_vigencia=fecha_vigencia,
+        fecha_vencimiento=fecha_vencimiento,
         usuario=usuario,
         responsable_legajo=responsable_legajo,
     )
@@ -140,6 +143,7 @@ def subir_nueva_version_endpoint(
     documento_id: int,
     version: Optional[str] = Form(None),
     archivo: UploadFile = File(...),
+    fecha_vencimiento: Optional[date] = Form(None),
     responsable_legajo: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     usuario: Personal = Depends(obtener_usuario_actual),
@@ -149,6 +153,7 @@ def subir_nueva_version_endpoint(
         documento_id=documento_id,
         version=version,
         file=archivo,
+        fecha_vencimiento=fecha_vencimiento,
         usuario=usuario,
         responsable_legajo=responsable_legajo,
     )
@@ -166,11 +171,13 @@ def marcar_version_vigente_endpoint(
     usuario: Personal = Depends(obtener_usuario_actual),
 ):
     fecha_v = datos.fecha_vigencia if (datos and datos.fecha_vigencia) else date.today()
+    fecha_venc = datos.fecha_vencimiento if datos else None
     v = services.marcar_version_vigente(
         db=db,
         documento_id=documento_id,
         version_id=version_id,
         fecha_vigencia=fecha_v,
+        fecha_vencimiento=fecha_venc,
         usuario=usuario,
     )
     return _serializar_version(v)
@@ -180,14 +187,14 @@ def marcar_version_vigente_endpoint(
     response_model=List[schemas.DocumentoListItem],
 )
 def listar_documentos_endpoint(
-    tipo: Optional[TipoDocumento] = Query(None),
+    tipo: Optional[str] = Query(None),
     busqueda: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     docs = services.listar_documentos(db, tipo=tipo, busqueda=busqueda)
     items = []
     for d in docs:
-        v = d.version_vigente
+        v = d.version_vigente or (d.versiones[0] if d.versiones else None)
         items.append(
             schemas.DocumentoListItem(
                 id=d.id,
@@ -203,9 +210,10 @@ def listar_documentos_endpoint(
                 tamanio_bytes=v.tamanio_bytes if v else None,
                 tamanio_formateado=v.tamanio_formateado if v else None,
                 usuario=v.usuario if v else None,
-                es_vigente=v.es_vigente if v else False,
+                es_vigente=(d.version_vigente is not None),
                 fecha_vigencia=v.fecha_vigencia if v else None,
-                total_versiones=len(set(v.version for v in d.versiones)),
+                fecha_vencimiento=v.fecha_vencimiento if v else None,
+                total_versiones=len(set(ver.version for ver in d.versiones)),
             )
         )
     return items
@@ -279,6 +287,7 @@ def consultar_historial_versiones_endpoint(
             archivado=v.archivado,
             es_vigente=v.es_vigente,
             fecha_vigencia=v.fecha_vigencia,
+            fecha_vencimiento=v.fecha_vencimiento,
             fecha_archivo=v.fecha_archivo,
             usuario=v.usuario,
             creado_el=v.creado_el,

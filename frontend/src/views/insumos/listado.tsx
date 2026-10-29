@@ -4,7 +4,8 @@ import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
 import { CsvIcon } from '../../components/icons/CsvIcon';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
 
@@ -28,6 +29,17 @@ const formatDate = (dateStr?: string | null) => {
   } catch {
     return dateStr;
   }
+};
+
+const estadoVencimiento = (fechaVencimiento?: string | null) => {
+  if (!fechaVencimiento) return 'SIN_VENCIMIENTO';
+  const fecha = new Date(fechaVencimiento);
+  const hoy = new Date();
+  const diffMs = fecha.getTime() - hoy.getTime();
+  const dias = diffMs / (1000 * 60 * 60 * 24);
+  if (dias < 0) return 'VENCIDO';
+  if (dias <= 15) return 'POR_VENCER';
+  return 'VIGENTE';
 };
 
 export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
@@ -96,13 +108,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     };
   }, []);
 
-  const estadoVencimiento = (fechaVencimiento?: string | null) => {
-    if (!fechaVencimiento) return 'SIN_VENCIMIENTO';
-    const dias = (new Date(fechaVencimiento).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    if (dias < 0) return 'VENCIDO';
-    if (dias <= 15) return 'POR_VENCER';
-    return 'VIGENTE';
-  };
+
 
   const insumosFiltrados = insumos.filter((i) => {
     const term = busqueda.toLowerCase().trim();

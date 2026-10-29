@@ -29,6 +29,7 @@ from src.calibracion_realizada.router import router as calibracion_realizada_rou
 from src.certificado.router import router as certificado_router
 from src.certificado.router import archivos_router
 from src.tipoCertificado.router import router as tipoCertificado_router
+from src.tipoDocumento.router import router as tipoDocumento_router
 from src.vencimientos.router import router as vencimientos_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
@@ -48,6 +49,8 @@ async def db_creation_lifespan(app: FastAPI):
         # Usuarios admin, operador y adminopp compartidos por el equipo (cada integrante tiene su propia base)
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
+            from src.tipoDocumento.services import asegurar_tipos_base
+            asegurar_tipos_base(db)
     yield
 
 
@@ -91,6 +94,7 @@ app.include_router(incidentes_router, dependencies=SESION)
 app.include_router(certificado_router, dependencies=SOLO_ADMIN)
 app.include_router(archivos_router) #Router publico para ver los archivos dentro de los certificados
 app.include_router(tipoCertificado_router, dependencies=SOLO_ADMIN)
+app.include_router(tipoDocumento_router, dependencies=SOLO_ADMIN)
 app.include_router(vencimientos_router, dependencies=SOLO_ADMIN)
 # /autenticacion/login es público; /autenticacion/me se protege dentro de su router
 app.include_router(autenticacion_router, prefix="/autenticacion", tags=["Autenticación"])

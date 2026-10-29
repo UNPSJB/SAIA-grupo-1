@@ -1,4 +1,4 @@
-export type TipoDocumento = "MANUAL_BPM" | "FICHA_TECNICA" | "PROCEDIMIENTO" | "RECETA";
+export type TipoDocumento = string;
 
 export interface DocumentoListItem {
   id: number;
@@ -16,6 +16,7 @@ export interface DocumentoListItem {
   usuario?: string | null;
   es_vigente: boolean;
   fecha_vigencia: string | null;
+  fecha_vencimiento?: string | null;
   total_versiones: number;
 }
 
@@ -29,6 +30,7 @@ export interface VersionItem {
   archivado: boolean;
   es_vigente: boolean;
   fecha_vigencia: string | null;
+  fecha_vencimiento?: string | null;
   fecha_archivo?: string | null;
   usuario?: string | null;
   creado_el: string;

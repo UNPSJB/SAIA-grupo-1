@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from pathlib import Path
-from typing import List, Optional, Tuple, Union, Dict, Any
+from typing import List, Optional, Tuple, Union, Dict, Any, Sequence
 from fastapi import UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.documentos import exceptions
 from src.documentos.constants import TAMANIO_MAXIMO_BYTES, TipoDocumento
-from src.documentos.models import Documento, VersionDocumento 
+from src.documentos.models import Documento, VersionDocumento
 
 STORAGE_DIR = Path(__file__).resolve().parent / "archivos"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -141,7 +141,7 @@ def validar_y_guardar_archivo_pdf(file: UploadFile, documento_id: int, version: 
 
     return nombre_disco, nombre_original, tamanio
 
-def calcular_siguiente_version(versiones: List[VersionDocumento]) -> int:
+def calcular_siguiente_version(versiones: Sequence[VersionDocumento]) -> int:
     if not versiones:
         return 1
     numeros = []
@@ -157,17 +157,20 @@ def calcular_siguiente_version(versiones: List[VersionDocumento]) -> int:
 def crear_documento(
     db: Session,
     titulo: str,
-    tipo: TipoDocumento,
+    tipo: str,
     version: Optional[Union[int, str]] = None,
     file: Optional[UploadFile] = None,
     descripcion: Optional[str] = None,
     fecha_vigencia: Optional[date] = None,
+    fecha_vencimiento: Optional[date] = None,
     usuario: Optional[Personal] = None,
     responsable_legajo: Optional[int] = None,
 ) -> Documento:
     if isinstance(version, UploadFile) and file is None:
         file = version
         version = None
+    if file is None:
+        raise exceptions.ArchivoVacio()
 
     persona = verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
 
@@ -207,6 +210,7 @@ def crear_documento(
         archivado=False,
         es_vigente=True,
         fecha_vigencia=fecha_v,
+        fecha_vencimiento=fecha_vencimiento,
         fecha_archivo=None,
         creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
         creado_por_usuario=nom_usuario,
@@ -236,12 +240,15 @@ def subir_nueva_version(
     documento_id: int,
     version: Optional[Union[int, str]] = None,
     file: Optional[UploadFile] = None,
+    fecha_vencimiento: Optional[date] = None,
     usuario: Optional[Personal] = None,
     responsable_legajo: Optional[int] = None,
 ) -> VersionDocumento:
     if isinstance(version, UploadFile) and file is None:
         file = version
         version = None
+    if file is None:
+        raise exceptions.ArchivoVacio()
 
     persona = verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
 
@@ -293,6 +300,7 @@ def subir_nueva_version(
         archivado=False,
         es_vigente=True,
         fecha_vigencia=hoy,
+        fecha_vencimiento=fecha_vencimiento,
         fecha_archivo=None,
         creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
         creado_por_usuario=nom_usuario,
@@ -321,6 +329,7 @@ def marcar_version_vigente(
     documento_id: int,
     version_id: int,
     fecha_vigencia: Optional[date] = None,
+    fecha_vencimiento: Optional[date] = None,
     usuario: Optional[Personal] = None,
     responsable_legajo: Optional[int] = None,
 ) -> VersionDocumento:
@@ -349,6 +358,11 @@ def marcar_version_vigente(
     )
 
     if version_destino.es_vigente:
+        if fecha_vencimiento is not None:
+            version_destino.fecha_vencimiento = fecha_vencimiento
+            version_destino.fecha_vigencia = fecha_vigencia
+            db.commit()
+            db.refresh(version_destino)
         return version_destino
 
     versiones = db.scalars(
@@ -372,6 +386,7 @@ def marcar_version_vigente(
         archivado=False,
         es_vigente=True,
         fecha_vigencia=fecha_vigencia,
+        fecha_vencimiento=fecha_vencimiento,
         fecha_archivo=None,
         creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
         creado_por_usuario=nom_usuario,
@@ -399,7 +414,7 @@ def marcar_version_vigente(
 
 def listar_documentos(
     db: Session,
-    tipo: Optional[TipoDocumento] = None,
+    tipo: Optional[str] = None,
     busqueda: Optional[str] = None,
 ) -> List[Documento]:
     query = select(Documento).where(Documento.activo == True)

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import type { PlanConId } from "./tipos";
 import '../../styles/formularioAlta.css';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
 import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';

@@ -30,7 +30,7 @@ import src.tipoCertificado.models  # noqa: F401
 import src.incidentes.models  # noqa: F401
 
 from src.personal.services import crear_personal
-from src.personal.schemas import PersonalCreate
+from src.personal.schemas import PersonalCreate, Capacidades
 from src.autenticacion.services import asegurar_usuarios_dev
 
 from src.insumos.services import crear_insumo
@@ -154,11 +154,11 @@ def main() -> None:
     hoy = datetime.now()
 
     print("Creando personal...")
-    juan = crear_personal(db, PersonalCreate(documento="30111222", nombre="Juan", apellido="Perez", email="juan.perez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
-    ana = crear_personal(db, PersonalCreate(documento="30222333", nombre="Ana", apellido="Gomez", email="ana.gomez@ejemplo.com", capacidad="ADMINISTRAR", contrasenia="Clave1234"))
-    marcos = crear_personal(db, PersonalCreate(documento="30333444", nombre="Marcos", apellido="Diaz", email="marcos.diaz@ejemplo.com", capacidad="AMBAS", contrasenia="Clave1234"))
-    lucia = crear_personal(db, PersonalCreate(documento="30444555", nombre="Lucia", apellido="Fernandez", email="lucia.fernandez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
-    sofia = crear_personal(db, PersonalCreate(documento="30555666", nombre="Sofia", apellido="Martinez", email="sofia.martinez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
+    juan = crear_personal(db, PersonalCreate(documento=30111222, nombre="Juan", apellido="Perez", email="juan.perez@ejemplo.com", capacidad=Capacidades.OPERAR, contrasenia="Clave1234"))
+    ana = crear_personal(db, PersonalCreate(documento=30222333, nombre="Ana", apellido="Gomez", email="ana.gomez@ejemplo.com", capacidad=Capacidades.ADMINISTRAR, contrasenia="Clave1234"))
+    marcos = crear_personal(db, PersonalCreate(documento=30333444, nombre="Marcos", apellido="Diaz", email="marcos.diaz@ejemplo.com", capacidad=Capacidades.AMBAS, contrasenia="Clave1234"))
+    lucia = crear_personal(db, PersonalCreate(documento=30444555, nombre="Lucia", apellido="Fernandez", email="lucia.fernandez@ejemplo.com", capacidad=Capacidades.OPERAR, contrasenia="Clave1234"))
+    sofia = crear_personal(db, PersonalCreate(documento=30555666, nombre="Sofia", apellido="Martinez", email="sofia.martinez@ejemplo.com", capacidad=Capacidades.OPERAR, contrasenia="Clave1234"))
     asegurar_usuarios_dev(db)
 
     print("Creando insumos (materias primas)...")
@@ -442,7 +442,7 @@ def main() -> None:
     import io
     from fastapi import UploadFile
     from src.documentos.services import crear_documento, subir_nueva_version
-    from src.documentos.constants import TipoDocumento
+
 
     def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
         stream_content = (
@@ -478,7 +478,7 @@ def main() -> None:
     doc_bpm = crear_documento(
         db,
         titulo="Manual de Buenas Practicas de Manufactura",
-        tipo=TipoDocumento.MANUAL_BPM,
+        tipo="Manual de BPM",
         version="1.0",
         file=pdf1,
         descripcion="Procedimientos operativos y sanitarios de produccion",
@@ -498,7 +498,7 @@ def main() -> None:
     crear_documento(
         db,
         titulo="Receta Estandar: Medialunas de Manteca",
-        tipo=TipoDocumento.RECETA,
+        tipo="Receta",
         version="1.0",
         file=pdf_receta,
         descripcion="Formulacion oficial para panificados",

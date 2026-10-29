@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from tests.database import session
 from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate, Capacidades
-from src.documentos.constants import TipoDocumento
+
 from src.documentos import exceptions, services
 
 def _crear_archivo_pdf_fake(nombre: str = "documento.pdf", contenido: bytes = b"%PDF-1.4 fake content") -> UploadFile:
@@ -26,7 +26,7 @@ def test_crear_documento_con_version_valida(session: Session):
     doc = services.crear_documento(
         db=session,
         titulo="Manual de Buenas Practicas",
-        tipo=TipoDocumento.MANUAL_BPM,
+        tipo="Manual de BPM",
         version="1.0",
         responsable_legajo=admin.legajo,
         file=archivo,
@@ -35,7 +35,7 @@ def test_crear_documento_con_version_valida(session: Session):
 
     assert doc.id is not None
     assert doc.titulo == "Manual de Buenas Practicas"
-    assert doc.tipo == TipoDocumento.MANUAL_BPM
+    assert doc.tipo == "Manual de BPM"
     assert doc.activo is True
     assert len(doc.versiones) == 1
 
@@ -62,7 +62,7 @@ def test_multiples_documentos_mismo_tipo_activos(session: Session):
     doc1 = services.crear_documento(
         db=session,
         titulo="Receta Medialunas de Manteca",
-        tipo=TipoDocumento.RECETA,
+        tipo="Receta",
         version="1.0",
         responsable_legajo=admin.legajo,
         file=_crear_archivo_pdf_fake("receta_medialunas.pdf"),
@@ -71,14 +71,14 @@ def test_multiples_documentos_mismo_tipo_activos(session: Session):
     doc2 = services.crear_documento(
         db=session,
         titulo="Receta Pan Frances",
-        tipo=TipoDocumento.RECETA,
+        tipo="Receta",
         version="1.0",
         responsable_legajo=admin.legajo,
         file=_crear_archivo_pdf_fake("receta_pan.pdf"),
     )
 
     assert doc1.id != doc2.id
-    recetas = services.listar_documentos(session, tipo=TipoDocumento.RECETA)
+    recetas = services.listar_documentos(session, tipo="Receta")
     titulos = [r.titulo for r in recetas]
     assert "Receta Medialunas de Manteca" in titulos
     assert "Receta Pan Frances" in titulos
@@ -98,7 +98,7 @@ def test_subir_nueva_version_archiva_solo_version_previa_del_mismo_documento(ses
     doc1 = services.crear_documento(
         db=session,
         titulo="Procedimiento Sanitizacion Batea",
-        tipo=TipoDocumento.PROCEDIMIENTO,
+        tipo="Procedimiento",
         version="1.0",
         responsable_legajo=admin.legajo,
         file=_crear_archivo_pdf_fake("poes_batea_v1.pdf"),
@@ -107,7 +107,7 @@ def test_subir_nueva_version_archiva_solo_version_previa_del_mismo_documento(ses
     doc2 = services.crear_documento(
         db=session,
         titulo="Procedimiento Limpieza Horno",
-        tipo=TipoDocumento.PROCEDIMIENTO,
+        tipo="Procedimiento",
         version="1.0",
         responsable_legajo=admin.legajo,
         file=_crear_archivo_pdf_fake("poes_horno_v1.pdf"),
@@ -136,6 +136,7 @@ def test_subir_nueva_version_archiva_solo_version_previa_del_mismo_documento(ses
     assert v1_doc1.fecha_archivo == date.today()
 
     assert len(doc2.versiones) == 1
+    assert doc2.version_actual is not None
     assert doc2.version_actual.version == 1
     assert doc2.version_actual.archivado is False
     assert doc2.version_actual.es_vigente is True
@@ -162,13 +163,14 @@ def test_marcar_version_vigente_criterios_completos(session: Session):
     doc = services.crear_documento(
         db=session,
         titulo="Manual BPM Planta",
-        tipo=TipoDocumento.MANUAL_BPM,
+        tipo="Manual de BPM",
         version="1.0",
         responsable_legajo=admin1.legajo,
         file=_crear_archivo_pdf_fake("bpm_v1.pdf"),
     )
 
     v1 = doc.version_actual
+    assert v1 is not None
     assert v1.version == 1
     assert v1.es_vigente is True
 
@@ -181,6 +183,7 @@ def test_marcar_version_vigente_criterios_completos(session: Session):
     )
     assert v2.es_vigente is True
     session.refresh(doc)
+    assert doc.version_vigente is not None
     assert doc.version_vigente.version == 2
 
     fecha_entrada_vigencia = date.today() + timedelta(days=5)
@@ -225,10 +228,12 @@ def test_marcar_version_vigente_criterios_completos(session: Session):
     creacion = auditorias[0]
     assert creacion.accion == AccionAuditoria.CREAR
     assert creacion.campo == "version_vigente"
+    assert creacion.valor_posterior is not None
     assert "v1" in creacion.valor_posterior
     modificacion = auditorias[-1]
     assert modificacion.accion == AccionAuditoria.MODIFICAR
     assert modificacion.campo == "version_vigente"
+    assert modificacion.valor_posterior is not None
     assert "v1" in modificacion.valor_posterior
     assert str(fecha_entrada_vigencia) in modificacion.valor_posterior
     assert str(admin2.legajo) in modificacion.valor_posterior
@@ -246,7 +251,7 @@ def test_version_duplicada_mismo_documento_falla(session: Session):
     doc = services.crear_documento(
         db=session,
         titulo="Ficha Tecnica Harina 000",
-        tipo=TipoDocumento.FICHA_TECNICA,
+        tipo="Ficha Técnica",
         version="1.0",
         responsable_legajo=admin.legajo,
         file=_crear_archivo_pdf_fake(),
@@ -284,7 +289,7 @@ def test_permiso_solo_administrador_puede_subir_y_marcar_vigente(session: Sessio
         services.crear_documento(
             db=session,
             titulo="Documento No Permitido",
-            tipo=TipoDocumento.RECETA,
+            tipo="Receta",
             version="1.0",
             responsable_legajo=operador.legajo,
             file=_crear_archivo_pdf_fake(),
@@ -293,12 +298,13 @@ def test_permiso_solo_administrador_puede_subir_y_marcar_vigente(session: Sessio
     doc = services.crear_documento(
         db=session,
         titulo="Receta Permitida",
-        tipo=TipoDocumento.RECETA,
+        tipo="Receta",
         version="1.0",
         responsable_legajo=admin.legajo,
         file=_crear_archivo_pdf_fake(),
     )
     v1 = doc.version_actual
+    assert v1 is not None
 
     with pytest.raises(exceptions.SoloAdministradorPuedeSubir):
         services.marcar_version_vigente(
@@ -324,7 +330,7 @@ def test_validacion_archivo_no_pdf(session: Session):
         services.crear_documento(
             db=session,
             titulo="Doc Invalido",
-            tipo=TipoDocumento.RECETA,
+            tipo="Receta",
             version="1.0",
             responsable_legajo=admin.legajo,
             file=archivo_txt,
@@ -335,7 +341,7 @@ def test_validacion_archivo_no_pdf(session: Session):
         services.crear_documento(
             db=session,
             titulo="Doc Invalido",
-            tipo=TipoDocumento.RECETA,
+            tipo="Receta",
             version="1.0",
             responsable_legajo=admin.legajo,
             file=archivo_sin_cabecera,
@@ -346,7 +352,7 @@ def test_validacion_archivo_no_pdf(session: Session):
         services.crear_documento(
             db=session,
             titulo="Doc Vacio",
-            tipo=TipoDocumento.RECETA,
+            tipo="Receta",
             version="1.0",
             responsable_legajo=admin.legajo,
             file=archivo_vacio,
@@ -365,10 +371,11 @@ def test_versionado_automatico_creacion_e_incremento(session: Session):
     doc = services.crear_documento(
         db=session,
         titulo="Manual BPM Calidad",
-        tipo=TipoDocumento.MANUAL_BPM,
+        tipo="Manual de BPM",
         file=_crear_archivo_pdf_fake("manual_bpm.pdf"),
         responsable_legajo=admin.legajo,
     )
+    assert doc.version_actual is not None
     assert doc.version_actual.version == 1
 
     v2 = services.subir_nueva_version(
@@ -402,7 +409,7 @@ def test_listar_historial_documento_cronologico(session: Session):
     doc = services.crear_documento(
         db=session,
         titulo="Receta Medialunas de Grasa",
-        tipo=TipoDocumento.RECETA,
+        tipo="Receta",
         file=_crear_archivo_pdf_fake("receta_v1.pdf"),
         responsable_legajo=admin.legajo,
     )
@@ -442,10 +449,11 @@ def test_descargar_archivo_version_archivada(session: Session):
     doc = services.crear_documento(
         db=session,
         titulo="Procedimiento Enfriamiento",
-        tipo=TipoDocumento.PROCEDIMIENTO,
+        tipo="Procedimiento",
         file=_crear_archivo_pdf_fake("poes_v1.pdf"),
         responsable_legajo=admin.legajo,
     )
+    assert doc.version_actual is not None
     v1_id = doc.version_actual.id
 
     services.subir_nueva_version(
@@ -458,3 +466,35 @@ def test_descargar_archivo_version_archivada(session: Session):
     ruta, nombre_orig = services.obtener_archivo_version(session, v1_id)
     assert ruta.is_file()
     assert nombre_orig == "poes_v1.pdf"
+
+def test_documento_vencido_no_tiene_version_vigente(session: Session):
+    admin = crear_personal(session, PersonalCreate(
+        documento=88812345,
+        nombre="Clara",
+        apellido="Admin",
+        email="clara.admin@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
+    ))
+    doc = services.crear_documento(
+        db=session,
+        titulo="Manual Limpieza Pasado",
+        tipo="Manual de BPM",
+        file=_crear_archivo_pdf_fake("manual_vencido.pdf"),
+        responsable_legajo=admin.legajo,
+        fecha_vencimiento=date.today() - timedelta(days=2),
+    )
+    assert doc.version_vigente is None
+    assert doc.ultima_version_vigente is not None
+    assert doc.ultima_version_vigente.version == 1
+
+    version_nueva = services.marcar_version_vigente(
+        db=session,
+        documento_id=doc.id,
+        version_id=doc.ultima_version_vigente.id,
+        fecha_vigencia=date.today(),
+        fecha_vencimiento=date.today() + timedelta(days=30),
+        responsable_legajo=admin.legajo,
+    )
+    assert doc.version_vigente is not None
+    assert doc.version_vigente.id == version_nueva.id

@@ -3,7 +3,8 @@ import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
 import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
 import { CsvIcon } from '../../components/icons/CsvIcon';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 
 export type OrigenVencimiento = 'personal' | 'equipo' | 'documento';
@@ -34,6 +35,9 @@ interface VencimientoApi {
 interface Props {
   onIrAlRegistro: (vencimiento: VencimientoFila) => void;
   onVerSoloPersonal?: () => void;
+  onVerSoloDocumentos?: () => void;
+  filtroOrigenInicial?: '' | OrigenVencimiento;
+  filtroEstadoInicial?: '' | EstadoVencimiento;
 }
 
 const ETIQUETA_ORIGEN: Record<OrigenVencimiento, string> = {
@@ -62,10 +66,13 @@ const describirPlazo = (dias: number): string => {
 export const VistaConsolidadaVencimiento: React.FC<Props> = ({
   onIrAlRegistro,
   onVerSoloPersonal,
+  onVerSoloDocumentos,
+  filtroOrigenInicial,
+  filtroEstadoInicial,
 }) => {
   const [filas, setFilas] = useState<VencimientoFila[]>([]);
-  const [filtro, setFiltro] = useState<'' | OrigenVencimiento>('');
-  const [filtroEstado, setFiltroEstado] = useState<'' | EstadoVencimiento>('');
+  const [filtro, setFiltro] = useState<'' | OrigenVencimiento>(filtroOrigenInicial || '');
+  const [filtroEstado, setFiltroEstado] = useState<'' | EstadoVencimiento>(filtroEstadoInicial || '');
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -101,9 +108,9 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
             estado: d.estado,
           }))
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelado) {
-          setError(err?.message || 'Error al cargar los vencimientos.');
+          setError(err instanceof Error ? err.message : 'Error al cargar los vencimientos.');
           setFilas([]);
         }
       } finally {
@@ -186,7 +193,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-          {onVerSoloPersonal && (
+          {(onVerSoloPersonal || onVerSoloDocumentos) && (
             <div className="venc-tabs">
               <button type="button" className="venc-tab venc-tab--activo">
                 Todos (Consolidado)
@@ -198,6 +205,15 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
               >
                 Solo Personal (con archivo)
               </button>
+            {onVerSoloDocumentos && (
+              <button
+                type="button"
+                className="venc-tab"
+                onClick={onVerSoloDocumentos}
+              >
+                Solo Documentos
+              </button>
+            )}
             </div>
           )}
 

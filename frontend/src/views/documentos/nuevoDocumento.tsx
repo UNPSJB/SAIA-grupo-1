@@ -1,9 +1,8 @@
-import React, { useState } from "react";
-import type { TipoDocumento } from "./tipos";
+import React, { useState, useEffect } from "react";
+
 import { apiFetch } from "../../api/client";
 import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
 import "../../styles/formularioAlta.css";
-
 
 interface NuevoDocumentoProps {
   onSuccess?: () => void;
@@ -12,14 +11,45 @@ interface NuevoDocumentoProps {
 
 export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoProps) {
   const [titulo, setTitulo] = useState("");
-  const [tipo, setTipo] = useState<TipoDocumento>("MANUAL_BPM");
+  const [tiposDisponibles, setTiposDisponibles] = useState<{ id: number; nombre: string }[]>([
+    { id: 1, nombre: "Manual de BPM" },
+    { id: 2, nombre: "Ficha Técnica" },
+    { id: 3, nombre: "Procedimiento" },
+    { id: 4, nombre: "Receta" },
+  ]);
+  const [tipo, setTipo] = useState<string>("Manual de BPM");
   const [descripcion, setDescripcion] = useState("");
+  const [fechaVencimiento, setFechaVencimiento] = useState("");
   const [archivo, setArchivo] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [exitoDialogAbierto, setExitoDialogAbierto] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    const cargarTipos = async () => {
+      try {
+        const res = await apiFetch("/documentos/tipos/");
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setTiposDisponibles(data);
+            setTipo((prev) => {
+              const existe = data.some((t: { nombre: string }) => t.nombre === prev);
+              return existe ? prev : data[0].nombre;
+            });
+          }
+        }
+      } catch {
+      }
+    };
+    cargarTipos();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const handleArchivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -53,6 +83,9 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
     formData.append("titulo", titulo.trim());
     formData.append("tipo", tipo);
     formData.append("version", "1");
+    if (fechaVencimiento) {
+      formData.append("fecha_vencimiento", fechaVencimiento);
+    }
     formData.append("archivo", archivo);
     if (descripcion.trim()) {
       formData.append("descripcion", descripcion.trim());
@@ -110,13 +143,17 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
           <select
             id="tipo"
             value={tipo}
-            onChange={(e) => setTipo(e.target.value as TipoDocumento)}
+            onChange={(e) => setTipo(e.target.value)}
             required
           >
-            <option value="MANUAL_BPM">Manual de BPM</option>
-            <option value="FICHA_TECNICA">Ficha Técnica</option>
-            <option value="PROCEDIMIENTO">Procedimiento</option>
-            <option value="RECETA">Receta</option>
+            {tiposDisponibles.map((t) => (
+              <option key={t.id} value={t.nombre}>
+                {t.nombre}
+              </option>
+            ))}
+
+
+
           </select>
         </div>
 
@@ -162,6 +199,16 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
             value={1}
             disabled
             style={{ opacity: 0.8, cursor: "not-allowed" }}
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="fechaVencimiento">Fecha de Vencimiento (opcional)</label>
+          <input
+            id="fechaVencimiento"
+            type="date"
+            value={fechaVencimiento}
+            onChange={(e) => setFechaVencimiento(e.target.value)}
           />
         </div>
 
