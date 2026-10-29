@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict, Any
 from fastapi import UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -12,10 +12,55 @@ from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.documentos import exceptions
 from src.documentos.constants import TAMANIO_MAXIMO_BYTES, TipoDocumento
-from src.documentos.models import Documento, VersionDocumento
+from src.documentos.models import Documento, VersionDocumento 
 
 STORAGE_DIR = Path(__file__).resolve().parent / "archivos"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def obtener_documentos_para_csv(
+    db: Session,
+    tipo: Optional[TipoDocumento] = None,
+    busqueda: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    
+    docs = listar_documentos(db, tipo=tipo, busqueda=busqueda)
+    filas = []
+
+    for d in docs:
+        v = d.version_vigente
+
+        # Mapeo descriptivo del tipo de documento
+        tipo_map = {
+            "MANUAL_BPM": "Manual de BPM",
+            "FICHA_TECNICA": "Ficha Técnica",
+            "PROCEDIMIENTO": "Procedimiento",
+            "RECETA": "Receta",
+        }
+        tipo_str = d.tipo.value if hasattr(d.tipo, "value") else str(d.tipo or "")
+        tipo_label = tipo_map.get(tipo_str, tipo_str)
+
+        # Formateo de fechas
+        f_vigencia = getattr(v, "fecha_vigencia", None) if v else None
+        str_vigencia = f_vigencia.strftime("%Y-%m-%d") if hasattr(f_vigencia, "strftime") and f_vigencia else "-"
+
+        f_creacion = getattr(d, "creado_el", None)
+        str_creacion = f_creacion.strftime("%Y-%m-%d") if hasattr(f_creacion, "strftime") and f_creacion else "-"
+
+        filas.append({
+            "id": d.id,
+            "titulo": getattr(d, "titulo", "") or "",
+            "tipo": tipo_label,
+            "descripcion": getattr(d, "descripcion", "") or "-",
+            "version_vigente": f"v{v.version}" if v else "-",
+            "fecha_vigencia": str_vigencia,
+            "creado_el": str_creacion,
+            "tamanio": v.tamanio_formateado if v and hasattr(v, "tamanio_formateado") else "-",
+            "usuario": v.usuario if v and hasattr(v, "usuario") else "-",
+            "total_versiones": len(set(ver.version for ver in d.versiones)) if hasattr(d, "versiones") else 1
+        })
+
+    return filas
 
 def es_administrador(persona: Personal) -> bool:
     return persona.capacidad in (Capacidades.ADMINISTRAR, Capacidades.AMBAS)

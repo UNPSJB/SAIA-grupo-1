@@ -3,7 +3,10 @@ import type { DocumentoListItem, TipoDocumento } from "./tipos";
 import { ModalHistorialVersiones } from "./modalHistorial";
 import { DetalleDocumento } from "./verDetalle";
 import { Paginacion, usePaginacion } from "../../components/ui/paginacion";
+import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
+import { CsvIcon } from "../../components/icons/CsvIcon";
 import { apiFetch } from "../../api/client";
+import { descargarCSV } from "../../utils/exportarCsv";
 import { useAuth } from "../../auth/useAuth";
 import "../../styles/formularioAlta.css";
 import "./documentos.css";
@@ -53,6 +56,8 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
   const { esAdministrador } = useAuth();
   const [documentos, setDocumentos] = useState<DocumentoListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [detalleIdInterno, setDetalleIdInterno] = useState<number | null>(null);
 
   const [busqueda, setBusqueda] = useState("");
@@ -116,6 +121,33 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
     return matchTipo && matchBusqueda;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append("busqueda", busqueda.trim());
+      if (filtroTipo !== "TODOS") params.append("tipo", filtroTipo);
+
+      const queryString = params.toString();
+      const url = `/documentos/exportar-csv${queryString ? `?${queryString}` : ""}`;
+
+      await descargarCSV(url, "documentos_versionados.csv");
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al exportar la lista de documentos a CSV.");
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroTipo !== "TODOS") partes.push(`Tipo: ${getTipoLabel(filtroTipo as TipoDocumento)}`);
+    return partes.length > 0 ? partes.join(" | ") : "Sin filtros aplicados";
+  };
+
   const {
     itemsPaginados: documentosPaginados,
     paginaActual,
@@ -146,15 +178,27 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
             {esAdministrador ? "01 · Listado de Documentos Vigentes" : "01 · Consulta de Documentos Vigentes"}
           </div>
         </div>
-        {esAdministrador && onNuevoClick && (
+
+        <div style={{ display: "flex", gap: "10px" }}>
           <button
             type="button"
-            className="btn-guardar"
-            onClick={onNuevoClick}
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            + Subir Documento
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {esAdministrador && onNuevoClick && (
+            <button
+              type="button"
+              className="btn-guardar"
+              onClick={onNuevoClick}
+            >
+              + Subir Documento
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="filtros-top-bar">
@@ -289,6 +333,15 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="documentos"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={documentosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ModalHistorialVersiones
