@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import type { Auditoria } from "./tipos";
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 
@@ -38,6 +41,9 @@ const getBadgeClass = (accion?: string) => {
 export const ListadoAuditoria: React.FC = () => {
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroAccion, setFiltroAccion] = useState<string>('TODAS');
   const [filtroTabla, setFiltroTabla] = useState<string>('TODAS');
@@ -93,6 +99,35 @@ export const ListadoAuditoria: React.FC = () => {
     return matchBusqueda && matchAccion && matchTabla;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroAccion !== 'TODAS') params.append('accion', filtroAccion);
+      if (filtroTabla !== 'TODAS') params.append('tabla', filtroTabla);
+
+      const queryString = params.toString();
+      const url = `/auditoria/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'auditoria.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al exportar los registros de auditoría a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroAccion !== 'TODAS') partes.push(`Acción: ${filtroAccion}`);
+    if (filtroTabla !== 'TODAS') partes.push(`Tabla: ${filtroTabla}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: auditoriasPaginadas,
     paginaActual,
@@ -112,9 +147,17 @@ export const ListadoAuditoria: React.FC = () => {
           <h1>Lista de Auditoría</h1>
           <div className="subtitulo">01 · Listado</div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setDialogExportarAbierto(true)}
+          className="btn-cancelar"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <CsvIcon /> Exportar CSV
+        </button>
       </div>
 
-      {/* Barra de Filtros */}
       <div className="filtros-top-bar">
         <input
           type="text"
@@ -211,6 +254,15 @@ export const ListadoAuditoria: React.FC = () => {
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="registros de auditoría"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={auditoriasFiltradas.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
     </div>
   );
