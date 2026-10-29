@@ -31,6 +31,7 @@ export type Modulo =
   | 'elementosDeLimpieza'
   | 'planDeLimpieza'
   | 'checklist'
+  | 'motivos'
   | 'documentos'
   | 'incidentes'
   | 'auditoria'
@@ -67,6 +68,13 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <rect width="18" height="18" x="3" y="4" rx="2" />
       <path d="M16 2v4M8 2v4M3 10h18" />
       <path d="M12 14v3l2 1" />
+    </svg>
+  ),
+  motivos: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
   ),
   checklist: (
@@ -201,6 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       titulo: 'Higiene y POES',
       items: [
         { id: 'checklist', label: 'Checklists Diarios', icono: ICONOS_MODULO.checklist },
+        { id: 'motivos', label: 'Motivos No Realización', icono: ICONOS_MODULO.motivos },
         { id: 'planDeLimpieza', label: 'Plan de Limpieza', icono: ICONOS_MODULO.planDeLimpieza },
         { id: 'insumos_quimicos', label: 'Químicos Limpieza', icono: ICONOS_MODULO.insumos_quimicos },
         { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza', icono: ICONOS_MODULO.elementosDeLimpieza },

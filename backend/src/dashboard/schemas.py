@@ -10,6 +10,7 @@ class CumplimientoResumen(BaseModel):
     hechas: int = 0
     pendientes: int = 0
     vencidas: int = 0
+    justificadas: int = 0
     porcentaje: float = 0.0
 
 class ConsumoInsumo(BaseModel):

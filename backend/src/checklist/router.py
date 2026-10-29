@@ -90,6 +90,19 @@ async def obtener_imagen_endpoint(
 
 
 @router.get(
+    "/tareas-no-realizadas",
+    response_model=List[schemas.ChecklistItem],
+)
+async def listar_tareas_no_realizadas_endpoint(
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
+):
+    if not es_administrador(usuario):
+        raise PermissionDenied()
+    return services.listar_tareas_no_realizadas_reasignables(db)
+
+
+@router.get(
     "/{checklist_id}",
     response_model=schemas.Checklist,
 )
@@ -99,7 +112,7 @@ async def obtener_checklist_endpoint(
     usuario: Personal = Depends(get_usuario_actual),
 ):
     _verificar_acceso(db, checklist_id, usuario)
-    return services.obtener_checklist(db, checklist_id)
+    return services.obtener_checklist(db, checklist_id, usuario=usuario)
 
 
 @router.get(
@@ -135,6 +148,28 @@ async def completar_tarea_endpoint(
 
 
 @router.post(
+    "/{checklist_id}/tareas/{item_id}/no-realizada",
+    response_model=schemas.ChecklistItem,
+)
+@router.put(
+    "/{checklist_id}/tareas/{item_id}/no-realizada",
+    response_model=schemas.ChecklistItem,
+)
+async def marcar_tarea_no_realizada_endpoint(
+    checklist_id: int,
+    item_id: int,
+    datos: schemas.MarcarNoRealizadaSchema,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_operador),
+):
+    _verificar_tarea_propia(db, checklist_id, item_id, usuario)
+    return services.marcar_tarea_no_realizada(
+        db, checklist_id, item_id, datos, usuario.legajo
+    )
+
+
+
+@router.post(
     "/{checklist_id}/tareas/{item_id}/imagen",
     response_model=schemas.ChecklistItem,
 )
@@ -161,4 +196,20 @@ async def eliminar_imagen_tarea_endpoint(
 ):
     _verificar_tarea_propia(db, checklist_id, item_id, usuario)
     return services.eliminar_imagen_tarea(db, checklist_id, item_id)
+
+
+@router.post(
+    "/{checklist_id}/tareas/{item_id}/reasignar",
+    response_model=schemas.ChecklistItem,
+)
+async def reasignar_tarea_endpoint(
+    checklist_id: int,
+    item_id: int,
+    datos: schemas.ReasignarTareaSchema,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
+):
+    if not es_administrador(usuario):
+        raise PermissionDenied()
+    return services.reasignar_tarea(db, checklist_id, item_id, datos, usuario)
 

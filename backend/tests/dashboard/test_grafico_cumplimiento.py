@@ -33,11 +33,6 @@ def test_grafico_cumplimiento_por_dia(session: Session) -> None:
     ayer = hoy - timedelta(days=1)
 
     c_ayer = generar_checklist(session, ChecklistGenerar(responsable_legajo=1, fecha=hoy))
-    c_ayer.fecha = ayer
-    session.commit()
-
-    c_hoy = generar_checklist(session, ChecklistGenerar(responsable_legajo=1, fecha=hoy))
-
     for item in c_ayer.items:
         completar_tarea(
             session,
@@ -45,6 +40,10 @@ def test_grafico_cumplimiento_por_dia(session: Session) -> None:
             item.id,
             CompletarTareaSchema(responsable_legajo=1, insumos_utilizados=[]),
         )
+    c_ayer.fecha = ayer
+    session.commit()
+
+    c_hoy = generar_checklist(session, ChecklistGenerar(responsable_legajo=1, fecha=hoy))
 
     if c_hoy.items:
         completar_tarea(
@@ -80,13 +79,6 @@ def test_grafico_cumplimiento_por_semana(session: Session) -> None:
     martes = inicio_semana + timedelta(days=1)
 
     c_lunes = generar_checklist(session, ChecklistGenerar(responsable_legajo=1, fecha=hoy))
-    c_lunes.fecha = lunes
-    session.commit()
-
-    c_martes = generar_checklist(session, ChecklistGenerar(responsable_legajo=1, fecha=hoy))
-    c_martes.fecha = martes
-    session.commit()
-
     if c_lunes.items:
         completar_tarea(
             session,
@@ -94,6 +86,12 @@ def test_grafico_cumplimiento_por_semana(session: Session) -> None:
             c_lunes.items[0].id,
             CompletarTareaSchema(responsable_legajo=1, insumos_utilizados=[]),
         )
+    c_lunes.fecha = lunes
+    session.commit()
+
+    c_martes = generar_checklist(session, ChecklistGenerar(responsable_legajo=1, fecha=hoy))
+    c_martes.fecha = martes
+    session.commit()
 
     resultado = services.obtener_grafico_cumplimiento(
         session, desde=lunes, hasta=martes + timedelta(days=5), agrupacion="semana"

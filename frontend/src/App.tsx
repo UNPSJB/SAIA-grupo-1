@@ -34,6 +34,7 @@ import EditarPlanDeLimpieza from './views/planesDeLimpieza/editarPlan';
 import { VerPLanDeLimpieza } from './views/planesDeLimpieza/verPlan';
 import { ListadoChecklists } from './views/checklist/listado';
 import { DetalleChecklist } from './views/checklist/verDetalle';
+import { TareasNoRealizadas } from './views/checklist/tareasNoRealizadas';
 import { ListadoAuditoria } from './views/auditoria/listado';
 import { ListadoIncidentes } from './views/incidentes/listado';
 import { IncidentesAbiertos } from './views/incidentes/incidentesAbiertos';
@@ -65,11 +66,13 @@ import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 import { ListadoTiposDocumentos } from './views/tipoDocumento/listado';
 import { NuevoTipoDocumento } from './views/tipoDocumento/nuevoTipoDocumento';
 import { DetalleTipoDocumento } from './views/tipoDocumento/verDetalle';
+import { ListadoMotivos } from './views/motivos/listado';
+import { NuevoMotivo } from './views/motivos/nuevoMotivo';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 import { VencimientosDocumentos } from './views/documentos/vencimientosDocumentos';
 import './styles/dashboard.css';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -77,11 +80,12 @@ type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar' | 'certificados' 
 type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar' | 'consumo_historico';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
-type VistaChecklist = 'listado' | 'detalle';
+type VistaChecklist = 'listado' | 'detalle' | 'noRealizadas';
 type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
+type VistaMotivos = 'listado' | 'alta';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -130,6 +134,7 @@ function Aplicacion() {
 
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
+  const [vistaMotivos, setVistaMotivos] = useState<VistaMotivos>('listado');
 
   const [vistaTipoDocumento, setVistaTipoDocumento] = useState<VistaTipoDocumento>('listado');
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<number | null>(null);
@@ -154,6 +159,7 @@ function Aplicacion() {
     setVistaElementos('listado');
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
+    setVistaMotivos('listado');
     setVistaIncidentesAdmin('abiertos');
     setVistaVencimientos('consolidado');
     setVistaPlanCalibracion('listado');
@@ -922,6 +928,15 @@ const irANotificacion = (notif: NotificacionItem) => {
                 setChecklistSeleccionado(id);
                 setVistaChecklist('detalle');
               }}
+              onTareasNoRealizadasClick={() => setVistaChecklist('noRealizadas')}
+            />
+          ) : vistaChecklist === 'noRealizadas' ? (
+            <TareasNoRealizadas
+              onVolver={() => setVistaChecklist('listado')}
+              onDetalleChecklist={(id) => {
+                setChecklistSeleccionado(id);
+                setVistaChecklist('detalle');
+              }}
             />
           ) : (
             <DetalleChecklist
@@ -1002,6 +1017,17 @@ const irANotificacion = (notif: NotificacionItem) => {
             <DetalleTipoDocumento
               tipoId={tipoDocumentoSeleccionado}
               onCancel={() => setVistaTipoDocumento('listado')}
+            />
+          ) : null
+        ) : modulo === 'motivos' ? (
+          vistaMotivos === 'listado' ? (
+            <ListadoMotivos
+              onNuevoClick={() => setVistaMotivos('alta')}
+            />
+          ) : vistaMotivos === 'alta' ? (
+            <NuevoMotivo
+              onSuccess={() => setVistaMotivos('listado')}
+              onCancel={() => setVistaMotivos('listado')}
             />
           ) : null
         ) : null}

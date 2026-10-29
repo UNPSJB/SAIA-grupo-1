@@ -24,12 +24,15 @@ def _resumen_checklists(checklists, hoy: date | None = None) -> schemas.Cumplimi
     hechas = 0
     pendientes = 0
     vencidas = 0
+    justificadas = 0
 
     for c in checklists:
         dias_transcurridos = (hoy - c.fecha).days
         for item in c.items:
-            if item.estado == EstadoTareaItem.REALIZADO:
+            if item.estado in (EstadoTareaItem.REALIZADO, EstadoTareaItem.REASIGNADO):
                 hechas += 1
+            elif item.estado == EstadoTareaItem.NO_REALIZADO:
+                justificadas += 1
             else:
                 dias_limite = DIAS_POR_FRECUENCIA.get(item.frecuencia, 1)
                 if dias_transcurridos >= dias_limite:
@@ -37,12 +40,13 @@ def _resumen_checklists(checklists, hoy: date | None = None) -> schemas.Cumplimi
                 else:
                     pendientes += 1
 
-    total = hechas + pendientes + vencidas
+    total = hechas + pendientes + vencidas + justificadas
     porcentaje = round((hechas / total) * 100.0, 1) if total > 0 else 0.0
     return schemas.CumplimientoResumen(
         hechas=hechas,
         pendientes=pendientes,
         vencidas=vencidas,
+        justificadas=justificadas,
         porcentaje=porcentaje,
     )
 
