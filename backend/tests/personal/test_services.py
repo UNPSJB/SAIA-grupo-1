@@ -13,7 +13,6 @@ from src.personal.services import (
 )
 from src.personal.schemas import PersonalCreate, PersonalUpdate
 
-
 def test_crear_personal(session: Session) -> None:
     nombre = "Pepe"
     email = "pepe@gmail.com"
@@ -27,7 +26,6 @@ def test_crear_personal(session: Session) -> None:
     assert persona_3.nombre == nombre
     assert persona_3.email == email
 
-
 def test_modificar_personal(session: Session) -> None:
     nuevo_nombre = "Pepe"
     persona_id = 2
@@ -38,9 +36,8 @@ def test_modificar_personal(session: Session) -> None:
     )
     assert persona_2.nombre == nuevo_nombre
 
-
 def test_baja_logica_personal(session: Session) -> None:
-    # la baja es logica: la persona sigue existiendo pero queda inactiva.
+
     persona_3 = crear_personal(
         session,
         PersonalCreate(
@@ -58,15 +55,13 @@ def test_baja_logica_personal(session: Session) -> None:
     assert persona_3.activo is False
     assert len(listar_personal(session)) == 3
 
-
 def test_obtener_personal_inexistente(session: Session) -> None:
     with pytest.raises(HTTPException) as error:
         obtener_personal_por_legajo(session, 9999)
     assert error.value.status_code == status.HTTP_404_NOT_FOUND
 
-
 def test_crear_personal_dni_duplicado(session: Session) -> None:
-    # 30111222 es el documento de Juan Perez, cargado en tests/database.py
+
     with pytest.raises(HTTPException) as error:
         crear_personal(
             session,
@@ -80,12 +75,37 @@ def test_crear_personal_dni_duplicado(session: Session) -> None:
         )
     assert error.value.status_code == status.HTTP_400_BAD_REQUEST
 
+def test_crear_personal_email_duplicado(session: Session) -> None:
+    with pytest.raises(HTTPException) as error:
+        crear_personal(
+            session,
+            PersonalCreate(
+                documento="30999888",
+                nombre="Carlos",
+                apellido="Perez",
+                email="juan.perez@gmail.com",
+                contrasenia="Clave1234",
+            ),
+        )
+    assert error.value.status_code == status.HTTP_400_BAD_REQUEST
+
+def test_actualizar_personal_inexistente_o_duplicados(session: Session) -> None:
+    with pytest.raises(HTTPException) as err_404:
+        actualizar_personal(session, 9999, PersonalUpdate(nombre="Nadie"))
+    assert err_404.value.status_code == status.HTTP_404_NOT_FOUND
+
+    with pytest.raises(HTTPException) as err_doc:
+        actualizar_personal(session, 2, PersonalUpdate(documento="30111222"))
+    assert err_doc.value.status_code == status.HTTP_400_BAD_REQUEST
+
+    with pytest.raises(HTTPException) as err_email:
+        actualizar_personal(session, 2, PersonalUpdate(email="juan.perez@gmail.com"))
+    assert err_email.value.status_code == status.HTTP_400_BAD_REQUEST
 
 def test_usuario_autogenerado(session: Session) -> None:
-    # Juan Perez (tests/database.py) y Ana Dominguez ya existen
+
     assert obtener_personal_por_legajo(session, 1).usuario == "juan.perez"
     assert obtener_personal_por_legajo(session, 2).usuario == "ana.dominguez"
-
 
 def test_usuario_sin_tildes_ni_espacios(session: Session) -> None:
     persona = crear_personal(
@@ -97,7 +117,6 @@ def test_usuario_sin_tildes_ni_espacios(session: Session) -> None:
     )
     assert persona.usuario == "maria.delacruznunez"
 
-
 def test_usuario_repetido_agrega_numero(session: Session) -> None:
     otro_juan = crear_personal(
         session,
@@ -108,12 +127,10 @@ def test_usuario_repetido_agrega_numero(session: Session) -> None:
     )
     assert otro_juan.usuario == "juan.perez2"
 
-
 def test_usuario_no_cambia_al_editar_nombre(session: Session) -> None:
     persona = actualizar_personal(session, 1, PersonalUpdate(nombre="Pedro"))
     assert persona.nombre == "Pedro"
     assert persona.usuario == "juan.perez"
-
 
 def test_contrasenia_se_guarda_hasheada(session: Session) -> None:
     persona = obtener_personal_por_legajo(session, 1)
@@ -121,18 +138,15 @@ def test_contrasenia_se_guarda_hasheada(session: Session) -> None:
     assert persona.contrasenia_hash != "Clave1234"
     assert verificar_contrasenia("Clave1234", persona.contrasenia_hash)
 
-
 def test_actualizar_contrasenia(session: Session) -> None:
     persona = actualizar_personal(session, 1, PersonalUpdate(contrasenia="NuevaClave99"))
     assert verificar_contrasenia("NuevaClave99", persona.contrasenia_hash)
     assert not verificar_contrasenia("Clave1234", persona.contrasenia_hash)
 
-
 def test_editar_otros_datos_no_toca_contrasenia(session: Session) -> None:
     hash_antes = obtener_personal_por_legajo(session, 1).contrasenia_hash
     persona = actualizar_personal(session, 1, PersonalUpdate(nombre="Pedro"))
     assert persona.contrasenia_hash == hash_antes
-
 
 def test_contrasenia_corta_es_invalida() -> None:
     with pytest.raises(ValidationError):
@@ -140,7 +154,6 @@ def test_contrasenia_corta_es_invalida() -> None:
             documento="30111222", nombre="Pepe", apellido="Gomez",
             email="pepe@gmail.com", contrasenia="corta",
         )
-
 
 def test_listar_personal(session: Session) -> None:
     personal = listar_personal(session)

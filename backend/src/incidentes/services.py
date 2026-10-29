@@ -1,7 +1,7 @@
-import uuid
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
+import uuid
 from fastapi import UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -14,10 +14,12 @@ from src.incidentes import exceptions, models, schemas
 from src.incidentes.constants import (
     ACCION_CORRECTIVA_MAX,
     DESCRIPCION_MAX,
+    ETIQUETAS_TIPO,
     FIRMAS_IMAGEN,
     FOTO_MAX_BYTES,
     MOTIVO_REAPERTURA_MAX,
     EstadoIncidente,
+    TipoIncidente,
 )
 from src.personal.models import Personal
 
@@ -26,30 +28,30 @@ IMAGENES_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _normalizar_descripcion(descripcion: str) -> str:
-    descripcion = (descripcion or "").strip()
-    if not descripcion:
+    texto = (descripcion or "").strip()
+    if not texto:
         raise exceptions.DescripcionVacia()
-    if len(descripcion) > DESCRIPCION_MAX:
+    if len(texto) > DESCRIPCION_MAX:
         raise exceptions.DescripcionDemasiadoLarga()
-    return descripcion
+    return texto
 
 
 def _normalizar_accion_correctiva(accion: str) -> str:
-    accion = (accion or "").strip()
-    if not accion:
+    texto = (accion or "").strip()
+    if not texto:
         raise exceptions.AccionCorrectivaVacia()
-    if len(accion) > ACCION_CORRECTIVA_MAX:
+    if len(texto) > ACCION_CORRECTIVA_MAX:
         raise exceptions.AccionCorrectivaDemasiadoLarga()
-    return accion
+    return texto
 
 
 def _normalizar_motivo_reapertura(motivo: str) -> str:
-    motivo = (motivo or "").strip()
-    if not motivo:
+    texto = (motivo or "").strip()
+    if not texto:
         raise exceptions.MotivoReaperturaVacio()
-    if len(motivo) > MOTIVO_REAPERTURA_MAX:
+    if len(texto) > MOTIVO_REAPERTURA_MAX:
         raise exceptions.MotivoReaperturaDemasiadoLargo()
-    return motivo
+    return texto
 
 
 def _es_cerrado(estado: EstadoIncidente | str) -> bool:
@@ -57,13 +59,12 @@ def _es_cerrado(estado: EstadoIncidente | str) -> bool:
     return val in (EstadoIncidente.CERRADO.value, EstadoIncidente.RESUELTO.value, "cerrado", "resuelto")
 
 
-def _leer_foto(foto: Optional[UploadFile]) -> Optional[tuple[bytes, str]]:
-    """Devuelve (contenido, extension) de la foto, o None si no se adjuntó ninguna."""
+def _leer_foto(foto: Optional[UploadFile]) -> Optional[Tuple[bytes, str]]:
     if foto is None:
         return None
     contenido = foto.file.read(FOTO_MAX_BYTES + 1)
     if not contenido and not foto.filename:
-        return None  # el navegador envía una parte vacía cuando no se eligió archivo
+        return None
     if len(contenido) > FOTO_MAX_BYTES:
         raise exceptions.ImagenDemasiadoGrande()
     for firma, extension in FIRMAS_IMAGEN.items():
@@ -89,9 +90,14 @@ def _obtener(db: Session, incidente_id: int) -> models.Incidente:
 
 
 def crear_incidente(
-    db: Session, usuario: Personal, descripcion: str, foto: Optional[UploadFile] = None
+    db: Session,
+    usuario: Personal,
+    descripcion: str,
+    foto: Optional[UploadFile] = None,
+    tipo: Optional[TipoIncidente] = None,
+    categoria_id: Optional[int] = None,
 ) -> models.Incidente:
-    descripcion = _normalizar_descripcion(descripcion)
+    desc = _normalizar_descripcion(descripcion)
     archivo = _leer_foto(foto)
 
     nombre_foto = None
@@ -100,8 +106,40 @@ def crear_incidente(
         nombre_foto = f"inc_{uuid.uuid4().hex}{extension}"
         (IMAGENES_DIR / nombre_foto).write_bytes(contenido)
 
+    tipo_final = tipo if isinstance(tipo, TipoIncidente) else TipoIncidente.OTRO
+    if isinstance(tipo, str):
+        try:
+            tipo_final = TipoIncidente(tipo.lower())
+        except ValueError:
+            tipo_final = TipoIncidente.OTRO
+
+    cat_id_final = categoria_id
+    if cat_id_final is not None:
+        from src.categorias_incidentes.models import CategoriaIncidente
+        cat_obj = db.get(CategoriaIncidente, cat_id_final)
+        if cat_obj:
+            cat_nom_lower = cat_obj.nombre.lower()
+            for t_enum, etiqueta in ETIQUETAS_TIPO.items():
+                primer_palabra = etiqueta.split('/')[0].strip().lower()
+                if primer_palabra in cat_nom_lower or t_enum.value in cat_nom_lower:
+                    tipo_final = t_enum
+                    break
+    elif tipo_final:
+        from src.categorias_incidentes.models import CategoriaIncidente
+        cat_nombre_esperado = ETIQUETAS_TIPO.get(tipo_final)
+        if cat_nombre_esperado:
+            cat = db.scalar(
+                select(CategoriaIncidente).where(
+                    CategoriaIncidente.nombre.ilike(f"%{cat_nombre_esperado.split('/')[0].strip()}%")
+                )
+            )
+            if cat:
+                cat_id_final = cat.id
+
     incidente = models.Incidente(
-        descripcion=descripcion,
+        descripcion=desc,
+        tipo=tipo_final,
+        categoria_id=cat_id_final,
         foto=nombre_foto,
         estado=EstadoIncidente.PENDIENTE,
         reportado_por_id=usuario.legajo,
@@ -109,12 +147,42 @@ def crear_incidente(
     try:
         db.add(incidente)
         db.commit()
+        db.refresh(incidente)
     except Exception:
         db.rollback()
         _borrar_foto(nombre_foto)
         raise
-    db.refresh(incidente)
+
+    try:
+        from src.notificaciones.services import notificar_nuevo_incidente
+
+        notificar_nuevo_incidente(
+            db,
+            incidente_id=incidente.id,
+            tipo_nombre=incidente.nombre_tipo,
+            descripcion=incidente.descripcion,
+        )
+    except Exception:
+        pass
+
     return incidente
+
+
+def obtener_incidente(db: Session, usuario: Personal, incidente_id: int) -> models.Incidente:
+    incidente = _obtener(db, incidente_id)
+    if not es_administrador(usuario) and incidente.reportado_por_id != usuario.legajo:
+        raise exceptions.IncidenteNoEncontrado()
+    return incidente
+
+
+def obtener_foto(db: Session, usuario: Personal, incidente_id: int) -> FileResponse:
+    incidente = obtener_incidente(db, usuario, incidente_id)
+    if not incidente.foto:
+        raise exceptions.FotoNoEncontrada()
+    ruta = (IMAGENES_DIR / Path(incidente.foto).name).resolve()
+    if not ruta.is_file() or IMAGENES_DIR.resolve() not in ruta.parents:
+        raise exceptions.FotoNoEncontrada()
+    return FileResponse(ruta)
 
 
 def listar_incidentes(
@@ -124,53 +192,65 @@ def listar_incidentes(
     hasta: Optional[date] = None,
     estado: Optional[EstadoIncidente] = None,
     reportado_por_id: Optional[int] = None,
+    tipo: Optional[TipoIncidente] = None,
 ) -> List[models.Incidente]:
     if desde and hasta and desde > hasta:
         raise exceptions.RangoFechasInvalido()
 
     consulta = select(models.Incidente)
-    if es_administrador(usuario):
+
+    if not es_administrador(usuario):
+        consulta = consulta.where(models.Incidente.reportado_por_id == usuario.legajo)
+    else:
         if reportado_por_id is not None:
             consulta = consulta.where(models.Incidente.reportado_por_id == reportado_por_id)
-    else:
-        # el operador solo ve lo que reportó, sin importar los filtros que mande
-        consulta = consulta.where(models.Incidente.reportado_por_id == usuario.legajo)
 
-    if desde:
-        consulta = consulta.where(models.Incidente.creado_el >= datetime.combine(desde, time.min))
-    if hasta:
-        # "hasta" es inclusivo: llega hasta el final de ese día
+    if desde is not None:
+        inicio = datetime.combine(desde, time.min)
+        consulta = consulta.where(models.Incidente.creado_el >= inicio)
+
+    if hasta is not None:
         fin = datetime.combine(hasta + timedelta(days=1), time.min)
         consulta = consulta.where(models.Incidente.creado_el < fin)
-    if estado:
+
+    if estado is not None:
         consulta = consulta.where(models.Incidente.estado == estado)
+
+    if tipo is not None:
+        consulta = consulta.where(models.Incidente.tipo == tipo)
 
     consulta = consulta.order_by(models.Incidente.creado_el.desc(), models.Incidente.id.desc())
     return list(db.scalars(consulta).all())
 
 
-def obtener_incidente(db: Session, usuario: Personal, incidente_id: int) -> models.Incidente:
-    incidente = db.get(models.Incidente, incidente_id)
-    # a un operador un incidente ajeno le figura como inexistente
-    if incidente is None or (
-        not es_administrador(usuario) and incidente.reportado_por_id != usuario.legajo
-    ):
-        raise exceptions.IncidenteNoEncontrado()
-    return incidente
-
-
-def editar_descripcion(db: Session, incidente_id: int, descripcion: str) -> models.Incidente:
+def editar_descripcion(db: Session, incidente_id: int, nueva_descripcion: str) -> models.Incidente:
     incidente = _obtener(db, incidente_id)
-    incidente.descripcion = _normalizar_descripcion(descripcion)
+    incidente.descripcion = _normalizar_descripcion(nueva_descripcion)
     db.commit()
     db.refresh(incidente)
+
+    try:
+        from src.notificaciones.services import notificar_incidente_reabierto
+
+        notificar_incidente_reabierto(
+            db,
+            incidente_id=incidente.id,
+            motivo=texto_motivo,
+        )
+    except Exception:
+        pass
+
     return incidente
 
 
-def cambiar_estado(db: Session, incidente_id: int, estado: EstadoIncidente) -> models.Incidente:
+def cambiar_estado(
+    db: Session,
+    incidente_id: int,
+    nuevo_estado: EstadoIncidente,
+) -> models.Incidente:
     incidente = _obtener(db, incidente_id)
     estado_previo = incidente.estado.value if hasattr(incidente.estado, "value") else str(incidente.estado)
-    incidente.estado = estado
+    incidente.estado = nuevo_estado
 
     registrar_auditoria(
         db,
@@ -180,7 +260,7 @@ def cambiar_estado(db: Session, incidente_id: int, estado: EstadoIncidente) -> m
             accion=AccionAuditoria.MODIFICAR,
             campo="estado",
             valor_previo=estado_previo,
-            valor_posterior=estado.value if hasattr(estado, "value") else str(estado),
+            valor_posterior=nuevo_estado.value if hasattr(nuevo_estado, "value") else str(nuevo_estado),
         ),
         commit=False,
     )
@@ -191,7 +271,10 @@ def cambiar_estado(db: Session, incidente_id: int, estado: EstadoIncidente) -> m
 
 
 def cerrar_incidente(
-    db: Session, usuario: Personal, incidente_id: int, accion_correctiva: str
+    db: Session,
+    usuario: Personal,
+    incidente_id: int,
+    accion_correctiva: str,
 ) -> models.Incidente:
     incidente = _obtener(db, incidente_id)
     if _es_cerrado(incidente.estado):
@@ -224,7 +307,10 @@ def cerrar_incidente(
 
 
 def reabrir_incidente(
-    db: Session, usuario: Personal, incidente_id: int, motivo: str
+    db: Session,
+    usuario: Personal,
+    incidente_id: int,
+    motivo: str,
 ) -> models.Incidente:
     incidente = _obtener(db, incidente_id)
     if not _es_cerrado(incidente.estado) and incidente.estado != EstadoIncidente.DESCARTADO:
@@ -257,26 +343,18 @@ def reabrir_incidente(
 
 def eliminar_incidente(db: Session, incidente_id: int) -> None:
     incidente = _obtener(db, incidente_id)
-    nombre_foto = incidente.foto
+    foto_a_borrar = incidente.foto
     db.delete(incidente)
     db.commit()
-    _borrar_foto(nombre_foto)
+    _borrar_foto(foto_a_borrar)
 
 
-def obtener_foto(db: Session, usuario: Personal, incidente_id: int) -> FileResponse:
-    incidente = obtener_incidente(db, usuario, incidente_id)
-    if not incidente.foto:
-        raise exceptions.FotoNoEncontrada()
-    ruta = (IMAGENES_DIR / Path(incidente.foto).name).resolve()
-    if not ruta.is_file() or IMAGENES_DIR.resolve() not in ruta.parents:
-        raise exceptions.FotoNoEncontrada()
-    return FileResponse(ruta)
+def calcular_antiguedad_y_urgencia(creado_el: datetime) -> Tuple[float, int, str]:
+    ahora = datetime.now()
+    diferencia = ahora - creado_el
+    horas = max(0.0, round(diferencia.total_seconds() / 3600.0, 1))
+    dias = max(0, diferencia.days)
 
-
-def calcular_antiguedad_y_urgencia(creado_el: datetime) -> tuple[float, int, str]:
-    delta = datetime.now() - creado_el
-    horas = round(max(0.0, delta.total_seconds() / 3600.0), 1)
-    dias = int(horas // 24)
     if horas >= 72.0:
         nivel = "CRITICO"
     elif horas >= 24.0:
@@ -343,3 +421,68 @@ def obtener_metricas_incidentes_abiertos(db: Session) -> schemas.IncidentesMetri
         mas_antiguo_id=mas_antiguo_id,
     )
 
+
+def obtener_estadisticas_por_tipo(
+    db: Session,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+) -> schemas.EstadisticaIncidentesPorTipo:
+    if desde and hasta and desde > hasta:
+        raise exceptions.RangoFechasInvalido()
+
+    consulta = select(models.Incidente)
+    if desde:
+        consulta = consulta.where(models.Incidente.creado_el >= datetime.combine(desde, time.min))
+    if hasta:
+        fin = datetime.combine(hasta + timedelta(days=1), time.min)
+        consulta = consulta.where(models.Incidente.creado_el < fin)
+
+    incidentes = list(db.scalars(consulta).all())
+    total = len(incidentes)
+
+    conteo: dict[TipoIncidente, int] = {t: 0 for t in TipoIncidente}
+    for inc in incidentes:
+        t = inc.tipo if isinstance(inc.tipo, TipoIncidente) else TipoIncidente.OTRO
+        conteo[t] = conteo.get(t, 0) + 1
+
+    items: List[schemas.EstadisticaTipoItem] = []
+    for t in TipoIncidente:
+        cant = conteo.get(t, 0)
+        pct = round((cant / total) * 100, 1) if total > 0 else 0.0
+        items.append(
+            schemas.EstadisticaTipoItem(
+                tipo=t,
+                nombre=ETIQUETAS_TIPO.get(t, t.value.capitalize()),
+                cantidad=cant,
+                porcentaje=pct,
+            )
+        )
+
+    items.sort(key=lambda x: (-x.cantidad, x.nombre))
+
+    return schemas.EstadisticaIncidentesPorTipo(
+        total=total,
+        periodo_desde=desde,
+        periodo_hasta=hasta,
+        por_tipo=items,
+    )
+
+
+def listar_incidentes_por_tipo(
+    db: Session,
+    tipo: TipoIncidente,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+) -> List[models.Incidente]:
+    if desde and hasta and desde > hasta:
+        raise exceptions.RangoFechasInvalido()
+
+    consulta = select(models.Incidente).where(models.Incidente.tipo == tipo)
+    if desde:
+        consulta = consulta.where(models.Incidente.creado_el >= datetime.combine(desde, time.min))
+    if hasta:
+        fin = datetime.combine(hasta + timedelta(days=1), time.min)
+        consulta = consulta.where(models.Incidente.creado_el < fin)
+
+    consulta = consulta.order_by(models.Incidente.creado_el.desc(), models.Incidente.id.desc())
+    return list(db.scalars(consulta).all())

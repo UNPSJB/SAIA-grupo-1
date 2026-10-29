@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import type { TipoCertificado } from './tipos';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -20,33 +21,33 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Estados para búsqueda y ordenamiento
   const [searchTerm, setSearchTerm] = useState('');
   const [ordenarPor, setOrdenarPor] = useState<CriterioOrden>('id');
 
-  // Estado para diálogo de confirmación de eliminación física
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tipoAEliminar, setTipoAEliminar] = useState<TipoCertificado | null>(null);
 
-  const fetchTipos = async () => {
-    setLoading(true);
-    try {
-      const res = await apiFetch(`/certificados/tipos/`);
-      if (res.ok) {
-        const data = await res.json();
-        setTipos(data);
-      } else {
-        setTipos([]);
-      }
-    } catch {
-      setTipos([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let cancelado = false;
+    const fetchTipos = async () => {
+      try {
+        const res = await apiFetch(`/certificados/tipos/`);
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setTipos(data);
+        } else if (!cancelado) {
+          setTipos([]);
+        }
+      } catch {
+        if (!cancelado) setTipos([]);
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     fetchTipos();
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   const abrirConfirmacionEliminar = (tipo: TipoCertificado) => {
@@ -81,7 +82,6 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
     }
   };
 
-  // Filtrado reactivo en memoria por nombre y ordenamiento por ID o Nombre
   const tiposFiltradosYOrdenados = tipos
     .filter((t) => {
       const term = searchTerm.toLowerCase().trim();
@@ -127,7 +127,7 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
         </div>
       )}
 
-      {/* Barra de Filtros con búsqueda y desplegable de orden */}
+      {}
       <div className="filtros-top-bar">
         <input
           type="text"

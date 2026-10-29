@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { Badge } from '../../components/ui/badge';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
@@ -10,53 +11,53 @@ interface ListadoElementosLimpiezaProps {
   onNuevoClick: () => void;
   onDetalleClick: (id: number) => void;
   onEditarClick: (id: number) => void;
+  filtroVencimientoInicial?: 'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA';
 }
 
 export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
+  filtroVencimientoInicial,
 }) => {
   const [elementos, setElementos] = useState<ElementoDeLimpieza[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados para filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
+  const [filtroVencimiento, setFiltroVencimiento] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>(filtroVencimientoInicial || 'TODOS');
 
-  // Estado para diálogo de confirmación de recambio
   const [dialogOpen, setDialogOpen] = useState(false);
   const [elementoACambiar, setElementoACambiar] = useState<{ id: number; nombre: string } | null>(null);
 
-  // Estado para diálogo de baja / reactivación
   const [dialogToggleOpen, setDialogToggleOpen] = useState(false);
   const [elementoAToggle, setElementoAToggle] = useState<ElementoDeLimpieza | null>(null);
 
-  // Estado para alerta de error
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
-  const fetchElementos = async () => {
-    setLoading(true);
-    try {
-      const res = await apiFetch(`/elementosDeLimpieza/`);
-      if (res.ok) {
-        const data = await res.json();
-        setElementos(data);
-      } else {
-        setElementos([]);
-      }
-    } catch {
-      setElementos([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let cancelado = false;
+    const fetchElementos = async () => {
+      try {
+        const res = await apiFetch(`/elementosDeLimpieza/`);
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setElementos(data);
+        } else if (!cancelado) {
+          setElementos([]);
+        }
+      } catch {
+        if (!cancelado) setElementos([]);
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     fetchElementos();
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
-  // Formatear la fecha que viene en formato ISO desde el backend
   const formatearFecha = (fechaStr?: string | null) => {
     if (!fechaStr) return 'Sin fecha';
     try {
@@ -73,19 +74,22 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     }
   };
 
-  // Chequea si la fecha ya expiró para resaltar la alerta
   type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia' | 'sin_fecha';
 
   const calcularEstadoVencimiento = (fechaCambioStr?: string | null): EstadoVencimiento => {
     if (!fechaCambioStr) return 'sin_fecha';
 
-    const fechaLimite = new Date(fechaCambioStr);
-    const hoy = new Date();
 
-    const diffTiempo = fechaLimite.getTime() - hoy.getTime();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fLim = new Date(fechaCambioStr);
+    fLim.setHours(0, 0, 0, 0);
+
+
+    const diffTiempo = fLim.getTime() - hoy.getTime();
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
 
-    if (diffDias <= 0) {
+    if (diffDias < 0) {
       return 'vencido';
     } else if (diffDias <= 2) {
       return 'proximo';
@@ -165,7 +169,6 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     }
   };
 
-  // Filtrado reactivo en memoria
   const elementosFiltrados = elementos.filter((elem) => {
     const term = searchTerm.toLowerCase().trim();
     const matchNombre = !term || elem.nombre.toLowerCase().includes(term);
@@ -174,7 +177,14 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
       filtroEstado === 'TODOS' ||
       (filtroEstado === 'ACTIVO' ? elem.activo : !elem.activo);
 
-    return matchNombre && matchEstado;
+    const estadoVenc = calcularEstadoVencimiento(elem.fechaCambio);
+    const matchVencimiento =
+      filtroVencimiento === 'TODOS' ||
+      (filtroVencimiento === 'VENCIDOS' && estadoVenc === 'vencido') ||
+      (filtroVencimiento === 'PROXIMOS' && estadoVenc === 'proximo') ||
+      (filtroVencimiento === 'AL_DIA' && estadoVenc === 'al_dia');
+
+    return matchNombre && matchEstado && matchVencimiento;
   });
 
   const {
@@ -204,7 +214,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
         )}
       </div>
 
-      {/* Barra de Filtros */}
+      {}
       <div className="filtros-top-bar">
         <input
           type="text"
@@ -222,6 +232,17 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           <option value="TODOS">Todos los estados</option>
           <option value="ACTIVO">Activos</option>
           <option value="INACTIVO">Inactivos</option>
+        </select>
+
+        <select
+          className="select-filtro"
+          value={filtroVencimiento}
+          onChange={(e) => setFiltroVencimiento(e.target.value as 'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA')}
+        >
+          <option value="TODOS">Todos los vencimientos</option>
+          <option value="VENCIDOS">Vencidos</option>
+          <option value="PROXIMOS">Próximos a vencer</option>
+          <option value="AL_DIA">Al día</option>
         </select>
       </div>
 

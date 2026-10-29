@@ -10,7 +10,8 @@ import {
   DialogFooter,
   DialogClose,
 } from '../../components/ui/dialog';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -43,28 +44,30 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
   const [certificadoAEliminar, setCertificadoAEliminar] = useState<{ id: number; tipo: string } | null>(null);
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
-  // Estado para el modal de evidencia
   const [modalArchivoUrl, setModalArchivoUrl] = useState<string | null>(null);
 
-  const fetchCertificados = async () => {
-    setLoading(true);
-    try {
-      const res = await apiFetch(`/certificados/?legajo_persona=${legajoPersona}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCertificados(data);
-      } else {
-        setCertificados([]);
-      }
-    } catch {
-      setCertificados([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let cancelado = false;
+    const fetchCertificados = async () => {
+      try {
+        const res = await apiFetch(`/certificados/?legajo_persona=${legajoPersona}`);
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setCertificados(data);
+        } else if (!cancelado) {
+          setCertificados([]);
+        }
+      } catch {
+        if (!cancelado) setCertificados([]);
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
+
     fetchCertificados();
+    return () => {
+      cancelado = true;
+    };
   }, [legajoPersona]);
 
   const formatearFecha = (fechaStr?: string | null) => {
@@ -87,14 +90,18 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
 
   const calcularEstadoVencimiento = (fechaStr?: string | null): EstadoVencimiento => {
     if (!fechaStr) return 'al_dia';
-    const fechaLimite = new Date(fechaStr);
-    const hoy = new Date();
 
-    const diffTiempo = fechaLimite.getTime() - hoy.getTime();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fLim = new Date(fechaStr);
+    fLim.setHours(0, 0, 0, 0);
+
+
+    const diffTiempo = fLim.getTime() - hoy.getTime();
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
 
-    if (diffDias <= 0) return 'vencido';
-    if (diffDias <= 15) return 'proximo';
+    if (diffDias < 0) return 'vencido';
+    if (diffDias < 15) return 'proximo';
     return 'al_dia';
   };
 

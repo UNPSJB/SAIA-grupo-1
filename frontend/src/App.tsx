@@ -20,6 +20,7 @@ import { NuevoInsumoQuimico } from './views/insumos_quimicos/nuevoInsumoQuimico'
 import { EditarDetalle as EditarInsumoQuimico } from './views/insumos_quimicos/editarDetalle';
 import { VerDetalle as VerDetalleInsumoQuimico } from './views/insumos_quimicos/verDetalle';
 import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
+import { ConsumoHistoricoInsumos } from './views/dashboard/ConsumoHistoricoInsumos';
 
 import { Sidebar } from './components/Sidebar';
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar';
@@ -40,6 +41,10 @@ import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
 import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibracion';
 import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
+import { EstadisticasIncidentes } from './views/incidentes/estadisticasIncidentes';
+import { ListadoCategoriasIncidentes } from './views/incidentes/categorias/listado';
+import { NotificacionesPopover } from './components/alertas/NotificacionesPopover';
+import type { NotificacionItem } from './hooks/useNotificaciones';
 import { ListadoDocumentos } from './views/documentos/listado';
 import { DetalleDocumento } from './views/documentos/verDetalle';
 import NuevoDocumento from './views/documentos/nuevoDocumento';
@@ -57,25 +62,30 @@ import { DetalleCertificado } from './views/certificado/verDetalle';
 import { ListadoTiposCertificados } from './views/tipoCertificado/listado';
 import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertificado';
 import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
+import { ListadoTiposDocumentos } from './views/tipoDocumento/listado';
+import { NuevoTipoDocumento } from './views/tipoDocumento/nuevoTipoDocumento';
+import { DetalleTipoDocumento } from './views/tipoDocumento/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
+import { VencimientosDocumentos } from './views/documentos/vencimientosDocumentos';
+import './styles/dashboard.css';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar' | 'certificados' | 'nuevo_certificado' | 'editar_certificado' | 'detalle_certificado';
-type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar' | 'consumo_historico';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
 type VistaPlanLimp = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaChecklist = 'listado' | 'detalle';
 type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
+type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
   const [moduloElegido, setModulo] = useState<Modulo>(moduloInicial(esAdministrador));
-  // el backend ya rechaza lo que el rol no puede ver; acá evitamos mostrar pantallas rotas
   const modulo = puedeVerModulo(moduloElegido, esAdministrador) ? moduloElegido : moduloInicial(esAdministrador);
 
   
@@ -108,9 +118,9 @@ function Aplicacion() {
 
   const [vistaChecklist, setVistaChecklist] = useState<VistaChecklist>('listado');
   const [checklistSeleccionado, setChecklistSeleccionado] = useState<number | null>(null);
-  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial' | 'nuevo'>('abiertos');
-  const [vistaVencimientos, setVistaVencimientos] = useState<'consolidado' | 'personal'>('consolidado');
-  const [origenVencimientos, setOrigenVencimientos] = useState<'consolidado' | 'personal' | null>(null);
+  const [vistaIncidentesAdmin, setVistaIncidentesAdmin] = useState<'abiertos' | 'historial' | 'estadisticas' | 'categorias' | 'nuevo'>('abiertos');
+  const [vistaVencimientos, setVistaVencimientos] = useState<'consolidado' | 'personal' | 'documentos'>('consolidado');
+  const [origenVencimientos, setOrigenVencimientos] = useState<'consolidado' | 'personal' | 'documentos' | null>(null);
 
   const [vistaPlanCalibracion, setVistaPlanCalibracion] = useState<VistaPlanCalibracion>('listado');
   const [planCalibracionSeleccionado, setPlanCalibracionSeleccionado] = useState<number | null>(null);
@@ -121,9 +131,21 @@ function Aplicacion() {
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
 
-  const cambiarModulo = (nuevoModulo: Modulo) => {
+  const [vistaTipoDocumento, setVistaTipoDocumento] = useState<VistaTipoDocumento>('listado');
+  const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<number | null>(null);
+
+  const [filtroCertificadosInicial, setFiltroCertificadosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
+  const [filtroCalibracionInicial, setFiltroCalibracionInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
+  const [filtroElementosInicial, setFiltroElementosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
+  const [filtroDocumentosVencInicial, setFiltroDocumentosVencInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
+  const [filtroConsolidadoOrigen, setFiltroConsolidadoOrigen] = useState<'' | 'personal' | 'equipo' | 'documento'>('');
+  const [filtroConsolidadoEstado, setFiltroConsolidadoEstado] = useState<'' | 'vencido' | 'proximo' | 'vigente'>('');
+  const [desdeDashboard, setDesdeDashboard] = useState(false);
+
+  const cambiarModulo = (nuevoModulo: Modulo, limpiarFiltros: boolean = true, esDesdeDashboard: boolean = false) => {
     setModulo(nuevoModulo);
     setOrigenVencimientos(null);
+    setDesdeDashboard(esDesdeDashboard);
     setVistaEquipos('listado');
     setVistaSectores('listado');
     setVistaInsumos('listado');
@@ -138,6 +160,20 @@ function Aplicacion() {
     setVistaDocumentos('listado');
     setCertificadoSeleccionado(null);
     setVistaTipoCertificado('listado');
+    setVistaTipoDocumento('listado');
+    setTipoDocumentoSeleccionado(null);
+    if (limpiarFiltros) {
+      setFiltroCertificadosInicial('TODOS');
+      setFiltroCalibracionInicial('TODOS');
+      setFiltroElementosInicial('TODOS');
+      setFiltroDocumentosVencInicial('TODOS');
+      setFiltroConsolidadoOrigen('');
+      setFiltroConsolidadoEstado('');
+    }
+  };
+
+  const volverAlDashboard = () => {
+    cambiarModulo('dashboard', true, false);
   };
 
   const volverAVencimientos = () => {
@@ -150,8 +186,15 @@ function Aplicacion() {
     setModulo('vencimientos');
   };
 
-  // Desde la vista consolidada: salta a la pantalla del registro que vence
-  const irAlRegistroDeVencimiento = (v: { origen?: string; tipo?: string; referenciaId?: number; referencia_id?: number; responsable?: string }) => {
+interface RegistroVencimientoRef {
+  origen?: string;
+  tipo?: string;
+  referenciaId?: number;
+  referencia_id?: number;
+  responsable?: string;
+}
+
+  const irAlRegistroDeVencimiento = (v: RegistroVencimientoRef) => {
     const origen = v.origen || v.tipo;
     const refId = v.referenciaId ?? v.referencia_id ?? null;
     setOrigenVencimientos('consolidado');
@@ -200,26 +243,357 @@ function Aplicacion() {
     setModulo('personas');
   };
 
+  const renderBreadcrumb = () => {
+    if (!desdeDashboard || modulo === 'dashboard') return null;
+
+    const breadcrumbMaxWidth =
+      modulo === 'vencimientos' ? '1260px' : modulo === 'incidentes' ? '1240px' : '1180px';
+    const breadcrumbPadding =
+      modulo === 'vencimientos' || modulo === 'incidentes' ? '0 0.5rem' : '0 1.5rem';
+
+    return (
+      <div
+        className="dashboard-breadcrumb-wrapper"
+        style={{
+          maxWidth: breadcrumbMaxWidth,
+          padding: breadcrumbPadding,
+        }}
+      >
+        <nav className="dashboard-breadcrumb" aria-label="Breadcrumb">
+          <button
+            type="button"
+            className="dashboard-breadcrumb-link"
+            onClick={volverAlDashboard}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="7" height="9" x="3" y="3" rx="1.5" />
+              <rect width="7" height="5" x="14" y="3" rx="1.5" />
+              <rect width="7" height="9" x="14" y="12" rx="1.5" />
+              <rect width="7" height="5" x="3" y="16" rx="1.5" />
+            </svg>
+            Inicio
+          </button>
+          <span className="dashboard-breadcrumb-separador">/</span>
+
+          {origenVencimientos ? (
+            <>
+              <button
+                type="button"
+                className="dashboard-breadcrumb-link"
+                onClick={volverAVencimientos}
+              >
+                {origenVencimientos === 'personal'
+                  ? 'Vencimientos de Personal'
+                  : origenVencimientos === 'documentos'
+                  ? 'Vencimientos de Documentos'
+                  : 'Todos los Vencimientos'}
+              </button>
+              <span className="dashboard-breadcrumb-separador">/</span>
+
+              {modulo === 'personas' ? (
+                vistaPersonas === 'certificados' ? (
+                  <span className="dashboard-breadcrumb-actual">
+                    {nombrePersonaSeleccionada ? `Certificados · ${nombrePersonaSeleccionada}` : 'Certificados'}
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="dashboard-breadcrumb-link"
+                      onClick={() => setVistaPersonas('certificados')}
+                    >
+                      {nombrePersonaSeleccionada ? `Certificados · ${nombrePersonaSeleccionada}` : 'Certificados'}
+                    </button>
+                    <span className="dashboard-breadcrumb-separador">/</span>
+                    <span className="dashboard-breadcrumb-actual">
+                      {vistaPersonas === 'nuevo_certificado'
+                        ? 'Nuevo Certificado'
+                        : vistaPersonas === 'editar_certificado'
+                        ? 'Editar Certificado'
+                        : 'Detalle de Certificado'}
+                    </span>
+                  </>
+                )
+              ) : modulo === 'documentos' ? (
+                <span className="dashboard-breadcrumb-actual">Detalle de Documento</span>
+              ) : modulo === 'planDeCalibracion' ? (
+                <span className="dashboard-breadcrumb-actual">Detalle de Calibración</span>
+              ) : (
+                <span className="dashboard-breadcrumb-actual">Detalle</span>
+              )}
+            </>
+          ) : modulo === 'vencimientos' ? (
+            <span className="dashboard-breadcrumb-actual">
+              {vistaVencimientos === 'personal'
+                ? 'Vencimientos de Personal'
+                : vistaVencimientos === 'documentos'
+                ? 'Vencimientos de Documentos'
+                : 'Todos los Vencimientos'}
+            </span>
+          ) : modulo === 'planDeCalibracion' ? (
+            vistaPlanCalibracion === 'listado' ? (
+              <span className="dashboard-breadcrumb-actual">Calibraciones de Equipos</span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="dashboard-breadcrumb-link"
+                  onClick={() => setVistaPlanCalibracion('listado')}
+                >
+                  Calibraciones de Equipos
+                </button>
+                <span className="dashboard-breadcrumb-separador">/</span>
+                <span className="dashboard-breadcrumb-actual">
+                  {vistaPlanCalibracion === 'alta'
+                    ? 'Nuevo Plan de Calibración'
+                    : vistaPlanCalibracion === 'editar'
+                    ? 'Editar Plan de Calibración'
+                    : 'Detalle de Plan de Calibración'}
+                </span>
+              </>
+            )
+          ) : modulo === 'elementosDeLimpieza' ? (
+            vistaElementos === 'listado' ? (
+              <span className="dashboard-breadcrumb-actual">Recambio de Elementos</span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="dashboard-breadcrumb-link"
+                  onClick={() => setVistaElementos('listado')}
+                >
+                  Recambio de Elementos
+                </button>
+                <span className="dashboard-breadcrumb-separador">/</span>
+                <span className="dashboard-breadcrumb-actual">
+                  {vistaElementos === 'alta'
+                    ? 'Nuevo Elemento'
+                    : vistaElementos === 'editar'
+                    ? 'Editar Elemento'
+                    : 'Detalle de Elemento'}
+                </span>
+              </>
+            )
+          ) : modulo === 'incidentes' ? (
+            vistaIncidentesAdmin === 'abiertos' ? (
+              <span className="dashboard-breadcrumb-actual">Incidentes Abiertos</span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="dashboard-breadcrumb-link"
+                  onClick={() => setVistaIncidentesAdmin('abiertos')}
+                >
+                  Incidentes Abiertos
+                </button>
+                <span className="dashboard-breadcrumb-separador">/</span>
+                <span className="dashboard-breadcrumb-actual">
+                  {vistaIncidentesAdmin === 'historial' ? 'Historial de Incidentes' : 'Nuevo Incidente'}
+                </span>
+              </>
+            )
+          ) : modulo === 'tipoDocumento' ? (
+            vistaTipoDocumento === 'listado' ? (
+              <span className="dashboard-breadcrumb-actual">Tipos de Documentos</span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="dashboard-breadcrumb-link"
+                  onClick={() => setVistaTipoDocumento('listado')}
+                >
+                  Tipos de Documentos
+                </button>
+                <span className="dashboard-breadcrumb-separador">/</span>
+                <span className="dashboard-breadcrumb-actual">
+                  {vistaTipoDocumento === 'alta' ? 'Nuevo Tipo de Documento' : 'Detalle Tipo de Documento'}
+                </span>
+              </>
+            )
+          ) : (
+            <span className="dashboard-breadcrumb-actual">{modulo}</span>
+          )}
+        </nav>
+      </div>
+    );
+  };
+
+const irANotificacion = (notif: NotificacionItem) => {
+    const { entidad_tipo, entidad_id, tipo } = notif;
+
+    if (entidad_tipo === 'personal' && entidad_id && esAdministrador) {
+      setModulo('personas');
+      setLegajoSeleccionado(entidad_id);
+      setVistaPersonas('certificados');
+      return;
+    }
+
+    if (entidad_tipo === 'equipo' && entidad_id && esAdministrador) {
+      setModulo('planDeCalibracion');
+      setPlanCalibracionSeleccionado(entidad_id);
+      setVistaPlanCalibracion('detalle');
+      return;
+    }
+
+    if (entidad_tipo === 'documento' && entidad_id) {
+      setModulo('documentos');
+      setDocumentoSeleccionado(entidad_id);
+      setVistaDocumentos('detalle');
+      return;
+    }
+
+    if (entidad_tipo === 'elemento_limpieza' && esAdministrador) {
+      setModulo('elementosDeLimpieza');
+      if (entidad_id) {
+        setElementoSeleccionado(entidad_id);
+        setVistaElementos('detalle');
+      } else {
+        setVistaElementos('listado');
+      }
+      return;
+    }
+
+    if (entidad_tipo === 'insumo_quimico' && esAdministrador) {
+      setModulo('insumos_quimicos');
+      setVistaInsumosQuimicos('listado');
+      return;
+    }
+
+    if (entidad_tipo === 'checklist' && entidad_id) {
+      setModulo('checklist');
+      setChecklistSeleccionado(entidad_id);
+      setVistaChecklist('detalle');
+      return;
+    }
+
+    if (entidad_tipo === 'tarea') {
+      setModulo('checklist');
+      setVistaChecklist('listado');
+      return;
+    }
+
+    if ((entidad_tipo === 'incidente' || tipo === 'incidente_critico' || tipo === 'evento_incidente') && esAdministrador) {
+      setModulo('incidentes');
+      setVistaIncidentesAdmin('abiertos');
+      return;
+    }
+
+    if (tipo.startsWith('vencimiento_') && esAdministrador) {
+      cambiarModulo('vencimientos');
+      return;
+    }
+
+    if (tipo === 'evento_stock_quimico' && esAdministrador) {
+      cambiarModulo('insumos_quimicos');
+      return;
+    }
+
+    if (tipo === 'evento_tarea_revision' || tipo === 'evento_tarea_reasignada') {
+      cambiarModulo('checklist');
+      return;
+    }
+  };
+
   return (
     <SidebarProvider>
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
-      <SidebarInset style={{ padding: '32px 36px' }}>
+      <SidebarInset style={{ padding: modulo === 'dashboard' ? '14px 24px' : '32px 36px', position: 'relative' }}>
+        <div
+          className="saia-top-campana"
+          style={{
+            position: 'absolute',
+            top: modulo === 'dashboard' ? '14px' : '24px',
+            right: '36px',
+            zIndex: 50,
+          }}
+        >
+          <NotificacionesPopover
+            onNavegar={irANotificacion}
+            onIrAIncidentes={() => cambiarModulo('incidentes')}
+            onIrAVencimientos={() => cambiarModulo('vencimientos')}
+          />
+        </div>
+
+        {renderBreadcrumb()}
         {modulo === 'dashboard' ? (
           <PanelDashboard
             onIrAlRegistro={irAlRegistroDeVencimiento}
-            onVerTodosVencimientos={() => cambiarModulo('vencimientos')}
+            onNavegar={(mod, subvista, filtroEstado) => {
+              if (mod === 'vencimientos') {
+                cambiarModulo('vencimientos', false, true);
+                if (subvista === 'personal') {
+                  setVistaVencimientos('personal');
+                  setFiltroCertificadosInicial(
+                    filtroEstado === 'VENCIDOS' || filtroEstado === 'PROXIMOS' || filtroEstado === 'AL_DIA'
+                      ? filtroEstado
+                      : 'TODOS'
+                  );
+                } else if (subvista === 'documentos' || subvista === 'documento') {
+                  setVistaVencimientos('documentos');
+                  setFiltroDocumentosVencInicial(
+                    filtroEstado === 'VENCIDOS' || filtroEstado === 'PROXIMOS' || filtroEstado === 'AL_DIA'
+                      ? filtroEstado
+                      : filtroEstado === 'vencido'
+                      ? 'VENCIDOS'
+                      : filtroEstado === 'proximo'
+                      ? 'PROXIMOS'
+                      : 'TODOS'
+                  );
+                } else {
+                  setVistaVencimientos('consolidado');
+                  setFiltroConsolidadoOrigen(subvista === 'equipo' || subvista === 'personal' || subvista === 'documento' ? subvista : '');
+                  setFiltroConsolidadoEstado(filtroEstado === 'vencido' || filtroEstado === 'proximo' || filtroEstado === 'vigente' ? filtroEstado : '');
+                }
+              } else if (mod === 'planDeCalibracion') {
+                cambiarModulo('planDeCalibracion', false, true);
+                setFiltroCalibracionInicial(
+                  filtroEstado === 'VENCIDOS' || filtroEstado === 'PROXIMOS' || filtroEstado === 'AL_DIA'
+                    ? filtroEstado
+                    : 'TODOS'
+                );
+              } else if (mod === 'elementosDeLimpieza') {
+                cambiarModulo('elementosDeLimpieza', false, true);
+                setFiltroElementosInicial(
+                  filtroEstado === 'VENCIDOS' || filtroEstado === 'PROXIMOS' || filtroEstado === 'AL_DIA'
+                    ? filtroEstado
+                    : 'TODOS'
+                );
+              } else {
+                cambiarModulo(mod as Modulo, true, true);
+              }
+            }}
           />
         ) : modulo === 'vencimientos' ? (
           vistaVencimientos === 'consolidado' ? (
             <VistaConsolidadaVencimiento
+              key={`consolidado-${filtroConsolidadoOrigen}-${filtroConsolidadoEstado}`}
               onIrAlRegistro={irAlRegistroDeVencimiento}
               onVerSoloPersonal={() => setVistaVencimientos('personal')}
+              onVerSoloDocumentos={() => setVistaVencimientos('documentos')}
+              filtroOrigenInicial={filtroConsolidadoOrigen}
+              filtroEstadoInicial={filtroConsolidadoEstado}
             />
-          ) : (
+          ) : vistaVencimientos === 'personal' ? (
             <ListadoCertificados
+              key={`certificados-${filtroCertificadosInicial}`}
               onVerPersona={irACertificadosDePersona}
               onVerConsolidado={() => setVistaVencimientos('consolidado')}
+              onVerSoloDocumentos={() => setVistaVencimientos('documentos')}
+              filtroEstadoInicial={filtroCertificadosInicial}
+            />
+          ) : (
+            <VencimientosDocumentos
+              key={`documentos-venc-${filtroDocumentosVencInicial}`}
+              onVerDocumento={(id) => {
+                setOrigenVencimientos('documentos');
+                setModulo('documentos');
+                setDocumentoSeleccionado(id);
+                setVistaDocumentos('detalle');
+              }}
+              onVerConsolidado={() => setVistaVencimientos('consolidado')}
+              onVerSoloPersonal={() => setVistaVencimientos('personal')}
+              filtroEstadoInicial={filtroDocumentosVencInicial}
             />
           )
         ) : modulo === 'insumos' ? (
@@ -379,6 +753,14 @@ function Aplicacion() {
                 setQuimicoSeleccionado(insumo);
                 setVistaInsumosQuimicos('detalle');
               }}
+              onVerConsumoHistorico={(insumo) => {
+                if (insumo) {
+                  setQuimicoSeleccionado(insumo);
+                } else {
+                  setQuimicoSeleccionado(null);
+                }
+                setVistaInsumosQuimicos('consumo_historico');
+              }}
             />
           ) : vistaInsumosQuimicos === 'alta' ? (
             <NuevoInsumoQuimico
@@ -397,10 +779,17 @@ function Aplicacion() {
               onVolver={volverAListadoQuimicos}
               onActualizado={volverAListadoQuimicos}
             />
+          ) : vistaInsumosQuimicos === 'consumo_historico' ? (
+            <ConsumoHistoricoInsumos
+              onVolver={volverAListadoQuimicos}
+              insumoIdInicial={quimicoSeleccionado?.id}
+            />
           ) : null
         ) : modulo === 'elementosDeLimpieza' ? (
           vistaElementos === 'listado' ? (
             <ListadoElementosLimpieza
+              key={`elementos-${filtroElementosInicial}`}
+              filtroVencimientoInicial={filtroElementosInicial}
               onNuevoClick={() => setVistaElementos('alta')}
               onDetalleClick={(id) => {
                 setElementoSeleccionado(id);
@@ -467,11 +856,27 @@ function Aplicacion() {
             ) : vistaIncidentesAdmin === 'historial' ? (
               <ListadoIncidentes
                 onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
+                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
                 onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
+              />
+            ) : vistaIncidentesAdmin === 'estadisticas' ? (
+              <EstadisticasIncidentes
+                onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onVerHistorial={() => setVistaIncidentesAdmin('historial')}
+                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
+              />
+            ) : vistaIncidentesAdmin === 'categorias' ? (
+              <ListadoCategoriasIncidentes
+                onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
+                onVerHistorial={() => setVistaIncidentesAdmin('historial')}
+                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
               />
             ) : (
               <IncidentesAbiertos
                 onVerHistorialCompleto={() => setVistaIncidentesAdmin('historial')}
+                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
+                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
                 onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
               />
             )
@@ -527,6 +932,8 @@ function Aplicacion() {
         ) : modulo === 'planDeCalibracion' ? (
           vistaPlanCalibracion === 'listado' ? (
             <ListadoPlanesCalibracion
+              key={`calibracion-${filtroCalibracionInicial}`}
+              filtroEstadoInicial={filtroCalibracionInicial}
               onNuevoClick={() => setVistaPlanCalibracion('alta')}
               onDetalleClick={(id) => {
                 setOrigenVencimientos(null);
@@ -575,6 +982,26 @@ function Aplicacion() {
             <DetalleTipoCertificado
               tipoId={tipoCertificadoSeleccionado}
               onCancel={() => setVistaTipoCertificado('listado')}
+            />
+          ) : null
+        ) : modulo === 'tipoDocumento' ? (
+          vistaTipoDocumento === 'listado' ? (
+            <ListadoTiposDocumentos
+              onNuevoClick={() => setVistaTipoDocumento('alta')}
+              onDetalleClick={(id) => {
+                setTipoDocumentoSeleccionado(id);
+                setVistaTipoDocumento('detalle');
+              }}
+            />
+          ) : vistaTipoDocumento === 'alta' ? (
+            <NuevoTipoDocumento
+              onSuccess={() => setVistaTipoDocumento('listado')}
+              onCancel={() => setVistaTipoDocumento('listado')}
+            />
+          ) : vistaTipoDocumento === 'detalle' ? (
+            <DetalleTipoDocumento
+              tipoId={tipoDocumentoSeleccionado}
+              onCancel={() => setVistaTipoDocumento('listado')}
             />
           ) : null
         ) : null}

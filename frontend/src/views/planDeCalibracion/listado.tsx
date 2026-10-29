@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import '../../styles/formularioAlta.css';
 import type { PlanDeCalibracionConId } from './tipos';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { Badge } from '../../components/ui/badge';
 import { apiFetch } from '../../api/client';
 import RegistrarCalibracion from '../calibracion_Realizada/registrarCalibracion';
@@ -10,6 +11,7 @@ interface ListadoPlanesCProps {
   onNuevoClick?: () => void;
   onDetalleClick?: (id: number) => void;
   onEditarClick?: (id: number) => void;
+  filtroEstadoInicial?: 'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA';
 }
 
 const formatDate = (dateStr?: string | null) => {
@@ -32,10 +34,12 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
+  filtroEstadoInicial,
 }) => {
   const [planes, setPlanes] = useState<PlanDeCalibracionConId[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>(filtroEstadoInicial || 'TODOS');
   const [modalAbierto, setModalAbierto]= useState(false);
   const [calibracionSselecionada, setCalibracionSeleccionada]=useState <number | null>(null);
 
@@ -64,18 +68,39 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
 
   type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia' | 'sin_fecha';
 
-  const calcularEstadoVencimiento = (fechavencimientoStr?: string | null): EstadoVencimiento => {
-    if (!fechavencimientoStr) return 'sin_fecha';
+  const calcularEstadoVencimiento = (
+    fechavencimientoStr?: string | null,
+    periodicidad?: number | '' | null,
+    fechaMantenimientoStr?: string | null
+  ): EstadoVencimiento => {
+    const fechaBase = fechavencimientoStr || fechaMantenimientoStr;
+    if (!fechaBase) return 'sin_fecha';
 
-    const fechaLimite = new Date(fechavencimientoStr);
     const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fLim = new Date(fechaBase);
+    fLim.setHours(0, 0, 0, 0);
 
-    const diffTiempo = fechaLimite.getTime() - hoy.getTime();
+    const diffTiempo = fLim.getTime() - hoy.getTime();
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
 
-    if (diffDias <= 0) {
+    if (diffDias < 0) {
       return 'vencido';
-    } else if (diffDias <= 2) {
+    }
+
+    let periodo = typeof periodicidad === 'number' && periodicidad > 0 ? periodicidad : 0;
+    if (!periodo && fechavencimientoStr && fechaMantenimientoStr) {
+      const fMant = new Date(fechaMantenimientoStr);
+      fMant.setHours(0, 0, 0, 0);
+      const diffPeriodo = Math.round((fLim.getTime() - fMant.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffPeriodo > 0) {
+        periodo = diffPeriodo;
+      }
+    }
+
+    const diasAlerta = Math.max(Math.round(periodo * 0.1), 2);
+
+    if (diffDias < diasAlerta) {
       return 'proximo';
     }
 
@@ -90,7 +115,13 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
       (p.nombre_equipo?.toLowerCase().includes(term) ?? false);
     const coincideVencimiento =
       !term || (p.fecha_vencimiento?.toLowerCase().includes(term) ?? false);
-    return coincideBusqueda || coincideVencimiento;
+    const estadoCalc = calcularEstadoVencimiento(p.fecha_vencimiento, p.periodicidad_De_cambio, p.fecha_mantenimiento);
+    const coincideEstado =
+      filtroEstado === 'TODOS' ||
+      (filtroEstado === 'VENCIDOS' && estadoCalc === 'vencido') ||
+      (filtroEstado === 'PROXIMOS' && estadoCalc === 'proximo') ||
+      (filtroEstado === 'AL_DIA' && estadoCalc === 'al_dia');
+    return (coincideBusqueda || coincideVencimiento) && coincideEstado;
   });
 
   const {
@@ -121,6 +152,16 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
       </div>
 
       <div className="filtros-top-bar">
+        <select
+          className="select-filtro"
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value as 'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA')}
+        >
+          <option value="TODOS">Todos los estados</option>
+          <option value="VENCIDOS">Vencidos</option>
+          <option value="PROXIMOS">Próximos a vencer</option>
+          <option value="AL_DIA">Al día</option>
+        </select>
         <input
           type="text"
           className="input-busqueda"
@@ -168,14 +209,14 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span>{formatDate(p.fecha_vencimiento)}</span>
 
-                      {calcularEstadoVencimiento(p.fecha_vencimiento) === 'vencido' && (
+                      {calcularEstadoVencimiento(p.fecha_vencimiento, p.periodicidad_De_cambio, p.fecha_mantenimiento) === 'vencido' && (
                         <Badge variant="vencido" title="El elemento ha superado la fecha límite">
                           ● Vencido
                         </Badge>
                       )}
 
-                      {calcularEstadoVencimiento(p.fecha_vencimiento) === 'proximo' && (
-                        <Badge variant="proximo" title="Quedan 2 días o menos para el recambio">
+                      {calcularEstadoVencimiento(p.fecha_vencimiento, p.periodicidad_De_cambio, p.fecha_mantenimiento) === 'proximo' && (
+                        <Badge variant="proximo" title="Próximo a vencer">
                           ▲ Próximo a vencer
                         </Badge>
                       )}

@@ -5,15 +5,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from src.incidentes.models import Incidente
 from src.personal.models import Personal
-from tests.autenticacion.conftest import autenticacion_real, headers, usuarios  # noqa: F401
-from tests.database import app, session  # noqa: F401
+from tests.autenticacion.conftest import autenticacion_real, headers, usuarios
+from tests.database import app, session
 
 client = TestClient(app)
 
-
 def _crear_incidente(persona: Personal, descripcion="Incidente abierto de prueba"):
     return client.post("/incidentes/", data={"descripcion": descripcion}, headers=headers(persona))
-
 
 def test_admin_obtiene_incidentes_abiertos_y_excluye_cerrados(session: Session, usuarios: Dict[str, Personal]):
     operador = usuarios["operador"]
@@ -57,7 +55,6 @@ def test_admin_obtiene_incidentes_abiertos_y_excluye_cerrados(session: Session, 
     assert "dias_abierto" in item1
     assert item1["nivel_urgencia"] in ["RECIENTE", "ATENCION", "CRITICO"]
 
-
 def test_ordenamiento_estricto_antiguedad_ascendente(session: Session, usuarios: Dict[str, Personal]):
     operador = usuarios["operador"]
     admin = usuarios["administrador"]
@@ -85,7 +82,6 @@ def test_ordenamiento_estricto_antiguedad_ascendente(session: Session, usuarios:
     assert item1["dias_abierto"] >= 4
     assert item1["nivel_urgencia"] == "CRITICO"
 
-
 def test_operador_no_puede_acceder_a_endpoints_abiertos(usuarios: Dict[str, Personal]):
     operador = headers(usuarios["operador"])
 
@@ -94,7 +90,6 @@ def test_operador_no_puede_acceder_a_endpoints_abiertos(usuarios: Dict[str, Pers
 
     r_met = client.get("/incidentes/abiertos/metricas", headers=operador)
     assert r_met.status_code == status.HTTP_403_FORBIDDEN
-
 
 def test_metricas_incidentes_abiertos(session: Session, usuarios: Dict[str, Personal]):
     operador = usuarios["operador"]
@@ -119,7 +114,6 @@ def test_metricas_incidentes_abiertos(session: Session, usuarios: Dict[str, Pers
     assert metricas["mas_antiguo_horas"] is not None
     assert metricas["mas_antiguo_horas"] >= 100.0
 
-
 def test_resolver_incidente_lo_remueve_de_abiertos(usuarios: Dict[str, Personal]):
     operador = usuarios["operador"]
     admin = usuarios["administrador"]
@@ -139,7 +133,6 @@ def test_resolver_incidente_lo_remueve_de_abiertos(usuarios: Dict[str, Personal]
 
     r_despues = client.get("/incidentes/abiertos", headers=headers(admin))
     assert inc_id not in [i["id"] for i in r_despues.json()]
-
 
 def test_reabrir_incidente_cerrado_lo_reincorpora_a_abiertos(usuarios: Dict[str, Personal]):
     operador = usuarios["operador"]

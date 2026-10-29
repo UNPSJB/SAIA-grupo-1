@@ -1,8 +1,14 @@
 from sqlalchemy.orm import Session
+from src.dashboard.services import obtener_historico_consumo  # noqa: F401
 from .models import InsumoQuimico
-from .schemas import InsumoQuimicoCreate, InsumoQuimicoUpdate
-from .exceptions import InsumoQuimicoNotFoundException, InsumoQuimicoDuplicateNameException
-from sqlalchemy.orm import Mapped, mapped_column
+from .schemas import (
+    InsumoQuimicoCreate,
+    InsumoQuimicoUpdate,
+)
+from .exceptions import (
+    InsumoQuimicoNotFoundException,
+    InsumoQuimicoDuplicateNameException,
+)
 
 class InsumoQuimicoService:
     @staticmethod
@@ -32,6 +38,11 @@ class InsumoQuimicoService:
         db.add(nuevo)
         db.commit()
         db.refresh(nuevo)
+        try:
+            from src.notificaciones.services import notificar_stock_bajo_quimico_si_corresponde
+            notificar_stock_bajo_quimico_si_corresponde(db, nuevo)
+        except Exception:
+            pass
         return nuevo
 
     @staticmethod
@@ -42,6 +53,11 @@ class InsumoQuimicoService:
             setattr(insumo, key, value)
         db.commit()
         db.refresh(insumo)
+        try:
+            from src.notificaciones.services import notificar_stock_bajo_quimico_si_corresponde
+            notificar_stock_bajo_quimico_si_corresponde(db, insumo)
+        except Exception:
+            pass
         return insumo
 
     @staticmethod
@@ -49,5 +65,4 @@ class InsumoQuimicoService:
         insumo = InsumoQuimicoService.get_by_id(db, insumo_id)
         insumo.activo = not insumo.activo  # type: ignore
         db.commit()
-        
         return insumo

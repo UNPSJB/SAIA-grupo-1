@@ -12,9 +12,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuBadge,
   SidebarRail,
   SidebarTrigger,
 } from './ui/sidebar';
+import { useAlertasSistema } from '../hooks/useAlertasSistema';
 
 export type Modulo =
   | 'dashboard'
@@ -24,6 +26,7 @@ export type Modulo =
   | 'personas'
   | 'vencimientos'
   | 'tipoCertificado'
+  | 'tipoDocumento'
   | 'insumos_quimicos'
   | 'elementosDeLimpieza'
   | 'planDeLimpieza'
@@ -136,6 +139,14 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
     </svg>
   ),
+  tipoDocumento: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+      <path d="M6 6h10" />
+      <path d="M6 10h10" />
+      <path d="M6 14h6" />
+    </svg>
+  ),
   documentos: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
@@ -161,6 +172,7 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
 
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
   const { usuario, esAdministrador, logout } = useAuth();
+  const { totalIncidentes, incidentesCriticos, vencimientosVencidos, vencimientosProximos } = useAlertasSistema();
 
   const [tema, setTema] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('saia_tema') as 'light' | 'dark') || 'light';
@@ -217,6 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       titulo: 'Calidad y Trazabilidad',
       items: [
         { id: 'documentos', label: 'Documentos', icono: ICONOS_MODULO.documentos },
+        { id: 'tipoDocumento', label: 'Tipo Documento', icono: ICONOS_MODULO.tipoDocumento },
         {
           id: 'incidentes',
           label: esAdministrador ? 'Incidentes' : 'Reportar Incidente',
@@ -284,6 +297,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
                       >
                         <span className="saia-sidebar-menu-icon">{item.icono}</span>
                         <span className="saia-sidebar-menu-label">{item.label}</span>
+                        {(() => {
+                          const conteo =
+                            item.id === 'incidentes'
+                              ? totalIncidentes
+                              : item.id === 'vencimientos'
+                              ? vencimientosVencidos + vencimientosProximos
+                              : 0;
+                          const esCritico =
+                            item.id === 'incidentes'
+                              ? incidentesCriticos > 0
+                              : item.id === 'vencimientos'
+                              ? vencimientosVencidos > 0
+                              : false;
+
+                          if (conteo <= 0) return null;
+                          return (
+                            <SidebarMenuBadge
+                              style={{
+                                backgroundColor: esCritico ? 'var(--color-error-bg)' : undefined,
+                                color: esCritico ? 'var(--color-error-texto)' : undefined,
+                                borderColor: esCritico ? 'var(--color-error)' : undefined,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {conteo}
+                            </SidebarMenuBadge>
+                          );
+                        })()}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );

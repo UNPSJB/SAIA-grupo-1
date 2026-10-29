@@ -63,4 +63,3 @@ def test_eliminar_sector_sin_uso_exitoso(session: Session) -> None:
 
     res_get = client.get(f"/sectores/{sector_id}")
     assert res_get.status_code == status.HTTP_404_NOT_FOUND
-

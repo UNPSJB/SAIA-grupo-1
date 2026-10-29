@@ -1,1 +1,1 @@
-# tests/equipos package
+
