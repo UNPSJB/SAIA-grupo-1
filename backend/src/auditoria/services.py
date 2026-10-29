@@ -2,7 +2,8 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from src.auditoria.models import Auditoria
-from src.auditoria import schemas, exceptions 
+from src.auditoria import schemas, exceptions
+from datetime import datetime
 
 # operaciones para Auditoria (registro de solo lectura/escritura, sin update/delete: es inmutable)
 

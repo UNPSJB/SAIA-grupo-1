@@ -1,19 +1,90 @@
 import logging
 import uuid
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from src.certificado import exceptions, schemas
 from src.certificado.models import Certificado
-from src.personal.models import Personal
+from src.personal.models import Personal 
 
 ARCHIVOS_DIR = Path(__file__).resolve().parent / "archivos"
 ARCHIVOS_DIR.mkdir(parents=True, exist_ok=True)
 
+def obtener_certificados_para_csv(
+    db: Session,
+    legajo_persona: Optional[int] = None,
+    busqueda: Optional[str] = None,
+    filtro_estado: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    
+    certificados = listar_certificados(db, legajo_persona=legajo_persona)
+
+    # Cargar mapa de personal
+    try:
+        personales = db.scalars(select(Personal)).all()
+        personal_map = {
+            p.legajo: f"{getattr(p, 'apellido', '')}, {getattr(p, 'nombre', '')}".strip(", ")
+            for p in personales
+        }
+    except Exception:
+        personal_map = {}
+
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+    hoy = date.today()
+
+    for c in certificados:
+        legajo = getattr(c, "legajo_persona", None)
+        nombre_persona = personal_map.get(legajo, f"Legajo #{legajo}") if legajo else "-"
+        
+        # Obtener el nombre del tipo de certificado de forma segura
+        tipo_str = getattr(c, "tipo", "")
+        if not tipo_str and getattr(c, "tipo_relacion", None):
+            tipo_str = c.tipo_relacion.nombre
+        tipo_str = str(tipo_str or "")
+
+        # Filtro de búsqueda
+        if term:
+            coincide = (
+                term in tipo_str.lower()
+                or term in nombre_persona.lower()
+                or (legajo and term in str(legajo))
+            )
+            if not coincide:
+                continue
+
+        # Cálculo de estado de vencimiento
+        f_venc = getattr(c, "fechaVencimiento", None)
+        str_venc = f_venc.strftime("%Y-%m-%d") if hasattr(f_venc, "strftime") and f_venc else "Sin fecha"
+        estado_venc = "AL_DIA"
+
+        if f_venc and hasattr(f_venc, "days"):
+            diff_dias = (f_venc - hoy).days
+            if diff_dias <= 0:
+                estado_venc = "VENCIDO"
+            elif diff_dias <= 15:
+                estado_venc = "PROXIMO"
+
+        # Filtro de estado
+        if filtro_estado and filtro_estado != "TODOS":
+            if estado_venc != filtro_estado.upper():
+                continue
+
+        filas.append({
+            "id": c.id,
+            "legajo_persona": legajo or "-",
+            "nombre_persona": nombre_persona,
+            "tipo": tipo_str,
+            "fecha_vencimiento": str_venc,
+            "estado_vencimiento": estado_venc.replace("_", " ").capitalize(),
+            "tiene_archivo": "Sí" if getattr(c, "foto_url", None) else "No"
+        })
+
+    return filas
 
 def guardar_archivo_certificado(file: UploadFile) -> str:
   extension = Path(file.filename or "").suffix.lower()
