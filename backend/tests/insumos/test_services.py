@@ -12,7 +12,7 @@ from src.insumos.services import (
     eliminar_insumo,
 )
 from src.insumos.schemas import InsumoBase, InsumoCreate, InsumoUpdate, InsumoUpdateStock
-from src.insumos.models import UnidadMedida
+from src.insumos.models import Insumo, UnidadMedida
 
 def test_listar_insumos(session: Session) -> None:
     insumos = listar_insumos(session)
@@ -141,3 +141,61 @@ def test_validaciones_schemas_insumos():
 
     with pytest.raises(exceptions.StockInvalido):
         InsumoUpdateStock.validar_stock_mayor_a_cero(-5)
+
+
+# ------------------------------------------------------------------ baja logica
+
+
+def _nuevo(nombre: str) -> InsumoCreate:
+    hoy = datetime.now()
+    return InsumoCreate(
+        nombre=nombre,
+        lote="ING-NUE-001",
+        fechaRecepcion=hoy - timedelta(days=1),
+        fechaVencimiento=hoy + timedelta(days=365),
+        cantRecibida=10.0,
+        stock=10.0,
+        medida=UnidadMedida.KILOGRAMOS,
+    )
+
+
+def test_eliminar_insumo_es_baja_logica(session: Session) -> None:
+    eliminar_insumo(session, 1)
+
+    # la fila sigue en la base (los lotes de produccion que la usaron la necesitan)
+    insumo = session.get(Insumo, 1)
+    assert insumo is not None
+    assert insumo.activo is False
+
+
+def test_un_insumo_dado_de_baja_no_se_puede_modificar_ni_volver_a_eliminar(session: Session) -> None:
+    eliminar_insumo(session, 1)
+
+    with pytest.raises(exceptions.InsumoNoEncontrado):
+        modificar_insumo(session, 1, InsumoUpdate(lote="OTRO"))
+    with pytest.raises(exceptions.InsumoNoEncontrado):
+        modificar_stock(session, 1, InsumoUpdateStock(stock=1.0))
+    with pytest.raises(exceptions.InsumoNoEncontrado):
+        eliminar_insumo(session, 1)
+
+
+@pytest.mark.parametrize("nombre", ["Harina de Trigo 000", "harina de trigo 000", "  HARINA DE TRIGO 000 "])
+def test_no_se_puede_crear_un_insumo_con_el_nombre_de_uno_activo(session: Session, nombre: str) -> None:
+    with pytest.raises(exceptions.NombreInsumoDuplicado):
+        crear_insumo(session, _nuevo(nombre))
+
+
+def test_se_puede_reusar_el_nombre_de_un_insumo_dado_de_baja(session: Session) -> None:
+    eliminar_insumo(session, 1)
+
+    insumo = crear_insumo(session, _nuevo("Harina de Trigo 000"))
+
+    assert insumo.id != 1
+    assert [i.nombre for i in listar_insumos(session)].count("Harina de Trigo 000") == 1
+
+
+def test_no_se_puede_renombrar_con_el_nombre_de_otro_activo(session: Session) -> None:
+    with pytest.raises(exceptions.NombreInsumoDuplicado):
+        modificar_insumo(session, 1, InsumoUpdate(nombre="aceite de girasol"))
+    # mantener el propio nombre (o cambiarle las mayusculas) no es un duplicado
+    assert modificar_insumo(session, 1, InsumoUpdate(nombre="HARINA DE TRIGO 000")).nombre == "HARINA DE TRIGO 000"

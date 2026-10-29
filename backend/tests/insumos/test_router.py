@@ -82,3 +82,21 @@ def test_delete_insumo(session: Session) -> None:
 
     response_get = client.get("/insumos/1")
     assert response_get.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_crear_insumo_con_nombre_duplicado(session: Session) -> None:
+    hoy = datetime.now()
+    response = client.post(
+        "/insumos/",
+        json={
+            "nombre": "harina de trigo 000",
+            "lote": "ING-HAR-009",
+            "fechaRecepcion": (hoy - timedelta(days=1)).isoformat(),
+            "fechaVencimiento": (hoy + timedelta(days=365)).isoformat(),
+            "cantRecibida": 10.0,
+            "stock": 10.0,
+            "medida": "kilogramos",
+        },
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.json()["detail"] == "Ya existe un insumo activo con ese nombre."

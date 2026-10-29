@@ -35,7 +35,9 @@ export type Modulo =
   | 'documentos'
   | 'incidentes'
   | 'auditoria'
-  | 'planDeCalibracion';
+  | 'planDeCalibracion'
+  | 'productos'
+  | 'produccion';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -133,6 +135,14 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <line x1="12" x2="12" y1="22" y2="12" />
     </svg>
   ),
+  productos: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m7.5 4.27 9 5.15" />
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
+    </svg>
+  ),
   personas: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -174,6 +184,12 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <path d="m9 12 2 2 4-4" />
+    </svg>
+  ),
+  produccion: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+      <path d="M17 18h1M12 18h1M7 18h1" />
     </svg>
   ),
 };
@@ -223,6 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'planDeCalibracion', label: 'Plan de Calibración', icono: ICONOS_MODULO.planDeCalibracion },
         { id: 'sectores', label: 'Sectores', icono: ICONOS_MODULO.sectores },
         { id: 'insumos', label: 'Ingredientes', icono: ICONOS_MODULO.insumos },
+        { id: 'productos', label: 'Productos Elaborados', icono: ICONOS_MODULO.productos },
       ],
     },
     {
@@ -237,6 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       id: 'calidad',
       titulo: 'Calidad y Trazabilidad',
       items: [
+        { id: 'produccion', label: 'Producción', icono: ICONOS_MODULO.produccion },
         { id: 'documentos', label: 'Documentos', icono: ICONOS_MODULO.documentos },
         { id: 'tipoDocumento', label: 'Tipo Documento', icono: ICONOS_MODULO.tipoDocumento },
         {

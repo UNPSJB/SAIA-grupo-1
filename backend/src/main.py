@@ -33,6 +33,8 @@ from .insumos_quimicos.router import router as insumos_quimicos_router
 from src.documentos.router import router as documentos_router
 from src.notificaciones.router import router as notificaciones_router
 from src.motivoNoRealizado.router import router as motivo_router
+from src.produccion.router import lotes_router
+from src.producto.router import router as producto_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -96,3 +98,5 @@ app.include_router(documentos_router, dependencies=SESION)
 app.include_router(notificaciones_router, dependencies=SESION)
 app.include_router(motivo_router, prefix="/checklist/motivos")
 app.include_router(motivo_router, prefix="/motivos")
+app.include_router(lotes_router, dependencies=SESION)
+app.include_router(producto_router, dependencies=SESION)

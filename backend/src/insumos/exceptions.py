@@ -29,3 +29,6 @@ class StockInvalido(BadRequest):
 
 class StockMayorCantidad(BadRequest):
     DETAIL = ErrorCode.STOCK_MAYOR_CANTIDAD
+
+class NombreInsumoDuplicado(BadRequest):
+    DETAIL = ErrorCode.NOMBRE_DUPLICADO
