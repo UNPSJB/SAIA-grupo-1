@@ -23,6 +23,41 @@ logger = get_logger(__name__)
 TABLA_CHECKLIST = "checklists"
 TABLA_CHECKLIST_ITEM = "checklist_items"
 
+def obtener_checklists_para_csv(
+    db: Session,
+    fecha: Optional[date] = None,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    estado: Optional[str] = None,
+    responsable_legajo: Optional[int] = None,
+) -> List[dict]:
+    
+    checklists = listar_checklists(
+        db,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        estado=estado,
+        responsable_legajo=responsable_legajo,
+    )
+
+    filas = []
+    for c in checklists:
+        str_fecha = c.fecha.strftime("%Y-%m-%d") if hasattr(c.fecha, "strftime") and c.fecha else str(c.fecha)
+        nombre_resp = getattr(c, "nombre_responsable", None) or f"Legajo #{c.responsable_legajo}"
+        estado_str = getattr(c.estado, "value", str(c.estado)).capitalize()
+
+        filas.append({
+            "id": c.id,
+            "fecha": str_fecha,
+            "estado": estado_str,
+            "cumplimiento": f"{c.porcentaje_cumplimiento}%",
+            "responsable_legajo": c.responsable_legajo,
+            "responsable": nombre_resp,
+            "cantidad_tareas": len(c.items) if c.items else 0,
+        })
+
+    return filas
 
 def _auditar(
     db: Session,

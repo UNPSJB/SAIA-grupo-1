@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import type { Checklist, PersonalResumen } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoChecklistsProps {
   onDetalleClick: (id: number) => void;
@@ -21,12 +24,12 @@ const obtenerFechaLocalHoy = (): string => {
 export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   onDetalleClick,
 }) => {
-  // El administrador ve los checklists de todos; cada operador genera y ve solo los suyos.
   const { esAdministrador, esOperador, usuario } = useAuth();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
-  // operadores para el filtro del administrador
   const [personal, setPersonal] = useState<PersonalResumen[]>([]);
   const [modalGenerar, setModalGenerar] = useState(false);
   const [generando, setGenerando] = useState(false);
@@ -37,7 +40,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   const [responsableFiltro, setResponsableFiltro] = useState('');
   const [checklistHoyId, setChecklistHoyId] = useState<number | null>(null);
   const [checklistExpandido, setChecklistExpandido] = useState<number | null>(null);
-  // el operador solo ve los suyos: la columna de responsable únicamente le sirve al administrador
   const columnas = esAdministrador ? 6 : 5;
 
   const [errorDialog, setErrorDialog] = useState<{
@@ -93,7 +95,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     let cancelado = false;
 
     const cargarDatos = async () => {
-      // 1. Cargar Checklists de forma aislada
       try {
         const resChecklists = await apiFetch(`/checklist/`);
         if (!cancelado) {
@@ -101,7 +102,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             const data: Checklist[] = await resChecklists.json();
             setChecklists(data);
             const hoyIso = obtenerFechaLocalHoy();
-            // el administrador recibe los de todos: el "del día" es el propio
             const encontrado = data.find(
               (c) => c.fecha === hoyIso && c.responsable_legajo === usuario?.legajo
             );
@@ -124,7 +124,6 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         }
       }
 
-      // 2. Cargar los operadores (solo para el filtro del administrador; el listado de personal es suyo)
       if (!esAdministrador) return;
       try {
         const resPersonal = await apiFetch(`/personal`);
@@ -197,11 +196,43 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     await recargarChecklists('', '', '', '');
   };
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+      if (fechaDesde) params.append('fecha_desde', fechaDesde);
+      if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+      if (estadoFiltro) params.append('estado', estadoFiltro);
+      if (responsableFiltro) params.append('responsable_legajo', responsableFiltro);
+
+      const queryString = params.toString();
+      const url = `/checklist/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'historial_checklists.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      mostrarError(err instanceof Error ? err.message : 'Error al exportar el historial a CSV.', 'Error de exportación');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (fechaDesde) partes.push(`Desde: ${fechaDesde}`);
+    if (fechaHasta) partes.push(`Hasta: ${fechaHasta}`);
+    if (estadoFiltro) partes.push(`Estado: ${estadoFiltro}`);
+    if (responsableFiltro) {
+      const p = personal.find((item) => String(item.legajo) === responsableFiltro);
+      partes.push(`Operador: ${p ? `${p.apellido}, ${p.nombre}` : `#${responsableFiltro}`}`);
+    }
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const handleGenerarChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
     setGenerando(true);
     try {
-      // el responsable lo define la sesión: cada operador genera el suyo
       const res = await apiFetch(`/checklist/generar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -241,7 +272,18 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
           </div>
         </div>
 
-        <div className="top-bar-acciones">
+        <div className="top-bar-acciones" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {esAdministrador && (
+            <button
+              type="button"
+              onClick={() => setDialogExportarAbierto(true)}
+              className="btn-cancelar"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <CsvIcon /> Exportar CSV
+            </button>
+          )}
+
           {checklistHoyId ? (
             <button
               onClick={() => onDetalleClick(checklistHoyId)}
@@ -484,6 +526,17 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         etiqueta="checklists"
       />
 
+      {esAdministrador && (
+        <ConfirmExportDialog
+          open={dialogExportarAbierto}
+          totalRegistros={checklists.length}
+          filtrosAplicados={obtenerResumenFiltros()}
+          loading={exportando}
+          onConfirm={ejecutarExportacion}
+          onCancel={() => setDialogExportarAbierto(false)}
+        />
+      )}
+
       {modalGenerar && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -528,3 +581,5 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     </div>
   );
 };
+
+export default ListadoChecklists;
