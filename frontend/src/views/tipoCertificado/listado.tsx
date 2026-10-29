@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import type { TipoCertificado } from './tipos';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoTiposCertificadosProps {
   onNuevoClick: () => void;
@@ -18,13 +21,13 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
 }) => {
   const [tipos, setTipos] = useState<TipoCertificado[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Estados para búsqueda y ordenamiento
   const [searchTerm, setSearchTerm] = useState('');
   const [ordenarPor, setOrdenarPor] = useState<CriterioOrden>('id');
 
-  // Estado para diálogo de confirmación de eliminación física
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tipoAEliminar, setTipoAEliminar] = useState<TipoCertificado | null>(null);
 
@@ -81,7 +84,6 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
     }
   };
 
-  // Filtrado reactivo en memoria por nombre y ordenamiento por ID o Nombre
   const tiposFiltradosYOrdenados = tipos
     .filter((t) => {
       const term = searchTerm.toLowerCase().trim();
@@ -91,8 +93,35 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
       if (ordenarPor === 'nombre') {
         return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
       }
-      return a.id - b.id; // Por defecto ordena por ID ascendente
+      return a.id - b.id;
     });
+
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (searchTerm.trim()) params.append('busqueda', searchTerm.trim());
+      if (ordenarPor) params.append('ordenar_por', ordenarPor);
+
+      const queryString = params.toString();
+      const url = `/certificados/tipos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'tipos_de_certificados.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Error al exportar los tipos de certificados a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (searchTerm.trim()) partes.push(`Búsqueda: "${searchTerm}"`);
+    if (ordenarPor !== 'id') partes.push(`Orden: ${ordenarPor === 'nombre' ? 'Nombre' : 'ID'}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
 
   const {
     itemsPaginados: tiposPaginados,
@@ -114,11 +143,22 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Agregar Tipo
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Agregar Tipo
+            </button>
+          )}
+        </div>
       </div>
 
       {errorMsg && (
@@ -127,7 +167,6 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
         </div>
       )}
 
-      {/* Barra de Filtros con búsqueda y desplegable de orden */}
       <div className="filtros-top-bar">
         <input
           type="text"
@@ -213,6 +252,15 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="tipos de certificado"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={tiposFiltradosYOrdenados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ConfirmAlertDialog
