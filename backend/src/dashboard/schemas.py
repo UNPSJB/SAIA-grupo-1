@@ -161,3 +161,16 @@ class CumplimientoDetalladoResponse(BaseModel):
     desglose_por_equipo: List[CumplimientoDesgloseItem]
     desglose_por_turno: List[CumplimientoDesgloseItem]
     items_detalle: List[ItemDetalleChecklist]
+
+class PuntoProduccion(BaseModel):
+    nombre: str
+    cantidad: float
+    lotes: int = 0
+
+class ProduccionDashboardResponse(BaseModel):
+    periodo: str
+    desde: Optional[date] = None
+    hasta: Optional[date] = None
+    total_lotes: int
+    total_cantidad: float
+    puntos: List[PuntoProduccion]

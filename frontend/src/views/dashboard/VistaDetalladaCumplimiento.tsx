@@ -67,7 +67,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
   const [desde, setDesde] = useState<string>(() => formatearFechaInput(restarDias(hoy, 30)));
   const [hasta, setHasta] = useState<string>(() => formatearFechaInput(hoy));
   const [sectorSeleccionado, setSectorSeleccionado] = useState<string>('');
-  const [turnoSeleccionado, setTurnoSeleccionado] = useState<string>('TODOS');
 
   const [sectores, setSectores] = useState<SectorOpcion[]>([]);
   const [datos, setDatos] = useState<CumplimientoDetalladoResponse | null>(null);
@@ -120,7 +119,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
         if (desde) params.append('desde', desde);
         if (hasta) params.append('hasta', hasta);
         if (sectorSeleccionado) params.append('sector_id', sectorSeleccionado);
-        if (turnoSeleccionado && turnoSeleccionado !== 'TODOS') params.append('turno', turnoSeleccionado);
 
         const res = await apiFetch(`/dashboard/cumplimiento-detallado?${params.toString()}`);
         if (!cancelado) {
@@ -148,7 +146,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
     return () => {
       cancelado = true;
     };
-  }, [desde, hasta, sectorSeleccionado, turnoSeleccionado, errorRango]);
+  }, [desde, hasta, sectorSeleccionado, errorRango]);
 
   const aplicarRangoRapido = (dias: number) => {
     const fin = new Date();
@@ -162,7 +160,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
     setDesde(formatearFechaInput(restarDias(fin, 30)));
     setHasta(formatearFechaInput(fin));
     setSectorSeleccionado('');
-    setTurnoSeleccionado('TODOS');
   };
 
   const obtenerColorPorcentaje = (pct: number) => {
@@ -188,7 +185,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
       'Frecuencia',
       'Sector / Equipo',
       'Tipo',
-      'Turno',
       'Responsable',
       'Estado',
       'Hora Fin',
@@ -202,7 +198,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
       it.frecuencia,
       `"${(it.sector_o_equipo || '').replace(/"/g, '""')}"`,
       it.tipo_objeto,
-      it.turno,
       `"${(it.responsable || '').replace(/"/g, '""')}"`,
       it.estado,
       it.hora_fin || '',
@@ -255,7 +250,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
               Vista Detallada de Cumplimiento de Checklists y Limpieza
             </h1>
             <div className="subtitulo" style={{ fontSize: '0.88rem', color: 'var(--color-texto-sec)' }}>
-              Desglose analítico de efectividad por sector físico, equipo y turno operativo
+              Desglose analítico de efectividad por sector físico y equipo
             </div>
           </div>
 
@@ -351,28 +346,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                       {s.nombre}
                     </option>
                   ))}
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-texto-sec)' }}>Turno</label>
-                <select
-                  value={turnoSeleccionado}
-                  onChange={(e) => setTurnoSeleccionado(e.target.value)}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--color-borde)',
-                    backgroundColor: 'var(--color-superficie)',
-                    color: 'var(--color-texto)',
-                    fontSize: '12.5px',
-                    outline: 'none',
-                  }}
-                >
-                  <option value="TODOS">Todos los turnos</option>
-                  <option value="MAÑANA">Mañana</option>
-                  <option value="TARDE">Tarde</option>
-                  <option value="NOCHE">Noche</option>
                 </select>
               </div>
 
@@ -490,7 +463,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
             Sin datos disponibles para los filtros seleccionados
           </strong>
           <p style={{ fontSize: '13px', maxWidth: '440px', margin: '0 auto' }}>
-            No se encontraron checklists de limpieza entre el {formatearFechaVisual(desde)} y el {formatearFechaVisual(hasta)} con los filtros especificados. Modifica las fechas, sector o turno.
+            No se encontraron checklists de limpieza entre el {formatearFechaVisual(desde)} y el {formatearFechaVisual(hasta)} con los filtros especificados. Modifica las fechas o el sector.
           </p>
         </div>
       ) : (
@@ -572,93 +545,37 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                 </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent style={{ padding: '16px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--color-texto-sec)', fontWeight: 500 }}>
-                  Turno Crítico
-                </span>
-                <div style={{ marginTop: '6px' }}>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-h)' }}>
-                    {kpis?.turno_critico || 'Sin datos'}
-                  </div>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: obtenerColorPorcentaje(kpis?.porcentaje_turno_critico || 0), marginTop: '2px' }}>
-                    {kpis?.porcentaje_turno_critico !== undefined && kpis?.porcentaje_turno_critico !== null ? `${kpis.porcentaje_turno_critico}% cumplimiento` : '-'}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
-              gap: '16px',
-              marginBottom: '1.5rem',
-            }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ fontSize: '1rem' }}>Tendencia Temporal de Cumplimiento</CardTitle>
-                <CardDescription>Evolución cronológica del porcentaje de cumplimiento general</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div style={{ width: '100%', height: 260 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={datos?.tendencia_temporal || []} margin={{ top: 12, right: 16, left: 0, bottom: 20 }}>
-                      <defs>
-                        <linearGradient id="gradTendencia" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
-                          <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                      <XAxis dataKey="etiqueta" stroke={colores.textoSec} fontSize={11} tickLine={false} />
-                      <YAxis domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} stroke={colores.textoSec} fontSize={11} tickLine={false} unit="%" width={40} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
-                        formatter={(val) => [`${val}%`, 'Cumplimiento']}
-                      />
-                      <ReferenceLine y={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 10.5 }} />
-                      <Area type="monotone" dataKey="porcentaje" stroke={colores.primario} strokeWidth={2.5} fill="url(#gradTendencia)" dot={{ r: 3, fill: colores.primario }} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ fontSize: '1rem' }}>Cumplimiento por Turno</CardTitle>
-                <CardDescription>Efectividad operativa desglosada por turno de trabajo</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div style={{ width: '100%', height: 260 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={datos?.desglose_por_turno || []} margin={{ top: 12, right: 16, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                      <XAxis dataKey="nombre" stroke={colores.textoSec} fontSize={11.5} tickLine={false} />
-                      <YAxis domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} stroke={colores.textoSec} fontSize={11} tickLine={false} unit="%" width={40} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
-                        formatter={(val, _, item) => [
-                          `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
-                          'Cumplimiento',
-                        ]}
-                      />
-                      <ReferenceLine y={80} stroke={colores.exito} strokeDasharray="4 4" />
-                      <Bar dataKey="porcentaje" radius={[6, 6, 0, 0]}>
-                        {(datos?.desglose_por_turno || []).map((entry, index) => (
-                          <Cell key={`turno-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card style={{ marginBottom: '1.5rem' }}>
+            <CardHeader>
+              <CardTitle style={{ fontSize: '1rem' }}>Tendencia Temporal de Cumplimiento</CardTitle>
+              <CardDescription>Evolución cronológica del porcentaje de cumplimiento general</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div style={{ width: '100%', height: 260 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={datos?.tendencia_temporal || []} margin={{ top: 12, right: 16, left: 0, bottom: 20 }}>
+                    <defs>
+                      <linearGradient id="gradTendencia" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
+                        <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                    <XAxis dataKey="etiqueta" stroke={colores.textoSec} fontSize={11} tickLine={false} />
+                    <YAxis domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} stroke={colores.textoSec} fontSize={11} tickLine={false} unit="%" width={40} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
+                      formatter={(val) => [`${val}%`, 'Cumplimiento']}
+                    />
+                    <ReferenceLine y={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 10.5 }} />
+                    <Area type="monotone" dataKey="porcentaje" stroke={colores.primario} strokeWidth={2.5} fill="url(#gradTendencia)" dot={{ r: 3, fill: colores.primario }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
 
           <div
             style={{
@@ -760,7 +677,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                       <th style={{ padding: '10px 12px' }}>Checklist</th>
                       <th style={{ padding: '10px 12px' }}>Tarea</th>
                       <th style={{ padding: '10px 12px' }}>Sector / Equipo</th>
-                      <th style={{ padding: '10px 12px' }}>Turno</th>
                       <th style={{ padding: '10px 12px' }}>Responsable</th>
                       <th style={{ padding: '10px 12px' }}>Hora Fin</th>
                       <th style={{ padding: '10px 12px', textAlign: 'center' }}>Estado</th>
@@ -776,7 +692,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                           <span>{it.sector_o_equipo}</span>
                           <span style={{ fontSize: '10.5px', color: 'var(--color-texto-sec)', display: 'block' }}>{it.tipo_objeto}</span>
                         </td>
-                        <td style={{ padding: '10px 12px', color: 'var(--color-texto)' }}>{it.turno}</td>
                         <td style={{ padding: '10px 12px', color: 'var(--color-texto)' }}>{it.responsable}</td>
                         <td style={{ padding: '10px 12px', color: 'var(--color-texto-sec)' }}>{it.hora_fin || '-'}</td>
                         <td style={{ padding: '10px 12px', textAlign: 'center' }}>

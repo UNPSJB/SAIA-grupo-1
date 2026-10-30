@@ -102,3 +102,13 @@ def obtener_cumplimiento_detallado(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/produccion", response_model=schemas.ProduccionDashboardResponse)
+def obtener_produccion(
+    periodo: schemas.Periodo = "dia",
+    producto_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    return services.obtener_estadisticas_produccion(
+        db, periodo=periodo, producto_id=producto_id
+    )

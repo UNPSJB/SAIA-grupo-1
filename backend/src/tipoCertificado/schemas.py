@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 from src.tipoCertificado import exceptions
 
 class TipoCertificadoBase(BaseModel):
-    nombre: str = Field(max_length=30)
+    nombre: str = Field(max_length=150)
 
     @field_validator("nombre")
     @classmethod

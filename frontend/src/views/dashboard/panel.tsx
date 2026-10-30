@@ -14,6 +14,8 @@ import type {
   IncidentesMetricasDashboard,
   PanelDashboardProps,
   Periodo,
+  ProduccionDashboardResponse,
+  PuntoProduccion,
   TipoDetalleEstadisticas,
   VencimientoItemDashboard,
 } from './tipos';
@@ -54,7 +56,12 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
   const [unidadesDisponibles, setUnidadesDisponibles] = useState<string[]>([]);
   const [loadingInsumos, setLoadingInsumos] = useState(true);
 
-  const [periodoProduccion, setPeriodoProduccion] = useState<Periodo>('semana');
+  const [periodoProduccion, setPeriodoProduccion] = useState<Periodo>('dia');
+  const [productoProduccion, setProductoProduccion] = useState<string>('');
+  const [listaProductos, setListaProductos] = useState<{ id: number; nombre: string }[]>([]);
+  const [datosProduccion, setDatosProduccion] = useState<PuntoProduccion[]>([]);
+  const [lotesProducidos, setLotesProducidos] = useState(0);
+  const [loadingProduccion, setLoadingProduccion] = useState(true);
 
   const [vencPersonal, setVencPersonal] = useState({ vencidos: 0, proximos: 0 });
   const [vencCalibraciones, setVencCalibraciones] = useState({ vencidos: 0, proximos: 0 });
@@ -92,6 +99,55 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
       cancelado = true;
     };
   }, [periodoInsumos, unidadInsumos]);
+
+  useEffect(() => {
+    let cancelado = false;
+    const cargarProductos = async () => {
+      try {
+        const res = await apiFetch('/productos/');
+        if (!cancelado && res.ok) {
+          const data: { id: number; nombre: string; activo?: boolean }[] = await res.json();
+          const activos = data
+            .filter((p) => p.activo !== false)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+          setListaProductos(activos);
+        }
+      } catch (e) {
+        console.error('Error al cargar productos del dashboard:', e);
+      }
+    };
+    cargarProductos();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelado = false;
+    const cargarProduccion = async () => {
+      setLoadingProduccion(true);
+      try {
+        const params = new URLSearchParams({ periodo: periodoProduccion });
+        if (productoProduccion) {
+          params.append('producto_id', productoProduccion);
+        }
+        const res = await apiFetch(`/dashboard/produccion?${params.toString()}`);
+        if (!cancelado && res.ok) {
+          const data: ProduccionDashboardResponse = await res.json();
+          setDatosProduccion(data.puntos || []);
+          setLotesProducidos(data.total_lotes ?? 0);
+        }
+      } catch (e) {
+        console.error('Error al cargar producción del dashboard:', e);
+      } finally {
+        if (!cancelado) setLoadingProduccion(false);
+      }
+    };
+    cargarProduccion();
+    return () => {
+      cancelado = true;
+    };
+  }, [periodoProduccion, productoProduccion]);
 
   useEffect(() => {
     let cancelado = false;
@@ -206,24 +262,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
   const incRecientes = metricasIncidentes?.por_antiguedad?.menos_24h || 0;
   const incReabiertos = metricasIncidentes?.por_estado?.reabierto || 0;
 
-  const datosProduccionSemana = [
-    { nombre: 'Lun', cantidad: 28 },
-    { nombre: 'Mar', cantidad: 35 },
-    { nombre: 'Mié', cantidad: 31 },
-    { nombre: 'Jue', cantidad: 42 },
-    { nombre: 'Vie', cantidad: 38 },
-    { nombre: 'Sáb', cantidad: 18 },
-  ];
-
-  const datosProduccionMes = [
-    { nombre: 'Sem 1', cantidad: 180 },
-    { nombre: 'Sem 2', cantidad: 210 },
-    { nombre: 'Sem 3', cantidad: 195 },
-    { nombre: 'Sem 4', cantidad: 230 },
-  ];
-
-  const datosProduccion = periodoProduccion === 'semana' ? datosProduccionSemana : datosProduccionMes;
-  const lotesProducidos = periodoProduccion === 'semana' ? 14 : 58;
 
   const renderBadgeVencimiento = (
     vencidos: number,
@@ -470,7 +508,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 else setVistaDetalle('vencimientos');
               }}
             >
-              Ver consolidado completo &rarr;
+              Ver más &rarr;
             </button>
           </div>
         </div>
@@ -703,18 +741,35 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
               </span>
               <select
                 className="dashboard-select"
+                value={productoProduccion}
+                onChange={(e) => setProductoProduccion(e.target.value)}
+                title="Seleccionar producto"
+              >
+                <option value="">Todos los productos</option>
+                {listaProductos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="dashboard-select"
                 value={periodoProduccion}
                 onChange={(e) => setPeriodoProduccion(e.target.value as Periodo)}
                 title="Seleccionar período de producción"
               >
-                <option value="semana">Semanal</option>
-                <option value="mes">Mensual</option>
+                <option value="dia">Semana</option>
+                <option value="semana">Mes</option>
+                <option value="mes">Año</option>
               </select>
             </div>
           </div>
 
           <div className="dashboard-card-cuerpo">
-            <div className="dashboard-grafico-contenedor">
+            {loadingProduccion ? (
+              <p className="dashboard-sin-datos">Cargando estadísticas de producción...</p>
+            ) : (
+              <div className="dashboard-grafico-contenedor">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={datosProduccion} margin={{ top: 8, right: 16, left: 12, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
@@ -739,8 +794,9 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                     fontSize={11}
                     tickLine={false}
                     width={62}
+                    allowDecimals={false}
                     label={{
-                      value: 'Producción (u.)',
+                      value: 'Lotes producidos',
                       angle: -90,
                       position: 'insideLeft',
                       offset: 12,
@@ -758,10 +814,10 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                     }}
                     itemStyle={{ color: 'var(--color-texto)' }}
                     cursor={{ fill: colores.suave }}
-                    formatter={(valor) => [`${valor} u.`, 'Producción']}
+                    formatter={(valor) => [Number(valor) === 1 ? '1 lote' : `${valor} lotes`, 'Lotes']}
                     labelFormatter={(nombre) => `Período: ${nombre}`}
                   />
-                  <Bar dataKey="cantidad" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="lotes" radius={[4, 4, 0, 0]}>
                     {datosProduccion.map((_, index) => (
                       <Cell
                         key={`produccion-bar-${index}`}
@@ -772,6 +828,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            )}
           </div>
 
           <div className="dashboard-card-footer">

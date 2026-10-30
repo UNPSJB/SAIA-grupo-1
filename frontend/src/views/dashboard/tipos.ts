@@ -232,3 +232,18 @@ export interface CumplimientoDetalladoResponse {
   desglose_por_turno: CumplimientoDesgloseItem[];
   items_detalle: ItemDetalleChecklist[];
 }
+
+export interface PuntoProduccion {
+  nombre: string;
+  cantidad: number;
+  lotes: number;
+}
+
+export interface ProduccionDashboardResponse {
+  periodo: string;
+  desde?: string | null;
+  hasta?: string | null;
+  total_lotes: number;
+  total_cantidad: number;
+  puntos: PuntoProduccion[];
+}

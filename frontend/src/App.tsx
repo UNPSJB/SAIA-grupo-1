@@ -42,7 +42,6 @@ import { NuevoIncidente } from './views/incidentes/nuevoIncidente';
 import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibracion';
 import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
-import { EstadisticasIncidentes } from './views/incidentes/estadisticasIncidentes';
 import { ListadoCategoriasIncidentes } from './views/incidentes/categorias/listado';
 import { NotificacionesPopover } from './components/alertas/NotificacionesPopover';
 import type { NotificacionItem } from './hooks/useNotificaciones';
@@ -68,6 +67,7 @@ import { NuevoTipoDocumento } from './views/tipoDocumento/nuevoTipoDocumento';
 import { DetalleTipoDocumento } from './views/tipoDocumento/verDetalle';
 import { ListadoMotivos } from './views/motivos/listado';
 import { NuevoMotivo } from './views/motivos/nuevoMotivo';
+import { DetalleMotivo } from './views/motivos/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 import { VencimientosDocumentos } from './views/documentos/vencimientosDocumentos';
 import './styles/dashboard.css';
@@ -94,7 +94,7 @@ type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
-type VistaMotivos = 'listado' | 'alta';
+type VistaMotivos = 'listado' | 'alta' | 'detalle';
 type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
 type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar';
 
@@ -146,6 +146,7 @@ function Aplicacion() {
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
   const [vistaMotivos, setVistaMotivos] = useState<VistaMotivos>('listado');
+  const [motivoSeleccionado, setMotivoSeleccionado] = useState<number | null>(null);
 
   const [vistaTipoDocumento, setVistaTipoDocumento] = useState<VistaTipoDocumento>('listado');
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<number | null>(null);
@@ -192,6 +193,7 @@ function Aplicacion() {
     setVistaPlanLimp('listado');
     setVistaChecklist('listado');
     setVistaMotivos('listado');
+    setMotivoSeleccionado(null);
     setVistaIncidentesAdmin('abiertos');
     setVistaVencimientos('consolidado');
     setVistaPlanCalibracion('listado');
@@ -446,6 +448,24 @@ interface RegistroVencimientoRef {
                 <span className="dashboard-breadcrumb-separador">/</span>
                 <span className="dashboard-breadcrumb-actual">
                   {vistaTipoDocumento === 'alta' ? 'Nuevo Tipo de Documento' : 'Detalle Tipo de Documento'}
+                </span>
+              </>
+            )
+          ) : modulo === 'motivos' ? (
+            vistaMotivos === 'listado' ? (
+              <span className="dashboard-breadcrumb-actual">Motivos de No Realización</span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="dashboard-breadcrumb-link"
+                  onClick={() => setVistaMotivos('listado')}
+                >
+                  Motivos de No Realización
+                </button>
+                <span className="dashboard-breadcrumb-separador">/</span>
+                <span className="dashboard-breadcrumb-actual">
+                  {vistaMotivos === 'alta' ? 'Nuevo Motivo' : 'Detalle Motivo de No Realización'}
                 </span>
               </>
             )
@@ -895,26 +915,17 @@ const irANotificacion = (notif: NotificacionItem) => {
             ) : vistaIncidentesAdmin === 'historial' ? (
               <ListadoIncidentes
                 onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
-                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
                 onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
                 onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
-              />
-            ) : vistaIncidentesAdmin === 'estadisticas' ? (
-              <EstadisticasIncidentes
-                onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
-                onVerHistorial={() => setVistaIncidentesAdmin('historial')}
-                onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
               />
             ) : vistaIncidentesAdmin === 'categorias' ? (
               <ListadoCategoriasIncidentes
                 onVerAbiertos={() => setVistaIncidentesAdmin('abiertos')}
                 onVerHistorial={() => setVistaIncidentesAdmin('historial')}
-                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
               />
             ) : (
               <IncidentesAbiertos
                 onVerHistorialCompleto={() => setVistaIncidentesAdmin('historial')}
-                onVerEstadisticas={() => setVistaIncidentesAdmin('estadisticas')}
                 onVerCategorias={() => setVistaIncidentesAdmin('categorias')}
                 onRegistrarClick={esOperador ? () => setVistaIncidentesAdmin('nuevo') : undefined}
               />
@@ -1074,10 +1085,19 @@ const irANotificacion = (notif: NotificacionItem) => {
           vistaMotivos === 'listado' ? (
             <ListadoMotivos
               onNuevoClick={() => setVistaMotivos('alta')}
+              onDetalleClick={(id) => {
+                setMotivoSeleccionado(id);
+                setVistaMotivos('detalle');
+              }}
             />
           ) : vistaMotivos === 'alta' ? (
             <NuevoMotivo
               onSuccess={() => setVistaMotivos('listado')}
+              onCancel={() => setVistaMotivos('listado')}
+            />
+          ) : vistaMotivos === 'detalle' ? (
+            <DetalleMotivo
+              motivoId={motivoSeleccionado}
               onCancel={() => setVistaMotivos('listado')}
             />
           ) : null

@@ -40,3 +40,10 @@ def test_eliminar_tipo_certificado_service(session: Session):
 
     with pytest.raises(exceptions.TipoCertificadoNoEncontrado):
         services.obtener_tipo_certificado(session, creado.id)
+
+def test_crear_tipo_certificado_largo_150_caracteres(session: Session):
+    nombre_150 = "A" * 150
+    tipo = services.crear_tipo_certificado(session, nombre_150)
+    assert tipo.id is not None
+    assert tipo.nombre == nombre_150
+    assert len(tipo.nombre) == 150

@@ -1,7 +1,9 @@
+import calendar
 import json
 from datetime import date, datetime, timedelta
 from typing import List, Optional, Tuple
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from src.checklist import services as checklist_services
@@ -9,6 +11,7 @@ from src.checklist.models import DIAS_POR_FRECUENCIA, EstadoTareaItem
 from src.dashboard import schemas
 from src.dashboard.exceptions import RangoFechasInvalido, RangoFechasInvalidoException
 from src.insumos_quimicos.models import InsumoQuimico
+from src.produccion.models import LoteProduccion
 
 def _rango_periodo(periodo: str, hoy: date) -> Tuple[date, date]:
     p = str(periodo).lower()
@@ -803,4 +806,158 @@ def obtener_cumplimiento_detallado(
         desglose_por_equipo=desglose_equipo,
         desglose_por_turno=desglose_turno,
         items_detalle=items_detalle,
+    )
+
+def obtener_estadisticas_produccion(
+    db: Session,
+    periodo: str = "dia",
+    producto_id: Optional[int] = None,
+    hoy: Optional[date] = None,
+) -> schemas.ProduccionDashboardResponse:
+    fecha_hoy = hoy or date.today()
+    p = str(periodo).lower().strip()
+
+    if p in ("mes", "mensual", "anio", "año", "ano", "anual"):
+        desde = date(fecha_hoy.year, 1, 1)
+        hasta = fecha_hoy
+
+        buckets = []
+        for m in range(1, fecha_hoy.month + 1):
+            d_ini = date(fecha_hoy.year, m, 1)
+            dias_en_mes = calendar.monthrange(fecha_hoy.year, m)[1]
+            d_fin = min(date(fecha_hoy.year, m, dias_en_mes), hasta)
+            nombre = f"{m:02d}/{fecha_hoy.year}"
+            buckets.append((nombre, d_ini, d_fin))
+
+        acc = {b[0]: {"cantidad": 0.0, "lotes": 0} for b in buckets}
+
+        consulta = (
+            select(
+                LoteProduccion.fecha,
+                func.coalesce(func.sum(LoteProduccion.cantidad), 0.0),
+                func.count(LoteProduccion.id),
+            )
+            .where(LoteProduccion.fecha >= desde, LoteProduccion.fecha <= hasta)
+            .group_by(LoteProduccion.fecha)
+        )
+        if producto_id is not None:
+            consulta = consulta.where(LoteProduccion.producto_id == producto_id)
+
+        resultados = db.execute(consulta).all()
+
+        for f, cant, count in resultados:
+            for nombre_mes, d_ini, d_fin in buckets:
+                if d_ini <= f <= d_fin:
+                    acc[nombre_mes]["cantidad"] += float(cant)
+                    acc[nombre_mes]["lotes"] += int(count)
+                    break
+
+        puntos = [
+            schemas.PuntoProduccion(
+                nombre=b[0],
+                cantidad=round(acc[b[0]]["cantidad"], 2),
+                lotes=acc[b[0]]["lotes"],
+            )
+            for b in buckets
+        ]
+    elif p in ("semana", "semanal"):
+        desde = fecha_hoy.replace(day=1)
+        hasta = fecha_hoy
+
+        buckets = []
+        cur_inicio = desde
+        while cur_inicio <= hasta:
+            dias_hasta_sabado = (5 - cur_inicio.weekday()) % 7
+            cur_fin = cur_inicio + timedelta(days=dias_hasta_sabado)
+            if cur_fin >= hasta:
+                cur_fin = hasta
+            nombre = (
+                f"{cur_inicio.strftime('%d/%m')} al {cur_fin.strftime('%d/%m')}"
+                if cur_inicio != cur_fin
+                else cur_inicio.strftime("%d/%m")
+            )
+            buckets.append((nombre, cur_inicio, cur_fin))
+            if cur_fin >= hasta:
+                break
+            cur_inicio = cur_fin + timedelta(days=1)
+
+        acc = {b[0]: {"cantidad": 0.0, "lotes": 0} for b in buckets}
+
+        consulta = (
+            select(
+                LoteProduccion.fecha,
+                func.coalesce(func.sum(LoteProduccion.cantidad), 0.0),
+                func.count(LoteProduccion.id),
+            )
+            .where(LoteProduccion.fecha >= desde, LoteProduccion.fecha <= hasta)
+            .group_by(LoteProduccion.fecha)
+        )
+        if producto_id is not None:
+            consulta = consulta.where(LoteProduccion.producto_id == producto_id)
+
+        resultados = db.execute(consulta).all()
+
+        for f, cant, count in resultados:
+            for nombre_sem, d_ini, d_fin in buckets:
+                if d_ini <= f <= d_fin:
+                    acc[nombre_sem]["cantidad"] += float(cant)
+                    acc[nombre_sem]["lotes"] += int(count)
+                    break
+
+        puntos = [
+            schemas.PuntoProduccion(
+                nombre=b[0],
+                cantidad=round(acc[b[0]]["cantidad"], 2),
+                lotes=acc[b[0]]["lotes"],
+            )
+            for b in buckets
+        ]
+    else:
+        fechas_dias = [fecha_hoy - timedelta(days=6 - i) for i in range(7)]
+        desde = fechas_dias[0]
+        hasta = fecha_hoy
+
+        dias_dict = {
+            f: {"nombre": f.strftime("%d/%m"), "cantidad": 0.0, "lotes": 0}
+            for f in fechas_dias
+        }
+
+        consulta = (
+            select(
+                LoteProduccion.fecha,
+                func.coalesce(func.sum(LoteProduccion.cantidad), 0.0),
+                func.count(LoteProduccion.id),
+            )
+            .where(LoteProduccion.fecha >= desde, LoteProduccion.fecha <= hasta)
+            .group_by(LoteProduccion.fecha)
+        )
+        if producto_id is not None:
+            consulta = consulta.where(LoteProduccion.producto_id == producto_id)
+
+        resultados = db.execute(consulta).all()
+
+        for f, cant, count in resultados:
+            if f in dias_dict:
+                dias_dict[f]["cantidad"] = float(cant)
+                dias_dict[f]["lotes"] = int(count)
+
+        puntos = [
+            schemas.PuntoProduccion(
+                nombre=dias_dict[f]["nombre"],
+                cantidad=round(dias_dict[f]["cantidad"], 2),
+                lotes=dias_dict[f]["lotes"],
+            )
+            for f in fechas_dias
+        ]
+
+    total_lotes = sum(p.lotes for p in puntos)
+    total_cantidad = round(sum(p.cantidad for p in puntos), 2)
+
+    return schemas.ProduccionDashboardResponse(
+        periodo=p,
+        desde=desde,
+        hasta=hasta,
+        total_lotes=total_lotes,
+        total_cantidad=total_cantidad,
+        puntos=puntos,
     )

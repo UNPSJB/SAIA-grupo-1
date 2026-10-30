@@ -10,13 +10,11 @@ import '../../../styles/incidentes.css';
 export interface ListadoCategoriasIncidentesProps {
   onVerAbiertos?: () => void;
   onVerHistorial?: () => void;
-  onVerEstadisticas?: () => void;
 }
 
 export const ListadoCategoriasIncidentes: React.FC<ListadoCategoriasIncidentesProps> = ({
   onVerAbiertos,
   onVerHistorial,
-  onVerEstadisticas,
 }) => {
   const [categorias, setCategorias] = useState<CategoriaIncidente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,11 +126,6 @@ export const ListadoCategoriasIncidentes: React.FC<ListadoCategoriasIncidentesPr
         {onVerHistorial && (
           <button type="button" className="tab-incidente-btn" onClick={onVerHistorial}>
             Historial Completo
-          </button>
-        )}
-        {onVerEstadisticas && (
-          <button type="button" className="tab-incidente-btn" onClick={onVerEstadisticas}>
-            Estadísticas por Tipo
           </button>
         )}
         <button type="button" className="tab-incidente-btn activo">
