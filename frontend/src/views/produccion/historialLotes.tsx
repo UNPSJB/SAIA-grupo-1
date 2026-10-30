@@ -85,6 +85,13 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
 
   // Misma regla que el backend: no se consulta con un rango al revés
   const aplicar = (nuevos: Filtros) => {
+    if (nuevos.desde && nuevos.desde < '2000-01-01') {
+      setErrorDialog({
+        title: 'Rango de fechas inválido',
+        message: "La fecha 'Desde' no puede ser anterior al año 2000.",
+      });
+      return;
+    }
     if (nuevos.desde && nuevos.hasta && nuevos.desde > nuevos.hasta) {
       setErrorDialog({
         title: 'Rango de fechas inválido',
@@ -146,7 +153,8 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
             <input
               id="lotes-desde"
               type="date"
-              max={hoy}
+              min="2000-01-01"
+              max={filtros.hasta || hoy}
               value={filtros.desde}
               onChange={(e) => setFiltros({ ...filtros, desde: e.target.value })}
             />
@@ -156,6 +164,7 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
             <input
               id="lotes-hasta"
               type="date"
+              min={filtros.desde || '2000-01-01'}
               max={hoy}
               value={filtros.hasta}
               onChange={(e) => setFiltros({ ...filtros, hasta: e.target.value })}

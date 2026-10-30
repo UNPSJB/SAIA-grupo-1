@@ -70,6 +70,8 @@ def listar_lotes(
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
 ) -> List[LoteProduccion]:
+    if desde is not None and desde < date(2000, 1, 1):
+        raise exceptions.RangoFechasInvalido()
     if desde is not None and hasta is not None and desde > hasta:
         raise exceptions.RangoFechasInvalido()
     consulta = select(LoteProduccion)

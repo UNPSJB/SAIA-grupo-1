@@ -96,7 +96,7 @@ type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
 type VistaMotivos = 'listado' | 'alta' | 'detalle';
 type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
-type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar' | 'receta';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -176,6 +176,7 @@ function Aplicacion() {
 
   const [vistaProductos, setVistaProductos] = useState<VistaProductos>('listado');
   const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null);
+  const [recetaDesdeProducto, setRecetaDesdeProducto] = useState<number | null>(null);
 
   const cambiarModulo = (nuevoModulo: Modulo, limpiarFiltros: boolean = true, esDesdeDashboard: boolean = false) => {
     setModulo(nuevoModulo);
@@ -203,6 +204,7 @@ function Aplicacion() {
     setVistaTipoDocumento('listado');
     setTipoDocumentoSeleccionado(null);
     setVistaProductos('listado');
+    setRecetaDesdeProducto(null);
     if (limpiarFiltros) {
       setFiltroCertificadosInicial('TODOS');
       setFiltroCalibracionInicial('TODOS');
@@ -466,6 +468,48 @@ interface RegistroVencimientoRef {
                 <span className="dashboard-breadcrumb-separador">/</span>
                 <span className="dashboard-breadcrumb-actual">
                   {vistaMotivos === 'alta' ? 'Nuevo Motivo' : 'Detalle Motivo de No Realización'}
+                </span>
+              </>
+            )
+          ) : modulo === 'productos' ? (
+            vistaProductos === 'listado' ? (
+              <span className="dashboard-breadcrumb-actual">Productos Elaborados</span>
+            ) : vistaProductos === 'receta' ? (
+              <>
+                <button
+                  type="button"
+                  className="dashboard-breadcrumb-link"
+                  onClick={() => setVistaProductos('listado')}
+                >
+                  Productos Elaborados
+                </button>
+                <span className="dashboard-breadcrumb-separador">/</span>
+                <button
+                  type="button"
+                  className="dashboard-breadcrumb-link"
+                  onClick={() => setVistaProductos('detalle')}
+                >
+                  Detalle de Producto
+                </button>
+                <span className="dashboard-breadcrumb-separador">/</span>
+                <span className="dashboard-breadcrumb-actual">Detalle de Receta</span>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="dashboard-breadcrumb-link"
+                  onClick={() => setVistaProductos('listado')}
+                >
+                  Productos Elaborados
+                </button>
+                <span className="dashboard-breadcrumb-separador">/</span>
+                <span className="dashboard-breadcrumb-actual">
+                  {vistaProductos === 'alta'
+                    ? 'Nuevo Producto'
+                    : vistaProductos === 'editar'
+                    ? 'Editar Producto'
+                    : 'Detalle de Producto'}
                 </span>
               </>
             )
@@ -1123,6 +1167,16 @@ const irANotificacion = (notif: NotificacionItem) => {
             <DetalleProducto
               productoId={productoSeleccionado}
               onCancel={() => setVistaProductos('listado')}
+              onVerReceta={(recetaId) => {
+                setRecetaDesdeProducto(recetaId);
+                setVistaProductos('receta');
+              }}
+            />
+          ) : vistaProductos === 'receta' ? (
+            <DetalleDocumento
+              documentoId={recetaDesdeProducto}
+              onVolver={() => setVistaProductos('detalle')}
+              textoVolver="Volver al Producto"
             />
           ) : (
             <EditarProducto

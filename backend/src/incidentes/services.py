@@ -194,6 +194,8 @@ def listar_incidentes(
     reportado_por_id: Optional[int] = None,
     tipo: Optional[TipoIncidente] = None,
 ) -> List[models.Incidente]:
+    if desde and desde < date(2000, 1, 1):
+        raise exceptions.RangoFechasInvalido()
     if desde and hasta and desde > hasta:
         raise exceptions.RangoFechasInvalido()
 
@@ -427,6 +429,8 @@ def obtener_estadisticas_por_tipo(
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
 ) -> schemas.EstadisticaIncidentesPorTipo:
+    if desde and desde < date(2000, 1, 1):
+        raise exceptions.RangoFechasInvalido()
     if desde and hasta and desde > hasta:
         raise exceptions.RangoFechasInvalido()
 
@@ -474,6 +478,8 @@ def listar_incidentes_por_tipo(
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
 ) -> List[models.Incidente]:
+    if desde and desde < date(2000, 1, 1):
+        raise exceptions.RangoFechasInvalido()
     if desde and hasta and desde > hasta:
         raise exceptions.RangoFechasInvalido()
 

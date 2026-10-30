@@ -77,6 +77,9 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
   const itemsPorPagina = 10;
 
   const errorRango = useMemo(() => {
+    if (desde && desde < '2000-01-01') {
+      return "La fecha 'Desde' no puede ser anterior al año 2000.";
+    }
     if (desde && hasta && desde > hasta) {
       return "La fecha 'Desde' no puede ser posterior a 'Hasta'.";
     }
@@ -151,6 +154,13 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
   const aplicarRangoRapido = (dias: number) => {
     const fin = new Date();
     const inicio = restarDias(fin, dias);
+    setDesde(formatearFechaInput(inicio));
+    setHasta(formatearFechaInput(fin));
+  };
+
+  const aplicarAtajoAnio = () => {
+    const fin = new Date();
+    const inicio = new Date(Math.max(2000, fin.getFullYear()), 0, 1);
     setDesde(formatearFechaInput(inicio));
     setHasta(formatearFechaInput(fin));
   };
@@ -292,6 +302,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                 <input
                   type="date"
                   value={desde}
+                  min="2000-01-01"
                   max={hasta || undefined}
                   onChange={(e) => setDesde(e.target.value)}
                   style={{
@@ -311,7 +322,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                 <input
                   type="date"
                   value={hasta}
-                  min={desde || undefined}
+                  min={desde || '2000-01-01'}
                   onChange={(e) => setHasta(e.target.value)}
                   style={{
                     padding: '5px 10px',
@@ -368,6 +379,21 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>Atajos:</span>
+              <button
+                type="button"
+                onClick={aplicarAtajoAnio}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: '11px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--color-borde)',
+                  backgroundColor: 'var(--color-superficie)',
+                  color: 'var(--color-texto-sec)',
+                  cursor: 'pointer',
+                }}
+              >
+                Este año
+              </button>
               {[
                 { label: '7 días', dias: 7 },
                 { label: '14 días', dias: 14 },

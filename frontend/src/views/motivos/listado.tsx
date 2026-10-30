@@ -218,12 +218,12 @@ export const ListadoMotivos: React.FC<ListadoMotivosProps> = ({
                       </button>
                       <button
                         type="button"
-                        className={item.activo ? 'btn-icon btn-eliminar' : 'btn-icon btn-ver'}
-                        title={item.activo ? 'Desactivar motivo' : 'Activar motivo'}
+                        className={`btn-icon ${item.activo ? 'btn-eliminar' : 'btn-reactivar'}`}
+                        title={item.activo ? 'Desactivar motivo' : 'Reactivar motivo'}
                         onClick={() => abrirConfirmacionToggle(item)}
                         disabled={togglingId === item.id}
                       >
-                        {item.activo ? '🚫' : '✓'}
+                        {item.activo ? '🗑' : '🔄'}
                       </button>
                     </div>
                   </td>

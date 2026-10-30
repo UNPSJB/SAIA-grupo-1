@@ -1,6 +1,7 @@
 import { ConsumoHistoricoInsumos } from './ConsumoHistoricoInsumos';
 import { VistaDetalladaCumplimiento } from './VistaDetalladaCumplimiento';
 import { EstadisticasIncidentes } from '../incidentes/estadisticasIncidentes';
+import { VistaDetalladaProduccion } from './VistaDetalladaProduccion';
 import React from 'react';
 import type { TipoDetalleEstadisticas } from './tipos';
 import '../../styles/dashboard.css';
@@ -73,6 +74,10 @@ export const VistaDetalleEstadisticas: React.FC<VistaDetalleEstadisticasProps> =
 
   if (tipo === 'incidentes') {
     return <EstadisticasIncidentes onVolver={onVolver} />;
+  }
+
+  if (tipo === 'produccion') {
+    return <VistaDetalladaProduccion onVolver={onVolver} />;
   }
 
   const config = CONFIGURACION_VISTA[tipo];

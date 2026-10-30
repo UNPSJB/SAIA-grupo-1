@@ -177,6 +177,10 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
 
   const handleFiltrar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (fechaDesde && fechaDesde < '2000-01-01') {
+      mostrarError("La fecha 'Desde' no puede ser anterior al año 2000.", "Rango de fechas inválido");
+      return;
+    }
     if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
       mostrarError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.", "Rango de fechas inválido");
       return;
@@ -187,7 +191,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   const handleEstadoChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nuevoEstado = e.target.value;
     setEstadoFiltro(nuevoEstado);
-    if (!(fechaDesde && fechaHasta && fechaDesde > fechaHasta)) {
+    if (!((fechaDesde && fechaDesde < '2000-01-01') || (fechaDesde && fechaHasta && fechaDesde > fechaHasta))) {
       await recargarChecklists(fechaDesde, fechaHasta, nuevoEstado, responsableFiltro);
     }
   };
@@ -195,7 +199,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   const handleResponsableChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nuevoResponsable = e.target.value;
     setResponsableFiltro(nuevoResponsable);
-    if (!(fechaDesde && fechaHasta && fechaDesde > fechaHasta)) {
+    if (!((fechaDesde && fechaDesde < '2000-01-01') || (fechaDesde && fechaHasta && fechaDesde > fechaHasta))) {
       await recargarChecklists(fechaDesde, fechaHasta, estadoFiltro, nuevoResponsable);
     }
   };
@@ -318,6 +322,8 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             <input
               id="fecha-desde"
               type="date"
+              min="2000-01-01"
+              max={fechaHasta || undefined}
               value={fechaDesde}
               onChange={(e) => setFechaDesde(e.target.value)}
             />
@@ -327,6 +333,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             <input
               id="fecha-hasta"
               type="date"
+              min={fechaDesde || '2000-01-01'}
               value={fechaHasta}
               onChange={(e) => setFechaHasta(e.target.value)}
             />

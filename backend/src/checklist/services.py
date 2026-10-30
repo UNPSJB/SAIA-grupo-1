@@ -692,6 +692,8 @@ def listar_checklists(
     estado: Optional[str] = None,
     responsable_legajo: Optional[int] = None,
 ) -> List[models.Checklist]:
+    if fecha_desde and fecha_desde < date(2000, 1, 1):
+        raise exceptions.RangoFechasInvalido()
     if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
         raise exceptions.RangoFechasInvalido()
 

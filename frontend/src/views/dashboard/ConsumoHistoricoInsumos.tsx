@@ -92,6 +92,9 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
   const [busquedaMovimiento, setBusquedaMovimiento] = useState<string>('');
 
   const errorRango = useMemo(() => {
+    if (desde && desde < '2000-01-01') {
+      return "La fecha 'Desde' no puede ser anterior al año 2000.";
+    }
     if (desde && hasta && desde > hasta) {
       return "La fecha 'Desde' no puede ser posterior a 'Hasta'.";
     }
@@ -174,7 +177,7 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
 
   const aplicarAnioActual = () => {
     const fin = new Date();
-    const inicio = new Date(fin.getFullYear(), 0, 1);
+    const inicio = new Date(Math.max(2000, fin.getFullYear()), 0, 1);
     setDesde(formatearFechaInput(inicio));
     setHasta(formatearFechaInput(fin));
   };
@@ -290,6 +293,7 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                 <input
                   type="date"
                   value={desde}
+                  min="2000-01-01"
                   max={hasta || undefined}
                   onChange={(e) => setDesde(e.target.value)}
                   style={{
@@ -310,7 +314,7 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                 <input
                   type="date"
                   value={hasta}
-                  min={desde || undefined}
+                  min={desde || '2000-01-01'}
                   onChange={(e) => setHasta(e.target.value)}
                   style={{
                     padding: '5px 8px',

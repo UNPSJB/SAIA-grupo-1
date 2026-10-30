@@ -64,6 +64,9 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
 
   const errorRango = useMemo(() => {
+    if (desde && desde < '2000-01-01') {
+      return "La fecha 'Desde' no puede ser anterior al año 2000.";
+    }
     if (desde && hasta && desde > hasta) {
       return "La fecha 'Desde' no puede ser posterior a 'Hasta'.";
     }
@@ -253,6 +256,7 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                 type="date"
                 className="dashboard-select"
                 value={desde}
+                min="2000-01-01"
                 max={hasta || undefined}
                 onChange={(e) => setDesde(e.target.value)}
                 title="Fecha desde"
@@ -262,7 +266,7 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                 type="date"
                 className="dashboard-select"
                 value={hasta}
-                min={desde || undefined}
+                min={desde || '2000-01-01'}
                 onChange={(e) => setHasta(e.target.value)}
                 title="Fecha hasta"
               />

@@ -165,6 +165,8 @@ def obtener_grafico_cumplimiento(
     fecha_hasta = hasta or fecha_hoy
     fecha_desde = desde or (fecha_hasta - timedelta(days=30))
 
+    if fecha_desde < date(2000, 1, 1):
+        raise RangoFechasInvalido()
     if fecha_desde > fecha_hasta:
         raise RangoFechasInvalido()
 
@@ -266,6 +268,8 @@ def obtener_historico_consumo(
     agrupacion_tiempo: str = "dia",
     unidad: Optional[str] = None,
 ) -> schemas.ConsumoHistoricoResponse:
+    if desde and desde < date(2000, 1, 1):
+        raise RangoFechasInvalidoException("La fecha 'desde' no puede ser anterior al año 2000.")
     if desde and hasta and desde > hasta:
         raise RangoFechasInvalidoException("La fecha 'desde' no puede ser posterior a la fecha 'hasta'.")
 
@@ -573,6 +577,8 @@ def obtener_cumplimiento_detallado(
     sector_id: Optional[int] = None,
     turno: Optional[str] = None,
 ) -> schemas.CumplimientoDetalladoResponse:
+    if desde and desde < date(2000, 1, 1):
+        raise RangoFechasInvalidoException("La fecha 'desde' no puede ser anterior al año 2000.")
     if desde and hasta and desde > hasta:
         raise RangoFechasInvalidoException("La fecha 'desde' no puede ser posterior a la fecha 'hasta'.")
 
@@ -818,7 +824,7 @@ def obtener_estadisticas_produccion(
     p = str(periodo).lower().strip()
 
     if p in ("mes", "mensual", "anio", "año", "ano", "anual"):
-        desde = date(fecha_hoy.year, 1, 1)
+        desde = max(date(fecha_hoy.year, 1, 1), date(2000, 1, 1))
         hasta = fecha_hoy
 
         buckets = []

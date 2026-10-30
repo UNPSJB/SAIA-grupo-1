@@ -156,6 +156,9 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
   const [incidenteParaModal, setIncidenteParaModal] = useState<Incidente | null>(null);
 
   const errorRango = useMemo(() => {
+    if (desde && desde < '2000-01-01') {
+      return "La fecha 'Desde' no puede ser anterior al año 2000.";
+    }
     if (desde && hasta && desde > hasta) {
       return "La fecha 'Desde' no puede ser posterior a 'Hasta'.";
     }
@@ -236,7 +239,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
 
   const aplicarAtajoAnio = () => {
     const fin = new Date();
-    const inicio = new Date(fin.getFullYear(), 0, 1);
+    const inicio = new Date(Math.max(2000, fin.getFullYear()), 0, 1);
     setDesde(formatearFechaInput(inicio));
     setHasta(formatearFechaInput(fin));
   };
@@ -300,6 +303,11 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
 
     if (fechaInicio > fechaFin) {
       return [];
+    }
+
+    const minFecha2000 = new Date('2000-01-01T00:00:00');
+    if (fechaInicio < minFecha2000) {
+      fechaInicio = minFecha2000;
     }
 
     if (agrupacionTemporal === 'dia') {
@@ -574,6 +582,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                 <input
                   type="date"
                   value={desde}
+                  min="2000-01-01"
                   max={hasta || undefined}
                   onChange={(e) => setDesde(e.target.value)}
                   style={{
@@ -593,7 +602,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                 <input
                   type="date"
                   value={hasta}
-                  min={desde || undefined}
+                  min={desde || '2000-01-01'}
                   onChange={(e) => setHasta(e.target.value)}
                   style={{
                     padding: '5px 10px',
@@ -753,6 +762,32 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-texto-sec)' }}>Categoría:</label>
+                <select
+                  value={categoriaSeleccionada || ''}
+                  onChange={(e) => setCategoriaSeleccionada((e.target.value as TipoIncidente) || null)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--color-borde)',
+                    backgroundColor: 'var(--color-superficie)',
+                    color: 'var(--color-texto)',
+                    fontSize: '12px',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    maxWidth: '220px',
+                  }}
+                >
+                  <option value="">Todas las categorías</option>
+                  {Object.entries(ETIQUETAS_TIPO).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div
                 style={{
                   display: 'inline-flex',
