@@ -1,9 +1,29 @@
-from typing import List
+from typing import List, Optional, Dict, Any
 from sqlalchemy import delete, select, func
 from sqlalchemy.orm import Session
 from src.tipoDocumento import exceptions
 from src.tipoDocumento.models import TipoDocumento
 from src.documentos.models import Documento
+
+def obtener_tipos_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    query = select(TipoDocumento)
+    
+    if busqueda:
+        termino = f"%{busqueda.strip()}%"
+        query = query.where(TipoDocumento.nombre.ilike(termino))
+        
+    tipos = db.scalars(query.order_by(TipoDocumento.id.asc())).all()
+    
+    return [
+        {
+            "id": t.id,
+            "nombre": t.nombre
+        }
+        for t in tipos
+    ]
 
 def crear_tipo_documento(db: Session, nombre: str) -> TipoDocumento:
     nombre_limpio = " ".join(nombre.split())

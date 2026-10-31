@@ -1,11 +1,30 @@
-from typing import List
-from fastapi import APIRouter, Depends, Form
+from typing import List, Optional
+from fastapi import APIRouter, Depends, Form, Query
 from sqlalchemy.orm import Session
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.tipoDocumento import schemas, services
 from src.database import get_db
+from src.utils.csv import generar_respuesta_csv
 
 router = APIRouter(prefix="/documentos/tipos", tags=["tipos_documentos"])
+
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_tipos_documentos_csv(
+    busqueda: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_tipos_para_csv(db, busqueda=busqueda)
+    
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Tipo de Documento"
+    }
+    
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="tipos_documentos.csv"
+    )
 
 @router.get("/", response_model=List[schemas.TipoDocumento], dependencies=[Depends(get_usuario_actual)])
 async def read_tipos_documentos(db: Session = Depends(get_db)):

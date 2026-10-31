@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import type { TipoDocumento } from './tipos';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoTiposDocumentosProps {
-  onNuevoClick: () => void;
+  onNuevoClick?: () => void;
   onDetalleClick: (id: number) => void;
 }
 
@@ -19,6 +22,8 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
 }) => {
   const [tipos, setTipos] = useState<TipoDocumento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,6 +99,36 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
       return a.id - b.id;
     });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (searchTerm.trim()) {
+        params.append('busqueda', searchTerm.trim());
+      }
+
+      const queryString = params.toString();
+      const url = `/documentos/tipos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'tipos_documentos.csv');
+      setDialogExportarAbierto(false);
+    } catch (error) {
+      setErrorMsg(
+        error instanceof Error ? error.message : 'Error al exportar los tipos de documentos a CSV.'
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    if (searchTerm.trim()) {
+      return `Búsqueda: "${searchTerm}"`;
+    }
+    return 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: tiposPaginados,
     paginaActual,
@@ -114,11 +149,22 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Agregar Tipo
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Agregar Tipo
+            </button>
+          )}
+        </div>
       </div>
 
       {errorMsg && (
@@ -214,6 +260,15 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
         etiqueta="tipos de documento"
       />
 
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={tiposFiltradosYOrdenados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
       <ConfirmAlertDialog
         open={dialogOpen}
         title="¿Eliminar Tipo de Documento?"
@@ -230,4 +285,3 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
     </div>
   );
 };
-
