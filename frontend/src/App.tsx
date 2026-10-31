@@ -61,8 +61,12 @@ import { ListadoTiposDocumentos } from './views/tipoDocumento/listado';
 import { NuevoTipoDocumento } from './views/tipoDocumento/nuevoTipoDocumento';
 import { DetalleTipoDocumento } from './views/tipoDocumento/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
+import { ListadoProductos } from './views/producto/listado';
+import NuevoProducto  from './views/producto/nuevoProducto';
+import EditarProducto from './views/producto/editarDetalle';
+import { DetalleProducto } from './views/producto/verDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -74,6 +78,7 @@ type VistaChecklist = 'listado' | 'detalle';
 type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
+type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -124,9 +129,6 @@ function Aplicacion() {
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
 
-  const [vistaProductos, setVistaProductos] = useState<VistaProductos>('listado');
-  const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null);
-
   const [vistaTipoDocumento, setVistaTipoDocumento] = useState<VistaTipoDocumento>('listado');
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<number | null>(null);
 
@@ -156,6 +158,20 @@ function Aplicacion() {
     setVistaDocumentos('listado');
     setCertificadoSeleccionado(null);
     setVistaTipoCertificado('listado');
+    setVistaTipoDocumento('listado');
+    setTipoDocumentoSeleccionado(null);
+    if (limpiarFiltros) {
+      setFiltroCertificadosInicial('TODOS');
+      setFiltroCalibracionInicial('TODOS');
+      setFiltroElementosInicial('TODOS');
+      setFiltroDocumentosVencInicial('TODOS');
+      setFiltroConsolidadoOrigen('');
+      setFiltroConsolidadoEstado('');
+    }
+  };
+
+  const volverAlDashboard = () => {
+    cambiarModulo('dashboard', true, false);
   };
 
   const volverAVencimientos = () => {
@@ -841,6 +857,26 @@ function Aplicacion() {
             <DetalleTipoCertificado
               tipoId={tipoCertificadoSeleccionado}
               onCancel={() => setVistaTipoCertificado('listado')}
+            />
+          ) : null
+        ) : modulo === 'tipoDocumento' ? (
+          vistaTipoDocumento === 'listado' ? (
+            <ListadoTiposDocumentos
+              onNuevoClick={() => setVistaTipoDocumento('alta')}
+              onDetalleClick={(id) => {
+                setTipoDocumentoSeleccionado(id);
+                setVistaTipoDocumento('detalle');
+              }}
+            />
+          ) : vistaTipoDocumento === 'alta' ? (
+            <NuevoTipoDocumento
+              onSuccess={() => setVistaTipoDocumento('listado')}
+              onCancel={() => setVistaTipoDocumento('listado')}
+            />
+          ) : vistaTipoDocumento === 'detalle' ? (
+            <DetalleTipoDocumento
+              tipoId={tipoDocumentoSeleccionado}
+              onCancel={() => setVistaTipoDocumento('listado')}
             />
           ) : null
         ) : null}
