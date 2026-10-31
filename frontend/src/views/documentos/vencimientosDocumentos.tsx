@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { DocumentoListItem, TipoDocumento } from './tipos';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
@@ -42,6 +45,9 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
 }) => {
   const [documentos, setDocumentos] = useState<DocumentoListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroTipo, setFiltroTipo] = useState<string>('TODOS');
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>(filtroEstadoInicial || 'TODOS');
@@ -89,14 +95,22 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
   };
 
   const calcularPlazo = (doc: DocumentoListItem): { estado: EstadoVencimiento; diffDias: number } => {
-    if (!doc.fecha_vencimiento) {
+    const fechaStr = doc.fecha_vencimiento;
+    if (!fechaStr) {
       return { estado: 'al_dia', diffDias: 999999 };
     }
 
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    const [y, m, d] = doc.fecha_vencimiento.slice(0, 10).split('-').map(Number);
-    const fechaV = new Date(y, m - 1, d);
+
+    const fechaV = new Date(fechaStr);
+    if (isNaN(fechaV.getTime())) {
+      // Fallback si la cadena tiene formato YYYY-MM-DD
+      const partes = fechaStr.slice(0, 10).split('-').map(Number);
+      if (partes.length === 3) {
+        fechaV.setFullYear(partes[0], partes[1] - 1, partes[2]);
+      }
+    }
     fechaV.setHours(0, 0, 0, 0);
 
     const diffMs = fechaV.getTime() - hoy.getTime();
@@ -137,29 +151,63 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
   }, [documentosConPlazo]);
 
   const documentosFiltrados = useMemo(() => {
-    return documentosConPlazo.filter(({ doc, estado }) => {
-      if (filtroTipo !== 'TODOS' && doc.tipo !== filtroTipo && getTipoLabel(doc.tipo) !== filtroTipo) return false;
+    return documentosConPlazo
+      .filter(({ doc, estado }) => {
+        if (filtroTipo !== 'TODOS' && doc.tipo !== filtroTipo && getTipoLabel(doc.tipo) !== filtroTipo) {
+          return false;
+        }
 
-      if (filtroEstado === 'VENCIDOS' && estado !== 'vencido') return false;
-      if (filtroEstado === 'PROXIMOS' && estado !== 'proximo') return false;
-      if (filtroEstado === 'AL_DIA' && estado !== 'al_dia') return false;
+        if (filtroEstado === 'VENCIDOS' && estado !== 'vencido') return false;
+        if (filtroEstado === 'PROXIMOS' && estado !== 'proximo') return false;
+        if (filtroEstado === 'AL_DIA' && estado !== 'al_dia') return false;
 
-      if (busqueda.trim()) {
-        const term = busqueda.toLowerCase().trim();
-        const matchTitulo = doc.titulo.toLowerCase().includes(term);
-        const matchTipoDesc = getTipoLabel(doc.tipo).toLowerCase().includes(term);
-        const matchUsuario = (doc.usuario ?? '').toLowerCase().includes(term);
-        if (!matchTitulo && !matchTipoDesc && !matchUsuario) return false;
-      }
+        if (busqueda.trim()) {
+          const term = busqueda.toLowerCase().trim();
+          const matchTitulo = doc.titulo.toLowerCase().includes(term);
+          const matchTipoDesc = getTipoLabel(doc.tipo).toLowerCase().includes(term);
+          const matchUsuario = (doc.usuario ?? '').toLowerCase().includes(term);
+          if (!matchTitulo && !matchTipoDesc && !matchUsuario) return false;
+        }
 
-      return true;
-    }).sort((a, b) => {
-      const pesoEstado = (est: EstadoVencimiento) => (est === 'vencido' ? 0 : est === 'proximo' ? 1 : 2);
-      const diffPeso = pesoEstado(a.estado) - pesoEstado(b.estado);
-      if (diffPeso !== 0) return diffPeso;
-      return a.diffDias - b.diffDias;
-    });
+        return true;
+      })
+      .sort((a, b) => {
+        const pesoEstado = (est: EstadoVencimiento) => (est === 'vencido' ? 0 : est === 'proximo' ? 1 : 2);
+        const diffPeso = pesoEstado(a.estado) - pesoEstado(b.estado);
+        if (diffPeso !== 0) return diffPeso;
+        return a.diffDias - b.diffDias;
+      });
   }, [documentosConPlazo, filtroTipo, filtroEstado, busqueda]);
+
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append("busqueda", busqueda.trim());
+      if (filtroTipo !== "TODOS") params.append("tipo", filtroTipo);
+      if (filtroEstado !== "TODOS") params.append("filtro_estado", filtroEstado);
+
+      const queryString = params.toString();
+      // LLAMADA AL ENDPOINT EXCLUSIVO DE VENCIMIENTOS
+      const url = `/documentos/vencimientos/exportar-csv${queryString ? `?${queryString}` : ""}`;
+
+      await descargarCSV(url, "vencimientos_documentos.csv");
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al exportar vencimientos a CSV.");
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroTipo !== "TODOS") partes.push(`Tipo: ${filtroTipo}`);
+    if (filtroEstado !== "TODOS") partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(" | ") : "Sin filtros aplicados";
+  };
 
   const {
     itemsPaginados,
@@ -175,44 +223,75 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
 
   return (
     <div className="modulo-container modulo-vencimientos-container">
-      <div className="listado-top-bar venc-top-bar">
-        <div className="modulo-header">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+        <div className="modulo-header" style={{ marginBottom: 0 }}>
           <h1>Vencimientos de Documentos</h1>
           <div className="subtitulo">01 · Control de vigencia y fechas de caducidad documental</div>
         </div>
 
-        <div className="venc-tabs">
-          {onVerConsolidado && (
-            <button
-              type="button"
-              className="venc-tab"
-              onClick={onVerConsolidado}
-            >
-              Todos (Consolidado)
-            </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+          {(onVerConsolidado || onVerSoloPersonal) && (
+            <div className="venc-tabs">
+              {onVerConsolidado && (
+                <button
+                  type="button"
+                  className="venc-tab"
+                  onClick={onVerConsolidado}
+                >
+                  Todos (Consolidado)
+                </button>
+              )}
+              {onVerSoloPersonal && (
+                <button
+                  type="button"
+                  className="venc-tab"
+                  onClick={onVerSoloPersonal}
+                >
+                  Solo Personal (con archivo)
+                </button>
+              )}
+              <button
+                type="button"
+                className="venc-tab venc-tab--activo"
+              >
+                Solo Documentos
+              </button>
+            </div>
           )}
-          {onVerSoloPersonal && (
-            <button
-              type="button"
-              className="venc-tab"
-              onClick={onVerSoloPersonal}
-            >
-              Solo Personal (con archivo)
-            </button>
-          )}
+
           <button
             type="button"
-            className="venc-tab venc-tab--activo"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            Solo Documentos
+            <CsvIcon /> Exportar CSV
           </button>
         </div>
       </div>
 
       <div className="venc-resumen">
-        <span className="venc-chip venc-chip--vencido">● {resumen.vencidos} vencidos</span>
-        <span className="venc-chip venc-chip--proximo">▲ {resumen.proximos} próximos</span>
-        <span className="venc-chip venc-chip--vigente">✓ {resumen.vigentes} al día</span>
+        <span
+          className={`venc-chip venc-chip--vencido ${filtroEstado === 'VENCIDOS' ? 'activo' : ''}`}
+          style={{ cursor: 'pointer' }}
+          onClick={() => setFiltroEstado((prev) => (prev === 'VENCIDOS' ? 'TODOS' : 'VENCIDOS'))}
+        >
+          ● {resumen.vencidos} vencidos
+        </span>
+        <span
+          className={`venc-chip venc-chip--proximo ${filtroEstado === 'PROXIMOS' ? 'activo' : ''}`}
+          style={{ cursor: 'pointer' }}
+          onClick={() => setFiltroEstado((prev) => (prev === 'PROXIMOS' ? 'TODOS' : 'PROXIMOS'))}
+        >
+          ▲ {resumen.proximos} próximos
+        </span>
+        <span
+          className={`venc-chip venc-chip--vigente ${filtroEstado === 'AL_DIA' ? 'activo' : ''}`}
+          style={{ cursor: 'pointer' }}
+          onClick={() => setFiltroEstado((prev) => (prev === 'AL_DIA' ? 'TODOS' : 'AL_DIA'))}
+        >
+          ✓ {resumen.vigentes} al día
+        </span>
       </div>
 
       <div className="filtros-top-bar">
@@ -235,9 +314,6 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
               {nombre}
             </option>
           ))}
-
-
-
         </select>
 
         <select
@@ -373,7 +449,15 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="documentos"
       />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={documentosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
     </div>
   );
 };
-

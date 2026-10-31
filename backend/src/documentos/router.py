@@ -17,6 +17,32 @@ from src.utils.csv import generar_respuesta_csv
 
 router = APIRouter(prefix="/documentos", tags=["Documentos Versionados"])
 
+@router.get("/vencimientos/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_vencimientos_documentos_csv(
+    tipo: Optional[str] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    filtro_estado: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_vencimientos_documentos_para_csv(
+        db, tipo=tipo, busqueda=busqueda, filtro_estado=filtro_estado
+    )
+
+    columnas = {
+        "urgencia": "Urgencia",
+        "fecha_vencimiento": "Vencimiento",
+        "titulo": "Documento",
+        "tipo": "Tipo",
+        "version": "Versión",
+        "archivo": "Archivo"
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="vencimientos_documentos.csv"
+    )
+
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_documentos_csv(
     tipo: Optional[str] = Query(None),
