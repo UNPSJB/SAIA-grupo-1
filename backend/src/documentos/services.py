@@ -11,7 +11,7 @@ from src.auditoria.services import registrar_auditoria
 from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.documentos import exceptions
-from src.documentos.constants import TAMANIO_MAXIMO_BYTES, TipoDocumento
+from src.documentos.constants import TAMANIO_MAXIMO_BYTES
 from src.documentos.models import Documento, VersionDocumento
 
 STORAGE_DIR = Path(__file__).resolve().parent / "archivos"
@@ -20,7 +20,7 @@ STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 def obtener_documentos_para_csv(
     db: Session,
-    tipo: Optional[TipoDocumento] = None,
+    tipo: Optional[str] = None,
     busqueda: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     
@@ -37,7 +37,7 @@ def obtener_documentos_para_csv(
             "PROCEDIMIENTO": "Procedimiento",
             "RECETA": "Receta",
         }
-        tipo_str = d.tipo.value if hasattr(d.tipo, "value") else str(d.tipo or "")
+        tipo_str = str(getattr(d, "tipo", "") or "")
         tipo_label = tipo_map.get(tipo_str, tipo_str)
 
         # Formateo de fechas
@@ -55,9 +55,9 @@ def obtener_documentos_para_csv(
             "version_vigente": f"v{v.version}" if v else "-",
             "fecha_vigencia": str_vigencia,
             "creado_el": str_creacion,
-            "tamanio": v.tamanio_formateado if v and hasattr(v, "tamanio_formateado") else "-",
-            "usuario": v.usuario if v and hasattr(v, "usuario") else "-",
-            "total_versiones": len(set(ver.version for ver in d.versiones)) if hasattr(d, "versiones") else 1
+            "tamanio": getattr(v, "tamanio_formateado", "-") if v else "-",
+            "usuario": getattr(v, "usuario", "-") if v else "-",
+            "total_versiones": len(set(ver.version for ver in d.versiones)) if hasattr(d, "versiones") and d.versiones else 1
         })
 
     return filas

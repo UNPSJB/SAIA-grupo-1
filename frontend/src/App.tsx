@@ -61,12 +61,15 @@ import { ListadoTiposDocumentos } from './views/tipoDocumento/listado';
 import { NuevoTipoDocumento } from './views/tipoDocumento/nuevoTipoDocumento';
 import { DetalleTipoDocumento } from './views/tipoDocumento/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
+import { VencimientosDocumentos } from './views/documentos/vencimientosDocumentos';
+import './styles/dashboard.css';
 import { ListadoProductos } from './views/producto/listado';
 import NuevoProducto  from './views/producto/nuevoProducto';
 import EditarProducto from './views/producto/editarDetalle';
 import { DetalleProducto } from './views/producto/verDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'productos';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -79,6 +82,7 @@ type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -129,6 +133,9 @@ function Aplicacion() {
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
 
+  const [vistaProductos, setVistaProductos] = useState<VistaProductos>('listado');
+  const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null);
+
   const [vistaTipoDocumento, setVistaTipoDocumento] = useState<VistaTipoDocumento>('listado');
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<number | null>(null);
 
@@ -158,6 +165,7 @@ function Aplicacion() {
     setVistaDocumentos('listado');
     setCertificadoSeleccionado(null);
     setVistaTipoCertificado('listado');
+    setVistaProductos('listado');
     setVistaTipoDocumento('listado');
     setTipoDocumentoSeleccionado(null);
     if (limpiarFiltros) {
@@ -879,7 +887,37 @@ function Aplicacion() {
               onCancel={() => setVistaTipoDocumento('listado')}
             />
           ) : null
-        ) : null}
+        ) : modulo === 'productos' ? (
+          vistaProductos === 'listado' ? (
+            <ListadoProductos
+              onNuevoClick={() => setVistaProductos('alta')}
+              onDetalleClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('detalle');
+              }}
+              onEditarClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('editar');
+              }}
+            />
+          ) : vistaProductos === 'alta' ? (
+            <NuevoProducto
+              onSuccess={() => setVistaProductos('listado')}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          ) : vistaProductos === 'detalle' ? (
+            <DetalleProducto
+              productoId={productoSeleccionado}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          ) : (
+            <EditarProducto
+              productoId={productoSeleccionado}
+              onSuccess={() => setVistaProductos('listado')}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          )
+        ): null}
       </SidebarInset>
     </SidebarProvider>
   );

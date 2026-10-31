@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from src.producto import exceptions, schemas
 from src.producto.models import Producto
 from src.documentos.models import Documento
-from src.documentos.constants import TipoDocumento
 
 def obtener_productos_para_csv(
     db: Session,
@@ -56,7 +55,8 @@ def validar_receta(db: Session, id_receta: int) -> Documento:
     if doc is None:
         raise exceptions.RecetaNoEncontrada()
 
-    if doc.tipo != TipoDocumento.RECETA and str(doc.tipo).upper() != "RECETA":
+    tipo_str = str(getattr(doc, "tipo", "") or "").upper()
+    if tipo_str != "RECETA":
         raise exceptions.DocumentoNoEsReceta()
 
     return doc

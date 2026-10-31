@@ -4,9 +4,10 @@ import "../../styles/formularioAlta.css";
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
 import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
 import { CsvIcon } from "../../components/icons/CsvIcon";
-import { Paginacion, usePaginacion } from "../../components/ui/paginacion";
+import { Paginacion} from "../../components/ui/paginacion";
+import { usePaginacion } from "../../components/ui/usePaginacion"; 
 import { apiFetch } from "../../api/client";
-import { descargarCSV } from "../../utils/exportarCsv";
+import { descargarCSV } from "../../utils/exportarCsv"; 
 
 interface ListadoProductosProps {
   onNuevoClick?: () => void;
