@@ -35,7 +35,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 from src.documentos.router import router as documentos_router
 from src.producto.router import router as producto_router
-from src.controlesAmbientales import router as controles_ambientales_router
+from src.controlesAmbientales.router import router as controles_ambientales_router
 
 
 ENV = settings.ENV.upper()

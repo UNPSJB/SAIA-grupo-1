@@ -187,9 +187,11 @@ def reactivar_control_ambiental(db: Session, control_id: int) -> ControlAmbienta
 def obtener_controles_para_csv(
     db: Session,
     busqueda: Optional[str] = None,
+    tipo: Optional[str] = None,
     filtro_estado: Optional[str] = None,
     filtro_activo: Optional[str] = None
 ) -> List[Dict[str, Any]]:
+    
     controles = listar_controles(db, busqueda=busqueda, filtro_activo=filtro_activo)
     hoy = date.today()
     resultado = []
@@ -201,6 +203,9 @@ def obtener_controles_para_csv(
     }
 
     for c in controles:
+        if tipo and tipo != "TODOS" and c.tipo != tipo:
+            continue
+
         tipo_str = tipo_map.get(c.tipo, c.tipo)
         fecha_venc = c.fecha_vencimiento
 
@@ -214,13 +219,13 @@ def obtener_controles_para_csv(
             if diff_dias < 0:
                 estado_clave = "VENCIDOS"
                 urgencia_texto = f"Vencido ({abs(diff_dias)} d)"
-            elif diff_dias < 15:
+            elif diff_dias <= 15:
                 estado_clave = "PROXIMOS"
                 urgencia_texto = f"Vence en {diff_dias} días"
             else:
                 estado_clave = "AL_DIA"
                 urgencia_texto = "Al día"
-
+                
         if filtro_estado and filtro_estado != "TODOS" and estado_clave != filtro_estado:
             continue
 

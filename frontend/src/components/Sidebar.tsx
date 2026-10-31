@@ -33,7 +33,8 @@ export type Modulo =
   | 'incidentes'
   | 'auditoria'
   | 'planDeCalibracion'
-  | "productos";
+  | 'productos'
+  | 'controlesAmbientales';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -175,6 +176,12 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <path d="m9 12 2 2 4-4" />
     </svg>
   ),
+  controlesAmbientales: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="M12 8a4 4 0 0 0-4 4c0 3 4 6 4 6s4-3 4-6a4 4 0 0 0-4-4Z" />
+    </svg>
+  ),
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
@@ -243,6 +250,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
           icono: ICONOS_MODULO.incidentes,
         },
         { id: 'auditoria', label: 'Auditoría', icono: ICONOS_MODULO.auditoria },
+        {id: 'controlesAmbientales', label: 'Controles Ambientales', icono: ICONOS_MODULO.controlesAmbientales}
       ],
     },
   ];

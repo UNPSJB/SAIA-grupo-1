@@ -67,9 +67,13 @@ import { ListadoProductos } from './views/producto/listado';
 import NuevoProducto  from './views/producto/nuevoProducto';
 import EditarProducto from './views/producto/editarDetalle';
 import { DetalleProducto } from './views/producto/verDetalle';
+import { ListadoControlesAmbientales } from './views/controlesAmbientales/listado';
+import NuevoControlAmbiental from './views/controlesAmbientales/nuevoControl';
+import { DetalleControlAmbiental } from './views/controlesAmbientales/verDetalle';
+import { EditarControlAmbiental } from './views/controlesAmbientales/editarDetalle';
 
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'productos';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'productos' | 'controlesAmbientales';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -83,6 +87,7 @@ type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
+type VistaControlesAmbientales = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -139,6 +144,9 @@ function Aplicacion() {
   const [vistaTipoDocumento, setVistaTipoDocumento] = useState<VistaTipoDocumento>('listado');
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<number | null>(null);
 
+  const [vistaControlesAmbientales, setVistaControlesAmbientales] = useState<VistaControlesAmbientales>('listado');
+  const [controlAmbientalSeleccionado, setControlAmbientalSeleccionado] = useState<number | null>(null);
+
   const [filtroCertificadosInicial, setFiltroCertificadosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
   const [filtroCalibracionInicial, setFiltroCalibracionInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
   const [filtroElementosInicial, setFiltroElementosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
@@ -168,6 +176,8 @@ function Aplicacion() {
     setVistaProductos('listado');
     setVistaTipoDocumento('listado');
     setTipoDocumentoSeleccionado(null);
+    setVistaControlesAmbientales('listado');
+    setControlAmbientalSeleccionado(null);
     if (limpiarFiltros) {
       setFiltroCertificadosInicial('TODOS');
       setFiltroCalibracionInicial('TODOS');
@@ -915,6 +925,32 @@ function Aplicacion() {
               productoId={productoSeleccionado}
               onSuccess={() => setVistaProductos('listado')}
               onCancel={() => setVistaProductos('listado')}
+            />
+          )
+        ): modulo === 'controlesAmbientales' ? (
+          vistaControlesAmbientales === 'listado' ? (
+            <ListadoControlesAmbientales
+              onNuevoClick={esAdministrador ? () => setVistaControlesAmbientales('alta') : undefined}
+              onDetalleClick={(id) => {
+                setControlAmbientalSeleccionado(id);
+                setVistaControlesAmbientales('detalle');
+              }}
+            />
+          ) : vistaControlesAmbientales === 'alta' && esAdministrador ? (
+            <NuevoControlAmbiental
+              onSuccess={() => setVistaControlesAmbientales('listado')}
+              onCancel={() => setVistaControlesAmbientales('listado')}
+            />
+          ) : vistaControlesAmbientales === 'editar' && esAdministrador ? (
+            <EditarControlAmbiental
+              controlId={controlAmbientalSeleccionado}
+              onSuccess={() => setVistaControlesAmbientales('listado')}
+              onCancel={() => setVistaControlesAmbientales('listado')}
+            />
+          ) : (
+            <DetalleControlAmbiental
+              controlId={controlAmbientalSeleccionado}
+              onVolver={() => setVistaControlesAmbientales('listado')}
             />
           )
         ): null}

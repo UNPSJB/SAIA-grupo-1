@@ -18,12 +18,17 @@ router = APIRouter(prefix="/controles-ambientales", tags=["Controles Ambientales
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_controles_csv(
     busqueda: Optional[str] = Query(None),
+    tipo: Optional[str] = Query(None),
     filtro_estado: Optional[str] = Query(None),
     filtro_activo: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     datos = services.obtener_controles_para_csv(
-        db, busqueda=busqueda, filtro_estado=filtro_estado, filtro_activo=filtro_activo
+        db, 
+        busqueda=busqueda, 
+        tipo=tipo,
+        filtro_estado=filtro_estado, 
+        filtro_activo=filtro_activo
     )
 
     columnas = {
