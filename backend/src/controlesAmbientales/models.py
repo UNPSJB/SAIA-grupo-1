@@ -16,7 +16,7 @@ class ControlAmbiental(ModeloBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     tipo: Mapped[str] = mapped_column(String(100), index=True, nullable=False, unique=True)
     periodicidad_dias: Mapped[int] = mapped_column(Integer, nullable=False)
-    
+    activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     ultima_fecha_realizacion: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     fecha_vencimiento: Mapped[Optional[date]] = mapped_column(Date, index=True, nullable=True)
     

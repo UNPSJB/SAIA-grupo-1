@@ -21,7 +21,6 @@ class VisitaControl(VisitaControlBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-
 # SCHEMAS PARA EL CONTROL AMBIENTAL
 class ControlAmbientalBase(BaseModel):
     tipo: TipoControlAmbiental
@@ -37,7 +36,8 @@ class ControlAmbientalUpdate(ControlAmbientalBase):
     observaciones: Optional[str] = None
 
 class ControlAmbiental(ControlAmbientalBase):
-    id: int
+    id: int = Field(ge=0)
+    activo : bool = Field(default=True)
     ultima_fecha_realizacion: Optional[date] = None
     fecha_vencimiento: Optional[date] = None
     creado_el: datetime

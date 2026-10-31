@@ -35,6 +35,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 from src.documentos.router import router as documentos_router
 from src.producto.router import router as producto_router
+from src.controlesAmbientales import router as controles_ambientales_router
 
 
 ENV = settings.ENV.upper()
@@ -103,4 +104,4 @@ app.include_router(sectores_router, prefix="/sectores", tags=["Sectores"], depen
 app.include_router(calibracion_realizada_router)
 app.include_router(documentos_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SOLO_ADMIN)
-
+app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
