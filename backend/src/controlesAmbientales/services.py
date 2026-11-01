@@ -15,7 +15,10 @@ STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 EXTENSIONES_PERMITIDAS = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
 
 def validar_y_guardar_certificado(file: UploadFile) -> str:
-    nombre_original = file.filename or "certificado.pdf"
+    if not file or not file.filename:
+        raise exceptions.ArchivoVacio()
+
+    nombre_original = file.filename
     ext = Path(nombre_original).suffix.lower()
     
     if ext not in EXTENSIONES_PERMITIDAS:
@@ -84,7 +87,7 @@ def registrar_visita_control(
     db: Session,
     control_id: int,
     fecha_realizacion: date,
-    file: Optional[UploadFile] = None,
+    file: UploadFile,  # <--- Obligatorio
     observaciones: Optional[str] = None
 ) -> VisitaControlAmbiental:
     control = db.scalar(select(ControlAmbiental).where(ControlAmbiental.id == control_id))
@@ -94,7 +97,12 @@ def registrar_visita_control(
     if not fecha_realizacion:
         raise exceptions.FechaRequerida()
 
-    cert_url = validar_y_guardar_certificado(file) if file else None
+    # Validar que se haya subido un certificado obligatoriamente
+    if not file or not file.filename:
+        raise exceptions.ArchivoVacio()
+
+    cert_url = validar_y_guardar_certificado(file)
+
     proximo_vencimiento = fecha_realizacion + timedelta(days=control.periodicidad_dias)
 
     nueva_visita = VisitaControlAmbiental(
@@ -106,7 +114,6 @@ def registrar_visita_control(
     )
     db.add(nueva_visita)
 
-    # Actualizar la fecha del próximo vencimiento en el control principal
     control.ultima_fecha_realizacion = fecha_realizacion
     control.fecha_vencimiento = proximo_vencimiento
 
@@ -225,7 +232,7 @@ def obtener_controles_para_csv(
             else:
                 estado_clave = "AL_DIA"
                 urgencia_texto = "Al día"
-                
+
         if filtro_estado and filtro_estado != "TODOS" and estado_clave != filtro_estado:
             continue
 

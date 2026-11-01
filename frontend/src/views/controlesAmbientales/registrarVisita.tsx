@@ -37,8 +37,9 @@ export const ModalRegistrarVisita: React.FC<ModalRegistrarVisitaProps> = ({
         ext.endsWith(".webp");
 
       if (!esValido) {
-        setErrorMsg("Formato inválido. Solo se admiten archivos PDF o imágenes (PNG, JPG, WEBP).");
+        setErrorMsg("Formato de archivo no permitido. Solo se aceptan archivos PDF (.pdf) o imágenes (.png, .jpg, .jpeg, .webp).");
         setArchivo(null);
+        e.target.value = "";
         return;
       }
 
@@ -56,10 +57,15 @@ export const ModalRegistrarVisita: React.FC<ModalRegistrarVisitaProps> = ({
       return;
     }
 
+    if (!archivo) {
+      setErrorMsg("Es obligatorio adjuntar el certificado (PDF o imagen) de la visita.");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("fecha_realizacion", fechaRealizacion);
+    formData.append("archivo", archivo);
     if (observaciones.trim()) formData.append("observaciones", observaciones.trim());
-    if (archivo) formData.append("archivo", archivo);
 
     setLoading(true);
 
@@ -120,6 +126,7 @@ export const ModalRegistrarVisita: React.FC<ModalRegistrarVisitaProps> = ({
                 type="file"
                 accept=".pdf,image/*"
                 onChange={handleArchivoChange}
+                required
               />
             </div>
 
