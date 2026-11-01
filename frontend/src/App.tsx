@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NuevoInsumo from './views/insumos/nuevoInsumo';
 import { ListadoInsumos } from './views/insumos/listado';
 import VerInsumo from './views/insumos/verInsumo';
@@ -61,8 +61,17 @@ import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertifica
 import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 import { AcercaDeNosotros } from './views/vistaPublica/AcercaDeNosotros';
+import { NuevoLote } from './views/produccion/nuevoLote';
+import { AsociarInsumos } from './views/produccion/asociarInsumos';
+import { HistorialLotes } from './views/produccion/historialLotes';
+import { DetalleLote } from './views/produccion/detalleLote';
+import type { LoteProduccion } from './views/produccion/tipos';
+import { ListadoProductos } from './views/producto/listado';
+import NuevoProducto  from './views/producto/nuevoProducto';
+import EditarProducto from './views/producto/editarDetalle';
+import { DetalleProducto } from './views/producto/verDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'productos' | 'produccion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -74,6 +83,8 @@ type VistaChecklist = 'listado' | 'detalle';
 type VistaPlanCalibracion = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
+type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
+type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -124,8 +135,30 @@ function Aplicacion() {
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
 
+  const [vistaProduccion, setVistaProduccion] = useState<VistaProduccion>('historial');
+  const [loteSeleccionado, setLoteSeleccionado] = useState<number | null>(null);
+  // lote al que se le están asociando insumos (recién registrado o abierto desde el detalle)
+  const [loteParaAsociar, setLoteParaAsociar] = useState<LoteProduccion | null>(null);
+
+  const verLote = (loteId: number) => {
+    setLoteSeleccionado(loteId);
+    setVistaProduccion('detalle');
+  };
+
+  const gestionarInsumos = (lote: LoteProduccion) => {
+    setLoteParaAsociar(lote);
+    setLoteSeleccionado(lote.id); // al volver se ve el detalle del lote con sus insumos
+    setVistaProduccion('insumos');
+  };
+
+  const [vistaProductos, setVistaProductos] = useState<VistaProductos>('listado');
+  const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null);
+
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
+    setVistaProduccion('historial');
+    setLoteSeleccionado(null);
+    setLoteParaAsociar(null);
     setOrigenVencimientos(null);
     setVistaEquipos('listado');
     setVistaSectores('listado');
@@ -141,6 +174,7 @@ function Aplicacion() {
     setVistaDocumentos('listado');
     setCertificadoSeleccionado(null);
     setVistaTipoCertificado('listado');
+    setVistaProductos('listado');
   };
 
   const volverAVencimientos = () => {
@@ -478,6 +512,25 @@ function Aplicacion() {
           ) : (
             <NuevoIncidente />
           )
+        ) : modulo === 'produccion' ? (
+          // todos consultan el historial; registrar lotes y asociar insumos es del personal operativo
+          vistaProduccion === 'nuevo' && esOperador ? (
+            <NuevoLote onAsociarInsumos={gestionarInsumos} onVolver={() => setVistaProduccion('historial')} />
+          ) : vistaProduccion === 'insumos' && esOperador && loteParaAsociar ? (
+            <AsociarInsumos lote={loteParaAsociar} onVolver={() => verLote(loteParaAsociar.id)} />
+          ) : vistaProduccion === 'detalle' && loteSeleccionado !== null ? (
+            <DetalleLote
+              key={loteSeleccionado}
+              loteId={loteSeleccionado}
+              onVolver={() => setVistaProduccion('historial')}
+              onGestionarInsumos={esOperador ? gestionarInsumos : undefined}
+            />
+          ) : (
+            <HistorialLotes
+              onVerLote={verLote}
+              onRegistrarClick={esOperador ? () => setVistaProduccion('nuevo') : undefined}
+            />
+          )
         ) : modulo === 'documentos' ? (
           vistaDocumentos === 'listado' ? (
             <ListadoDocumentos
@@ -577,7 +630,37 @@ function Aplicacion() {
               onCancel={() => setVistaTipoCertificado('listado')}
             />
           ) : null
-        ) : null}
+        ) : modulo === 'productos' ? (
+          vistaProductos === 'listado' ? (
+            <ListadoProductos
+              onNuevoClick={() => setVistaProductos('alta')}
+              onDetalleClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('detalle');
+              }}
+              onEditarClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('editar');
+              }}
+            />
+          ) : vistaProductos === 'alta' ? (
+            <NuevoProducto
+              onSuccess={() => setVistaProductos('listado')}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          ) : vistaProductos === 'detalle' ? (
+            <DetalleProducto
+              productoId={productoSeleccionado}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          ) : (
+            <EditarProducto
+              productoId={productoSeleccionado}
+              onSuccess={() => setVistaProductos('listado')}
+              onCancel={() => setVistaProductos('listado')}
+            />
+          )
+        ): null}
       </SidebarInset>
     </SidebarProvider>
   );

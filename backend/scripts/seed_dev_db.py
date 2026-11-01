@@ -36,6 +36,7 @@ from src.autenticacion.services import asegurar_usuarios_dev
 from src.insumos.services import crear_insumo
 from src.insumos.schemas import InsumoCreate
 from src.insumos.models import UnidadMedida, Insumo
+from src.insumos.migraciones import actualizar_tabla_insumos
 
 from src.insumos_quimicos.services import InsumoQuimicoService
 from src.insumos_quimicos.schemas import InsumoQuimicoCreate
@@ -142,6 +143,7 @@ def main() -> None:
         resetear_base()
 
     ModeloBase.metadata.create_all(bind=engine)
+    actualizar_tabla_insumos(engine)
     db = SessionLocal()
 
     ya_hay_datos = db.query(Insumo).count() > 0

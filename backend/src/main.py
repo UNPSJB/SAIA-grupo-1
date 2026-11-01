@@ -3,6 +3,8 @@ from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
+from src.insumos.migraciones import actualizar_tabla_insumos
+from src.produccion.migraciones import actualizar_tablas_produccion
 from src.models import ModeloBase
 
 # Importamos la configuración validada por Pydantic
@@ -36,6 +38,8 @@ from src.documentos.router import router as documentos_router
 from src.qrCode.router import router as qrCode_router
 from src.indentificadorDeQR.router import router as IdentificadorQR
 from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
+from src.produccion.router import lotes_router
+from src.producto.router import router as producto_router
 
 
 ENV = settings.ENV.upper()
@@ -46,6 +50,9 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    # las bases que ya existian no reciben los cambios de columnas de create_all
+    actualizar_tabla_insumos(engine)
+    actualizar_tablas_produccion(engine)
     if ENV == "DEV":
         # Usuarios admin, operador y adminopp compartidos por el equipo (cada integrante tiene su propia base)
         with SessionLocal() as db:
@@ -105,3 +112,7 @@ app.include_router(documentos_router, dependencies=SESION)
 app.include_router(qrCode_router)
 app.include_router(IdentificadorQR)
 app.include_router(AcercaDeNostrosRouter)
+# registrar un lote lo define el endpoint (solo operadores); consultar alcanza con estar logueado
+app.include_router(lotes_router, dependencies=SESION)
+# el ABM de productos es de administradores, pero el operador necesita listarlos para registrar lotes
+app.include_router(producto_router, dependencies=SESION)

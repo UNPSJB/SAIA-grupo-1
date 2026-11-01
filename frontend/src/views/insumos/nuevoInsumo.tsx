@@ -13,12 +13,19 @@ const INSUMO_INICIAL: InsumoForm = {
   cantRecibida: "",
   stock: "",
   medida: "",
-};const HOY = new Date().toISOString().split("T")[0];
+};
+
+const obtenerFechaLocal = (fecha: Date = new Date()): string => {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+};
 
 const getMinVencimiento = () => {
   const d = new Date();
   d.setDate(d.getDate() + 7);
-  return d.toISOString().split("T")[0];
+  return obtenerFechaLocal(d);
 };
 
 interface NuevoInsumoProps {
@@ -70,7 +77,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
       return;
     }
 
-    if (insumo.fechaRecepcion > HOY) {
+    if (insumo.fechaRecepcion > obtenerFechaLocal()) {
       setErrorMsg("La fecha de recepción no puede ser posterior a la fecha actual.");
       return;
     }
@@ -181,7 +188,7 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
             id="fechaRecepcion"
             name="fechaRecepcion"
             type="date"
-            max={HOY}
+            max={obtenerFechaLocal()}
             value={insumo.fechaRecepcion}
             onChange={handleChange}
             required
