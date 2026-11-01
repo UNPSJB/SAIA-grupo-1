@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
-from src.database import engine, SessionLocal, asegurar_migraciones_esquema, migrar_esquema
+from src.database import engine, SessionLocal
 from src.models import ModeloBase
 
 from src.config import settings
@@ -41,17 +41,9 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
-    asegurar_migraciones_esquema(engine)
-    migrar_esquema(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
-    with SessionLocal() as db:
-        try:
-            from src.notificaciones.services import revisar_y_generar_vencimientos
-            revisar_y_generar_vencimientos(db)
-        except Exception:
-            pass
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
