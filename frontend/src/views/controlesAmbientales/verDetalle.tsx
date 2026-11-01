@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import type { ControlAmbientalConHistorial } from "./tipos";
 import { ModalHistorialVisitas } from "./historialVisitas";
+import { ModalRegistrarVisita } from "./registrarVisita";
 import { apiFetch } from "../../api/client";
+import { useAuth } from "../../auth/useAuth";
 import "../../styles/formularioAlta.css";
 
 interface DetalleControlProps {
@@ -12,10 +14,29 @@ interface DetalleControlProps {
 const formatearFecha = (str?: string | null) => {
   if (!str) return "Sin fecha";
   try {
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? str : d.toLocaleDateString("es-AR");
+    const soloFecha = str.split("T")[0];
+    const partes = soloFecha.split("-");
+    if (partes.length === 3) {
+      const [anio, mes, dia] = partes;
+      return `${dia}/${mes}/${anio}`;
+    }
+    return str;
   } catch {
     return str;
+  }
+};
+
+const getTipoLabel = (tipo?: string | null): string => {
+  if (!tipo) return "—";
+  switch (tipo) {
+    case "CONTROL_PLAGAS":
+      return "Control de Plagas";
+    case "ANALISIS_AGUA":
+      return "Análisis de Agua";
+    case "LIMPIEZA_TANQUE":
+      return "Limpieza de Tanque";
+    default:
+      return tipo.replace("_", " ");
   }
 };
 
@@ -23,10 +44,14 @@ export const DetalleControlAmbiental: React.FC<DetalleControlProps> = ({
   controlId,
   onVolver,
 }) => {
+  const { esAdministrador } = useAuth();
   const [control, setControl] = useState<ControlAmbientalConHistorial | null>(null);
   const [loading, setLoading] = useState(Boolean(controlId));
   const [error, setError] = useState<string | null>(null);
+
   const [modalHistorialAbierto, setModalHistorialAbierto] = useState(false);
+  const [modalVisitaAbierto, setModalVisitaAbierto] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!controlId) return;
@@ -50,14 +75,14 @@ export const DetalleControlAmbiental: React.FC<DetalleControlProps> = ({
     return () => {
       cancelado = true;
     };
-  }, [controlId]);
+  }, [controlId, refreshKey]);
 
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
         <h1>Detalle de Control Ambiental</h1>
         <div className="subtitulo">
-          {control ? `${control.tipo.replace("_", " ")} (ID #${control.id})` : `Control #${controlId}`}
+          {control ? `${getTipoLabel(control.tipo)} (ID #${control.id})` : `Control #${controlId}`}
         </div>
       </div>
 
@@ -69,7 +94,7 @@ export const DetalleControlAmbiental: React.FC<DetalleControlProps> = ({
         <form onSubmit={(e) => e.preventDefault()}>
           <div className="form-group">
             <label>Tipo de Control</label>
-            <input type="text" value={control.tipo.replace("_", " ")} disabled />
+            <input type="text" value={getTipoLabel(control.tipo)} disabled />
           </div>
 
           <div className="form-group">
@@ -85,6 +110,11 @@ export const DetalleControlAmbiental: React.FC<DetalleControlProps> = ({
           <div className="form-group">
             <label>Próximo Vencimiento</label>
             <input type="text" value={formatearFecha(control.fecha_vencimiento)} disabled />
+          </div>
+
+          <div className="form-group">
+            <label>Estado del Registro</label>
+            <input type="text" value={control.activo ? "Activo" : "Inactivo"} disabled />
           </div>
 
           <div className="form-group">
@@ -106,16 +136,34 @@ export const DetalleControlAmbiental: React.FC<DetalleControlProps> = ({
       ) : null}
 
       <div className="form-acciones">
+        {esAdministrador && control && control.activo && (
+          <button
+            type="button"
+            className="btn-guardar"
+            onClick={() => setModalVisitaAbierto(true)}
+          >
+            + Registrar Visita
+          </button>
+        )}
         <button type="button" className="btn-cancelar" onClick={onVolver}>
           Volver
         </button>
       </div>
 
+      {control && (
+        <ModalRegistrarVisita
+          isOpen={modalVisitaAbierto}
+          onClose={() => setModalVisitaAbierto(false)}
+          control={control}
+          onSuccess={() => setRefreshKey((k) => k + 1)}
+        />
+      )}
+
       <ModalHistorialVisitas
         isOpen={modalHistorialAbierto}
         onClose={() => setModalHistorialAbierto(false)}
         controlId={control?.id ?? null}
-        tipoLabel={control?.tipo.replace("_", " ")}
+        tipoLabel={getTipoLabel(control?.tipo)}
       />
     </div>
   );

@@ -151,7 +151,7 @@ function Aplicacion() {
   const [filtroCalibracionInicial, setFiltroCalibracionInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
   const [filtroElementosInicial, setFiltroElementosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
   const [filtroDocumentosVencInicial, setFiltroDocumentosVencInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
-  const [filtroConsolidadoOrigen, setFiltroConsolidadoOrigen] = useState<'' | 'personal' | 'equipo' | 'documento'>('');
+  const [filtroConsolidadoOrigen, setFiltroConsolidadoOrigen] = useState<'' | 'personal' | 'equipo' | 'documento' | 'ambiental'>('');
   const [filtroConsolidadoEstado, setFiltroConsolidadoEstado] = useState<'' | 'vencido' | 'proximo' | 'vigente'>('');
   const [desdeDashboard, setDesdeDashboard] = useState(false);
 
@@ -198,6 +198,7 @@ function Aplicacion() {
     setVistaPersonas('listado');
     setVistaPlanCalibracion('listado');
     setVistaDocumentos('listado');
+    setVistaControlesAmbientales('listado');
     setVistaVencimientos(tabDestino);
     setModulo('vencimientos');
   };
@@ -227,6 +228,10 @@ function Aplicacion() {
       setModulo('documentos');
       setDocumentoSeleccionado(refId);
       setVistaDocumentos('detalle');
+    } else if (origen === 'ambiental') {
+      setModulo('controlesAmbientales');
+      setControlAmbientalSeleccionado(refId);
+      setVistaControlesAmbientales('detalle');
     }
   };
 
@@ -464,7 +469,7 @@ function Aplicacion() {
                   );
                 } else {
                   setVistaVencimientos('consolidado');
-                  setFiltroConsolidadoOrigen(subvista === 'equipo' || subvista === 'personal' || subvista === 'documento' ? subvista : '');
+                  setFiltroConsolidadoOrigen(subvista === 'equipo' || subvista === 'personal' || subvista === 'documento' || subvista === 'ambiental' ? subvista : '');
                   setFiltroConsolidadoEstado(filtroEstado === 'vencido' || filtroEstado === 'proximo' || filtroEstado === 'vigente' ? filtroEstado : '');
                 }
               } else if (mod === 'planDeCalibracion') {
@@ -950,7 +955,7 @@ function Aplicacion() {
           ) : (
             <DetalleControlAmbiental
               controlId={controlAmbientalSeleccionado}
-              onVolver={() => setVistaControlesAmbientales('listado')}
+              onVolver={origenVencimientos ? volverAVencimientos : () => setVistaControlesAmbientales('listado')}
             />
           )
         ): null}

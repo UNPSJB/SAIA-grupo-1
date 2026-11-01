@@ -8,6 +8,7 @@ from src.personal.models import Personal
 from src.equipos.models import Equipo
 from src.plan_de_calibracion.models import Plan_de_Calibracion
 from src.documentos.models import Documento
+from src.controlesAmbientales.models import ControlAmbiental
 from src.vencimientos.schemas import (
     EstadoVencimiento,
     OrigenVencimiento,
@@ -18,6 +19,12 @@ PESO_ESTADO = {
     EstadoVencimiento.VENCIDO: 0,
     EstadoVencimiento.PROXIMO: 1,
     EstadoVencimiento.VIGENTE: 2,
+}
+
+TIPO_CONTROL_MAP = {
+    "CONTROL_PLAGAS": "Control de Plagas",
+    "ANALISIS_AGUA": "Análisis de Agua",
+    "LIMPIEZA_TANQUE": "Limpieza de Tanque",
 }
 
 def obtener_vencimientos_consolidados_para_csv(
@@ -33,6 +40,7 @@ def obtener_vencimientos_consolidados_para_csv(
         OrigenVencimiento.PERSONAL: "Personal",
         OrigenVencimiento.EQUIPO: "Calibración / Mantenimiento",
         OrigenVencimiento.DOCUMENTO: "Documentos",
+        OrigenVencimiento.AMBIENTAL: "Controles Ambientales",
     }
 
     etiquetas_estado = {
@@ -196,6 +204,27 @@ def listar_vencimientos_consolidados(
                                 estado=EstadoVencimiento.VENCIDO,
                             )
                         )
+
+    if origen in (None, OrigenVencimiento.AMBIENTAL):
+        controles = db.query(ControlAmbiental).filter(ControlAmbiental.activo == True).all()
+        for c in controles:
+            if not c.fecha_vencimiento:
+                continue
+            fecha_v = _a_fecha(c.fecha_vencimiento)
+            dias, est = _calcular_plazo(fecha_v, hoy, dias_alerta=15)
+            concepto = TIPO_CONTROL_MAP.get(c.tipo, c.tipo)
+            items.append(
+                VencimientoConsolidadoItem(
+                    id=f"ambiental-{c.id}",
+                    origen=OrigenVencimiento.AMBIENTAL,
+                    concepto=concepto,
+                    responsable="Gestión Calidad / Sanitaria",
+                    referencia_id=c.id,
+                    fecha=fecha_v,
+                    dias_restantes=dias,
+                    estado=est,
+                )
+            )
 
     if estado is not None:
         items = [it for it in items if it.estado == estado]
