@@ -33,6 +33,7 @@ from src.vencimientos.router import router as vencimientos_router
 from fastapi.middleware.cors import CORSMiddleware
 from .insumos_quimicos.router import router as insumos_quimicos_router
 from src.documentos.router import router as documentos_router
+from src.informes.router import router as informes_router
 from src.motivoNoRealizado.router import router as motivo_router
 
 
@@ -98,6 +99,7 @@ app.include_router(plan_de_calibracion_router)
 app.include_router(sectores_router, prefix="/sectores", tags=["Sectores"], dependencies=SOLO_ADMIN)
 app.include_router(calibracion_realizada_router)
 app.include_router(documentos_router, dependencies=SESION)
+app.include_router(informes_router, dependencies=SOLO_ADMIN)
 app.include_router(motivo_router, prefix="/checklist/motivos")
 app.include_router(motivo_router, prefix="/motivos")
 

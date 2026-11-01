@@ -32,6 +32,7 @@ export type Modulo =
   | 'documentos'
   | 'incidentes'
   | 'auditoria'
+  | 'informes'
   | 'planDeCalibracion';
 
 interface SidebarProps {
@@ -165,6 +166,14 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <path d="m9 12 2 2 4-4" />
     </svg>
   ),
+  informes: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+      <polyline points="14 2 14 8 20 8" />
+      <path d="M12 12v6" />
+      <path d="m9 15 3 3 3-3" />
+    </svg>
+  ),
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
@@ -232,6 +241,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
           icono: ICONOS_MODULO.incidentes,
         },
         { id: 'auditoria', label: 'Auditoría', icono: ICONOS_MODULO.auditoria },
+        { id: 'informes', label: 'Informe de Inspección', icono: ICONOS_MODULO.informes },
       ],
     },
   ];

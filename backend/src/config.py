@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60  # <-- Nombre exacto que requiere services.py
 
+    # Datos del establecimiento que encabezan el informe para inspección (vacíos = no se muestran)
+    ESTABLECIMIENTO_NOMBRE: str = "Establecimiento elaborador de alimentos"
+    ESTABLECIMIENTO_DIRECCION: str = ""
+    ESTABLECIMIENTO_CUIT: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

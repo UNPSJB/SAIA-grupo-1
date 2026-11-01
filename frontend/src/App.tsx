@@ -61,8 +61,9 @@ import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 import { ListadoMotivos } from './views/motivos/listado';
 import { NuevoMotivo } from './views/motivos/nuevoMotivo';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
+import { InformeInspeccion } from './views/informes/informeInspeccion';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -463,6 +464,8 @@ function Aplicacion() {
           ) : null
         ) : modulo === 'auditoria' ? (
           <ListadoAuditoria />
+        ) : modulo === 'informes' ? (
+          <InformeInspeccion />
         ) : modulo === 'incidentes' ? (
           esAdministrador ? (
             vistaIncidentesAdmin === 'nuevo' && esOperador ? (
