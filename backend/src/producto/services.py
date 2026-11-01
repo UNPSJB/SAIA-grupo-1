@@ -110,6 +110,8 @@ def editar_producto(
 def eliminar_producto(db: Session, producto_id: int) -> Producto:
     db_producto = obtener_producto(db, producto_id)
     db_producto.activo = False
+    # un producto dado de baja no se puede mostrar; si se restaura vuelve oculto
+    db_producto.visible_publico = False
     db.commit()
     db.refresh(db_producto)
     return db_producto
@@ -121,3 +123,27 @@ def restaurar_producto(db: Session, producto_id: int) -> Producto:
     db.commit()
     db.refresh(db_producto)
     return db_producto
+
+def actualizar_visibilidad_publica(db: Session, productos_visibles: List[int]) -> List[Producto]:
+    """Deja visibles en la vista publica solo los productos indicados y oculta el resto.
+
+    Si algun id no existe o esta dado de baja no se cambia nada.
+    """
+    ids = set(productos_visibles)
+    encontrados = db.scalars(select(Producto).where(Producto.id.in_(list(ids)))).all() if ids else []
+    if len(encontrados) != len(ids):
+        raise exceptions.ProductoNoEncontrado()
+    if any(not p.activo for p in encontrados):
+        raise exceptions.ProductoInactivoNoPublicable()
+
+    db.execute(update(Producto).values(visible_publico=Producto.id.in_(list(ids))))
+    db.commit()
+    return listar_productos(db)
+
+
+def listar_productos_publicos(db: Session) -> List[Producto]:
+    return list(db.scalars(
+        select(Producto)
+        .where(Producto.activo == True, Producto.visible_publico == True)
+        .order_by(Producto.nombre)
+    ).all())

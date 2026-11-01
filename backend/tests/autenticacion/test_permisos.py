@@ -52,6 +52,8 @@ SOLO_ADMIN = [
     ("PUT", "/sectores/1"),
     ("DELETE", "/sectores/1"),
     ("POST", "/documentos"),
+    ("PUT", "/productos/visibilidad-publica"),
+    ("PUT", "/identificadorQR/1/ver-productos"),
 ]
 
 # Endpoints que piden estar logueado, sin importar el rol.
@@ -94,6 +96,11 @@ def test_endpoints_para_cualquier_usuario_logueado(
     usuarios: Dict[str, Personal], rol: str, metodo: str, ruta: str
 ) -> None:
     assert _pedir(metodo, ruta, headers(usuarios[rol])).status_code == status.HTTP_200_OK
+
+
+def test_el_catalogo_publico_no_pide_token(usuarios: Dict[str, Personal]) -> None:
+    # lo abre cualquiera con el QR; un identificador inexistente da 404, no 401
+    assert client.get("/identificadorQR/no-existe/productos").status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_la_imagen_de_evidencia_no_pide_token(usuarios: Dict[str, Personal]) -> None:

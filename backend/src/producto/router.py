@@ -27,6 +27,12 @@ async def read_producto(producto_id: int, db: Session = Depends(get_db)):
     return services.obtener_producto(db, producto_id)
 
 
+# va antes de PUT /{producto_id} para que "visibilidad-publica" no se tome como un id
+@router.put("/visibilidad-publica", response_model=List[schemas.ProductoResponse], dependencies=[Depends(requiere_admin)])
+async def update_visibilidad_publica(visibilidad: schemas.VisibilidadPublicaUpdate, db: Session = Depends(get_db)):
+    return services.actualizar_visibilidad_publica(db, visibilidad.productos_visibles)
+
+
 @router.put("/{producto_id}", response_model=schemas.ProductoResponse, dependencies=[Depends(requiere_admin)])
 async def update_producto(
     producto_id: int,

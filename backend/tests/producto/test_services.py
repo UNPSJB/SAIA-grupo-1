@@ -7,6 +7,8 @@ from src.producto import exceptions
 from src.producto.models import Producto
 from src.producto.schemas import ProductoCreate, ProductoUpdate
 from src.producto.services import (
+    actualizar_visibilidad_publica,
+    listar_productos_publicos,
     crear_producto,
     editar_producto,
     eliminar_producto,
@@ -123,3 +125,71 @@ def test_validar_nombre_duplicado(session: Session) -> None:
   )
   with pytest.raises(exceptions.NombreProductoDuplicado):
     crear_producto(session, dto2)
+
+
+# ---------------------------------------------------------------- visibilidad en la vista publica
+
+def _producto(session: Session, nombre: str) -> Producto:
+  return crear_producto(session, ProductoCreate(nombre=nombre, unidadMedida=UnidadMedida.UNIDADES))
+
+
+def test_producto_nuevo_no_es_visible_en_la_vista_publica(session: Session) -> None:
+  prod = _producto(session, "Medialuna")
+  assert prod.visible_publico is False
+  assert listar_productos_publicos(session) == []
+
+
+def test_actualizar_visibilidad_muestra_los_elegidos_y_oculta_el_resto(session: Session) -> None:
+  pan = _producto(session, "Pan Casero")
+  torta = _producto(session, "Torta Negra")
+  alfajor = _producto(session, "Alfajor")
+
+  actualizar_visibilidad_publica(session, [pan.id, torta.id])
+  assert {p.id for p in listar_productos_publicos(session)} == {pan.id, torta.id}
+
+  # la segunda seleccion reemplaza a la primera
+  actualizar_visibilidad_publica(session, [alfajor.id])
+  assert [p.id for p in listar_productos_publicos(session)] == [alfajor.id]
+
+  actualizar_visibilidad_publica(session, [])
+  assert listar_productos_publicos(session) == []
+
+
+def test_no_se_puede_mostrar_un_producto_dado_de_baja(session: Session) -> None:
+  pan = _producto(session, "Pan Integral")
+  torta = _producto(session, "Torta Frita")
+  actualizar_visibilidad_publica(session, [pan.id])
+  eliminar_producto(session, torta.id)
+
+  with pytest.raises(exceptions.ProductoInactivoNoPublicable):
+    actualizar_visibilidad_publica(session, [torta.id])
+  # no se cambio nada
+  assert [p.id for p in listar_productos_publicos(session)] == [pan.id]
+
+
+def test_visibilidad_con_producto_inexistente_no_cambia_nada(session: Session) -> None:
+  pan = _producto(session, "Pan Dulce")
+  actualizar_visibilidad_publica(session, [pan.id])
+
+  with pytest.raises(exceptions.ProductoNoEncontrado):
+    actualizar_visibilidad_publica(session, [9999])
+  assert [p.id for p in listar_productos_publicos(session)] == [pan.id]
+
+
+def test_la_baja_oculta_el_producto_y_al_restaurarlo_sigue_oculto(session: Session) -> None:
+  pan = _producto(session, "Chipa")
+  actualizar_visibilidad_publica(session, [pan.id])
+
+  eliminar_producto(session, pan.id)
+  assert obtener_producto(session, pan.id).visible_publico is False
+  assert listar_productos_publicos(session) == []
+
+  restaurar_producto(session, pan.id)
+  assert obtener_producto(session, pan.id).visible_publico is False
+
+
+def test_listado_publico_ordenado_por_nombre(session: Session) -> None:
+  b = _producto(session, "Bizcochuelo")
+  a = _producto(session, "Alfajor de Maicena")
+  actualizar_visibilidad_publica(session, [b.id, a.id])
+  assert [p.nombre for p in listar_productos_publicos(session)] == ["Alfajor de Maicena", "Bizcochuelo"]

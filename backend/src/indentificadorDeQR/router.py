@@ -2,6 +2,9 @@ import logging
 from fastapi.responses import RedirectResponse
 from typing_extensions import Buffer
 from fastapi import APIRouter, Depends, HTTPException, Response
+from typing import List
+from src.autenticacion.dependencies import requiere_admin
+from src.producto import schemas as producto_schemas
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.indentificadorDeQR import services,schemas
@@ -36,3 +39,12 @@ async def actualizar_estado_grafico(identificador_id: str, ident_update: schemas
 @router.put("/{identificador_id}/ver-acercaDeNosotros", response_model=schemas.IdentificadorQR)
 async def actualizar_estado_acercaDeNosotros(identificador_id: str, ident_update: schemas.IdentifacadorQRUpdate, db: Session = Depends(get_db)):
     return services.actualizar_ver_acercaDeNosotros(db, identificador_id, ident_update)
+
+@router.put("/{identificador_id}/ver-productos", response_model=schemas.IdentificadorQR, dependencies=[Depends(requiere_admin)])
+async def actualizar_estado_productos(identificador_id: str, ident_update: schemas.IdentifacadorQRUpdate, db: Session = Depends(get_db)):
+    return services.actualizar_ver_productos(db, identificador_id, ident_update)
+
+# publico (sin login): lo consulta la vista que se abre con el QR
+@router.get("/{identificador_id}/productos", response_model=List[producto_schemas.ProductoPublico])
+def listar_productos_publicos(identificador_id: str, db: Session = Depends(get_db)):
+    return services.listar_productos_publicos(db, identificador_id)

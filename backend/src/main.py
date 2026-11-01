@@ -5,6 +5,7 @@ from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
 from src.insumos.migraciones import actualizar_tabla_insumos
 from src.produccion.migraciones import actualizar_tablas_produccion
+from src.indentificadorDeQR.migraciones import actualizar_tabla_identificador_qr
 from src.models import ModeloBase
 
 # Importamos la configuración validada por Pydantic
@@ -53,6 +54,7 @@ async def db_creation_lifespan(app: FastAPI):
     # las bases que ya existian no reciben los cambios de columnas de create_all
     actualizar_tabla_insumos(engine)
     actualizar_tablas_produccion(engine)
+    actualizar_tabla_identificador_qr(engine)
     if ENV == "DEV":
         # Usuarios admin, operador y adminopp compartidos por el equipo (cada integrante tiene su propia base)
         with SessionLocal() as db:

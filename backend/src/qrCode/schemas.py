@@ -15,6 +15,7 @@ class QRCodeBASE(BaseModel):
     texto:str
     ver_grafico:bool=True
     verAcercaDeNosotros:bool=True
+    verProductos:bool=False
 
 
 

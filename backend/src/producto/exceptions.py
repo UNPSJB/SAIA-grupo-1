@@ -21,3 +21,6 @@ class RecetaNoEncontrada(NotFound):
 
 class DocumentoNoEsReceta(BadRequest):
     DETAIL = ErrorCode.DOCUMENTO_NO_ES_RECETA
+
+class ProductoInactivoNoPublicable(BadRequest):
+    DETAIL = ErrorCode.PRODUCTO_INACTIVO_NO_PUBLICABLE

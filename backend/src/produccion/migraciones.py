@@ -9,6 +9,7 @@ def actualizar_tablas_produccion(engine: Engine) -> None:
         bases todavia mas viejas, del ultimo lote de cada producto (los productos sin lotes quedan en unidades);
       - agrega las columnas del ABM que falten (`descripcion`, `activo`, `id_receta`); los productos
         existentes quedan activos;
+      - agrega `visible_publico`; los productos existentes quedan ocultos en la vista publica;
       - borra `productos.unidad_medida` y `lotes_produccion.unidad_medida`, reemplazadas por `unidadMedida`.
     Se puede correr siempre: si las tablas ya estan al dia (o no existen todavia) no hace nada.
     """
@@ -42,6 +43,8 @@ def actualizar_tablas_produccion(engine: Engine) -> None:
             conexion.execute(text("ALTER TABLE productos ADD COLUMN activo BOOLEAN NOT NULL DEFAULT 1"))
         if "id_receta" not in columnas_producto:
             conexion.execute(text("ALTER TABLE productos ADD COLUMN id_receta INTEGER REFERENCES documentos (id)"))
+        if "visible_publico" not in columnas_producto:
+            conexion.execute(text("ALTER TABLE productos ADD COLUMN visible_publico BOOLEAN NOT NULL DEFAULT 0"))
         if "unidad_medida" in columnas_producto:
             conexion.execute(text("ALTER TABLE productos DROP COLUMN unidad_medida"))
         if "unidad_medida" in columnas_lote:

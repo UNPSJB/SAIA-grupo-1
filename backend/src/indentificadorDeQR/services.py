@@ -6,6 +6,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from src.indentificadorDeQR.models import IndentificadorUnico
 from src.indentificadorDeQR import schemas, exceptions
+from src.producto import services as producto_services
 
 
 
@@ -19,6 +20,9 @@ def crear_IdentificadorUnico(db:Session,ident:schemas.IdentificadorQRCreate,urld
         datos["ver_grafico"] = True
     if "verAcercaDeNosotros" not in datos or datos["verAcercaDeNosotros"] is None:
             datos["verAcercaDeNosotros"] = True
+    # el listado de productos arranca desactivado
+    if datos.get("verProductos") is None:
+        datos["verProductos"] = False
     _ident=IndentificadorUnico(**datos)
     db.add(_ident)
     db.commit()
@@ -75,3 +79,24 @@ def actualizar_ver_acercaDeNosotros(db: Session, identificador_id: str, ident: s
     db.commit()
     db.refresh(db_identQR)
     return db_identQR
+
+def actualizar_ver_productos(db: Session, identificador_id: str, ident: schemas.IdentifacadorQRUpdate) -> schemas.IdentificadorQR:
+    db_identQR = db.scalar(select(IndentificadorUnico).where(IndentificadorUnico.id_alfanumerico == identificador_id))
+
+    if not db_identQR:
+        raise HTTPException(status_code=404, detail="El código QR no existe")
+
+    if ident.verProductos is not None:
+        db_identQR.verProductos = ident.verProductos
+
+    db.commit()
+    db.refresh(db_identQR)
+    return db_identQR
+
+
+def listar_productos_publicos(db: Session, identificador_id: str):
+    """Catalogo que ve cualquiera con el QR: vacio si el administrador no habilito la seccion."""
+    db_identQR = verificar_identificadorQR(db, identificador_id)
+    if not db_identQR.verProductos:
+        return []
+    return producto_services.listar_productos_publicos(db)

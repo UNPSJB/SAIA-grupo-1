@@ -16,7 +16,8 @@ async def createQR(quickResponse:schemas.QRCodeCreate,db: Session = Depends(get_
         urldelQR=quickResponse.texto,
         estado=True,
         ver_grafico=quickResponse.ver_grafico,
-        verAcercaDeNosotros=quickResponse.verAcercaDeNosotros
+        verAcercaDeNosotros=quickResponse.verAcercaDeNosotros,
+        verProductos=quickResponse.verProductos
     )
     ident_data = ident.crear_IdentificadorUnico(db,datos_ident,urldelQR=quickResponse.texto)
     imagen=services.CrearCodigoQr(db,quickResponse,ident_data)

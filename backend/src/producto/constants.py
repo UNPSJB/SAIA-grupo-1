@@ -6,3 +6,4 @@ class ErrorCode:
     NOMBRE_DUPLICADO = "Ya existe un producto registrado con ese nombre"
     PRODUCTO_INACTIVO = "El producto se encuentra dado de baja"
     PRODUCTO_NO_ENCONTRADO = "Producto no encontrado"
+    PRODUCTO_INACTIVO_NO_PUBLICABLE = "No se puede mostrar en la vista pública un producto dado de baja"

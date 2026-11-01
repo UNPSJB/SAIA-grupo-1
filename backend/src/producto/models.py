@@ -14,6 +14,8 @@ class Producto(ModeloBase):
     descripcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     unidadMedida: Mapped[UnidadMedida] = mapped_column(index=True, nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # si se muestra en el catalogo de la vista publica (solo cuenta si ademas esta activo)
+    visible_publico: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     id_receta: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("documentos.id"), nullable=True ,default=None)
     receta: Mapped[Optional["Documento"]] = relationship("Documento")
