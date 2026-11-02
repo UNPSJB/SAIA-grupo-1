@@ -61,6 +61,8 @@ import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertifica
 import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 import { AcercaDeNosotros } from './views/vistaPublica/AcercaDeNosotros';
+import { ProductosPublicos } from './views/vistaPublica/ProductosPublicos';
+import { useVistaPublica } from './views/vistaPublica/contextDeVistaPublica';
 import { NuevoLote } from './views/produccion/nuevoLote';
 import { AsociarInsumos } from './views/produccion/asociarInsumos';
 import { HistorialLotes } from './views/produccion/historialLotes';
@@ -70,7 +72,6 @@ import { ListadoProductos } from './views/producto/listado';
 import NuevoProducto  from './views/producto/nuevoProducto';
 import EditarProducto from './views/producto/editarDetalle';
 import { DetalleProducto } from './views/producto/verDetalle';
-import { ProductosPublicos } from './views/vistaPublica/productosPublicos';
 
 type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'productos' | 'produccion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
@@ -701,7 +702,10 @@ export default App;
 
 
 function LayoutVistaPublica() {
-  const [moduloPublico, setModuloPublico] = useState<ModuloPublico>('estadisticas');
+  const [moduloElegido, setModuloPublico] = useState<ModuloPublico>('estadisticas');
+  const { config } = useVistaPublica();
+  // si el administrador oculta el listado mientras se lo mira, se vuelve a estadísticas
+  const moduloPublico = moduloElegido === 'productos' && !config.verProductos ? 'estadisticas' : moduloElegido;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-fondo, #f8fafc)' }}>
@@ -715,7 +719,7 @@ function LayoutVistaPublica() {
       <main style={{ padding: '32px 36px', maxWidth: '1200px', margin: '0 auto' }}>
         {moduloPublico === 'estadisticas' && <Panel_Publico />}
         
-        {moduloPublico === 'productos' && <ProductosPublicos/>}
+        {moduloPublico === 'productos' && <ProductosPublicos />}
 
         {moduloPublico === 'nosotros' && <AcercaDeNosotros/>}
       </main>

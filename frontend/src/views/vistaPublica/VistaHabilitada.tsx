@@ -3,6 +3,7 @@ import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 import { useVistaPublica } from './contextDeVistaPublica';
 import type { AcercaDeNosotrosConId } from './tipos';
+import ConfiguracionProductosPublicos from './configuracionProductos';
 
 interface VistaHabilitadaProps{
     qrUrl: string | null;
@@ -227,7 +228,7 @@ return(
         onChange={(e) => handleToggleGrafico(e.target.checked)} 
     />
         <span 
-         style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} 
+         style={{ color: 'var(--text-h)', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} 
         // ✅ Hacemos que el texto también dispare la función que actualiza el backend
             onClick={() => handleToggleGrafico(!config.verGrafico)}
             >
@@ -237,7 +238,7 @@ return(
 
         <div className="form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <label htmlFor="descripcion" style={{ color: '#fff', fontSize: '13px' }}>Descripción</label>
+                        <label htmlFor="descripcion" style={{ color: 'var(--text-h)', fontSize: '13px' }}>Descripción</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: 'fit-content' }}>
                             <input 
                                 type="checkbox" 
@@ -245,7 +246,7 @@ return(
                                 checked={config.verAcercaDeNosotros} 
                                 onChange={(e) => handleToggleAcercaDeNosotros(e.target.checked)}
                                 />
-                            <span style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => handleToggleGrafico(!config.verGrafico)}>
+                            <span style={{ color: 'var(--text-h)', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => handleToggleAcercaDeNosotros(!config.verAcercaDeNosotros)}>
                                 Mostrar
                                 </span>
                         </div>
@@ -284,9 +285,10 @@ return(
                     )}
                 </div>
 
+                <ConfiguracionProductosPublicos identificadorUnico={identificadorUnico} />
 
                 <div className="qr-preview-container" style={{ textAlign: 'center', padding: '5px', borderRadius: '8px' }}>
-                    <p className="form-group" style={{ fontSize: '13px', color: '#e0e0e0' }}>Código QR activo</p>
+                    <p className="form-group" style={{ fontSize: '13px', color: 'var(--text)' }}>Código QR activo</p>
                     
                     <div style={{ display: 'flex', justifyContent: 'center', background: '#fff', padding: '6px', borderRadius: '6px', width: 'fit-content', margin: '0 auto', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                         {qrUrl ? (

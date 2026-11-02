@@ -1,5 +1,6 @@
 import React from 'react';
 import '../styles/navBarPublica.css'
+import { useVistaPublica } from '../views/vistaPublica/contextDeVistaPublica';
 
 
 export type ModuloPublico = 'estadisticas' | 'productos' | 'nosotros';
@@ -13,6 +14,9 @@ export const NavbarPublica: React.FC<NavbarPublicaProps> = ({
   moduloActivo,
   onCambiarModulo,
 }) => {
+  // la pestaña de productos solo existe si el administrador habilitó el listado
+  const { config } = useVistaPublica();
+
   return (
     <header className="navbar-publica">
       {/* Logo y título */}
@@ -37,12 +41,14 @@ export const NavbarPublica: React.FC<NavbarPublicaProps> = ({
         >
           Estadísticas
         </button>
-        <button
-          onClick={() => onCambiarModulo('productos')}
-          className={`navbar-btn ${moduloActivo === 'productos' ? 'navbar-btn-activo' : ''}`}
-        >
-          Productos
-        </button>
+        {config.verProductos && (
+          <button
+            onClick={() => onCambiarModulo('productos')}
+            className={`navbar-btn ${moduloActivo === 'productos' ? 'navbar-btn-activo' : ''}`}
+          >
+            Productos
+          </button>
+        )}
         <button
           onClick={() => onCambiarModulo('nosotros')}
           className={`navbar-btn ${moduloActivo === 'nosotros' ? 'navbar-btn-activo' : ''}`}

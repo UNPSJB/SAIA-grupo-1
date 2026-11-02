@@ -1,115 +1,90 @@
 import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 import { useVistaPublica } from './contextDeVistaPublica';
+import type { ProductoPublico } from '../producto/tipos';
 
-export interface ProductoPublico {
-  id: number;
-  nombre: string;
-  descripcion?: string | null;
-  unidadMedida: string;
-}
+const UNIDADES: Record<string, string> = {
+  kilogramos: 'Kilogramos',
+  gramos: 'Gramos',
+  litros: 'Litros',
+  mililitros: 'Mililitros',
+  unidades: 'Unidades',
+};
 
+// Catálogo que ve cualquiera que abre el QR: solo los productos que el administrador eligió mostrar
 export const ProductosPublicos: React.FC = () => {
+  const { identificadorId } = useParams<{ identificadorId: string }>();
+  const { config, setConfig } = useVistaPublica();
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const { config } = useVistaPublica();
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    async function cargarProductos() {
+    async function cargar() {
+      if (!identificadorId) return;
       try {
-        const res = await apiFetch('/productos/publico');
-        if (res.ok) {
-          const data = await res.json();
-          setProductos(data);
-        } else {
-          setError('No se pudo cargar el catálogo de productos.');
+        // se consulta cada vez que se entra, así los cambios del administrador se ven al instante
+        const [resQR, resProductos] = await Promise.all([
+          apiFetch(`/identificadorQR/verificar/${identificadorId}`),
+          apiFetch(`/identificadorQR/${identificadorId}/productos`),
+        ]);
+        if (resQR.ok) {
+          const data = await resQR.json();
+          if (typeof data.verProductos === 'boolean') {
+            setConfig(prev => ({ ...prev, verProductos: data.verProductos }));
+          }
         }
-      } catch (err) {
-        console.error('Error al cargar productos en la vista pública:', err);
-        setError('Error de conexión con el servidor.');
+        if (!resProductos.ok) throw new Error("No se pudo cargar el catálogo de productos.");
+        setProductos(await resProductos.json());
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
       } finally {
         setLoading(false);
       }
     }
-
-    if (config.verProductos) {
-      cargarProductos();
-    } else {
-      setLoading(false);
-    }
-  }, [config.verProductos]);
-
-  // Si la sección fue deshabilitada por el administrador, no renderiza nada según la HU
-  if (!config.verProductos) return null;
+    cargar();
+  }, [identificadorId, setConfig]);
 
   return (
     <div className="modulo-container dashboard-container" style={{ padding: '20px' }}>
       <div className="modulo-header">
-        <h1>Catálogo de Productos</h1>
-        <div className="subtitulo">Productos elaborados con garantía de calidad</div>
+        <h1>Productos</h1>
+        <div className="subtitulo">Conocé los productos que elaboramos</div>
       </div>
 
-      <div className="dashboard-card" style={{ width: '100%', marginTop: '20px', padding: '20px' }}>
-        {loading ? (
-          <p style={{ color: '#64748b' }}>Cargando catálogo de productos...</p>
-        ) : error ? (
-          <p style={{ color: 'var(--color-error, #ef4444)' }}>{error}</p>
-        ) : productos.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 10px' }}>
-            <p style={{ fontSize: '15px', color: '#64748b', fontStyle: 'italic', margin: 0 }}>
-              No hay productos públicos habilitados para mostrar en este momento.
-            </p>
-          </div>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: '16px',
-            }}
-          >
-            {productos.map((prod) => (
-              <div
-                key={prod.id}
-                style={{
-                  border: '1px solid var(--color-borde, #e2e8f0)',
-                  borderRadius: '10px',
-                  padding: '16px',
-                  backgroundColor: 'var(--color-superficie, #ffffff)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--color-texto, #333)' }}>
-                      {prod.nombre}
-                    </h3>
-                    <span
-                      style={{
-                        fontSize: '12px',
-                        backgroundColor: 'var(--color-suave, #f1f5f9)',
-                        color: 'var(--color-texto-sec, #64748b)',
-                        padding: '2px 8px',
-                        borderRadius: '10px',
-                      }}
-                    >
-                      {prod.unidadMedida}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '14px', color: '#64748b', marginTop: '10px', lineHeight: '1.4' }}>
-                    {prod.descripcion || 'Sin descripción disponible.'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {loading ? (
+        <div className="dashboard-card" style={{ marginTop: '20px' }}><p>Cargando productos...</p></div>
+      ) : errorMsg ? (
+        <div className="alerta-error" style={{ marginTop: '20px' }}>{errorMsg}</div>
+      ) : !config.verProductos ? (
+        <div className="dashboard-card" style={{ marginTop: '20px' }}>
+          <p style={{ color: '#64748b', fontStyle: 'italic' }}>
+            Esta sección se encuentra temporalmente deshabilitada por la administración.
+          </p>
+        </div>
+      ) : productos.length === 0 ? (
+        <div className="dashboard-card" style={{ marginTop: '20px' }}>
+          <p>Por el momento no hay productos para mostrar.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px', marginTop: '20px' }}>
+          {productos.map(p => (
+            <div key={p.id} className="dashboard-card" style={{ padding: '18px' }}>
+              <h2 style={{ fontSize: '1.05rem', margin: '0 0 6px 0' }}>{p.nombre}</h2>
+              {p.descripcion && (
+                <p style={{ margin: '0 0 10px 0', fontSize: '14px', lineHeight: 1.5, color: 'var(--color-texto, #333)' }}>
+                  {p.descripcion}
+                </p>
+              )}
+              <span className="shadcn-badge shadcn-badge-secondary">
+                {UNIDADES[p.unidadMedida] ?? p.unidadMedida}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
