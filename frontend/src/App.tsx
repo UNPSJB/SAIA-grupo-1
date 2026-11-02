@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NuevoInsumo from './views/insumos/nuevoInsumo';
 import { ListadoInsumos } from './views/insumos/listado';
 import VerInsumo from './views/insumos/verInsumo';
@@ -21,9 +22,10 @@ import { EditarDetalle as EditarInsumoQuimico } from './views/insumos_quimicos/e
 import { VerDetalle as VerDetalleInsumoQuimico } from './views/insumos_quimicos/verDetalle';
 import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
 import { ConsumoHistoricoInsumos } from './views/dashboard/ConsumoHistoricoInsumos';
-
+import { Panel_Publico } from './views/vistaPublica/datosPublicos';
 import { Sidebar } from './components/Sidebar';
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar';
+import { NavbarPublica, type ModuloPublico } from './components/navbarVistaPublica';
 import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
 import { NuevoElementoDeLimpieza } from './views/elementosDeLimpieza/nuevoElemento';
 import { EditarElementoDeLimpieza } from './views/elementosDeLimpieza/editarDetalle';
@@ -71,6 +73,9 @@ import { DetalleMotivo } from './views/motivos/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 import { VencimientosDocumentos } from './views/documentos/vencimientosDocumentos';
 import './styles/dashboard.css';
+import { AcercaDeNosotros } from './views/vistaPublica/AcercaDeNosotros';
+import { ProductosPublicos } from './views/vistaPublica/ProductosPublicos';
+import { useVistaPublica } from './views/vistaPublica/contextDeVistaPublica';
 import { NuevoLote } from './views/produccion/nuevoLote';
 import { AsociarInsumos } from './views/produccion/asociarInsumos';
 import { HistorialLotes } from './views/produccion/historialLotes';
@@ -1203,7 +1208,52 @@ function App() {
   }, []);
 
   if (cargando) return null;
-  return usuario ? <Aplicacion /> : <Login />;
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/*1. Ruta pública para el QR (Sin cuenta, accesible por cualquiera) */}
+        <Route 
+          path="/vista-publica/:identificadorId" 
+          element={
+              <LayoutVistaPublica />
+          } 
+        />
+
+        {/* 2. Ruta principal de la app (Pide login / Muestra la app interna) */}
+        <Route 
+          path="/*" 
+          element={usuario ? <Aplicacion /> : <Login />} 
+        />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;
+
+
+function LayoutVistaPublica() {
+  const [moduloElegido, setModuloPublico] = useState<ModuloPublico>('estadisticas');
+  const { config } = useVistaPublica();
+  // si el administrador oculta el listado mientras se lo mira, se vuelve a estadísticas
+  const moduloPublico = moduloElegido === 'productos' && !config.verProductos ? 'estadisticas' : moduloElegido;
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-fondo, #f8fafc)' }}>
+      {/* Barra de navegación superior sin botón de ingresar */}
+      <NavbarPublica 
+        moduloActivo={moduloPublico} 
+        onCambiarModulo={(modulo) => setModuloPublico(modulo)} 
+      />
+
+      {/* Contenido principal de la página */}
+      <main style={{ padding: '32px 36px', maxWidth: '1200px', margin: '0 auto' }}>
+        {moduloPublico === 'estadisticas' && <Panel_Publico />}
+        
+        {moduloPublico === 'productos' && <ProductosPublicos />}
+
+        {moduloPublico === 'nosotros' && <AcercaDeNosotros/>}
+      </main>
+    </div>
+  );
+}

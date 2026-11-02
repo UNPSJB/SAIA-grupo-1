@@ -3,6 +3,9 @@ from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
+from src.insumos.migraciones import actualizar_tabla_insumos
+from src.produccion.migraciones import actualizar_tablas_produccion
+from src.indentificadorDeQR.migraciones import actualizar_tabla_identificador_qr
 from src.models import ModeloBase
 
 from src.config import settings
@@ -34,6 +37,9 @@ from src.documentos.router import router as documentos_router
 from src.notificaciones.router import router as notificaciones_router
 from src.informes.router import router as informes_router
 from src.motivoNoRealizado.router import router as motivo_router
+from src.qrCode.router import router as qrCode_router
+from src.indentificadorDeQR.router import router as IdentificadorQR
+from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 
@@ -45,6 +51,10 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    # las bases que ya existian no reciben los cambios de columnas de create_all
+    actualizar_tabla_insumos(engine)
+    actualizar_tablas_produccion(engine)
+    actualizar_tabla_identificador_qr(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
@@ -59,10 +69,15 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+   ## allow_origins=[
+    ##    "http://localhost:5173",
+     ##   "http://127.0.0.1:5173",
+   ## ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Identificador-Unico"],
 )
 
 SOLO_ADMIN = [Depends(requiere_admin)]
@@ -94,5 +109,9 @@ app.include_router(notificaciones_router, dependencies=SESION)
 app.include_router(informes_router, dependencies=SOLO_ADMIN)
 app.include_router(motivo_router, prefix="/checklist/motivos")
 app.include_router(motivo_router, prefix="/motivos")
+app.include_router(qrCode_router)
+app.include_router(IdentificadorQR)
+app.include_router(AcercaDeNostrosRouter)
+# registrar un lote lo define el endpoint (solo operadores); consultar alcanza con estar logueado
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SESION)

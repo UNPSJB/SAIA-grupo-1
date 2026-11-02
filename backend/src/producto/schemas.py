@@ -49,5 +49,21 @@ class ProductoResponse(ProductoBase):
 
     nombre_receta: Optional[str] = None
     activo: bool
+    visible_publico: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class VisibilidadPublicaUpdate(BaseModel):
+    # ids de los productos que se muestran en la vista publica; el resto queda oculto
+    productos_visibles: list[int] = Field(default_factory=list)
+
+
+class ProductoPublico(BaseModel):
+    """Lo que ve cualquiera desde la vista publica: sin receta ni datos internos."""
+    id: int
+    nombre: str
+    descripcion: Optional[str] = None
+    unidadMedida: UnidadMedida
 
     model_config = ConfigDict(from_attributes=True)

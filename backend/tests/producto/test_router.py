@@ -62,3 +62,31 @@ def test_delete_y_restaurar_producto_api(session: Session) -> None:
   get_res2 = client.get(f"/productos/{prod_id}")
   assert get_res2.status_code == 200
   assert get_res2.json()["activo"] is True
+
+
+def test_actualizar_visibilidad_publica_api(session: Session) -> None:
+  ids = [client.post("/productos/", json={"nombre": n, "unidadMedida": "unidades"}).json()["id"]
+         for n in ("Pan Frances", "Grisines")]
+
+  res = client.put("/productos/visibilidad-publica", json={"productos_visibles": [ids[0]]})
+  assert res.status_code == 200
+  visibles = {p["id"]: p["visible_publico"] for p in res.json()}
+  assert visibles[ids[0]] is True
+  assert visibles[ids[1]] is False
+
+  # tambien se ve en el GET del producto
+  assert client.get(f"/productos/{ids[0]}").json()["visible_publico"] is True
+
+
+def test_visibilidad_publica_rechaza_producto_dado_de_baja_api(session: Session) -> None:
+  prod_id = client.post("/productos/", json={"nombre": "Rosca", "unidadMedida": "unidades"}).json()["id"]
+  client.delete(f"/productos/{prod_id}")
+
+  res = client.put("/productos/visibilidad-publica", json={"productos_visibles": [prod_id]})
+  assert res.status_code == 400
+  assert res.json()["detail"] == "No se puede mostrar en la vista pública un producto dado de baja"
+
+
+def test_visibilidad_publica_producto_inexistente_api(session: Session) -> None:
+  res = client.put("/productos/visibilidad-publica", json={"productos_visibles": [9999]})
+  assert res.status_code == 404

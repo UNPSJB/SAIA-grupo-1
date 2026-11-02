@@ -9,6 +9,10 @@ from src.producto import schemas, services
 router = APIRouter(prefix="/productos", tags=["productos"])
 
 
+@router.get("/publico", response_model=List[schemas.ProductoPublico], status_code=status.HTTP_200_OK)
+async def read_productos_publicos(db: Session = Depends(get_db)):
+    return services.listar_productos_publicos(db)
+
 @router.post("/", response_model=schemas.ProductoResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(requiere_admin)])
 async def create_producto(
     producto: schemas.ProductoCreate,
@@ -25,6 +29,12 @@ async def read_productos(db: Session = Depends(get_db)):
 @router.get("/{producto_id}", response_model=schemas.ProductoResponse, dependencies=[Depends(get_usuario_actual)])
 async def read_producto(producto_id: int, db: Session = Depends(get_db)):
     return services.obtener_producto(db, producto_id)
+
+
+# va antes de PUT /{producto_id} para que "visibilidad-publica" no se tome como un id
+@router.put("/visibilidad-publica", response_model=List[schemas.ProductoResponse], dependencies=[Depends(requiere_admin)])
+async def update_visibilidad_publica(visibilidad: schemas.VisibilidadPublicaUpdate, db: Session = Depends(get_db)):
+    return services.actualizar_visibilidad_publica(db, visibilidad.productos_visibles)
 
 
 @router.put("/{producto_id}", response_model=schemas.ProductoResponse, dependencies=[Depends(requiere_admin)])

@@ -36,7 +36,7 @@ def test_pasa_la_unidad_del_lote_al_producto_sin_perder_datos(tmp_path: Path) ->
     actualizar_tablas_produccion(engine)  # correrla de nuevo no rompe nada
 
     assert "unidad_medida" not in _columnas(engine, "lotes_produccion")
-    assert _columnas(engine, "productos") == {"id", "nombre", "unidadMedida", "descripcion", "activo", "id_receta"}
+    assert _columnas(engine, "productos") == {"id", "nombre", "unidadMedida", "descripcion", "activo", "id_receta", "visible_publico"}
     with engine.begin() as conexion:
         productos = conexion.execute(text("SELECT id, nombre, unidadMedida, activo FROM productos ORDER BY id")).all()
         assert [tuple(p) for p in productos] == [
@@ -73,12 +73,13 @@ def test_pasa_la_unidad_del_producto_al_esquema_del_abm(tmp_path: Path) -> None:
     actualizar_tablas_produccion(engine)
     actualizar_tablas_produccion(engine)
 
-    assert _columnas(engine, "productos") == {"id", "nombre", "unidadMedida", "descripcion", "activo", "id_receta"}
+    assert _columnas(engine, "productos") == {"id", "nombre", "unidadMedida", "descripcion", "activo", "id_receta", "visible_publico"}
     with engine.begin() as conexion:
         productos = conexion.execute(
-            text("SELECT id, unidadMedida, activo, descripcion, id_receta FROM productos ORDER BY id")
+            text("SELECT id, unidadMedida, activo, descripcion, id_receta, visible_publico FROM productos ORDER BY id")
         ).all()
-        assert [tuple(p) for p in productos] == [(1, "KILOGRAMOS", 1, None, None), (2, "LITROS", 1, None, None)]
+        # los productos que ya existian quedan ocultos en la vista publica
+        assert [tuple(p) for p in productos] == [(1, "KILOGRAMOS", 1, None, None, 0), (2, "LITROS", 1, None, None, 0)]
     engine.dispose()
 
 
