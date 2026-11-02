@@ -458,3 +458,35 @@ def test_descargar_archivo_version_archivada(session: Session):
     ruta, nombre_orig = services.obtener_archivo_version(session, v1_id)
     assert ruta.is_file()
     assert nombre_orig == "poes_v1.pdf"
+
+def test_documento_vencido_no_tiene_version_vigente(session: Session):
+    admin = crear_personal(session, PersonalCreate(
+        documento=88812345,
+        nombre="Clara",
+        apellido="Admin",
+        email="clara.admin@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
+    ))
+    doc = services.crear_documento(
+        db=session,
+        titulo="Manual Limpieza Pasado",
+        tipo=TipoDocumento.MANUAL_BPM,
+        file=_crear_archivo_pdf_fake("manual_vencido.pdf"),
+        responsable_legajo=admin.legajo,
+        fecha_vencimiento=date.today() - timedelta(days=2),
+    )
+    assert doc.version_vigente is None
+    assert doc.ultima_version_vigente is not None
+    assert doc.ultima_version_vigente.version == 1
+
+    version_nueva = services.marcar_version_vigente(
+        db=session,
+        documento_id=doc.id,
+        version_id=doc.ultima_version_vigente.id,
+        fecha_vigencia=date.today(),
+        fecha_vencimiento=date.today() + timedelta(days=30),
+        responsable_legajo=admin.legajo,
+    )
+    assert doc.version_vigente is not None
+    assert doc.version_vigente.id == version_nueva.id

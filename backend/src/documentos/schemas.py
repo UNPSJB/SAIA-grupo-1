@@ -13,6 +13,7 @@ class VersionDocumentoResponse(BaseModel):
     archivado: bool
     es_vigente: bool = False
     fecha_vigencia: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None
     fecha_archivo: Optional[date] = None
     usuario: Optional[str] = None
     creado_el: datetime
@@ -31,6 +32,7 @@ class VersionHistorialItem(BaseModel):
     archivado: bool
     es_vigente: bool
     fecha_vigencia: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None
     fecha_archivo: Optional[date] = None
     usuario: Optional[str] = None
     creado_el: datetime
@@ -68,9 +70,11 @@ class DocumentoListItem(BaseModel):
     usuario: Optional[str] = None
     es_vigente: bool = False
     fecha_vigencia: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None
     total_versiones: int = 1
 
     model_config = ConfigDict(from_attributes=True)
 
 class MarcarVigenteRequest(BaseModel):
     fecha_vigencia: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None

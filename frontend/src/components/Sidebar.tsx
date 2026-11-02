@@ -12,9 +12,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuBadge,
   SidebarRail,
   SidebarTrigger,
 } from './ui/sidebar';
+import { useAlertasSistema } from '../hooks/useAlertasSistema';
 
 export type Modulo =
   | 'dashboard'
@@ -24,14 +26,18 @@ export type Modulo =
   | 'personas'
   | 'vencimientos'
   | 'tipoCertificado'
+  | 'tipoDocumento'
   | 'insumos_quimicos'
   | 'elementosDeLimpieza'
   | 'planDeLimpieza'
   | 'checklist'
+  | 'motivos'
   | 'documentos'
   | 'incidentes'
   | 'auditoria'
-  | 'planDeCalibracion';
+  | 'planDeCalibracion'
+  | 'productos'
+  | 'produccion';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -64,6 +70,13 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <rect width="18" height="18" x="3" y="4" rx="2" />
       <path d="M16 2v4M8 2v4M3 10h18" />
       <path d="M12 14v3l2 1" />
+    </svg>
+  ),
+  motivos: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
   ),
   checklist: (
@@ -122,6 +135,14 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <line x1="12" x2="12" y1="22" y2="12" />
     </svg>
   ),
+  productos: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m7.5 4.27 9 5.15" />
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
+    </svg>
+  ),
   personas: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -134,6 +155,14 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="8" r="6" />
       <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+    </svg>
+  ),
+  tipoDocumento: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+      <path d="M6 6h10" />
+      <path d="M6 10h10" />
+      <path d="M6 14h6" />
     </svg>
   ),
   documentos: (
@@ -157,10 +186,17 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <path d="m9 12 2 2 4-4" />
     </svg>
   ),
+  produccion: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+      <path d="M17 18h1M12 18h1M7 18h1" />
+    </svg>
+  ),
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
   const { usuario, esAdministrador, logout } = useAuth();
+  const { totalIncidentes, incidentesCriticos, vencimientosVencidos, vencimientosProximos } = useAlertasSistema();
 
   const [tema, setTema] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('saia_tema') as 'light' | 'dark') || 'light';
@@ -189,6 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       titulo: 'Higiene y POES',
       items: [
         { id: 'checklist', label: 'Checklists Diarios', icono: ICONOS_MODULO.checklist },
+        { id: 'motivos', label: 'Motivos No Realización', icono: ICONOS_MODULO.motivos },
         { id: 'planDeLimpieza', label: 'Plan de Limpieza', icono: ICONOS_MODULO.planDeLimpieza },
         { id: 'insumos_quimicos', label: 'Químicos Limpieza', icono: ICONOS_MODULO.insumos_quimicos },
         { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza', icono: ICONOS_MODULO.elementosDeLimpieza },
@@ -202,6 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'planDeCalibracion', label: 'Plan de Calibración', icono: ICONOS_MODULO.planDeCalibracion },
         { id: 'sectores', label: 'Sectores', icono: ICONOS_MODULO.sectores },
         { id: 'insumos', label: 'Ingredientes', icono: ICONOS_MODULO.insumos },
+        { id: 'productos', label: 'Productos Elaborados', icono: ICONOS_MODULO.productos },
       ],
     },
     {
@@ -216,7 +254,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       id: 'calidad',
       titulo: 'Calidad y Trazabilidad',
       items: [
+        { id: 'produccion', label: 'Producción', icono: ICONOS_MODULO.produccion },
         { id: 'documentos', label: 'Documentos', icono: ICONOS_MODULO.documentos },
+        { id: 'tipoDocumento', label: 'Tipo Documento', icono: ICONOS_MODULO.tipoDocumento },
         {
           id: 'incidentes',
           label: esAdministrador ? 'Incidentes' : 'Reportar Incidente',
@@ -284,6 +324,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
                       >
                         <span className="saia-sidebar-menu-icon">{item.icono}</span>
                         <span className="saia-sidebar-menu-label">{item.label}</span>
+                        {(() => {
+                          const conteo =
+                            item.id === 'incidentes'
+                              ? totalIncidentes
+                              : item.id === 'vencimientos'
+                              ? vencimientosVencidos + vencimientosProximos
+                              : 0;
+                          const esCritico =
+                            item.id === 'incidentes'
+                              ? incidentesCriticos > 0
+                              : item.id === 'vencimientos'
+                              ? vencimientosVencidos > 0
+                              : false;
+
+                          if (conteo <= 0) return null;
+                          return (
+                            <SidebarMenuBadge
+                              style={{
+                                backgroundColor: esCritico ? 'var(--color-error-bg)' : undefined,
+                                color: esCritico ? 'var(--color-error-texto)' : undefined,
+                                borderColor: esCritico ? 'var(--color-error)' : undefined,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {conteo}
+                            </SidebarMenuBadge>
+                          );
+                        })()}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );

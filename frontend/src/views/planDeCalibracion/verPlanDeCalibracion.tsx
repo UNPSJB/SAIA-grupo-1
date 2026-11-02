@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { PlanDeCalibracionConId } from './tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
@@ -42,28 +42,31 @@ export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({
   const [modalVerCalibracion, setModalVer] = useState(false);
   const [calibracionSeleccionada, setCalibracionSeleccionada] = useState<number | null>(null);
 
-  const fetchPlanCalibracion = useCallback(async () => {
-    if (!planCalibracionID) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`/plan_de_calibracion/${planCalibracionID}/`);
-      if (res.ok) {
-        const data = await res.json();
-        setPlanCalibracion(data);
-      } else {
-        setError('No se pudo cargar la información del plan de calibración.');
-      }
-    } catch {
-      setError('Error al conectar con el servidor.');
-    } finally {
-      setLoading(false);
-    }
-  }, [planCalibracionID]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    if (!planCalibracionID) return;
+    let cancelado = false;
+    const fetchPlanCalibracion = async () => {
+      try {
+        const res = await apiFetch(`/plan_de_calibracion/${planCalibracionID}/`);
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setPlanCalibracion(data);
+        } else if (!cancelado) {
+          setError('No se pudo cargar la información del plan de calibración.');
+        }
+      } catch {
+        if (!cancelado) setError('Error al conectar con el servidor.');
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     fetchPlanCalibracion();
-  }, [fetchPlanCalibracion]);
+    return () => {
+      cancelado = true;
+    };
+  }, [planCalibracionID, refreshKey]);
 
   const cantidadRealizaciones = planCalibracion?.calibraciones_realizadas?.length || 0;
 
@@ -213,7 +216,7 @@ export const VerPlanDeCalibracion: React.FC<DetallePlanCalibracionProps> = ({
             planID={planCalibracion?.id}
             onSuccess={() => {
               setModalAbierto(false);
-              fetchPlanCalibracion();
+              setRefreshKey((k) => k + 1);
             }}
             onCancel={() => setModalAbierto(false)}
           />

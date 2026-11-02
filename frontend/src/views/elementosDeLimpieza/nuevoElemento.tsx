@@ -27,8 +27,8 @@ interface NuevoElementoLimpiezaProps {
     setErrorMsg(null);
 
     if (name === 'nombre') {
-      if (value.length > 20) {
-        setAdvertenciaInput('El nombre no puede tener más de 20 caracteres.');
+      if (value.length > 50) {
+        setAdvertenciaInput('El nombre no puede tener más de 50 caracteres.');
         return;
       }
       setFormData((prev) => ({ ...prev, nombre: value }));
@@ -72,8 +72,8 @@ interface NuevoElementoLimpiezaProps {
       return;
     }
 
-    if (nombreLimpio.length > 20) {
-      setErrorMsg('El nombre no puede superar los 20 caracteres.');
+    if (nombreLimpio.length > 50) {
+      setErrorMsg('El nombre no puede superar los 50 caracteres.');
       return;
     }
 
@@ -153,7 +153,7 @@ interface NuevoElementoLimpiezaProps {
             value={formData.nombre}
             onChange={handleChange}
             onBlur={handleBlurNombre}
-            maxLength={20}
+            maxLength={50}
             required
           />
         </div>

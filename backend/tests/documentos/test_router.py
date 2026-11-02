@@ -422,3 +422,35 @@ def test_api_consultar_version_vigente_por_defecto(session: Session):
     res_doc = client.get(f"/documentos/{doc_id}")
     assert res_doc.status_code == status.HTTP_200_OK
     assert res_doc.json()["version_vigente"]["version"] == 2
+    assert res_doc.json()["total_versiones"] == 2
+
+def test_api_crear_documento_con_fecha_vencimiento_y_vencimiento(session: Session):
+    admin = crear_personal(session, PersonalCreate(
+        documento=77665544,
+        nombre="Valeria",
+        apellido="Admin",
+        email="valeria.admin@test.com",
+        capacidad=Capacidades.ADMINISTRAR,
+        contrasenia="Clave1234",
+    ))
+    res = client.post(
+        "/documentos",
+        data={
+            "titulo": "Receta Facturas Dulce",
+            "tipo": TipoDocumento.RECETA.value,
+            "version": "1.0",
+            "responsable_legajo": str(admin.legajo),
+            "fecha_vencimiento": "2026-12-31",
+        },
+        files={"archivo": ("receta.pdf", io.BytesIO(b"%PDF-1.4 receta"), "application/pdf")},
+    )
+    assert res.status_code == status.HTTP_201_CREATED
+    data = res.json()
+    assert data["version_vigente"]["fecha_vencimiento"] == "2026-12-31"
+
+    res_list = client.get("/documentos")
+    assert res_list.status_code == status.HTTP_200_OK
+    items = res_list.json()
+    item = next(it for it in items if it["id"] == data["id"])
+    assert item["fecha_vencimiento"] == "2026-12-31"
+    assert item["es_vigente"] is True

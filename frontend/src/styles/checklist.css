@@ -70,11 +70,20 @@
   border: 1px solid color-mix(in srgb, var(--color-exito) 30%, transparent);
 }
 
-.badge-estado.vencido {
+.badge-estado.vencido,
+.badge-estado.vencida {
   background-color: var(--color-error-bg);
   color: var(--color-error-texto);
   border: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
 }
+
+.badge-estado.no_realizado,
+.badge-estado.justificada {
+  background-color: var(--color-suave);
+  color: var(--color-primario-texto);
+  border: 1px solid var(--color-borde);
+}
+
 
 .badge-registro {
   display: inline-flex;
@@ -307,6 +316,7 @@
   transition: border-color 0.2s;
 }
 
+.tarea-item-card.realizado,
 .tarea-item-card.realizada {
   border-left: 4px solid var(--color-exito);
 }
@@ -314,6 +324,18 @@
 .tarea-item-card.pendiente {
   border-left: 4px solid var(--color-alerta);
 }
+
+.tarea-item-card.vencido,
+.tarea-item-card.vencida {
+  border-left: 4px solid var(--color-error);
+}
+
+.tarea-item-card.no_realizado,
+.tarea-item-card.no_realizada {
+  border-left: 4px solid var(--color-texto-sec);
+  background-color: var(--color-fondo);
+}
+
 
 .tarea-item-top {
   display: flex;
@@ -804,6 +826,80 @@
 .tarea-expandida-card.pendiente {
   border-left: 4px solid var(--color-alerta);
 }
+
+.tarea-expandida-card.vencido,
+.tarea-expandida-card.vencida {
+  border-left: 4px solid var(--color-error);
+}
+
+.tarea-expandida-card.no_realizado {
+  border-left: 4px solid var(--color-texto-sec);
+  background-color: var(--color-fondo);
+}
+
+.badge-justificada-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  background-color: var(--color-suave);
+  color: var(--color-primario-texto);
+  border: 1px solid var(--color-borde);
+}
+
+.badge-vencida-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  background-color: var(--color-error-bg);
+  color: var(--color-error-texto);
+  border: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
+}
+
+.tarea-justificacion-box {
+  background-color: var(--color-suave);
+  border: 1px solid var(--color-borde);
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+  margin-top: 0.35rem;
+}
+
+.tarea-justificacion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.tarea-justificacion-tag {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-primario-texto);
+  text-transform: uppercase;
+}
+
+.tarea-justificacion-motivo {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.tarea-justificacion-texto {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin: 0.2rem 0 0 0;
+  white-space: pre-wrap;
+}
+
 
 .tarea-expandida-top {
   display: flex;

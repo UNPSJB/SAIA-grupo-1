@@ -33,6 +33,11 @@ export const VerDetalle: React.FC<Props> = ({ insumo, onVolver, onEditar }) => {
       </div>
 
       <div className="form-group">
+        <label htmlFor="proveedor">Proveedor</label>
+        <input id="proveedor" value={insumo.proveedor || 'Sin especificar'} disabled />
+      </div>
+
+      <div className="form-group">
         <label htmlFor="stock_actual">Existencias Actuales</label>
         <input id="stock_actual" value={insumo.stock_actual} disabled />
       </div>
@@ -57,4 +62,3 @@ export const VerDetalle: React.FC<Props> = ({ insumo, onVolver, onEditar }) => {
     </div>
   );
 };
-

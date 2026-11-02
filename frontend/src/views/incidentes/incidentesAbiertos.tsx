@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { Incidente, IncidenteAbierto, IncidentesMetricas, NivelUrgencia } from './tipos';
 import {
   ETIQUETAS_ESTADO,
+  EtiquetaCategoria,
   formatearAntiguedad,
   formatearFecha,
 } from './tipos';
 import { DetalleIncidenteModal } from './detalleModal';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import '../../styles/formularioAlta.css';
 import '../../styles/incidentes.css';
@@ -90,11 +92,13 @@ const FotoMiniatura: React.FC<FotoMiniaturaProps> = ({ incidenteId, descripcion,
 
 export interface IncidentesAbiertosProps {
   onVerHistorialCompleto?: () => void;
+  onVerCategorias?: () => void;
   onRegistrarClick?: () => void;
 }
 
 export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
   onVerHistorialCompleto,
+  onVerCategorias,
   onRegistrarClick,
 }) => {
   const [incidentes, setIncidentes] = useState<IncidenteAbierto[]>([]);
@@ -108,46 +112,51 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
   const [incidenteSeleccionado, setIncidenteSeleccionado] = useState<Incidente | null>(null);
   const [abrirConCierre, setAbrirConCierre] = useState(false);
 
-  const cargarDatos = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [resAbiertos, resMetricas] = await Promise.all([
-        apiFetch('/incidentes/abiertos'),
-        apiFetch('/incidentes/abiertos/metricas'),
-      ]);
-
-      if (resAbiertos.ok) {
-        const dataAbiertos: IncidenteAbierto[] = await resAbiertos.json();
-        setIncidentes(dataAbiertos);
-      } else {
-        setError('No se pudo obtener el listado de incidentes abiertos.');
-      }
-
-      if (resMetricas.ok) {
-        const dataMetricas: IncidentesMetricas = await resMetricas.json();
-        setMetricas(dataMetricas);
-      }
-    } catch {
-      setError('Error de conexión al cargar los incidentes abiertos.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let cancelado = false;
+    const cargarDatos = async () => {
+      try {
+        const [resAbiertos, resMetricas] = await Promise.all([
+          apiFetch('/incidentes/abiertos'),
+          apiFetch('/incidentes/abiertos/metricas'),
+        ]);
+
+        if (resAbiertos.ok) {
+          const dataAbiertos: IncidenteAbierto[] = await resAbiertos.json();
+          if (!cancelado) setIncidentes(dataAbiertos);
+        } else if (!cancelado) {
+          setError('No se pudo obtener el listado de incidentes abiertos.');
+        }
+
+        if (resMetricas.ok) {
+          const dataMetricas: IncidentesMetricas = await resMetricas.json();
+          if (!cancelado) setMetricas(dataMetricas);
+        }
+      } catch {
+        if (!cancelado) setError('Error de conexión al cargar los incidentes abiertos.');
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     cargarDatos();
-  }, []);
+    return () => {
+      cancelado = true;
+    };
+  }, [refreshKey]);
 
   const incidentesFiltrados = incidentes.filter((inc) => {
     const termino = busqueda.toLowerCase().trim();
     const desc = (inc.descripcion || '').toLowerCase();
+    const cat = (inc.categoria_nombre || inc.nombre_tipo || '').toLowerCase();
     const rep = (inc.nombre_reportante || '').toLowerCase();
     const legajo = (inc.reportado_por_id ?? '').toString();
 
     const coincideBusqueda =
       !termino ||
       desc.includes(termino) ||
+      cat.includes(termino) ||
       rep.includes(termino) ||
       legajo.includes(termino);
 
@@ -219,13 +228,13 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
         )}
       </div>
 
-      {onVerHistorialCompleto && (
-        <div className="tabs-incidentes-header">
-          <button type="button" className="tab-incidente-btn activo">
-            <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
-            Abiertos
-            <span className="badge-tab-contador abiertos">{incidentes.length}</span>
-          </button>
+      <div className="tabs-incidentes-header">
+        <button type="button" className="tab-incidente-btn activo">
+          <span className="status-dot" style={{ backgroundColor: 'var(--color-error)' }} />
+          Abiertos
+          <span className="badge-tab-contador abiertos">{incidentes.length}</span>
+        </button>
+        {onVerHistorialCompleto && (
           <button
             type="button"
             className="tab-incidente-btn"
@@ -233,8 +242,17 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
           >
             Historial Completo
           </button>
-        </div>
-      )}
+        )}
+        {onVerCategorias && (
+          <button
+            type="button"
+            className="tab-incidente-btn"
+            onClick={onVerCategorias}
+          >
+            Categorías
+          </button>
+        )}
+      </div>
 
       <div className="tablero-metricas-grid">
         <div className="tarjeta-metrica">
@@ -280,7 +298,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             <span className="tarjeta-metrica-valor" style={{ color: 'var(--color-alerta-texto)' }}>
               {metricas?.por_antiguedad.entre_24h_y_72h ?? incidentes.filter((i) => i.nivel_urgencia === 'ATENCION').length}
             </span>
-            <span className="tarjeta-metrica-label">En Atención (24h - 72h)</span>
+            <span className="tarjeta-metrica-label">Urgencia Media (24h - 72h)</span>
           </div>
         </div>
 
@@ -341,7 +359,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             onClick={() => setFiltroUrgencia('ATENCION')}
           >
             <span className="status-dot" style={{ backgroundColor: 'var(--color-alerta)' }} />
-            En Atención
+            Urgencia Media
             <span className="badge-conteo">{incidentes.filter((i) => i.nivel_urgencia === 'ATENCION').length}</span>
           </button>
           <button
@@ -363,7 +381,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
               <th style={{ width: '13%' }}>Antigüedad</th>
               <th style={{ width: '11%' }}>Fecha</th>
               <th style={{ width: '16%' }}>Reportado Por</th>
-              <th style={{ width: '31%' }}>Descripción</th>
+              <th style={{ width: '31%' }}>Categoría</th>
               <th style={{ width: '9%', textAlign: 'center' }}>Evidencia</th>
               <th style={{ width: '9%', textAlign: 'center' }}>Estado</th>
               <th className="acciones-col" style={{ width: '11%', textAlign: 'center' }}>Acciones</th>
@@ -390,7 +408,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                       type="button"
                       className="btn-guardar"
                       style={{ padding: '0.4rem 1rem', fontSize: '13px' }}
-                      onClick={cargarDatos}
+                      onClick={() => setRefreshKey((k) => k + 1)}
                     >
                       Reintentar
                     </button>
@@ -464,21 +482,11 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                       </div>
                     </td>
                     <td>
-                      <div
-                        title={inc.descripcion}
-                        style={{
-                          color: 'var(--text-h)',
-                          fontSize: '13px',
-                          lineHeight: '1.45',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {inc.descripcion}
-                      </div>
+                      <EtiquetaCategoria
+                        nombre={inc.categoria_nombre || inc.nombre_tipo || 'General'}
+                        id={inc.categoria_id}
+                        size="sm"
+                      />
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {inc.foto_url ? (

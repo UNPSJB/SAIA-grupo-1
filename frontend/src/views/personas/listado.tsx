@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import type { Persona } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
-import { Paginacion, usePaginacion } from "../../components/ui/paginacion";
+import { Paginacion } from "../../components/ui/paginacion";
+import { usePaginacion } from "../../components/ui/usePaginacion";
 import { apiFetch } from '../../api/client';
 
 export interface ListadoPersonasProps {
@@ -28,27 +29,35 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
-  const cargarPersonas = async () => {
-    try {
-      const res = await apiFetch("/personal/", {
-        method: "GET",
-        headers: { "Accept": "application/json" },
-      });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setPersonas(data);
-      }
-    } catch (e) {
-      console.error("Error al cargar personas:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    cargarPersonas();
-  }, []);
+    let cancelado = false;
+    const cargar = async () => {
+      try {
+        const res = await apiFetch("/personal/", {
+          method: "GET",
+          headers: { "Accept": "application/json" },
+        });
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setPersonas(data);
+          }
+        }
+      } catch (e) {
+        console.error("Error al cargar personas:", e);
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
+      }
+    };
+    cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, [refreshKey]);
 
   const abrirConfirmacion = (p: Persona) => {
     setPersonaAConfirmar(p);
@@ -71,9 +80,9 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || `Error al ${accion} la persona`);
       }
-      cargarPersonas();
-    } catch (err: any) {
-      setErrorDialogMsg(err.message || `Error al ${accion} la persona.`);
+      setRefreshKey((k) => k + 1);
+    } catch (err: unknown) {
+      setErrorDialogMsg((err instanceof Error ? err.message : null) || `Error al ${accion} la persona.`);
     } finally {
       setDialogAbierto(false);
       setPersonaAConfirmar(null);

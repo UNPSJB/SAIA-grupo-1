@@ -27,8 +27,8 @@ export const NuevoTipoCertificado: React.FC<NuevoTipoCertificadoProps> = ({
     setErrorMsg(null);
 
     if (name === 'nombre') {
-      if (value.length > 50) {
-        setAdvertenciaInput('El nombre no puede tener más de 50 caracteres.');
+      if (value.length > 150) {
+        setAdvertenciaInput('El nombre no puede tener más de 150 caracteres.');
         return;
       }
       setFormData({ nombre: value });
@@ -54,8 +54,8 @@ export const NuevoTipoCertificado: React.FC<NuevoTipoCertificadoProps> = ({
       return;
     }
 
-    if (nombreLimpio.length > 50) {
-      setErrorMsg('El nombre no puede superar los 50 caracteres.');
+    if (nombreLimpio.length > 150) {
+      setErrorMsg('El nombre no puede superar los 150 caracteres.');
       return;
     }
 
@@ -121,7 +121,7 @@ export const NuevoTipoCertificado: React.FC<NuevoTipoCertificadoProps> = ({
             value={formData.nombre}
             onChange={handleChange}
             onBlur={handleBlurNombre}
-            maxLength={50}
+            maxLength={150}
             required
           />
         </div>

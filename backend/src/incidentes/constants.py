@@ -5,7 +5,6 @@ ACCION_CORRECTIVA_MAX = 1000
 MOTIVO_REAPERTURA_MAX = 500
 FOTO_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 
-# Se valida por el contenido real del archivo (sus primeros bytes), no por lo que declare el cliente.
 FIRMAS_IMAGEN = {
     b"\xff\xd8\xff": ".jpg",
     b"\x89PNG\r\n\x1a\n": ".png",
@@ -19,6 +18,27 @@ class EstadoIncidente(StrEnum):
     RESUELTO = auto()  # mantenido para retrocompatibilidad con registros previos
     DESCARTADO = auto()
     REABIERTO = auto()
+
+
+class TipoIncidente(StrEnum):
+    EQUIPAMIENTO = "equipamiento"
+    LIMPIEZA = "limpieza"
+    EDILICIO = "edilicio"
+    MATERIA_PRIMA = "materia_prima"
+    PLAGAS = "plagas"
+    CONDUCTA = "conducta"
+    OTRO = "otro"
+
+
+ETIQUETAS_TIPO: dict[TipoIncidente, str] = {
+    TipoIncidente.EQUIPAMIENTO: "Equipamiento / Maquinaria",
+    TipoIncidente.LIMPIEZA: "Higiene y Limpieza",
+    TipoIncidente.EDILICIO: "Edilicio / Instalaciones",
+    TipoIncidente.MATERIA_PRIMA: "Materia Prima / Insumos",
+    TipoIncidente.PLAGAS: "Control de Plagas",
+    TipoIncidente.CONDUCTA: "Personal / Conducta",
+    TipoIncidente.OTRO: "Otro",
+}
 
 
 class ErrorCode:

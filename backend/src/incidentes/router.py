@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin, requiere_operador
 from src.database import get_db
 from src.incidentes import schemas, services
-from src.incidentes.constants import EstadoIncidente
+from src.incidentes.constants import EstadoIncidente, TipoIncidente
 from src.personal.models import Personal
 
 router = APIRouter(prefix="/incidentes", tags=["Incidentes"])
@@ -15,11 +15,13 @@ router = APIRouter(prefix="/incidentes", tags=["Incidentes"])
 @router.post("/", response_model=schemas.Incidente, status_code=status.HTTP_201_CREATED)
 async def crear_incidente_endpoint(
     descripcion: str = Form(...),
+    tipo: Optional[TipoIncidente] = Form(TipoIncidente.OTRO),
+    categoria_id: Optional[int] = Form(None),
     foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     usuario: Personal = Depends(requiere_operador),
 ):
-    return services.crear_incidente(db, usuario, descripcion, foto)
+    return services.crear_incidente(db, usuario, descripcion, foto, tipo, categoria_id)
 
 
 @router.get("/", response_model=List[schemas.Incidente])
@@ -28,10 +30,11 @@ async def listar_incidentes_endpoint(
     hasta: Optional[date] = Query(None),
     estado: Optional[EstadoIncidente] = Query(None),
     reportado_por_id: Optional[int] = Query(None),
+    tipo: Optional[TipoIncidente] = Query(None),
     db: Session = Depends(get_db),
     usuario: Personal = Depends(get_usuario_actual),
 ):
-    return services.listar_incidentes(db, usuario, desde, hasta, estado, reportado_por_id)
+    return services.listar_incidentes(db, usuario, desde, hasta, estado, reportado_por_id, tipo)
 
 
 @router.get(
@@ -54,6 +57,33 @@ async def obtener_metricas_abiertos_endpoint(
     db: Session = Depends(get_db),
 ):
     return services.obtener_metricas_incidentes_abiertos(db)
+
+
+@router.get(
+    "/estadisticas/por-tipo",
+    response_model=schemas.EstadisticaIncidentesPorTipo,
+    dependencies=[Depends(requiere_admin)],
+)
+async def obtener_estadisticas_por_tipo_endpoint(
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+):
+    return services.obtener_estadisticas_por_tipo(db, desde, hasta)
+
+
+@router.get(
+    "/estadisticas/por-tipo/{tipo}",
+    response_model=List[schemas.Incidente],
+    dependencies=[Depends(requiere_admin)],
+)
+async def listar_incidentes_por_tipo_endpoint(
+    tipo: TipoIncidente,
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+):
+    return services.listar_incidentes_por_tipo(db, tipo, desde, hasta)
 
 
 @router.get("/{incidente_id}", response_model=schemas.Incidente)
@@ -136,3 +166,4 @@ async def reabrir_incidente_endpoint(
 async def eliminar_incidente_endpoint(incidente_id: int, db: Session = Depends(get_db)):
     services.eliminar_incidente(db, incidente_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+

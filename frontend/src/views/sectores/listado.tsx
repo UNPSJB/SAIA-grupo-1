@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import type { Sector } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 
 interface ListadoSectoresProps {
@@ -21,24 +22,27 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const cargarSectores = async () => {
-    try {
-      const res = await apiFetch('/sectores/');
-      if (res.ok) {
-        const data = await res.json();
-        setSectores(data);
-      } else {
-        setSectores([]);
-      }
-    } catch {
-      setSectores([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let cancelado = false;
+    const cargarSectores = async () => {
+      try {
+        const res = await apiFetch('/sectores/');
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setSectores(data);
+        } else if (!cancelado) {
+          setSectores([]);
+        }
+      } catch {
+        if (!cancelado) setSectores([]);
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     cargarSectores();
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   const abrirConfirmacion = (sector: Sector) => {

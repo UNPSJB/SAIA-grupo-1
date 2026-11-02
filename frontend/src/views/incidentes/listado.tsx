@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import type { FiltroEstadoGrupo, Incidente } from './tipos';
 import {
   ETIQUETAS_ESTADO,
+  EtiquetaCategoria,
   esIncidenteAbierto,
   esIncidenteCerrado,
   formatearFecha,
 } from './tipos';
 import { DetalleIncidenteModal } from './detalleModal';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import '../../styles/formularioAlta.css';
 import '../../styles/incidentes.css';
@@ -80,10 +82,15 @@ const FotoMiniatura: React.FC<FotoMiniaturaProps> = ({ incidenteId, descripcion,
 
 export interface ListadoIncidentesProps {
   onVerAbiertos?: () => void;
+  onVerCategorias?: () => void;
   onRegistrarClick?: () => void;
 }
 
-export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbiertos, onRegistrarClick }) => {
+export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({
+  onVerAbiertos,
+  onVerCategorias,
+  onRegistrarClick,
+}) => {
   const [incidentes, setIncidentes] = useState<Incidente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -144,12 +151,14 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
   const incidentesFiltrados = incidentes.filter((inc) => {
     const termino = busqueda.toLowerCase().trim();
     const desc = (inc.descripcion || '').toLowerCase();
+    const cat = (inc.categoria_nombre || inc.nombre_tipo || '').toLowerCase();
     const rep = (inc.nombre_reportante || '').toLowerCase();
     const legajo = (inc.reportado_por_id ?? '').toString();
 
     const coincideBusqueda =
       !termino ||
       desc.includes(termino) ||
+      cat.includes(termino) ||
       rep.includes(termino) ||
       legajo.includes(termino);
 
@@ -196,8 +205,8 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
         )}
       </div>
 
-      {onVerAbiertos && (
-        <div className="tabs-incidentes-header">
+      <div className="tabs-incidentes-header">
+        {onVerAbiertos && (
           <button
             type="button"
             className="tab-incidente-btn"
@@ -207,11 +216,20 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
             Abiertos
             <span className="badge-tab-contador abiertos">{totalAbiertos}</span>
           </button>
-          <button type="button" className="tab-incidente-btn activo">
-            Historial Completo
+        )}
+        <button type="button" className="tab-incidente-btn activo">
+          Historial Completo
+        </button>
+        {onVerCategorias && (
+          <button
+            type="button"
+            className="tab-incidente-btn"
+            onClick={onVerCategorias}
+          >
+            Categorías
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="filtros-top-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
         <div style={{ position: 'relative', flex: '1', minWidth: '260px', maxWidth: '420px' }}>
@@ -267,7 +285,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
             <tr>
               <th style={{ width: '13%' }}>Fecha</th>
               <th style={{ width: '18%' }}>Reportado Por</th>
-              <th style={{ width: '37%' }}>Descripción</th>
+              <th style={{ width: '37%' }}>Categoría</th>
               <th style={{ width: '10%', textAlign: 'center' }}>Evidencia</th>
               <th style={{ width: '11%', textAlign: 'center' }}>Estado</th>
               <th className="acciones-col" style={{ width: '11%', textAlign: 'center' }}>Acciones</th>
@@ -352,21 +370,11 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({ onVerAbier
                       </div>
                     </td>
                     <td>
-                      <div
-                        title={inc.descripcion}
-                        style={{
-                          color: 'var(--text-h)',
-                          fontSize: '13px',
-                          lineHeight: '1.45',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {inc.descripcion}
-                      </div>
+                      <EtiquetaCategoria
+                        nombre={inc.categoria_nombre || inc.nombre_tipo || 'General'}
+                        id={inc.categoria_id}
+                        size="sm"
+                      />
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {inc.foto_url ? (

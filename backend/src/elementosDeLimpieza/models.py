@@ -8,7 +8,7 @@ class ElementoDeLimpieza(ModeloBase):
     __tablename__ = "elementos de limpieza"
 
     id : Mapped[int] = mapped_column(primary_key=True, index=True)
-    nombre: Mapped[str] = mapped_column(String(20), index=True)
+    nombre: Mapped[str] = mapped_column(String(50), index=True)
     frecuenciaDeCambio: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     fechaCambio: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, default=True)

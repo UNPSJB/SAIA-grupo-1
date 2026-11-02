@@ -1,8 +1,19 @@
 export type Frecuencia = 'diaria' | 'semanal' | 'mensual';
 
-export type EstadoTareaItem = 'pendiente' | 'realizado';
+export type EstadoTareaItem = 'pendiente' | 'realizado' | 'no_realizado' | 'vencido' | 'reasignado';
+
+export type MotivoNoRealizado = 'equipo_fuera_de_uso' | 'falta_de_insumo' | 'otro' | string;
 
 export type EstadoGeneralChecklist = 'pendiente' | 'completado' | 'vencido';
+
+export interface HistorialItem {
+  id: number;
+  fecha_hora: string;
+  usuario_legajo?: number | null;
+  usuario_nombre?: string | null;
+  accion: string;
+  detalle: string;
+}
 
 export interface InsumoUtilizado {
   id?: number;
@@ -27,6 +38,13 @@ export interface ChecklistItem {
   imagen?: string | null;
   insumos_utilizados: InsumoUtilizado[];
   fecha_hora_fin?: string | null;
+  motivo_no_realizado?: MotivoNoRealizado | null;
+  observacion_no_realizado?: string | null;
+  fecha_hora_no_realizado?: string | null;
+  es_reasignada?: boolean;
+  checklist_fecha?: string | null;
+  dias_restantes?: number | null;
+  historial?: HistorialItem[];
 }
 
 export interface Checklist {
@@ -40,7 +58,11 @@ export interface Checklist {
   porcentaje_cumplimiento: number;
   total_tareas: number;
   tareas_completadas: number;
+  tareas_reasignadas?: number;
+  tareas_no_realizadas?: number;
   tareas_pendientes: number;
+  tareas_vencidas?: number;
+  tiene_reasignacion_no_leida?: boolean;
   items: ChecklistItem[];
 }
 
@@ -60,4 +82,14 @@ export interface ChecklistGenerarPayload {
 export interface CompletarTareaPayload {
   responsable_legajo: number;
   insumos_utilizados?: InsumoUtilizado[];
+}
+
+export interface MarcarNoRealizadaPayload {
+  motivo: MotivoNoRealizado;
+  observacion?: string;
+}
+
+export interface ReasignarTareaPayload {
+  nuevo_responsable_legajo: number;
+  motivo?: string;
 }

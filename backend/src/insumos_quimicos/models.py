@@ -11,6 +11,9 @@ class InsumoQuimico(ModeloBase):
     tipo = Column(SQLEnum(TipoQuimicoEnum), nullable=False)
     unidad_medida = Column(SQLEnum(UnidadMedidaEnum), nullable=False)
     stock_actual = Column(Float, default=0.0, nullable=False)
+    proveedor = Column(String(150), nullable=True, default=None)
     activo = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -42,40 +42,47 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
 }) => {
   const [versiones, setVersiones] = useState<VersionItem[]>([]);
   const [loadingVersiones, setLoadingVersiones] = useState(false);
+  const [fechaVencimiento, setFechaVencimiento] = useState("");
   const [enviandoId, setEnviandoId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
 
-  const cargarVersiones = async () => {
-    if (!documento) return;
-    setLoadingVersiones(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`/documentos/${documento.id}/versiones`);
-      if (res.ok) {
-        const data: VersionItem[] = await res.json();
-        setVersiones(data);
-      } else {
-        throw new Error("No se pudieron cargar las versiones del documento.");
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error al conectar con el servidor.");
-    } finally {
-      setLoadingVersiones(false);
-    }
-  };
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!isOpen || !documento) return;
-    setMensajeExito(null);
-    cargarVersiones();
-  }, [isOpen, documento]);
+    let cancelado = false;
+    const cargar = async () => {
+      try {
+        const res = await apiFetch(`/documentos/${documento.id}/versiones`);
+        if (!cancelado && res.ok) {
+          const data: VersionItem[] = await res.json();
+          setVersiones(data);
+        } else if (!cancelado) {
+          setError("No se pudieron cargar las versiones del documento.");
+        }
+      } catch (err: unknown) {
+        if (!cancelado) {
+          setError(err instanceof Error ? err.message : "Error al conectar con el servidor.");
+        }
+      } finally {
+        if (!cancelado) {
+          setLoadingVersiones(false);
+        }
+      }
+    };
+    cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, [isOpen, documento, refreshKey]);
 
   if (!isOpen || !documento) return null;
 
   const handleMarcarVigente = async (versionId: number) => {
     setError(null);
     setMensajeExito(null);
+
     setEnviandoId(versionId);
 
     const hoy = new Date().toISOString().split("T")[0];
@@ -90,6 +97,7 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
           },
           body: JSON.stringify({
             fecha_vigencia: hoy,
+            fecha_vencimiento: fechaVencimiento || null,
           }),
         }
       );
@@ -100,7 +108,7 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
       }
 
       setMensajeExito("Versión marcada como vigente exitosamente.");
-      await cargarVersiones();
+      setRefreshKey((k) => k + 1);
       onSuccess();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al marcar la versión como vigente.");
@@ -128,8 +136,29 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
           {error && <div className="alerta-error">{error}</div>}
           {mensajeExito && <div className="alerta-exito">{mensajeExito}</div>}
 
-          <div style={{ fontSize: "0.88rem", color: "var(--color-texto-sec)" }}>
-            Selecciona la versión que deseas establecer como la única vigente. La fecha de entrada en vigencia se registrará automáticamente como la fecha de hoy.
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem" }}>
+            <div style={{ fontSize: "0.88rem", color: "var(--color-texto-sec)" }}>
+              Selecciona la fecha de vencimiento (opcional) y luego haz clic en el botón de la versión que deseas establecer como vigente.
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <label htmlFor="fechaVencModal" style={{ fontWeight: 600, fontSize: "0.9rem" }}>
+                Fecha de Vencimiento de la versión vigente (opcional):
+              </label>
+              <input
+                id="fechaVencModal"
+                type="date"
+                value={fechaVencimiento}
+                onChange={(e) => setFechaVencimiento(e.target.value)}
+                style={{
+                  padding: "0.45rem 0.75rem",
+                  borderRadius: "6px",
+                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--code-bg)",
+                  color: "var(--text-h)",
+                }}
+              />
+            </div>
           </div>
 
           <div className="tabla-wrapper" style={{ maxHeight: "50vh", overflowY: "auto" }}>
@@ -138,6 +167,7 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
                 <tr>
                   <th>Versión</th>
                   <th>Entrada en Vigencia</th>
+                  <th>Vencimiento</th>
                   <th>Fecha de Archivo</th>
                   <th>Peso</th>
                   <th className="acciones-col" style={{ textAlign: "center" }}>Acción</th>
@@ -146,13 +176,13 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
               <tbody>
                 {loadingVersiones ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
                       Cargando versiones...
                     </td>
                   </tr>
                 ) : versiones.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
                       No se encontraron versiones para este documento.
                     </td>
                   </tr>
@@ -189,6 +219,7 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
                           )}
                         </td>
                         <td>{formatearFecha(v.fecha_vigencia)}</td>
+                        <td>{formatearFecha(v.fecha_vencimiento)}</td>
                         <td>
                           {v.es_vigente ? (
                             <span style={{ color: "var(--color-exito-texto)", fontWeight: 500 }}>Vigente actual</span>
@@ -200,9 +231,15 @@ export const ModalMarcarVigente: React.FC<ModalMarcarVigenteProps> = ({
                         <td className="acciones-col">
                           <div className="acciones-btns" style={{ justifyContent: "center" }}>
                             {v.es_vigente ? (
-                              <span style={{ color: "var(--color-exito-texto)", fontWeight: 600, fontSize: "0.85rem" }}>
-                                ✓ Actual
-                              </span>
+                              <button
+                                type="button"
+                                className="btn-icon btn-vigente"
+                                title="Actualizar vencimiento de la versión vigente actual"
+                                disabled={enviandoId !== null}
+                                onClick={() => handleMarcarVigente(v.id)}
+                              >
+                                {enviandoId === v.id ? "…" : "✓"}
+                              </button>
                             ) : (
                               <button
                                 type="button"

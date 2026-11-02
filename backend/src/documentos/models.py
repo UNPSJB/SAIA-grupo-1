@@ -26,17 +26,27 @@ class Documento(ModeloBase):
 
     @property
     def version_vigente(self) -> Optional["VersionDocumento"]:
+        hoy = date.today()
+        for v in self.versiones:
+            if v.es_vigente:
+                if v.fecha_vencimiento and v.fecha_vencimiento < hoy:
+                    return None
+                return v
+        return None
+
+    @property
+    def ultima_version_vigente(self) -> Optional["VersionDocumento"]:
         for v in self.versiones:
             if v.es_vigente:
                 return v
         for v in self.versiones:
-            if not v.archivado:
+            if v.fecha_vencimiento:
                 return v
         return self.versiones[0] if self.versiones else None
 
     @property
     def version_actual(self) -> Optional["VersionDocumento"]:
-        return self.version_vigente
+        return self.version_vigente or (self.versiones[0] if self.versiones else None)
 
 class VersionDocumento(ModeloBase):
     __tablename__ = "versiones_documento"
@@ -50,6 +60,7 @@ class VersionDocumento(ModeloBase):
     archivado: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
     es_vigente: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
     fecha_vigencia: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    fecha_vencimiento: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
     fecha_archivo: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
     creado_por_legajo: Mapped[Optional[int]] = mapped_column(ForeignKey("personal.legajo"), nullable=True, index=True)
     creado_por_usuario: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

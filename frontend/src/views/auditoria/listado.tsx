@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import type { Auditoria } from "./tipos";
 import { apiFetch } from '../../api/client';
-import { Paginacion, usePaginacion } from '../../components/ui/paginacion';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 
 const formatDate = (dateStr?: string | null) => {

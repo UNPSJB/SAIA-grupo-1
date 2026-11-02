@@ -53,6 +53,7 @@ class ChecklistNoModificable(BadRequest):
 class RangoFechasInvalido(BadRequest):
     DETAIL = ErrorCode.RANGO_FECHAS_INVALIDO
 
+
 class InsumoQuimicoInactivo(BadRequest):
     DETAIL = ErrorCode.INSUMO_QUIMICO_INACTIVO
 
@@ -63,3 +64,43 @@ class InsumoQuimicoNoEncontrado(NotFound):
 
 class CantidadConsumoInvalida(BadRequest):
     DETAIL = ErrorCode.CANTIDAD_CONSUMO_INVALIDA
+
+
+class MotivoNoRealizadoRequerido(BadRequest):
+    DETAIL = ErrorCode.MOTIVO_NO_REALIZADO_REQUERIDO
+
+
+class ObservacionObligatoriaParaOtro(BadRequest):
+    DETAIL = ErrorCode.OBSERVACION_OBLIGATORIA_OTRO
+
+
+class MotivoInvalido(BadRequest):
+    DETAIL = ErrorCode.MOTIVO_INVALIDO
+
+
+class TareaYaJustificada(BadRequest):
+    DETAIL = ErrorCode.TAREA_YA_JUSTIFICADA
+
+
+class TareaNoReasignablePorEstado(BadRequest):
+    DETAIL = ErrorCode.TAREA_NO_REASIGNABLE_ESTADO
+
+
+class TareaVencidaNoReasignable(BadRequest):
+    DETAIL = ErrorCode.TAREA_VENCIDA_NO_REASIGNABLE
+
+
+class ReasignarMismoOperadorSoloNoRealizada(BadRequest):
+    DETAIL = ErrorCode.REASIGNAR_MISMO_OPERADOR_SOLO_NO_REALIZADA
+
+
+class OperadorDestinoSinChecklistPendiente(BadRequest):
+    DETAIL = ErrorCode.OPERADOR_DESTINO_SIN_CHECKLIST_PENDIENTE
+
+
+class OperadorDestinoNoOperador(BadRequest):
+    DETAIL = ErrorCode.OPERADOR_DESTINO_NO_OPERADOR
+
+
+class TareaVenceHoyRequiereChecklistPendiente(OperadorDestinoSinChecklistPendiente):
+    DETAIL = ErrorCode.TAREA_VENCE_HOY_SIN_CHECKLIST

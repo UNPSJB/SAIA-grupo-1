@@ -28,8 +28,6 @@ from src.tareas.services import crear_tarea
 from src.tareas.schemas import TareaCreate
 from src.tareas.models import Frecuencia
 
-
-# creamos una db para testing
 engine = create_engine(
     settings.DB_URL_TEST,
     connect_args={"check_same_thread": False},
@@ -37,39 +35,30 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
 def override_get_db():
-    # utilizaremos esta funcion para "pisar" la que definimos en src/database.py.
+
     db = TestingSessionLocal()
-    # Para usar restricciones de FK en SQLite, debemos habilitar la siguiente opción:
+
     db.execute(text("PRAGMA foreign_keys = ON"))
     try:
         yield db
     finally:
         db.close()
 
-
-# forzamos a fastapi para que utilice la db para testing.
 app.dependency_overrides[get_db] = override_get_db
 
-# Por defecto, los tests corren como un usuario con capacidad AMBAS (legajo 1, Juan Perez),
-# asi no tienen que loguearse. Los tests de autenticacion/permisos usan la fixture
-# `autenticacion_real` (tests/autenticacion) que saca este override y usa tokens de verdad.
 USUARIO_DE_PRUEBA = SimpleNamespace(legajo=1, capacidad=Capacidades.AMBAS, activo=True)
 app.dependency_overrides[get_usuario_actual] = lambda: USUARIO_DE_PRUEBA
 
-
 @pytest.fixture
 def session() -> Generator[Session, None, None]:
-    # Creamos las tablas en la db de pruebas
+
     ModeloBase.metadata.create_all(bind=engine)
 
     db = TestingSessionLocal()
-    # Para usar restricciones de FK en SQLite, debemos habilitar la siguiente opción:
+
     db.execute(text("PRAGMA foreign_keys = ON"))
 
-    # aqui podemos crear instancias de objetos para hacer tests
-    # haciendo uso de las funciones "create_<clase>" de services y los schemas <Clase>Create.
     persona_1 = crear_personal(
         db,
         PersonalCreate(

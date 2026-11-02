@@ -117,6 +117,7 @@ def crear_documento(
     file: Optional[UploadFile] = None,
     descripcion: Optional[str] = None,
     fecha_vigencia: Optional[date] = None,
+    fecha_vencimiento: Optional[date] = None,
     usuario: Optional[Personal] = None,
     responsable_legajo: Optional[int] = None,
 ) -> Documento:
@@ -162,6 +163,7 @@ def crear_documento(
         archivado=False,
         es_vigente=True,
         fecha_vigencia=fecha_v,
+        fecha_vencimiento=fecha_vencimiento,
         fecha_archivo=None,
         creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
         creado_por_usuario=nom_usuario,
@@ -191,6 +193,7 @@ def subir_nueva_version(
     documento_id: int,
     version: Optional[Union[int, str]] = None,
     file: Optional[UploadFile] = None,
+    fecha_vencimiento: Optional[date] = None,
     usuario: Optional[Personal] = None,
     responsable_legajo: Optional[int] = None,
 ) -> VersionDocumento:
@@ -248,6 +251,7 @@ def subir_nueva_version(
         archivado=False,
         es_vigente=True,
         fecha_vigencia=hoy,
+        fecha_vencimiento=fecha_vencimiento,
         fecha_archivo=None,
         creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
         creado_por_usuario=nom_usuario,
@@ -276,6 +280,7 @@ def marcar_version_vigente(
     documento_id: int,
     version_id: int,
     fecha_vigencia: Optional[date] = None,
+    fecha_vencimiento: Optional[date] = None,
     usuario: Optional[Personal] = None,
     responsable_legajo: Optional[int] = None,
 ) -> VersionDocumento:
@@ -304,6 +309,11 @@ def marcar_version_vigente(
     )
 
     if version_destino.es_vigente:
+        if fecha_vencimiento is not None:
+            version_destino.fecha_vencimiento = fecha_vencimiento
+            version_destino.fecha_vigencia = fecha_vigencia
+            db.commit()
+            db.refresh(version_destino)
         return version_destino
 
     versiones = db.scalars(
@@ -327,6 +337,7 @@ def marcar_version_vigente(
         archivado=False,
         es_vigente=True,
         fecha_vigencia=fecha_vigencia,
+        fecha_vencimiento=fecha_vencimiento,
         fecha_archivo=None,
         creado_por_legajo=persona.legajo if hasattr(persona, "legajo") else None,
         creado_por_usuario=nom_usuario,

@@ -6,9 +6,42 @@ export type EstadoIncidente =
   | 'descartado'
   | 'reabierto';
 
+export type TipoIncidente =
+  | 'equipamiento'
+  | 'limpieza'
+  | 'edilicio'
+  | 'materia_prima'
+  | 'plagas'
+  | 'conducta'
+  | 'otro';
+
+export const ETIQUETAS_TIPO: Record<TipoIncidente, string> = {
+  equipamiento: 'Equipamiento / Maquinaria',
+  limpieza: 'Higiene y Limpieza',
+  edilicio: 'Edilicio / Instalaciones',
+  materia_prima: 'Materia Prima / Insumos',
+  plagas: 'Control de Plagas',
+  conducta: 'Personal / Conducta',
+  otro: 'Otro',
+};
+
+export const COLORES_TIPO: Record<TipoIncidente, string> = {
+  equipamiento: '#3b82f6',
+  limpieza: '#10b981',
+  edilicio: '#f59e0b',
+  materia_prima: '#8b5cf6',
+  plagas: '#ef4444',
+  conducta: '#ec4899',
+  otro: '#64748b',
+};
+
 export interface Incidente {
   id: number;
   descripcion: string;
+  tipo?: TipoIncidente;
+  nombre_tipo?: string | null;
+  categoria_id?: number | null;
+  categoria_nombre?: string | null;
   estado: EstadoIncidente;
   creado_el: string;
   reportado_por_id: number;
@@ -19,6 +52,18 @@ export interface Incidente {
   resuelto_por_id?: number | null;
   nombre_resolutor?: string | null;
   motivo_reapertura?: string | null;
+}
+
+export interface CategoriaIncidente {
+  id: number;
+  nombre: string;
+  descripcion?: string | null;
+  total_incidentes?: number;
+}
+
+export interface CategoriaIncidenteInput {
+  nombre: string;
+  descripcion?: string;
 }
 
 export type FiltroEstadoGrupo = 'TODOS' | 'ABIERTOS' | 'CERRADOS';
@@ -103,6 +148,20 @@ export interface IncidentesMetricas {
   mas_antiguo_id?: number | null;
 }
 
+export interface EstadisticaTipoItem {
+  tipo: TipoIncidente;
+  nombre: string;
+  cantidad: number;
+  porcentaje: number;
+}
+
+export interface EstadisticaIncidentesPorTipo {
+  total: number;
+  periodo_desde?: string | null;
+  periodo_hasta?: string | null;
+  por_tipo: EstadisticaTipoItem[];
+}
+
 export const formatearAntiguedad = (horas: number): string => {
   if (horas < 1) return 'Menos de 1 h';
   if (horas < 24) return `${Math.floor(horas)} h`;
@@ -111,4 +170,8 @@ export const formatearAntiguedad = (horas: number): string => {
   if (horasRestantes === 0) return `${dias} d`;
   return `${dias} d ${horasRestantes} h`;
 };
+
+export { EtiquetaCategoria, obtenerEstiloCategoria } from './etiquetaCategoria';
+export type { EstiloCategoria } from './etiquetaCategoria';
+
 

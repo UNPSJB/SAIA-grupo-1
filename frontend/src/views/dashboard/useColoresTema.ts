@@ -1,12 +1,5 @@
 import { useEffect, useState } from 'react';
 
-/**
- * Colores de la paleta (styles/tema.css) como valores concretos.
- *
- * Recharts escribe los colores como atributos del SVG (fill, stroke), y ahí var(--...) no se
- * resuelve de forma confiable; por eso los leemos ya calculados. Se vuelven a leer cuando
- * cambia el tema (atributo data-theme de <html>), así los gráficos acompañan al modo oscuro.
- */
 export interface ColoresTema {
   primario: string;
   exito: string;

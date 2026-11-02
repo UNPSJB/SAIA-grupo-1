@@ -4,7 +4,6 @@ import { apiFetch } from "../../api/client";
 import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
 import "../../styles/formularioAlta.css";
 
-
 interface NuevoDocumentoProps {
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -14,6 +13,7 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
   const [titulo, setTitulo] = useState("");
   const [tipo, setTipo] = useState<TipoDocumento>("MANUAL_BPM");
   const [descripcion, setDescripcion] = useState("");
+  const [fechaVencimiento, setFechaVencimiento] = useState("");
   const [archivo, setArchivo] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
@@ -53,6 +53,9 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
     formData.append("titulo", titulo.trim());
     formData.append("tipo", tipo);
     formData.append("version", "1");
+    if (fechaVencimiento) {
+      formData.append("fecha_vencimiento", fechaVencimiento);
+    }
     formData.append("archivo", archivo);
     if (descripcion.trim()) {
       formData.append("descripcion", descripcion.trim());
@@ -162,6 +165,16 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
             value={1}
             disabled
             style={{ opacity: 0.8, cursor: "not-allowed" }}
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="fechaVencimiento">Fecha de Vencimiento (opcional)</label>
+          <input
+            id="fechaVencimiento"
+            type="date"
+            value={fechaVencimiento}
+            onChange={(e) => setFechaVencimiento(e.target.value)}
           />
         </div>
 

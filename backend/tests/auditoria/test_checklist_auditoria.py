@@ -13,16 +13,13 @@ from src.checklist.services import (
     guardar_archivo_imagen_tarea,
 )
 
-
 def _generar(session: Session):
     return generar_checklist(
         session, schemas.ChecklistGenerar(fecha=date.today(), responsable_legajo=1)
     )
 
-
 def _png() -> UploadFile:
     return UploadFile(file=io.BytesIO(b"\x89PNG-fake"), filename="evidencia.png")
-
 
 def test_generar_checklist_audita_creacion(session: Session) -> None:
     checklist = _generar(session)
@@ -30,7 +27,6 @@ def test_generar_checklist_audita_creacion(session: Session) -> None:
     registros = listar_auditorias(session, "checklists", checklist.id)
     assert len(registros) == 1
     assert registros[0].accion == AccionAuditoria.CREAR
-
 
 def test_completar_tarea_audita_cambios(session: Session) -> None:
     checklist = _generar(session)
@@ -47,10 +43,9 @@ def test_completar_tarea_audita_cambios(session: Session) -> None:
     por_campo = {r.campo: r for r in registros}
     assert por_campo["estado"].valor_previo == "pendiente"
     assert por_campo["estado"].valor_posterior == "realizado"
-    # el responsable viene asignado desde la tarea: completarla no lo modifica
+
     assert "responsable_legajo" not in por_campo
     assert all(r.accion == AccionAuditoria.MODIFICAR for r in registros)
-
 
 def test_subir_y_eliminar_imagen_auditan(session: Session) -> None:
     checklist = _generar(session)

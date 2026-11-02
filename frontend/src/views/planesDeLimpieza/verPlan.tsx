@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { PlanConId } from './tipos';
 import type { TareaConId } from '../tareas/tipos';
 import '../../styles/formularioAlta.css';
@@ -37,28 +37,29 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({
   const [modalVerTarea, setModelVer] = useState(false);
   const [tareaSeleccionada, setTareaSeleccionada] = useState<number | null>(null);
 
-  const fetchPlanLimp = useCallback(async () => {
-    if (!planlimpiezaID) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`/plan_De_limpieza/${planlimpiezaID}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPlanLimp(data);
-      } else {
-        setError('No se pudo cargar la información del plan de limpieza.');
-      }
-    } catch {
-      setError('Error al conectar con el servidor.');
-    } finally {
-      setLoading(false);
-    }
-  }, [planlimpiezaID]);
-
   useEffect(() => {
+    if (!planlimpiezaID) return;
+    let cancelado = false;
+    const fetchPlanLimp = async () => {
+      try {
+        const res = await apiFetch(`/plan_De_limpieza/${planlimpiezaID}`);
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setPlanLimp(data);
+        } else if (!cancelado) {
+          setError('No se pudo cargar la información del plan de limpieza.');
+        }
+      } catch {
+        if (!cancelado) setError('Error al conectar con el servidor.');
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     fetchPlanLimp();
-  }, [fetchPlanLimp]);
+    return () => {
+      cancelado = true;
+    };
+  }, [planlimpiezaID]);
 
   return (
     <div className="modulo-container formulario-box">
@@ -170,4 +171,4 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({
       </Dialog>
     </div>
   );
-};
+};
