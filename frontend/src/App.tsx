@@ -45,7 +45,7 @@ import NuevoPlanDeCalibracion from './views/planDeCalibracion/crearPlanDeCalibra
 import { ListadoPlanesCalibracion } from './views/planDeCalibracion/listado';
 import { Panel as PanelDashboard } from './views/dashboard/panel';
 import { ListadoCategoriasIncidentes } from './views/incidentes/categorias/listado';
-import { NotificacionesPopover } from './components/alertas/NotificacionesPopover';
+import { HeaderApp } from './components/HeaderApp';
 import type { NotificacionItem } from './hooks/useNotificaciones';
 import { ListadoDocumentos } from './views/documentos/listado';
 import { DetalleDocumento } from './views/documentos/verDetalle';
@@ -628,23 +628,14 @@ const irANotificacion = (notif: NotificacionItem) => {
     <SidebarProvider>
       <Sidebar moduloActivo={modulo} onCambiarModulo={cambiarModulo} />
 
-      <SidebarInset style={{ padding: modulo === 'dashboard' ? '14px 24px' : '32px 36px', position: 'relative' }}>
-        <div
-          className="saia-top-campana"
-          style={{
-            position: 'absolute',
-            top: modulo === 'dashboard' ? '14px' : '24px',
-            right: '36px',
-            zIndex: 50,
-          }}
-        >
-          <NotificacionesPopover
-            onNavegar={irANotificacion}
-            onIrAIncidentes={() => cambiarModulo('incidentes')}
-            onIrAVencimientos={() => cambiarModulo('vencimientos')}
-          />
-        </div>
+      <SidebarInset>
+        <HeaderApp
+          onNavegarNotificacion={irANotificacion}
+          onIrAIncidentes={() => cambiarModulo('incidentes')}
+          onIrAVencimientos={() => cambiarModulo('vencimientos')}
+        />
 
+        <div style={{ padding: modulo === 'dashboard' ? '14px 24px' : '32px 36px' }}>
         {renderBreadcrumb()}
         {modulo === 'dashboard' ? (
           <PanelDashboard
@@ -1267,6 +1258,7 @@ const irANotificacion = (notif: NotificacionItem) => {
             />
           )
         ): null}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useAuth } from '../auth/useAuth';
 import { puedeVerModulo } from '../auth/permisos';
 import {
   Sidebar as SidebarRoot,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -216,22 +215,44 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
   ),
 };
 
+const ICONOS_GRUPO: Record<string, React.ReactNode> = {
+  general: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V21h14V9.5" />
+      <path d="M10 21v-6h4v6" />
+    </svg>
+  ),
+  poes: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2.7s-6 6.3-6 10.8a6 6 0 0 0 12 0C18 9 12 2.7 12 2.7Z" />
+    </svg>
+  ),
+  planta: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z" />
+      <path d="M6 18h12M6 14h12" />
+      <rect width="12" height="12" x="6" y="10" />
+    </svg>
+  ),
+  personal: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="14" x="2" y="5" rx="2" />
+      <circle cx="8" cy="12" r="2" />
+      <path d="M14 10h4M14 14h4" />
+    </svg>
+  ),
+  calidad: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  ),
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
-  const { usuario, esAdministrador, logout } = useAuth();
+  const { esAdministrador } = useAuth();
   const { totalIncidentes, incidentesCriticos, vencimientosVencidos, vencimientosProximos } = useAlertasSistema();
-
-  const [tema, setTema] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('saia_tema') as 'light' | 'dark') || 'light';
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', tema);
-    localStorage.setItem('saia_tema', tema);
-  }, [tema]);
-
-  const alternarTema = () => {
-    setTema((prev) => (prev === 'light' ? 'dark' : 'light'));
-  };
 
   const gruposBase: GrupoNavegacion[] = [
     {
@@ -298,13 +319,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
     }))
     .filter((grupo) => grupo.items.length > 0);
 
-  const obtenerIniciales = () => {
-    if (!usuario) return 'SA';
-    const n = usuario.nombre?.[0] ?? '';
-    const a = usuario.apellido?.[0] ?? '';
-    return (n + a).toUpperCase() || usuario.usuario.slice(0, 2).toUpperCase();
-  };
-
   return (
     <SidebarRoot collapsible="icon">
       <SidebarHeader>
@@ -334,7 +348,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       <SidebarContent>
         {gruposVisibles.map((grupo) => (
           <SidebarGroup key={grupo.id} collapsible defaultOpen>
-            <SidebarGroupLabel>{grupo.titulo}</SidebarGroupLabel>
+            <SidebarGroupLabel>
+              <span className="saia-sidebar-group-titulo">
+                <span className="saia-sidebar-group-icono" aria-hidden="true">{ICONOS_GRUPO[grupo.id]}</span>
+                {grupo.titulo}
+              </span>
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {grupo.items.map((item) => {
@@ -385,64 +404,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
           </SidebarGroup>
         ))}
       </SidebarContent>
-
-      <SidebarFooter>
-        <button
-          type="button"
-          onClick={alternarTema}
-          className="saia-theme-toggle-btn"
-          title={tema === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
-        >
-          <span className="saia-theme-toggle-left">
-            <span className="saia-sidebar-menu-icon">
-              {tema === 'light' ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2v2M12 20v2m-7.07-14.93 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2m-14.93 7.07 1.41-1.41m11.32-11.32 1.41-1.41" />
-                </svg>
-              )}
-            </span>
-            <span className="saia-theme-toggle-label">
-              {tema === 'light' ? 'Modo oscuro' : 'Modo claro'}
-            </span>
-          </span>
-          <span className="saia-theme-pill">{tema === 'light' ? 'Claro' : 'Oscuro'}</span>
-        </button>
-
-        {usuario && (
-          <>
-            <div className="saia-user-card" title={`${usuario.nombre} ${usuario.apellido} (@${usuario.usuario})`}>
-              <span className="saia-user-avatar">{obtenerIniciales()}</span>
-              <div className="saia-user-info">
-                <span className="saia-user-name">
-                  {usuario.nombre} {usuario.apellido}
-                </span>
-                <span className="saia-user-meta">@{usuario.usuario}</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={logout}
-              className="saia-logout-btn"
-              title="Cerrar sesión"
-            >
-              <span className="saia-sidebar-menu-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" x2="9" y1="12" y2="12" />
-                </svg>
-              </span>
-              <span className="saia-logout-label">Cerrar sesión</span>
-            </button>
-          </>
-        )}
-      </SidebarFooter>
 
       <SidebarRail />
     </SidebarRoot>
