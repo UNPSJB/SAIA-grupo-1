@@ -47,12 +47,6 @@ async def db_creation_lifespan(app: FastAPI):
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
-    with SessionLocal() as db:
-        try:
-            from src.notificaciones.services import revisar_y_generar_vencimientos
-            revisar_y_generar_vencimientos(db)
-        except Exception:
-            pass
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)

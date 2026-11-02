@@ -1,18 +1,5 @@
-"""
-Alimenta la base local (db.sqlite3 / app.db) con datos realistas, variados y cohesivos
-para poder navegar y probar la app a mano y visualizar todas las estadísticas del Dashboard:
-- Vencimientos consolidados (personal, calibraciones, elementos de limpieza, documentos y materias primas).
-- Cumplimiento de tareas de limpieza (diario, semanal, mensual con tasas de ~85% y estado actual).
-- Incidentes (críticos +72h, media urgencia 24h-72h, recientes <24h, reabiertos y cerrados con acción correctiva).
-- Consumo histórico de insumos químicos (todas las unidades L, ML, KG, G, UN; todos los tipos; variación porcentual entre períodos; desglose por proveedor y curvas temporales).
-
-Uso (parado en backend/, con el venv activado):
-    python scripts/seed_dev_db.py
-    python scripts/seed_dev_db.py --reset
-"""
 import io
 import json
-import shutil
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -170,59 +157,15 @@ def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
     trailer = b"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + str(xref_offset).encode() + b"\n%%EOF\n"
     return header + obj1 + obj2 + obj3 + obj4 + obj5 + xref + trailer
 
-def resetear_base() -> None:
-    root_dir = Path(__file__).resolve().parent.parent.parent
-    backend_dir = Path(__file__).resolve().parent.parent
-    all_dbs = [
-        root_dir / "app.db",
-        backend_dir / "app.db",
-        root_dir / "db.sqlite3",
-        backend_dir / "db.sqlite3",
-    ]
-    for db_path in all_dbs:
-        if db_path.is_file():
-            backup = db_path.with_name(f"{db_path.name}.bak-{datetime.now():%Y%m%d-%H%M%S}")
-            shutil.copy2(db_path, backup)
-            print(f"Backup de {db_path.name} en: {backup}")
-            try:
-                db_path.unlink()
-            except Exception:
-                pass
-    try:
-        ModeloBase.metadata.drop_all(bind=engine)
-    except Exception:
-        pass
-
-def sincronizar_archivos_db() -> None:
-    root_dir = Path(__file__).resolve().parent.parent.parent
-    backend_dir = Path(__file__).resolve().parent.parent
-    all_dbs = [
-        (root_dir / "app.db").resolve(),
-        (backend_dir / "app.db").resolve(),
-        (root_dir / "db.sqlite3").resolve(),
-        (backend_dir / "db.sqlite3").resolve(),
-    ]
-
-    db_actual = Path(engine.url.database or "").resolve()
-    if db_actual.exists():
-        for target in all_dbs:
-            if target != db_actual:
-                shutil.copy2(db_actual, target)
-        print("Base de datos sincronizada hacia todas las ubicaciones (app.db y db.sqlite3 en root y backend).")
 
 def main() -> None:
-    if "--reset" in sys.argv:
-        resetear_base()
-
     ModeloBase.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     ya_hay_datos = db.query(Insumo).count() > 0
     if ya_hay_datos:
-        print("La base ya tiene datos (hay insumos cargados). No hago nada para no duplicar.")
-        print("Si querés regenerarla desde cero con todas las estadísticas, corré: python scripts/seed_dev_db.py --reset")
+        print("La base ya tiene datos. No se duplican registros.")
         db.close()
-        sincronizar_archivos_db()
         return
 
     hoy = datetime.now()
@@ -990,7 +933,6 @@ def main() -> None:
     db.commit()
 
     db.close()
-    sincronizar_archivos_db()
 
     print("\n=======================================================")
     print("Base de datos poblada exitosamente con bastantes datos de prueba:")
