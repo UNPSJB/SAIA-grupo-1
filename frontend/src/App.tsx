@@ -70,6 +70,7 @@ import { ListadoProductos } from './views/producto/listado';
 import NuevoProducto  from './views/producto/nuevoProducto';
 import EditarProducto from './views/producto/editarDetalle';
 import { DetalleProducto } from './views/producto/verDetalle';
+import { ProductosPublicos } from './views/vistaPublica/productosPublicos';
 
 type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion' | 'productos' | 'produccion';
 type VistaSectores = 'listado' | 'alta' | 'editar';
@@ -714,12 +715,7 @@ function LayoutVistaPublica() {
       <main style={{ padding: '32px 36px', maxWidth: '1200px', margin: '0 auto' }}>
         {moduloPublico === 'estadisticas' && <Panel_Publico />}
         
-        {moduloPublico === 'productos' && (
-          <div className="modulo-container" style={{ background: '#fff', padding: '24px', borderRadius: '12px' }}>
-            <h1>Productos en venta</h1>
-            <p>Aquí se mostrará el catálogo de productos.</p>
-          </div>
-        )}
+        {moduloPublico === 'productos' && <ProductosPublicos/>}
 
         {moduloPublico === 'nosotros' && <AcercaDeNosotros/>}
       </main>

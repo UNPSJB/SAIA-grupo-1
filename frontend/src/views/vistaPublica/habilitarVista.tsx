@@ -66,9 +66,10 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
         boder: 4,
         color_fill: "black", 
         color_back: "white",
-        texto:`http://192.168.1.42:5173/vista-publica?verGrafico=${config.verGrafico}&verAcercaDeNosotros=${config.verAcercaDeNosotros}`,
+        texto:`http://192.168.18.12:5173/vista-publica?verGrafico=${config.verGrafico}&verAcercaDeNosotros=${config.verAcercaDeNosotros}&verProductos=${config.verProductos}`,
         ver_grafico: config.verGrafico,
-        verAcercaDeNosotros: config.verAcercaDeNosotros
+        verAcercaDeNosotros: config.verAcercaDeNosotros,
+        verProductos: config.verProductos
     }
 
     const modulosBase = 21 + ((payload.version - 1) * 4);

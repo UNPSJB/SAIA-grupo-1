@@ -9,6 +9,10 @@ from src.producto import schemas, services
 router = APIRouter(prefix="/productos", tags=["productos"])
 
 
+@router.get("/publico", response_model=List[schemas.ProductoPublico], status_code=status.HTTP_200_OK)
+async def read_productos_publicos(db: Session = Depends(get_db)):
+    return services.listar_productos_publicos(db)
+
 @router.post("/", response_model=schemas.ProductoResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(requiere_admin)])
 async def create_producto(
     producto: schemas.ProductoCreate,
