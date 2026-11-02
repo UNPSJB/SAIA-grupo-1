@@ -86,8 +86,10 @@ import NuevoProducto  from './views/producto/nuevoProducto';
 import EditarProducto from './views/producto/editarDetalle';
 import { DetalleProducto } from './views/producto/verDetalle';
 import { InformeInspeccion } from './views/informes/informeInspeccion';
+import ActivarVista_Publica from './views/vistaPublica/habilitarVista';
+import VistaPublica_Habilitada from './views/vistaPublica/VistaHabilitada';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -183,6 +185,10 @@ function Aplicacion() {
   const [vistaProductos, setVistaProductos] = useState<VistaProductos>('listado');
   const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null);
   const [recetaDesdeProducto, setRecetaDesdeProducto] = useState<number | null>(null);
+
+  const [vistaPublicaHabilitada, setVistaPublicaHabilitada] = useState(false);
+  const [qrUrlPublica, setQrUrlPublica] = useState<string | null>(null);
+  const [idAlfanumericoPublico, setIdAlfanumericoPublico] = useState<string | null>(null);
 
   const cambiarModulo = (nuevoModulo: Modulo, limpiarFiltros: boolean = true, esDesdeDashboard: boolean = false) => {
     setModulo(nuevoModulo);
@@ -627,6 +633,8 @@ const irANotificacion = (notif: NotificacionItem) => {
         {renderBreadcrumb()}
         {modulo === 'dashboard' ? (
           <PanelDashboard
+            vistaHabilitada={vistaPublicaHabilitada}
+            onIrAVistaPublica={() => setModulo('vistaPublica')}
             onIrAlRegistro={irAlRegistroDeVencimiento}
             onNavegar={(mod, subvista, filtroEstado) => {
               if (mod === 'vencimientos') {
@@ -673,6 +681,30 @@ const irANotificacion = (notif: NotificacionItem) => {
               }
             }}
           />
+          ) : modulo === 'vistaPublica' ? (
+          vistaPublicaHabilitada ? (
+            <VistaPublica_Habilitada
+              qrUrl={qrUrlPublica}
+              identificadorUnico={idAlfanumericoPublico}
+              onSuccess={() => {
+                setVistaPublicaHabilitada(false);
+                setQrUrlPublica(null);
+                setIdAlfanumericoPublico(null);
+                setModulo('dashboard');
+              }}
+              onCancel={() => setModulo('dashboard')}
+            />
+          ) : (
+            <ActivarVista_Publica
+              onSuccess={(url, idAlfanumerico) => {
+                setQrUrlPublica(url);
+                setIdAlfanumericoPublico(idAlfanumerico);
+                setVistaPublicaHabilitada(true);
+                setModulo('dashboard');
+              }}
+              onCancel={() => setModulo('dashboard')}
+            />
+          )
         ) : modulo === 'vencimientos' ? (
           vistaVencimientos === 'consolidado' ? (
             <VistaConsolidadaVencimiento

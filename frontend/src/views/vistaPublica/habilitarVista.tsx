@@ -5,6 +5,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useVistaPublica } from './contextDeVistaPublica';
 import type { AcercaDeNosotrosConId } from './tipos';
 import ConfiguracionProductosPublicos from './configuracionProductos';
+//const host = window.location.host;
 
 interface ActivarVistaProps{
     onSuccess?: (qrBlobUrl: string,idAlfanumerico:string) => void;
@@ -41,6 +42,12 @@ export default function ActivarVista_Publica({onSuccess,onCancel}:ActivarVistaPr
                             id: registro.id,
                             descripcion: registro.descripcion || ""
                         });
+
+                        const textarea = document.getElementById('descripcion') as HTMLTextAreaElement;
+                            if (textarea) {
+                                textarea.style.height = "auto";
+                                textarea.style.height = `${textarea.scrollHeight}px`;
+                            }
                     }
                 }
             } catch (err) {
@@ -215,87 +222,97 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
     }
 
 
-    return(
-        <div className="modulo-container formulario-box" style={{ padding: '15px' }}>
+return (
+    <div className="modulo-container formulario-box vista-publica-config">
 
-            <div className="modulo-header" style={{ marginBottom: '5px' }}>
-                <h1 style={{ fontSize: '30px', whiteSpace: 'nowrap', margin: '0'}}>Habilitacion de vista Publica</h1>
+        <div className="config-top-row">
+            <div className="config-header-main">
+                <h1 className="config-titulo-principal">Habilitacion de vista Publica</h1>
+                <button type="button" className="btn-guardar btn-desactivar" onClick={handleGuardar} disabled={loading}>
+                    {loading ? "Habilitando..." : "Habilitar"}
+                </button>
             </div>
 
-            {errorMsg && <div className="alerta-error">{errorMsg}</div>}
-            {successMsg && <div className="alerta-exito">{successMsg}</div>}
+            <div className="config-seccion">
+                <h3 className="config-subtitulo">Configuración</h3>
 
-        <div className="modal-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-grafico"
+                        checked={config.verGrafico} 
+                        onChange={(e) => actualizarConfig('verGrafico', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-grafico" className="config-switch-label" onClick={() => actualizarConfig('verGrafico', !config.verGrafico)}>
+                        Mostrar Gráfico de Tareas
+                    </label>
+                </div>
 
-            <div className="form-acciones" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-            <button type="button" className="btn-guardar"  onClick={handleGuardar} disabled={loading}>
-                {loading ? "Habilitando..." : "Habilitar"}
-            </button>
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-nosotros"
+                        checked={config.verAcercaDeNosotros} 
+                        onChange={(e) => actualizarConfig('verAcercaDeNosotros', e.target.checked)}
+                    />
+                    <label htmlFor="switch-nosotros" className="config-switch-label" onClick={() => actualizarConfig('verAcercaDeNosotros', !config.verAcercaDeNosotros)}>
+                        Mostrar Acerca de Nosotros
+                    </label>
+                </div>
             </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: 'fit-content' }}>
-        <input 
-            type="checkbox" 
-            className="switch-input"
-            checked={config.verGrafico} 
-            onChange={(e) => actualizarConfig('verGrafico', e.target.checked)} 
-        />
-        <span style={{ color: 'var(--text-h)', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => actualizarConfig('verGrafico', !config.verGrafico)}>
-            Mostrar Gráfico de Tareas
-        </span>
-    </div>
-
-        <ConfiguracionProductosPublicos onSeleccionChange={setProductosVisibles} />
-
-    <div className="form-group">
-      <label htmlFor="descripcion">Descripción</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: 'fit-content' }}>
-          <input 
-            type="checkbox" 
-            className="switch-input"
-            checked={config.verAcercaDeNosotros} 
-            onChange={(e) => actualizarConfig('verAcercaDeNosotros', e.target.checked)} 
-            />
-        <span style={{ color: 'var(--text-h)', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => actualizarConfig('verAcercaDeNosotros', !config.verAcercaDeNosotros)}>
-            Mostrar
-            </span>
         </div>
-          <textarea
-            className="descripcion"
-            id="descripcion"
-            name="descripcion"
-            rows={4}
-            placeholder="Introduce la descripción"
-            value={formNosotros.descripcion}
-            onChange={handleDescripcionChange}
+
+        {errorMsg && <div className="alerta-error">{errorMsg}</div>}
+        {successMsg && <div className="alerta-exito">{successMsg}</div>}
+
+       
+        <div className="config-bottom-grid">
             
-            required
-          />
-        </div>
+            <div className="columna-izquierda">
+                <div className="textarea-container-angosto">
+                    <div className="textarea-header-row">
+                        <label htmlFor="descripcion" className="textarea-label-titulo">Acerca de Nosotros</label>
+                    </div>
 
+                    <textarea
+                        className="descripcion"
+                        id="descripcion"
+                        name="descripcion"
+                        placeholder="Introduce la descripción"
+                        value={formNosotros.descripcion}
+                        onChange={handleDescripcionChange}
+                        required
+                    />
+                </div>
 
-                <div className="qr-preview-container" style={{ textAlign: 'center', padding: '5px', borderRadius: '8px' }}>
-                    <p className="form-group">Previsualización del QR predeterminado</p>
+                <ConfiguracionProductosPublicos onSeleccionChange={setProductosVisibles} />
+            </div>
+
+            <div className="qr-columna-derecha">
+                <div className="qr-preview-container-original">
+                    <p className="qr-titulo-activo">Previsualización del QR predeterminado</p>
                     
-                    <div style={{ display: 'flex', justifyContent: 'center', background: '#fff', padding: '6px', borderRadius: '6px', width: 'fit-content', margin: '0 auto', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                    <div className="qr-image-box-original">
                         <QRCodeCanvas
                             value={payload.texto}
                             size={tamanoRealPixels}
                             bgColor={payload.color_back}
                             fgColor={payload.color_fill}
                             level={"H"}
-                            marginSize ={payload.boder}
+                            marginSize={payload.boder}
                             minVersion={payload.version}
                         />
                     </div>
-
                 </div>
+            </div>
 
-        <div className="form-acciones" >
-         <button type="button" className="btn-cancelar" onClick={handleCancelar}>
-            Cancelar
-            </button>
         </div>
+        <div className="form-acciones">
+            <button type="button" className="btn-cancelar" onClick={handleCancelar}>
+                Cancelar
+            </button>
         </div>
     </div>
 )

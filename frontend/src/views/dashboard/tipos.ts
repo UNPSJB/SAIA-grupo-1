@@ -100,6 +100,8 @@ export interface PanelDashboardProps {
     concepto?: string;
     id?: string;
   }) => void;
+  onIrAVistaPublica?: (habilitada: boolean) => void;
+  vistaHabilitada?: boolean;
 }
 
 export const COLORES_TIPO_QUIMICO: Record<string, string> = {

@@ -24,8 +24,6 @@ import { GraficoCumplimientoLimpieza } from './GraficoCumplimientoLimpieza';
 import { apiFetch } from '../../api/client';
 import '../../styles/dashboard.css';
 import { useColoresTema } from './useColoresTema';
-import ActivarVista_Publica from '../vistaPublica/habilitarVista';
-import VistaPublica_Habilitada from '../vistaPublica/VistaHabilitada';
 import { VistaPublicaProvider } from '../vistaPublica/contextDeVistaPublica';
 
 const PALETA_PRODUCCION = [
@@ -46,7 +44,7 @@ const UNIDADES_ESTANDAR = [
   { id: 'UN', label: 'UN' },
 ];
 
-export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro }) => {
+export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro, onIrAVistaPublica, vistaHabilitada }) => {
   const colores = useColoresTema();
   const [vistaDetalle, setVistaDetalle] = useState<TipoDetalleEstadisticas | null>(null);
 
@@ -58,11 +56,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
   const [consumoInsumos, setConsumoInsumos] = useState<ConsumoInsumo[]>([]);
   const [unidadesDisponibles, setUnidadesDisponibles] = useState<string[]>([]);
   const [loadingInsumos, setLoadingInsumos] = useState(true);
-  const [modalHabilitacionPublica,setModalHabilitacion]=useState(false);
-  const [vistaHabilitada,setVistaPublica]=useState(false);
-  const [qrUrlCreado, setQrUrlCreado] = useState<string | null>(null);
-  const [qrModal,setModalVerQR]=useState(false);
-  const [idAlfanumericoCreado, setIdAlfanumericoCreado] = useState<string | null>(null);
 
   const [periodoProduccion, setPeriodoProduccion] = useState<Periodo>('dia');
   const [productoProduccion, setProductoProduccion] = useState<string>('');
@@ -320,16 +313,22 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
     <VistaPublicaProvider>
     <div className="modulo-container dashboard-container">
 
+      {/* 🟢 Botón dinámico que cambia según el estado de habilitación global */}
       <div>
         {vistaHabilitada ? (
-          <button onClick={() => {
-              setModalVerQR(true)
-          }} className="btn-activar">
-            Ver QR
+          <button
+            onClick={() => onIrAVistaPublica?.(true)}
+            className="btn-activar"
+            style={{ backgroundColor: '#0284c7' }}
+          >
+            Ver QR / Gestionar Vista
           </button>
         ) : (
-          <button onClick={() => setModalHabilitacion(true)} className="btn-activar">
-            Activar Vista Publica
+          <button
+            onClick={() => onIrAVistaPublica?.(false)}
+            className="btn-activar"
+          >
+            Activar Vista Pública
           </button>
         )}
       </div>
@@ -870,27 +869,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
       <div className="dashboard-fila-3">
         <GraficoCumplimientoLimpieza onVerMas={() => setVistaDetalle('tareas')} />
       </div>
-
-      {modalHabilitacionPublica && (<div className="modal-abierto">
-              <div className="modal-content">
-                <ActivarVista_Publica
-                onSuccess={(url,idAlfanumerico)=> {setQrUrlCreado(url);setModalHabilitacion(false); setVistaPublica(true); setIdAlfanumericoCreado(idAlfanumerico)}}
-                onCancel={() => setModalHabilitacion(false)}
-                />
-          </div>
-        </div>
-      )}
-
-      {qrModal && (<div className="modal-abierto">
-              <div className="modal-content">
-                <VistaPublica_Habilitada
-                qrUrl={qrUrlCreado}
-                identificadorUnico={idAlfanumericoCreado}
-                onSuccess={()=> {setModalVerQR(false); setVistaPublica(false)}}
-                onCancel={() => setModalVerQR(false)}
-                />
-          </div>
-        </div>)}
     </div>
   </VistaPublicaProvider>
   );
