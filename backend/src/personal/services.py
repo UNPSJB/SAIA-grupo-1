@@ -5,6 +5,72 @@ from . import models, schemas
 import re
 import unicodedata 
 from src.autenticacion.services import hashear_contrasenia
+from typing import Optional, Dict, Any, List
+
+def obtener_personal_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None,
+    capacidad: Optional[str] = None,
+    estado: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    
+    personas = db.query(models.Personal).all()
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+
+    for p in personas:
+        doc_str = str(getattr(p, "documento", "") or getattr(p, "dni", "") or "")
+        nombre_str = getattr(p, "nombre", "") or ""
+        apellido_str = getattr(p, "apellido", "") or ""
+        nombre_completo = f"{nombre_str} {apellido_str}".strip()
+        usr = getattr(p, "usuario", "") or ""
+        mail = getattr(p, "email", "") or ""
+
+        # Filtro por búsqueda
+        if term:
+            coincide = (
+                term in nombre_completo.lower()
+                or term in doc_str
+                or term in usr.lower()
+                or term in mail.lower()
+            )
+            if not coincide:
+                continue
+
+        # Filtro por capacidad
+        cap = getattr(p, "capacidad", "") or ""
+        cap_val = cap.value if hasattr(cap, "value") else str(cap)
+        if capacidad and capacidad != "TODOS":
+            if cap_val.upper() != capacidad.upper():
+                continue
+
+        # Filtro por estado
+        es_activo = bool(getattr(p, "activo", True))
+        if estado and estado != "TODOS":
+            if estado.upper() == "ACTIVO" and not es_activo:
+                continue
+            elif estado.upper() == "INACTIVO" and es_activo:
+                continue
+
+        # Formateo legible de la capacidad
+        cap_map = {
+            "OPERAR": "Operar",
+            "ADMINISTRAR": "Administrar",
+            "AMBAS": "Operar y Administrar",
+        }
+        cap_texto = cap_map.get(cap_val.upper(), cap_val or "-")
+
+        filas.append({
+            "legajo": getattr(p, "legajo", p.id if hasattr(p, "id") else ""),
+            "documento": doc_str,
+            "nombre_completo": nombre_completo,
+            "usuario": usr,
+            "email": mail,
+            "capacidad": cap_texto,
+            "estado": "Activo" if es_activo else "Inactivo",
+        })
+
+    return filas
 
 def listar_personal(db: Session):
     return db.query(models.Personal).all()

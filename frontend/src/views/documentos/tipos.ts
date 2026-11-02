@@ -1,4 +1,4 @@
-export type TipoDocumento = "MANUAL_BPM" | "FICHA_TECNICA" | "PROCEDIMIENTO" | "RECETA";
+export type TipoDocumento = string;
 
 export interface DocumentoListItem {
   id: number;

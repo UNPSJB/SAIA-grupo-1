@@ -7,9 +7,12 @@ import {
   formatearFecha,
 } from './tipos';
 import { DetalleIncidenteModal } from './detalleModal';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 import '../../styles/formularioAlta.css';
 import '../../styles/incidentes.css';
 
@@ -104,6 +107,8 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
   const [incidentes, setIncidentes] = useState<IncidenteAbierto[]>([]);
   const [metricas, setMetricas] = useState<IncidentesMetricas | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [busqueda, setBusqueda] = useState('');
@@ -166,6 +171,33 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
     return coincideBusqueda && coincideUrgencia;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroUrgencia !== 'TODOS') params.append('urgencia', filtroUrgencia);
+
+      const queryString = params.toString();
+      const url = `/incidentes/abiertos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'incidentes_abiertos.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al exportar incidentes abiertos a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroUrgencia !== 'TODOS') partes.push(`Urgencia: ${filtroUrgencia}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: incidentesPaginados,
     paginaActual,
@@ -221,11 +253,22 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
           </div>
         </div>
 
-        {onRegistrarClick && (
-          <button type="button" onClick={onRegistrarClick} className="btn-guardar">
-            + Registrar Incidente
+        <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto'}}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onRegistrarClick && (
+            <button type="button" onClick={onRegistrarClick} className="btn-guardar">
+              + Registrar Incidente
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="tabs-incidentes-header">
@@ -557,6 +600,15 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
         etiqueta="incidentes abiertos"
       />
 
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={incidentesFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
       {incidenteSeleccionado && (
         <DetalleIncidenteModal
           key={`${incidenteSeleccionado.id}-${abrirConCierre}`}
@@ -572,4 +624,3 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
     </div>
   );
 };
-

@@ -1,10 +1,40 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from src.database import get_db
 from . import schemas, services
+from src.autenticacion.dependencies import get_usuario_actual
+from src.utils.csv import generar_respuesta_csv 
 
 router = APIRouter()
+
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_personal_csv(
+    busqueda: Optional[str] = None,
+    capacidad: Optional[str] = None,
+    estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    
+    datos = services.obtener_personal_para_csv(
+        db, busqueda=busqueda, capacidad=capacidad, estado=estado
+    )
+
+    columnas = {
+        "legajo": "Legajo",
+        "documento": "DNI / Documento",
+        "nombre_completo": "Nombre Completo",
+        "usuario": "Usuario",
+        "email": "Correo Electrónico",
+        "capacidad": "Capacidad",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="personal.csv",
+    )
 
 @router.get("/", response_model=List[schemas.Personal])
 def read_personal(db: Session = Depends(get_db)):

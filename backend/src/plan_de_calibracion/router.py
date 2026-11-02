@@ -2,10 +2,34 @@ from fastapi import APIRouter,Depends
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.plan_de_calibracion import schemas, services
-
+from src.autenticacion.dependencies import get_usuario_actual
+from src.utils.csv import generar_respuesta_csv
+from typing import Optional
 
 router = APIRouter(prefix="/plan_de_calibracion", tags=["plan_de_calibracion"])
 
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_planes_calibracion_csv(
+    busqueda: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    
+    datos = services.obtener_planes_para_csv(db, busqueda=busqueda)
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Plan",
+        "equipo": "Equipo Asociado",
+        "fecha_mantenimiento": "Fecha de Mantenimiento",
+        "fecha_vencimiento": "Fecha de Vencimiento",
+        "periodicidad_dias": "Periodicidad (Días)",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="planes_de_calibracion.csv",
+    )
 
 @router.post("/", response_model=schemas.PlanDeCalibracion)
 async def create_plan(planC: schemas.PlanDeCalibracionCreate, db:Session=Depends(get_db)):

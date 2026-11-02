@@ -1,13 +1,14 @@
 from datetime import date, datetime, timedelta
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-
 from src.config import settings
 from src.certificado.models import Certificado
+from src.tipoCertificado.models import TipoCertificado
 from src.personal.models import Personal
-from src.equipos.models import Estado as EstadoEquipo
+from src.equipos.models import Equipo, Estado as EstadoEquipo
 from src.plan_de_calibracion.models import Plan_de_Calibracion
 from src.documentos.models import Documento
+from src.controlesAmbientales.models import ControlAmbiental
 from src.vencimientos.schemas import (
     EstadoVencimiento,
     OrigenVencimiento,
@@ -20,6 +21,59 @@ PESO_ESTADO = {
     EstadoVencimiento.VIGENTE: 2,
 }
 
+TIPO_CONTROL_MAP = {
+    "CONTROL_PLAGAS": "Control de Plagas",
+    "ANALISIS_AGUA": "Análisis de Agua",
+    "LIMPIEZA_TANQUE": "Limpieza de Tanque",
+}
+
+def obtener_vencimientos_consolidados_para_csv(
+    db: Session,
+    origen: Optional[OrigenVencimiento] = None,
+    estado: Optional[EstadoVencimiento] = None,
+    q: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    
+    items = listar_vencimientos_consolidados(db=db, origen=origen, estado=estado, q=q)
+    
+    etiquetas_origen = {
+        OrigenVencimiento.PERSONAL: "Personal",
+        OrigenVencimiento.EQUIPO: "Calibración / Mantenimiento",
+        OrigenVencimiento.DOCUMENTO: "Documentos",
+        OrigenVencimiento.AMBIENTAL: "Controles Ambientales",
+    }
+
+    etiquetas_estado = {
+        EstadoVencimiento.VENCIDO: "Vencido",
+        EstadoVencimiento.PROXIMO: "Próximo a vencer",
+        EstadoVencimiento.VIGENTE: "Vigente",
+    }
+
+    filas = []
+    for item in items:
+        # Formateo descriptivo del plazo
+        dias = item.dias_restantes
+        if dias < 0:
+            str_plazo = f"Venció hace {abs(dias)} {'día' if abs(dias) == 1 else 'días'}"
+        elif dias == 0:
+            str_plazo = "Vence hoy"
+        else:
+            str_plazo = f"Vence en {dias} {'día' if dias == 1 else 'días'}"
+
+        str_fecha = item.fecha.strftime("%Y-%m-%d") if hasattr(item.fecha, "strftime") else str(item.fecha)
+
+        filas.append({
+            "id": item.id,
+            "estado": etiquetas_estado.get(item.estado, str(item.estado)),
+            "origen": etiquetas_origen.get(item.origen, str(item.origen)),
+            "concepto": item.concepto,
+            "responsable": item.responsable,
+            "fecha": str_fecha,
+            "plazo": str_plazo,
+            "dias_restantes": item.dias_restantes,
+        })
+
+    return filas
 
 def _a_fecha(valor: date | datetime) -> date:
     if isinstance(valor, datetime):
@@ -162,6 +216,27 @@ def listar_vencimientos_consolidados(
                                 estado=EstadoVencimiento.VENCIDO,
                             )
                         )
+
+    if origen in (None, OrigenVencimiento.AMBIENTAL):
+        controles = db.query(ControlAmbiental).filter(ControlAmbiental.activo == True).all()
+        for c in controles:
+            if not c.fecha_vencimiento:
+                continue
+            fecha_v = _a_fecha(c.fecha_vencimiento)
+            dias, est = _calcular_plazo(fecha_v, hoy, dias_alerta=15)
+            concepto = TIPO_CONTROL_MAP.get(c.tipo, c.tipo)
+            items.append(
+                VencimientoConsolidadoItem(
+                    id=f"ambiental-{c.id}",
+                    origen=OrigenVencimiento.AMBIENTAL,
+                    concepto=concepto,
+                    responsable="Gestión Calidad / Sanitaria",
+                    referencia_id=c.id,
+                    fecha=fecha_v,
+                    dias_restantes=dias,
+                    estado=est,
+                )
+            )
 
     if estado is not None:
         items = [it for it in items if it.estado == estado]

@@ -2,9 +2,12 @@ import React, { useEffect, useState } from 'react';
 import type { Sector } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoSectoresProps {
   onNuevoClick?: () => void;
@@ -17,6 +20,9 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
 }) => {
   const [sectores, setSectores] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [busqueda, setBusqueda] = useState('');
   const [sectorAEliminar, setSectorAEliminar] = useState<Sector | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
@@ -74,6 +80,29 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
     return !term || s.nombre.toLowerCase().includes(term);
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+
+      const queryString = params.toString();
+      const url = `/sectores/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'sectores.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Error al exportar sectores a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    return busqueda.trim() ? `Búsqueda: "${busqueda}"` : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: sectoresPaginados,
     paginaActual,
@@ -94,11 +123,22 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Nuevo Sector
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Nuevo Sector
+            </button>
+          )}
+        </div>
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
@@ -179,6 +219,15 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
         etiqueta="sectores"
       />
 
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={sectoresFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
       <ConfirmAlertDialog
         open={dialogAbierto}
         title="Eliminar Sector"
@@ -195,4 +244,3 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
     </div>
   );
 };
-

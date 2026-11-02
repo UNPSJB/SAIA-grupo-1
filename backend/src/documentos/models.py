@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from typing import List, Optional
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Enum as SQLEnum
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
-from src.documentos.constants import TipoDocumento
+
 from src.personal.models import Personal
 
 class Documento(ModeloBase):
@@ -11,7 +11,7 @@ class Documento(ModeloBase):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     titulo: Mapped[str] = mapped_column(String(150), index=True, nullable=False)
-    tipo: Mapped[TipoDocumento] = mapped_column(SQLEnum(TipoDocumento), index=True, nullable=False)
+    tipo: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     descripcion: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     creado_el: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)

@@ -5,6 +5,9 @@ import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { Badge } from '../../components/ui/badge';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import RegistrarCalibracion from '../calibracion_Realizada/registrarCalibracion';
 
 interface ListadoPlanesCProps {
@@ -38,10 +41,13 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
 }) => {
   const [planes, setPlanes] = useState<PlanDeCalibracionConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>(filtroEstadoInicial || 'TODOS');
-  const [modalAbierto, setModalAbierto]= useState(false);
-  const [calibracionSselecionada, setCalibracionSeleccionada]=useState <number | null>(null);
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [calibracionSselecionada, setCalibracionSeleccionada] = useState<number | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -124,6 +130,29 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
     return (coincideBusqueda || coincideVencimiento) && coincideEstado;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+
+      const queryString = params.toString();
+      const url = `/plan_de_calibracion/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'planes_de_calibracion.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al exportar los planes de calibración a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    return busqueda.trim() ? `Búsqueda: "${busqueda}"` : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: planesPaginados,
     paginaActual,
@@ -144,11 +173,22 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Crear Plan
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Crear Plan
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="filtros-top-bar">
@@ -199,8 +239,6 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
               </tr>
             ) : (
               planesPaginados.map((p) => (
-
-                
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
                   <td>{p.nombre_equipo}</td>
@@ -224,12 +262,19 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
-
                       <div className="acciones-btns">
-                          <button type="button" className="btn-icon btn-reactivar" title="marcar como realizada" onClick={()=>{setModalAbierto(true); setCalibracionSeleccionada(p?.id ?? null);}}>
-                            ↻
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          className="btn-icon btn-reactivar"
+                          title="marcar como realizada"
+                          onClick={() => {
+                            setModalAbierto(true);
+                            setCalibracionSeleccionada(p?.id ?? null);
+                          }}
+                        >
+                          ↻
+                        </button>
+                      </div>
                       <button
                         className="btn-icon btn-ver"
                         title="Ver detalles"
@@ -248,17 +293,10 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
                   </td>
                 </tr>
               ))
-
-              
-            )
-            
-            }
-            
+            )}
           </tbody>
         </table>
       </div>
-
-      
 
       <Paginacion
         paginaActual={paginaActual}
@@ -272,22 +310,26 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
         etiqueta="planes de calibración"
       />
 
-      
-      {modalAbierto &&(
-                        
-          <div className="modal-abierto">
-              <div className="modal-content">
-                   <RegistrarCalibracion
-                        planID={calibracionSselecionada}
-                        onSuccess={()=> setModalAbierto(false)}
-                        onCancel={() => setModalAbierto(false)}
-                             />
-                        
-                          </div>
-                      </div>)}
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={planesCFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
 
-
-      
+      {modalAbierto && (
+        <div className="modal-abierto">
+          <div className="modal-content">
+            <RegistrarCalibracion
+              planID={calibracionSselecionada}
+              onSuccess={() => setModalAbierto(false)}
+              onCancel={() => setModalAbierto(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

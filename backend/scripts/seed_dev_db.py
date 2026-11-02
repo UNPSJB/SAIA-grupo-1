@@ -23,7 +23,7 @@ import src.produccion.models
 
 from src.personal.models import Personal
 from src.personal.services import crear_personal
-from src.personal.schemas import PersonalCreate
+from src.personal.schemas import PersonalCreate, Capacidades
 from src.autenticacion.services import asegurar_usuarios_dev
 
 from src.insumos.services import crear_insumo
@@ -58,7 +58,6 @@ from src.checklist.schemas import ChecklistGenerar, CompletarTareaSchema, Insumo
 from src.checklist.models import Checklist, ChecklistItem, EstadoTareaItem
 from src.documentos.models import Documento, VersionDocumento
 from src.documentos.services import crear_documento, subir_nueva_version
-from src.documentos.constants import TipoDocumento
 from src.auditoria.models import Auditoria
 from fastapi import UploadFile
 
@@ -572,7 +571,7 @@ def main() -> None:
     crear_documento(
         db,
         titulo="POES - Procedimiento Operativo Estandarizado de Saneamiento",
-        tipo=TipoDocumento.PROCEDIMIENTO,
+        tipo="Procedimiento",
         version="1.0",
         file=pdf_poes,
         descripcion="Procedimientos de limpieza y desinfeccion de superficies en contacto con alimentos",
@@ -585,7 +584,7 @@ def main() -> None:
     crear_documento(
         db,
         titulo="Plan MIP - Manejo Integrado de Plagas",
-        tipo=TipoDocumento.PROCEDIMIENTO,
+        tipo="Procedimiento",
         version="1.0",
         file=pdf_mip,
         descripcion="Programa de monitoreo, cebaderas, trampas de luz y barreras fisicas",
@@ -598,7 +597,7 @@ def main() -> None:
     doc_bpm = crear_documento(
         db,
         titulo="Manual de Buenas Practicas de Manufactura",
-        tipo=TipoDocumento.MANUAL_BPM,
+        tipo="Manual de BPM",
         version="1.0",
         file=pdf1,
         descripcion="Procedimientos operativos y sanitarios de produccion",
@@ -620,7 +619,7 @@ def main() -> None:
     doc_receta = crear_documento(
         db,
         titulo="Receta Estandar: Medialunas de Manteca",
-        tipo=TipoDocumento.RECETA,
+        tipo="Receta",
         version="1.0",
         file=pdf_receta,
         descripcion="Formulacion oficial para panificados dulces",
@@ -633,7 +632,7 @@ def main() -> None:
     crear_documento(
         db,
         titulo="Procedimiento de Trazabilidad y Retiro de Producto",
-        tipo=TipoDocumento.PROCEDIMIENTO,
+        tipo="Procedimiento",
         version="1.0",
         file=pdf_recall,
         descripcion="Protocolo de respuesta ante contingencias y retiro de lotes del mercado",
@@ -646,7 +645,7 @@ def main() -> None:
     crear_documento(
         db,
         titulo="Receta Estandar: Pan de Campo",
-        tipo=TipoDocumento.RECETA,
+        tipo="Receta",
         version="1.0",
         file=pdf_pan_receta,
         descripcion="Formulacion de masa madre y horneado tradicional",

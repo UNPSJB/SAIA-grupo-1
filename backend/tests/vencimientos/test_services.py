@@ -11,7 +11,7 @@ from src.certificado.services import crear_certificado
 from src.plan_de_calibracion.schemas import PlanDeCalibracionCreate
 from src.plan_de_calibracion.services import crear_plan
 from src.documentos.services import crear_documento
-from src.documentos.constants import TipoDocumento
+
 from src.vencimientos import schemas, services
 
 def test_vencimientos_consolidados_incluye_certificados_y_equipos(session: Session):
@@ -26,6 +26,7 @@ def test_vencimientos_consolidados_incluye_certificados_y_equipos(session: Sessi
         fecha_mantenimiento=mantenimiento,
         descripcion="Test vencimientos",
         equipo_id=1,
+        fecha_vencimiento=mantenimiento,
     )
     crear_plan(session, plan_create)
 
@@ -68,6 +69,7 @@ def test_vencimientos_estados_vencido_y_vigente(session: Session):
         fecha_mantenimiento=mantenimiento,
         descripcion="Vencido",
         equipo_id=1,
+        fecha_vencimiento=mantenimiento,
     )
     plan_obj = crear_plan(session, plan_create)
     plan_obj.fecha_vencimiento = datetime.now() - timedelta(days=20)
@@ -83,7 +85,7 @@ def test_vencimientos_documentos(session: Session):
     admin = crear_personal(
         session,
         PersonalCreate(
-            documento="90909090",
+            documento=90909090,
             nombre="Admin",
             apellido="Vencimientos",
             email="admin.venc@gmail.com",
@@ -95,7 +97,7 @@ def test_vencimientos_documentos(session: Session):
     crear_documento(
         session,
         titulo="Procedimiento Seguridad Venc",
-        tipo=TipoDocumento.PROCEDIMIENTO,
+        tipo="Procedimiento",
         version="1",
         file=archivo_pdf,
         responsable_legajo=admin.legajo,
@@ -110,7 +112,7 @@ def test_documento_vencido_aparece_como_vencido(session: Session):
     admin = crear_personal(
         session,
         PersonalCreate(
-            documento="91919191",
+            documento=91919191,
             nombre="Admin2",
             apellido="Vencimientos2",
             email="admin2.venc@gmail.com",
@@ -122,7 +124,7 @@ def test_documento_vencido_aparece_como_vencido(session: Session):
     crear_documento(
         session,
         titulo="Procedimiento Caducado",
-        tipo=TipoDocumento.PROCEDIMIENTO,
+        tipo="Procedimiento",
         version="1",
         file=archivo_pdf,
         responsable_legajo=admin.legajo,

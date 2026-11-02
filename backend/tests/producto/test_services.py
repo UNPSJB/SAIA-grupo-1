@@ -1,6 +1,5 @@
 import pytest
 from sqlalchemy.orm import Session
-from src.documentos.constants import TipoDocumento
 from src.documentos.models import Documento
 from src.insumos.models import UnidadMedida
 from src.producto import exceptions
@@ -65,7 +64,7 @@ def test_crear_producto_con_receta_valida(session: Session) -> None:
   # Crear un documento de tipo RECETA previo
   receta = Documento(
       titulo="Receta Pan Francés",
-      tipo=TipoDocumento.RECETA,
+      tipo="Receta",
       descripcion="Receta estándar",
       activo=True,
   )
@@ -90,7 +89,7 @@ def test_crear_producto_con_receta_invalida(session: Session) -> None:
   # Crear documento de tipo NO Receta (ej. MANUAL_BPM)
   doc = Documento(
       titulo="Manual de BPM",
-      tipo=TipoDocumento.MANUAL_BPM,
+      tipo="Manual de BPM",
       descripcion="Manual de planta",
       activo=True,
   )

@@ -2,7 +2,7 @@ from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from src.autenticacion.dependencies import requiere_admin
+from src.autenticacion.dependencies import requiere_admin, get_usuario_actual
 from src.database import get_db
 from .schemas import (
     InsumoQuimicoCreate,
@@ -11,11 +11,43 @@ from .schemas import (
     ConsumoHistoricoResponse,
     AgrupacionTiempo,
 )
-from .services import InsumoQuimicoService, obtener_historico_consumo
+from .services import InsumoQuimicoService, obtener_historico_consumo, obtener_para_csv
 from .exceptions import InsumoQuimicoException, RangoFechasInvalidoException
+from src.utils.csv import generar_respuesta_csv
 
 router = APIRouter(prefix="/api/insumos-quimicos", tags=["Insumos Químicos"])
 
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_csv(
+    busqueda: Optional[str] = None,
+    tipo: Optional[str] = None,
+    estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Exporta la lista de insumos químicos a formato CSV respetando los filtros activos.
+    """
+    datos = obtener_para_csv(
+        db, busqueda=busqueda, tipo=tipo, estado=estado
+    )
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Insumo",
+        "tipo": "Tipo de Insumo",
+        "stock_actual": "Stock Actual",
+        "unidad_medida": "Unidad de Medida",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="insumos_quimicos.csv"
+    )
+
+# Listar lo puede hacer cualquier usuario logueado: los operadores necesitan ver los
+# productos para registrar el consumo. Crear, editar y dar de baja es solo del administrador.
 @router.get("", response_model=List[InsumoQuimicoResponse])
 def listar(db: Session = Depends(get_db)):
     return InsumoQuimicoService.get_all(db)

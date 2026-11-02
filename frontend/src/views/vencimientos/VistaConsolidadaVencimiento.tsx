@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 
-export type OrigenVencimiento = 'personal' | 'equipo' | 'documento';
+export type OrigenVencimiento = 'personal' | 'equipo' | 'documento' | 'ambiental';
 export type EstadoVencimiento = 'vencido' | 'proximo' | 'vigente';
 
 export interface VencimientoFila {
@@ -41,6 +44,7 @@ const ETIQUETA_ORIGEN: Record<OrigenVencimiento, string> = {
   personal: 'Personal',
   equipo: 'Calibración / Mantenimiento',
   documento: 'Documentos',
+  ambiental: 'Controles Ambientales',
 };
 
 const ETIQUETA_ESTADO: Record<EstadoVencimiento, string> = {
@@ -72,6 +76,8 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
   const [filtroEstado, setFiltroEstado] = useState<'' | EstadoVencimiento>(filtroEstadoInicial || '');
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -138,6 +144,35 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
     [filasVisibles]
   );
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (filtro) params.append('origen', filtro);
+      if (filtroEstado) params.append('estado', filtroEstado);
+      if (busqueda.trim()) params.append('q', busqueda.trim());
+
+      const queryString = params.toString();
+      const url = `/vencimientos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'vencimientos_consolidados.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al exportar los vencimientos consolidados a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (filtro) partes.push(`Origen: ${ETIQUETA_ORIGEN[filtro]}`);
+    if (filtroEstado) partes.push(`Estado: ${ETIQUETA_ESTADO[filtroEstado]}`);
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: filasPaginadas,
     paginaActual,
@@ -152,24 +187,25 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
 
   return (
     <div className="modulo-container modulo-vencimientos-container">
-      <div className="listado-top-bar venc-top-bar">
-        <div className="modulo-header">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+        <div className="modulo-header" style={{ marginBottom: 0 }}>
           <h1>Vencimientos</h1>
-          <div className="subtitulo">01 · Control consolidado de carnets, calibraciones y documentos</div>
+          <div className="subtitulo">01 · Control consolidado de carnets, calibraciones, documentos y controles ambientales</div>
         </div>
 
-        {(onVerSoloPersonal || onVerSoloDocumentos) && (
-          <div className="venc-tabs">
-            <button type="button" className="venc-tab venc-tab--activo">
-              Todos (Consolidado)
-            </button>
-            <button
-              type="button"
-              className="venc-tab"
-              onClick={onVerSoloPersonal}
-            >
-              Solo Personal (con archivo)
-            </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+          {(onVerSoloPersonal || onVerSoloDocumentos) && (
+            <div className="venc-tabs">
+              <button type="button" className="venc-tab venc-tab--activo">
+                Todos (Consolidado)
+              </button>
+              <button
+                type="button"
+                className="venc-tab"
+                onClick={onVerSoloPersonal}
+              >
+                Solo Personal (con archivo)
+              </button>
             {onVerSoloDocumentos && (
               <button
                 type="button"
@@ -179,8 +215,18 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
                 Solo Documentos
               </button>
             )}
-          </div>
-        )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
+          </button>
+        </div>
       </div>
 
       <div className="venc-resumen">
@@ -207,6 +253,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
           <option value="personal">{ETIQUETA_ORIGEN.personal}</option>
           <option value="equipo">{ETIQUETA_ORIGEN.equipo}</option>
           <option value="documento">{ETIQUETA_ORIGEN.documento}</option>
+          <option value="ambiental">{ETIQUETA_ORIGEN.ambiental}</option>
         </select>
         <select
           className="select-filtro"
@@ -293,6 +340,15 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="vencimientos"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={filasVisibles.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
     </div>
   );

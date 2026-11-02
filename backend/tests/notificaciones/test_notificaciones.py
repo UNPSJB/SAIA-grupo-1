@@ -13,7 +13,6 @@ from src.equipos.models import Equipo, Categoria, Estado
 from src.sectores.models import Sector
 from src.plan_de_calibracion.models import Plan_de_Calibracion
 from src.documentos.models import Documento, VersionDocumento
-from src.documentos.constants import TipoDocumento
 from src.elementosDeLimpieza.models import ElementoDeLimpieza
 from src.insumos_quimicos.models import InsumoQuimico
 from src.insumos_quimicos.constants import TipoQuimicoEnum, UnidadMedidaEnum
@@ -179,7 +178,7 @@ def test_generacion_automatica_vencimientos(session: Session):
 
     doc = Documento(
         titulo="Procedimiento de Control de Plagas y Roedores",
-        tipo=TipoDocumento.PROCEDIMIENTO,
+        tipo="Procedimiento",
         activo=True,
     )
     session.add(doc)

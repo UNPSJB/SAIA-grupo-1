@@ -266,16 +266,18 @@ def test_cualquier_usuario_logueado_puede_consultar(usuarios: Dict[str, Personal
 
     assert client.get("/lotes/", headers=cabeceras).status_code == status.HTTP_200_OK
     assert client.get(f"/lotes/{creado['id']}", headers=cabeceras).status_code == status.HTTP_200_OK
-    assert client.get("/productos/", headers=cabeceras).status_code == status.HTTP_200_OK
+    # productos es solo de administradores (el router entero va con SOLO_ADMIN)
+    esperado_productos = status.HTTP_403_FORBIDDEN if rol == "operador" else status.HTTP_200_OK
+    assert client.get("/productos/", headers=cabeceras).status_code == esperado_productos
     assert client.get("/lotes/insumos-disponibles", headers=cabeceras).status_code == status.HTTP_200_OK
 
 
-def test_el_operador_lista_productos_pero_no_los_da_de_alta(usuarios: Dict[str, Personal]) -> None:
-    # el formulario de lotes necesita los productos; el ABM sigue siendo de administradores
+def test_el_operador_no_accede_a_productos(usuarios: Dict[str, Personal]) -> None:
+    # el router de productos es solo de administradores, incluido el listado
     operador = headers(usuarios["operador"])
     nuevo = {"nombre": "Medialunas", "unidadMedida": "unidades"}
 
-    assert [p["id"] for p in client.get("/productos/", headers=operador).json()] == [DADO_DE_BAJA, TARTA, PAN]
+    assert client.get("/productos/", headers=operador).status_code == status.HTTP_403_FORBIDDEN
     assert client.post("/productos/", json=nuevo, headers=operador).status_code == status.HTTP_403_FORBIDDEN
     assert client.delete(f"/productos/{PAN}", headers=operador).status_code == status.HTTP_403_FORBIDDEN
 

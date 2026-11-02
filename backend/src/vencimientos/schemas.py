@@ -7,6 +7,7 @@ class OrigenVencimiento(str, Enum):
     PERSONAL = "personal"
     EQUIPO = "equipo"
     DOCUMENTO = "documento"
+    AMBIENTAL = "ambiental"
 
 
 class EstadoVencimiento(str, Enum):

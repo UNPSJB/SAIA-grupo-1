@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict, Any, Sequence
 from fastapi import UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -11,11 +11,117 @@ from src.auditoria.services import registrar_auditoria
 from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.documentos import exceptions
-from src.documentos.constants import TAMANIO_MAXIMO_BYTES, TipoDocumento
+from src.documentos.constants import TAMANIO_MAXIMO_BYTES
 from src.documentos.models import Documento, VersionDocumento
 
 STORAGE_DIR = Path(__file__).resolve().parent / "archivos"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+def obtener_vencimientos_documentos_para_csv(
+    db: Session,
+    tipo: Optional[str] = None,
+    busqueda: Optional[str] = None,
+    filtro_estado: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    documentos = listar_documentos(db, tipo=tipo, busqueda=busqueda)
+    hoy = date.today()
+    resultado = []
+
+    for doc in documentos:
+        # 1. Obtener versión vigente o actual
+        ver_vigente = doc.version_actual
+
+        # 2. Extraer fecha de vencimiento desde la versión vigente
+        fecha_venc_raw = getattr(ver_vigente, "fecha_vencimiento", None) if ver_vigente else None
+        
+        fecha_venc_date = None
+        if isinstance(fecha_venc_raw, datetime):
+            fecha_venc_date = fecha_venc_raw.date()
+        elif isinstance(fecha_venc_raw, date):
+            fecha_venc_date = fecha_venc_raw
+
+        # 3. Calcular urgencia/estado de vencimiento
+        if not fecha_venc_date:
+            estado_clave = "AL_DIA"
+            urgencia_texto = "Al día"
+            fecha_venc_str = "Sin vencimiento"
+        else:
+            fecha_venc_str = fecha_venc_date.strftime("%Y-%m-%d")
+            diff_dias = (fecha_venc_date - hoy).days
+            if diff_dias < 0:
+                estado_clave = "VENCIDOS"
+                urgencia_texto = f"Vencido ({abs(diff_dias)} d)"
+            elif diff_dias < 15:
+                estado_clave = "PROXIMOS"
+                urgencia_texto = f"Vence en {diff_dias} días"
+            else:
+                estado_clave = "AL_DIA"
+                urgencia_texto = "Al día"
+
+        # 4. Filtro por estado
+        if filtro_estado and filtro_estado != "TODOS" and estado_clave != filtro_estado:
+            continue
+
+        # 5. Obtener datos de la versión y el archivo adjunto
+        if ver_vigente:
+            num_version = f"v{ver_vigente.version} Vigente" if doc.version_vigente else f"v{ver_vigente.version}"
+            nombre_archivo = getattr(ver_vigente, "archivo_nombre_original", "—")
+        else:
+            num_version = "Sin versión vigente"
+            nombre_archivo = "—"
+
+        resultado.append({
+            "urgencia": urgencia_texto,
+            "fecha_vencimiento": fecha_venc_str,
+            "titulo": doc.titulo,
+            "tipo": doc.tipo or "—",
+            "version": num_version,
+            "archivo": nombre_archivo
+        })
+
+    return resultado
+
+def obtener_documentos_para_csv(
+    db: Session,
+    tipo: Optional[str] = None,
+    busqueda: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    docs = listar_documentos(db, tipo=tipo, busqueda=busqueda)
+    filas = []
+
+    for d in docs:
+        v = d.version_actual  # Obtenemos la versión activa/vigente
+
+        # 1. Tipo de documento
+        tipo_str = str(getattr(d, "tipo", "") or "")
+
+        # 2. Formateo seguro de fechas
+        f_vigencia = getattr(v, "fecha_vigencia", None) if v else None
+        str_vigencia = f_vigencia.strftime("%Y-%m-%d") if hasattr(f_vigencia, "strftime") and f_vigencia else "Sin fecha"
+
+        f_creacion = getattr(d, "creado_el", None)
+        str_creacion = f_creacion.strftime("%Y-%m-%d %H:%M") if hasattr(f_creacion, "strftime") and f_creacion else "—"
+
+        # 3. Datos de la versión y usuario
+        num_version = f"v{v.version}" if v else "Sin versión"
+        str_tamanio = v.tamanio_formateado if v else "—"
+        str_usuario = v.usuario if v else "—"
+        total_vers = len(set(ver.version for ver in d.versiones)) if hasattr(d, "versiones") and d.versiones else 1
+
+        filas.append({
+            "id": d.id,
+            "titulo": getattr(d, "titulo", "") or "",
+            "tipo": tipo_str,
+            "descripcion": getattr(d, "descripcion", "") or "—",
+            "version_vigente": num_version,
+            "fecha_vigencia": str_vigencia,
+            "tamanio": str_tamanio,
+            "usuario": str_usuario,
+            "total_versiones": total_vers,
+            "creado_el": str_creacion
+        })
+
+    return filas
 
 def es_administrador(persona: Personal) -> bool:
     return persona.capacidad in (Capacidades.ADMINISTRAR, Capacidades.AMBAS)
@@ -96,7 +202,7 @@ def validar_y_guardar_archivo_pdf(file: UploadFile, documento_id: int, version: 
 
     return nombre_disco, nombre_original, tamanio
 
-def calcular_siguiente_version(versiones: List[VersionDocumento]) -> int:
+def calcular_siguiente_version(versiones: Sequence[VersionDocumento]) -> int:
     if not versiones:
         return 1
     numeros = []
@@ -112,7 +218,7 @@ def calcular_siguiente_version(versiones: List[VersionDocumento]) -> int:
 def crear_documento(
     db: Session,
     titulo: str,
-    tipo: TipoDocumento,
+    tipo: str,
     version: Optional[Union[int, str]] = None,
     file: Optional[UploadFile] = None,
     descripcion: Optional[str] = None,
@@ -124,6 +230,8 @@ def crear_documento(
     if isinstance(version, UploadFile) and file is None:
         file = version
         version = None
+    if file is None:
+        raise exceptions.ArchivoVacio()
 
     persona = verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
 
@@ -200,6 +308,8 @@ def subir_nueva_version(
     if isinstance(version, UploadFile) and file is None:
         file = version
         version = None
+    if file is None:
+        raise exceptions.ArchivoVacio()
 
     persona = verificar_permiso_administrador(db, responsable_legajo=responsable_legajo, usuario=usuario)
 
@@ -365,7 +475,7 @@ def marcar_version_vigente(
 
 def listar_documentos(
     db: Session,
-    tipo: Optional[TipoDocumento] = None,
+    tipo: Optional[str] = None,
     busqueda: Optional[str] = None,
 ) -> List[Documento]:
     query = select(Documento).where(Documento.activo == True)

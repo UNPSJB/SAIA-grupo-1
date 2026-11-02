@@ -1,11 +1,75 @@
 import logging
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Dict, Any
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from src.equipos.models import Equipo, Estado
 from src.equipos import schemas, exceptions
 from src.sectores.models import Sector
 from src.sectores.exceptions import SectorNoEncontrado
+
+def obtener_equipos_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None,
+    categoria: Optional[str] = None,
+    estado: Optional[str] = None
+) -> List[Dict[str, Any]]:
+   
+    query = select(Equipo)
+    equipos = db.scalars(query).all()
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+
+    for eq in equipos:
+        nombre = getattr(eq, "nombre", "") or ""
+        cat = getattr(eq, "categoria", "") or ""
+        
+        # Resolver nombre de ubicación / sector
+        ubicacion_nombre = ""
+        if getattr(eq, "sector", None):
+            ubicacion_nombre = eq.sector.nombre
+        elif getattr(eq, "ubicacion", None):
+            ubicacion_nombre = getattr(eq.ubicacion, "nombre", "") or str(eq.ubicacion)
+
+        # Resolver plan de limpieza
+        plan_nombre = ""
+        if getattr(eq, "plan_de_Limpieza", None):
+            plan_nombre = getattr(eq.plan_de_Limpieza, "nombre", "") or ""
+
+        # Filtro por búsqueda
+        if term:
+            coincide = (
+                term in nombre.lower()
+                or term in ubicacion_nombre.lower()
+                or term in cat.lower()
+                or term in plan_nombre.lower()
+            )
+            if not coincide:
+                continue
+
+        # Filtro por categoría
+        if categoria and categoria != "TODOS":
+            if cat.lower() != categoria.lower():
+                continue
+
+        # Filtro por estado
+        estado_val = str(getattr(eq, "estado", "") or "").lower()
+        if hasattr(eq.estado, "value"):
+            estado_val = str(eq.estado.value).lower()
+
+        if estado and estado != "TODOS":
+            if estado_val != estado.lower():
+                continue
+
+        filas.append({
+            "id": eq.id,
+            "nombre": nombre,
+            "ubicacion": ubicacion_nombre or "-",
+            "categoria": cat or "-",
+            "plan_de_limpieza": plan_nombre or "Sin plan asignado",
+            "estado": estado_val.capitalize() if estado_val else "Inactivo",
+        })
+
+    return filas
 
 def crear_equipo(db: Session, equipo: schemas.EquipoCreate) -> schemas.Equipo:
     datos = equipo.model_dump()

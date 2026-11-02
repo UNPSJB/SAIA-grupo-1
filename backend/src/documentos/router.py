@@ -11,10 +11,64 @@ from src.database import get_db
 from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.documentos import exceptions, schemas, services
-from src.documentos.constants import TipoDocumento
-from src.autenticacion.dependencies import requiere_admin
+
+from src.autenticacion.dependencies import requiere_admin, get_usuario_actual
+from src.utils.csv import generar_respuesta_csv
 
 router = APIRouter(prefix="/documentos", tags=["Documentos Versionados"])
+
+@router.get("/vencimientos/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_vencimientos_documentos_csv(
+    tipo: Optional[str] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    filtro_estado: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_vencimientos_documentos_para_csv(
+        db, tipo=tipo, busqueda=busqueda, filtro_estado=filtro_estado
+    )
+
+    columnas = {
+        "urgencia": "Urgencia",
+        "fecha_vencimiento": "Vencimiento",
+        "titulo": "Documento",
+        "tipo": "Tipo",
+        "version": "Versión",
+        "archivo": "Archivo"
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="vencimientos_documentos.csv"
+    )
+
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_documentos_csv(
+    tipo: Optional[str] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_documentos_para_csv(db, tipo=tipo, busqueda=busqueda)
+
+    columnas = {
+        "id": "ID",
+        "titulo": "Título",
+        "tipo": "Tipo de Documento",
+        "descripcion": "Descripción",
+        "version_vigente": "Versión Vigente",
+        "fecha_vigencia": "Fecha de Vigencia",
+        "tamanio": "Tamaño de Archivo",
+        "usuario": "Usuario Creador",
+        "total_versiones": "Total de Versiones",
+        "creado_el": "Fecha de Creación"
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="documentos_versionados.csv"
+    )
 
 def obtener_usuario_actual(
     request: Request,
@@ -69,7 +123,7 @@ def _serializar_version(v) -> Optional[schemas.VersionDocumentoResponse]:
 )
 def crear_documento_endpoint(
     titulo: str = Form(...),
-    tipo: TipoDocumento = Form(...),
+    tipo: str = Form(...),
     version: Optional[str] = Form(None),
     archivo: UploadFile = File(...),
     descripcion: Optional[str] = Form(None),
@@ -158,7 +212,7 @@ def marcar_version_vigente_endpoint(
     response_model=List[schemas.DocumentoListItem],
 )
 def listar_documentos_endpoint(
-    tipo: Optional[TipoDocumento] = Query(None),
+    tipo: Optional[str] = Query(None),
     busqueda: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):

@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { Badge } from '../../components/ui/badge';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoElementosLimpiezaProps {
   onNuevoClick: () => void;
@@ -22,6 +25,8 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
 }) => {
   const [elementos, setElementos] = useState<ElementoDeLimpieza[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
@@ -187,6 +192,33 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     return matchNombre && matchEstado && matchVencimiento;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (searchTerm.trim()) params.append('busqueda', searchTerm.trim());
+      if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
+
+      const queryString = params.toString();
+      const url = `/elementosDeLimpieza/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'elementos_de_limpieza.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar elementos de limpieza a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (searchTerm.trim()) partes.push(`Búsqueda: "${searchTerm}"`);
+    if (filtroEstado !== 'TODOS') partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: elementosPaginados,
     paginaActual,
@@ -207,14 +239,24 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Agregar Elemento
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Agregar Elemento
+            </button>
+          )}
+        </div>
       </div>
 
-      {}
       <div className="filtros-top-bar">
         <input
           type="text"
@@ -358,6 +400,15 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="elementos"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={elementosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ConfirmAlertDialog

@@ -1,10 +1,31 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.sectores import schemas, services
+from src.utils.csv import generar_respuesta_csv
+from src.autenticacion.dependencies import get_usuario_actual
 
 router = APIRouter()
+
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_sectores_csv(
+    busqueda: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    
+    datos = services.obtener_sectores_para_csv(db, busqueda=busqueda)
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Sector",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="sectores.csv",
+    )
 
 @router.post("/", response_model=schemas.Sector, status_code=status.HTTP_201_CREATED)
 def create_sector(sector: schemas.SectorCreate, db: Session = Depends(get_db)):

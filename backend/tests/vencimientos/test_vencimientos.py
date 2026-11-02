@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from src.certificado.models import Certificado
 from src.tipoCertificado.models import TipoCertificado
 from src.documentos.models import Documento, VersionDocumento
-from src.documentos.constants import TipoDocumento as TipoDocEnum
 from src.equipos.models import Categoria, Equipo, Estado
 from src.personal.models import Personal
 from src.plan_de_calibracion.models import Plan_de_Calibracion
@@ -85,7 +84,7 @@ def test_consolidacion_personal_equipo_documento(session: Session, usuarios: Dic
 
     doc = Documento(
         titulo="Manual de Calidad BPM",
-        tipo=TipoDocEnum.MANUAL_BPM,
+        tipo="Manual de BPM",
         activo=True,
     )
     session.add(doc)
@@ -231,7 +230,7 @@ def test_no_muestra_registros_dados_de_baja(session: Session, usuarios: Dict[str
 
     doc_baja = Documento(
         titulo="Procedimiento Dado de Baja",
-        tipo=TipoDocEnum.PROCEDIMIENTO,
+        tipo="Procedimiento",
         activo=False,
     )
     session.add(doc_baja)

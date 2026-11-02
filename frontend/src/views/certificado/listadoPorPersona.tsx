@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Badge } from '../../components/ui/badge';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +16,7 @@ import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoCertificadosPorPersonaProps {
   legajoPersona: number;
@@ -38,6 +41,8 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
 }) => {
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -169,6 +174,34 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     return !term || c.tipo.toLowerCase().includes(term);
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+      params.append('legajo_persona', String(legajoPersona));
+
+      if (searchTerm.trim()) {
+        params.append('busqueda', searchTerm.trim());
+      }
+
+      const queryString = params.toString();
+      const url = `/certificados/exportar-csv?${queryString}`;
+
+      await descargarCSV(url, `certificados_legajo_${legajoPersona}.csv`);
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al exportar los certificados a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [`Persona: ${nombrePersona || `#${legajoPersona}`}`];
+    if (searchTerm.trim()) partes.push(`Búsqueda: "${searchTerm}"`);
+    return partes.join(' | ');
+  };
+
   const {
     itemsPaginados: certificadosPaginados,
     paginaActual,
@@ -193,10 +226,20 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto', alignItems: 'center' }}>
           <button onClick={onVolver} className="btn-cancelar">
             {textoVolver || '← Volver a Personal'}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
+          </button>
+
           {onNuevoClick && (
             <button onClick={onNuevoClick} className="btn-guardar">
               + Agregar Certificado
@@ -242,7 +285,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
             ) : (
               certificadosPaginados.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.id}</td>
+                  <td>#{item.id}</td>
                   <td><strong>{item.tipo}</strong></td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
@@ -303,6 +346,15 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="certificados"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={certificadosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ConfirmAlertDialog
@@ -374,3 +426,5 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     </div>
   );
 };
+
+export default ListadoCertificadosPorPersona;

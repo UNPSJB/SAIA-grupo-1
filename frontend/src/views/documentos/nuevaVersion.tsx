@@ -5,21 +5,7 @@ import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
 import "../../styles/formularioAlta.css";
 import "./documentos.css";
 
-const getTipoLabel = (tipo?: TipoDocumento) => {
-  if (!tipo) return "";
-  switch (tipo) {
-    case "MANUAL_BPM":
-      return "Manual de BPM";
-    case "FICHA_TECNICA":
-      return "Ficha Técnica";
-    case "PROCEDIMIENTO":
-      return "Procedimiento";
-    case "RECETA":
-      return "Receta";
-    default:
-      return tipo;
-  }
-};
+const getTipoLabel = (tipo?: TipoDocumento | null): string => tipo || "";
 
 interface NuevaVersionProps {
   documentoId: number | null;

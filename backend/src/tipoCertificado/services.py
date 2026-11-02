@@ -1,9 +1,40 @@
-from typing import List
 from sqlalchemy import delete, select, update, func
 from sqlalchemy.orm import Session
 from src.tipoCertificado import exceptions, schemas
 from src.tipoCertificado.models import TipoCertificado
 from src.certificado.models import Certificado
+from typing import Optional, Dict, Any, List
+
+def obtener_tipos_certificados_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None,
+    ordenar_por: Optional[str] = "id"
+) -> List[Dict[str, Any]]:
+    
+    query = select(TipoCertificado)
+    tipos = db.scalars(query).all()
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+
+    for t in tipos:
+        nombre_val = getattr(t, "nombre", "") or ""
+
+        # Filtro por término de búsqueda
+        if term and term not in nombre_val.lower():
+            continue
+
+        filas.append({
+            "id": t.id,
+            "nombre": nombre_val,
+        })
+
+    # Ordenamiento
+    if ordenar_por == "nombre":
+        filas.sort(key=lambda x: x["nombre"].lower())
+    else:
+        filas.sort(key=lambda x: x["id"])
+
+    return filas
 
 def crear_tipo_certificado(db: Session, nombre: str) -> TipoCertificado:
   nombre_limpio = " ".join(nombre.split())

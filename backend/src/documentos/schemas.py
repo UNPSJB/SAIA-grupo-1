@@ -1,7 +1,7 @@
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 from pydantic import BaseModel, ConfigDict
-from src.documentos.constants import TipoDocumento
+
 
 class VersionDocumentoResponse(BaseModel):
     id: int
@@ -44,7 +44,7 @@ class VersionHistorialItem(BaseModel):
 class DocumentoResponse(BaseModel):
     id: int
     titulo: str
-    tipo: TipoDocumento
+    tipo: str
     descripcion: Optional[str] = None
     activo: bool
     creado_el: datetime
@@ -57,7 +57,7 @@ class DocumentoResponse(BaseModel):
 class DocumentoListItem(BaseModel):
     id: int
     titulo: str
-    tipo: TipoDocumento
+    tipo: str
     descripcion: Optional[str] = None
     activo: bool
     creado_el: datetime

@@ -1,9 +1,29 @@
-from typing import List
+from typing import List, Optional, Dict, Any
 from sqlalchemy import delete, select, func
 from sqlalchemy.orm import Session
 from src.tipoDocumento import exceptions
 from src.tipoDocumento.models import TipoDocumento
 from src.documentos.models import Documento
+
+def obtener_tipos_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    query = select(TipoDocumento)
+    
+    if busqueda:
+        termino = f"%{busqueda.strip()}%"
+        query = query.where(TipoDocumento.nombre.ilike(termino))
+        
+    tipos = db.scalars(query.order_by(TipoDocumento.id.asc())).all()
+    
+    return [
+        {
+            "id": t.id,
+            "nombre": t.nombre
+        }
+        for t in tipos
+    ]
 
 def crear_tipo_documento(db: Session, nombre: str) -> TipoDocumento:
     nombre_limpio = " ".join(nombre.split())
@@ -27,8 +47,22 @@ def crear_tipo_documento(db: Session, nombre: str) -> TipoDocumento:
     db.refresh(_tipo)
     return _tipo
 
+DEFAULT_TIPOS = ["Manual de BPM", "Ficha Técnica", "Procedimiento", "Receta"]
+
+def asegurar_tipos_base(db: Session):
+    existentes = db.scalars(select(TipoDocumento)).all()
+    existentes_nombres = {t.nombre.replace(" ", "").lower() for t in existentes}
+    agregados = False
+    for nombre in DEFAULT_TIPOS:
+        if nombre.replace(" ", "").lower() not in existentes_nombres:
+            db.add(TipoDocumento(nombre=nombre))
+            agregados = True
+    if agregados:
+        db.commit()
+
 def listar_tipos_documentos(db: Session) -> List[TipoDocumento]:
-    return db.scalars(select(TipoDocumento).order_by(TipoDocumento.nombre.asc())).all()
+    asegurar_tipos_base(db)
+    return list(db.scalars(select(TipoDocumento).order_by(TipoDocumento.nombre.asc())).all())
 
 def obtener_tipo_documento(db: Session, tipo_id: int) -> TipoDocumento:
     db_tipo = db.scalar(
@@ -64,8 +98,8 @@ def eliminar_tipo_documento(db: Session, tipo_id: int) -> None:
 
     en_uso = db.scalar(
         select(Documento).where(
-            func.lower(func.replace(Documento.tipo, " ", ""))
-            == db_tipo.nombre.replace(" ", "").lower()
+            func.lower(func.replace(Documento.tipo, " ", "")) == db_tipo.nombre.replace(" ", "").lower()
+
         )
     )
     if en_uso:

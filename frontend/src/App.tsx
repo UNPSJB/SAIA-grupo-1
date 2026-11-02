@@ -88,8 +88,12 @@ import { DetalleProducto } from './views/producto/verDetalle';
 import { InformeInspeccion } from './views/informes/informeInspeccion';
 import ActivarVista_Publica from './views/vistaPublica/habilitarVista';
 import VistaPublica_Habilitada from './views/vistaPublica/VistaHabilitada';
+import { ListadoControlesAmbientales } from './views/controlesAmbientales/listado';
+import NuevoControlAmbiental from './views/controlesAmbientales/nuevoControl';
+import { DetalleControlAmbiental } from './views/controlesAmbientales/verDetalle';
+import { EditarControlAmbiental } from './views/controlesAmbientales/editarDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -105,6 +109,7 @@ type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
 type VistaMotivos = 'listado' | 'alta' | 'detalle';
 type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
 type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar' | 'receta';
+type VistaControlesAmbientales = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -159,11 +164,14 @@ function Aplicacion() {
   const [vistaTipoDocumento, setVistaTipoDocumento] = useState<VistaTipoDocumento>('listado');
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<number | null>(null);
 
+  const [vistaControlesAmbientales, setVistaControlesAmbientales] = useState<VistaControlesAmbientales>('listado');
+  const [controlAmbientalSeleccionado, setControlAmbientalSeleccionado] = useState<number | null>(null);
+
   const [filtroCertificadosInicial, setFiltroCertificadosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
   const [filtroCalibracionInicial, setFiltroCalibracionInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
   const [filtroElementosInicial, setFiltroElementosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
   const [filtroDocumentosVencInicial, setFiltroDocumentosVencInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
-  const [filtroConsolidadoOrigen, setFiltroConsolidadoOrigen] = useState<'' | 'personal' | 'equipo' | 'documento'>('');
+  const [filtroConsolidadoOrigen, setFiltroConsolidadoOrigen] = useState<'' | 'personal' | 'equipo' | 'documento' | 'ambiental'>('');
   const [filtroConsolidadoEstado, setFiltroConsolidadoEstado] = useState<'' | 'vencido' | 'proximo' | 'vigente'>('');
   const [desdeDashboard, setDesdeDashboard] = useState(false);
 
@@ -217,6 +225,8 @@ function Aplicacion() {
     setTipoDocumentoSeleccionado(null);
     setVistaProductos('listado');
     setRecetaDesdeProducto(null);
+    setVistaControlesAmbientales('listado');
+    setControlAmbientalSeleccionado(null);
     if (limpiarFiltros) {
       setFiltroCertificadosInicial('TODOS');
       setFiltroCalibracionInicial('TODOS');
@@ -237,6 +247,7 @@ function Aplicacion() {
     setVistaPersonas('listado');
     setVistaPlanCalibracion('listado');
     setVistaDocumentos('listado');
+    setVistaControlesAmbientales('listado');
     setVistaVencimientos(tabDestino);
     setModulo('vencimientos');
   };
@@ -267,6 +278,10 @@ interface RegistroVencimientoRef {
       setModulo('documentos');
       setDocumentoSeleccionado(refId);
       setVistaDocumentos('detalle');
+    } else if (origen === 'ambiental') {
+      setModulo('controlesAmbientales');
+      setControlAmbientalSeleccionado(refId);
+      setVistaControlesAmbientales('detalle');
     }
   };
 
@@ -659,7 +674,7 @@ const irANotificacion = (notif: NotificacionItem) => {
                   );
                 } else {
                   setVistaVencimientos('consolidado');
-                  setFiltroConsolidadoOrigen(subvista === 'equipo' || subvista === 'personal' || subvista === 'documento' ? subvista : '');
+                  setFiltroConsolidadoOrigen(subvista === 'equipo' || subvista === 'personal' || subvista === 'documento' || subvista === 'ambiental' ? subvista : '');
                   setFiltroConsolidadoEstado(filtroEstado === 'vencido' || filtroEstado === 'proximo' || filtroEstado === 'vigente' ? filtroEstado : '');
                 }
               } else if (mod === 'planDeCalibracion') {
@@ -1225,7 +1240,33 @@ const irANotificacion = (notif: NotificacionItem) => {
               onCancel={() => setVistaProductos('listado')}
             />
           )
-        ) : null}
+        ): modulo === 'controlesAmbientales' ? (
+          vistaControlesAmbientales === 'listado' ? (
+            <ListadoControlesAmbientales
+              onNuevoClick={esAdministrador ? () => setVistaControlesAmbientales('alta') : undefined}
+              onDetalleClick={(id) => {
+                setControlAmbientalSeleccionado(id);
+                setVistaControlesAmbientales('detalle');
+              }}
+            />
+          ) : vistaControlesAmbientales === 'alta' && esAdministrador ? (
+            <NuevoControlAmbiental
+              onSuccess={() => setVistaControlesAmbientales('listado')}
+              onCancel={() => setVistaControlesAmbientales('listado')}
+            />
+          ) : vistaControlesAmbientales === 'editar' && esAdministrador ? (
+            <EditarControlAmbiental
+              controlId={controlAmbientalSeleccionado}
+              onSuccess={() => setVistaControlesAmbientales('listado')}
+              onCancel={() => setVistaControlesAmbientales('listado')}
+            />
+          ) : (
+            <DetalleControlAmbiental
+              controlId={controlAmbientalSeleccionado}
+              onVolver={origenVencimientos ? volverAVencimientos : () => setVistaControlesAmbientales('listado')}
+            />
+          )
+        ): null}
       </SidebarInset>
     </SidebarProvider>
   );

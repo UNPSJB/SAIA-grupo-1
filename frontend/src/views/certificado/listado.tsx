@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +43,9 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [personalMap, setPersonalMap] = useState<Record<number, PersonalInfo>>({});
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>(filtroEstadoInicial || 'TODOS');
 
@@ -170,6 +176,33 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
     );
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (searchTerm.trim()) params.append('busqueda', searchTerm.trim());
+      if (filtroEstado !== 'TODOS') params.append('filtro_estado', filtroEstado);
+
+      const queryString = params.toString();
+      const url = `/certificados/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'vencimientos_certificados.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al exportar los certificados a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (searchTerm.trim()) partes.push(`Búsqueda: "${searchTerm}"`);
+    if (filtroEstado !== 'TODOS') partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: certificadosPaginados,
     paginaActual,
@@ -192,29 +225,31 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
 
   return (
     <div className="modulo-container modulo-vencimientos-container">
-      <div className="listado-top-bar venc-top-bar">
-        <div className="modulo-header">
+      {/* Cabecera independiente de estilos de tabla para forzar orden vertical en la derecha */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+        <div className="modulo-header" style={{ marginBottom: 0 }}>
           <h1>Vencimientos de Personal</h1>
           <div className="subtitulo">01 · Control de carnets y certificados con archivo adjunto</div>
         </div>
 
-        {(onVerConsolidado || onVerSoloDocumentos) && (
-          <div className="venc-tabs">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+          {(onVerConsolidado || onVerSoloDocumentos) && (
+            <div className="venc-tabs">
             {onVerConsolidado && (
+                <button
+                  type="button"
+                  className="venc-tab"
+                  onClick={onVerConsolidado}
+                >
+                  Todos (Consolidado)
+                </button>
+            )}
               <button
                 type="button"
-                className="venc-tab"
-                onClick={onVerConsolidado}
+                className="venc-tab venc-tab--activo"
               >
-                Todos (Consolidado)
+                Solo Personal (con archivo)
               </button>
-            )}
-            <button
-              type="button"
-              className="venc-tab venc-tab--activo"
-            >
-              Solo Personal (con archivo)
-            </button>
             {onVerSoloDocumentos && (
               <button
                 type="button"
@@ -224,8 +259,18 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
                 Solo Documentos
               </button>
             )}
-          </div>
-        )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
+          </button>
+        </div>
       </div>
 
       <div className="venc-resumen">
@@ -234,7 +279,6 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         <span className="venc-chip venc-chip--vigente">✓ {resumen.vigentes} vigentes</span>
       </div>
 
-      {}
       <div className="filtros-top-bar">
         <input
           type="text"
@@ -357,6 +401,15 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="certificados"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={certificadosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <Dialog open={Boolean(modalArchivoUrl)} onOpenChange={(open) => !open && setModalArchivoUrl(null)}>

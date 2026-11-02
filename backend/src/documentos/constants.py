@@ -1,11 +1,3 @@
-from enum import StrEnum
-
-class TipoDocumento(StrEnum):
-    MANUAL_BPM = "MANUAL_BPM"
-    FICHA_TECNICA = "FICHA_TECNICA"
-    PROCEDIMIENTO = "PROCEDIMIENTO"
-    RECETA = "RECETA"
-
 EXTENSIONES_PERMITIDAS = {".pdf"}
 TIPOS_MIME_PERMITIDOS = {"application/pdf"}
 TAMANIO_MAXIMO_BYTES = 20 * 1024 * 1024

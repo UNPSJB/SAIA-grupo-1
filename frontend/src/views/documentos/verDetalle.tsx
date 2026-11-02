@@ -37,20 +37,7 @@ const formatearFecha = (fechaStr?: string | null) => {
   }
 };
 
-const getTipoLabel = (tipo: TipoDocumento): string => {
-  switch (tipo) {
-    case "MANUAL_BPM":
-      return "Manual de BPM";
-    case "FICHA_TECNICA":
-      return "Ficha Técnica";
-    case "PROCEDIMIENTO":
-      return "Procedimiento";
-    case "RECETA":
-      return "Receta";
-    default:
-      return tipo;
-  }
-};
+const getTipoLabel = (tipo?: TipoDocumento | null): string => tipo || "";
 
 const formatearPeso = (bytes?: number | null, formato?: string | null) => {
   if (formato) return formato;

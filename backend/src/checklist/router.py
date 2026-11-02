@@ -7,14 +7,50 @@ from src.autenticacion.dependencies import (
     es_administrador,
     get_usuario_actual,
     requiere_operador,
+    requiere_admin
 )
 from src.checklist import schemas, services
 from src.database import get_db
 from src.exceptions import PermissionDenied
 from src.personal.models import Personal
+from src.utils.csv import generar_respuesta_csv
 
 router = APIRouter(prefix="/checklist", tags=["Checklist"])
 
+
+@router.get("/exportar-csv", dependencies=[Depends(requiere_admin)])
+async def exportar_checklists_csv_endpoint(
+    fecha: Optional[date] = Query(None),
+    fecha_desde: Optional[date] = Query(None),
+    fecha_hasta: Optional[date] = Query(None),
+    estado: Optional[str] = Query(None),
+    responsable_legajo: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_checklists_para_csv(
+        db,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        estado=estado,
+        responsable_legajo=responsable_legajo,
+    )
+
+    columnas = {
+        "id": "ID Checklist",
+        "fecha": "Fecha",
+        "estado": "Estado",
+        "cumplimiento": "Cumplimiento (%)",
+        "responsable_legajo": "Legajo Responsable",
+        "responsable": "Nombre Responsable",
+        "cantidad_tareas": "Cantidad Tareas",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="historial_checklists.csv",
+    )
 
 def _verificar_acceso(db: Session, checklist_id: int, usuario: Personal) -> None:
     """Un operador solo accede a sus propios checklists (de cualquier fecha); los ajenos son del administrador."""

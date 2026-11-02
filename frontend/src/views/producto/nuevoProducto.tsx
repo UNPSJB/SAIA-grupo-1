@@ -37,7 +37,7 @@ export default function NuevoProducto({ onSuccess, onCancel }: NuevoProductoProp
     let cancelado = false;
     async function cargarRecetas() {
       try {
-        const res = await apiFetch("/documentos/?tipo=RECETA");
+        const res = await apiFetch("/documentos/?tipo=Receta");
         if (res.ok) {
           const data = await res.json();
           if (!cancelado) setRecetas(data);

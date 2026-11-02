@@ -1,3 +1,4 @@
+from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 from src.dashboard.services import obtener_historico_consumo  # noqa: F401
 from .models import InsumoQuimico
@@ -9,6 +10,48 @@ from .exceptions import (
     InsumoQuimicoNotFoundException,
     InsumoQuimicoDuplicateNameException,
 )
+
+def obtener_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None,
+    tipo: Optional[str] = None,
+    estado: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    query = db.query(InsumoQuimico)
+
+    if estado and estado != "TODOS":
+        if estado.upper() == "ACTIVO":
+            query = query.filter(InsumoQuimico.activo == True)
+        elif estado.upper() == "INACTIVO":
+            query = query.filter(InsumoQuimico.activo == False)
+
+    if tipo and tipo != "TODOS":
+        query = query.filter(InsumoQuimico.tipo == tipo)
+
+    insumos = query.all()
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+
+    for item in insumos:
+        nombre = getattr(item, "nombre", "") or ""
+            
+        if term and term not in nombre.lower():
+            continue
+
+        tipo_val = item.tipo.value if hasattr(item.tipo, "value") else str(item.tipo or "")
+        unidad_val = item.unidad_medida.value if hasattr(item.unidad_medida, "value") else str(item.unidad_medida or "")
+
+        filas.append({
+            "id": item.id,
+            "nombre": nombre,
+            "tipo": tipo_val,
+            "stock_actual": getattr(item, "stock_actual", 0),
+            "unidad_medida": unidad_val,
+            "estado": "Activo" if item.activo else "Inactivo",
+        })
+
+    return filas
+
 
 class InsumoQuimicoService:
     @staticmethod

@@ -1,11 +1,53 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 from src.producto import exceptions, schemas
 from src.producto.models import Producto
 from src.documentos.models import Documento
-from src.documentos.constants import TipoDocumento
+
+def obtener_productos_para_csv(
+    db: Session,
+    activo: Optional[bool] = None,
+    busqueda: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    
+    query = db.query(Producto)
+    
+    if activo is not None:
+        query = query.filter(Producto.activo == activo)
+        
+    productos = query.all()
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+    
+    for p in productos:
+        nombre = p.nombre or ""
+        descripcion = p.descripcion or ""
+        nombre_receta = p.receta.titulo if p.receta else ""
+
+        # Filtro opcional por búsqueda
+        if term:
+            coincide = (
+                term in nombre.lower()
+                or term in descripcion.lower()
+                or term in nombre_receta.lower()
+            )
+            if not coincide:
+                continue
+
+        unidad = p.unidadMedida.value if hasattr(p.unidadMedida, 'value') else str(p.unidadMedida)
+        
+        filas.append({
+            "id": p.id,
+            "nombre": nombre,
+            "unidadMedida": unidad,
+            "receta": nombre_receta or "Sin receta",
+            "descripcion": descripcion,
+            "estado": "Activo" if p.activo else "Inactivo"
+        })
+        
+    return filas
 
 
 def validar_receta(db: Session, id_receta: int) -> Documento:
@@ -13,7 +55,8 @@ def validar_receta(db: Session, id_receta: int) -> Documento:
     if doc is None:
         raise exceptions.RecetaNoEncontrada()
 
-    if doc.tipo != TipoDocumento.RECETA and str(doc.tipo).upper() != "RECETA":
+    tipo_str = str(getattr(doc, "tipo", "") or "").upper()
+    if tipo_str != "RECETA":
         raise exceptions.DocumentoNoEsReceta()
 
     return doc
