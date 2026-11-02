@@ -61,8 +61,10 @@ import { NuevoTipoCertificado } from './views/tipoCertificado/nuevoTipoCertifica
 import { DetalleTipoCertificado } from './views/tipoCertificado/verDetalle';
 import { VistaConsolidadaVencimiento } from './views/vencimientos/VistaConsolidadaVencimiento';
 import { AcercaDeNosotros } from './views/vistaPublica/AcercaDeNosotros';
+import ActivarVista_Publica from './views/vistaPublica/habilitarVista';
+import VistaPublica_Habilitada from './views/vistaPublica/VistaHabilitada';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'documentos' | 'incidentes' | 'auditoria' | 'planDeCalibracion'| 'vistaPublica';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -123,6 +125,10 @@ function Aplicacion() {
 
   const [vistaTipoCertificado, setVistaTipoCertificado] = useState<VistaTipoCertificado>('listado');
   const [tipoCertificadoSeleccionado, setTipoCertificadoSeleccionado] = useState<number | null>(null);
+
+  const [vistaPublicaHabilitada, setVistaPublicaHabilitada] = useState(false);
+  const [qrUrlPublica, setQrUrlPublica] = useState<string | null>(null);
+  const [idAlfanumericoPublico, setIdAlfanumericoPublico] = useState<string | null>(null);
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
@@ -209,7 +215,34 @@ function Aplicacion() {
 
       <SidebarInset style={{ padding: '32px 36px' }}>
         {modulo === 'dashboard' ? (
-          <PanelDashboard />
+          <PanelDashboard
+          vistaHabilitada={vistaPublicaHabilitada}
+          onIrAVistaPublica={() => setModulo('vistaPublica')}
+             />
+          ) : modulo === 'vistaPublica' ? (
+          vistaPublicaHabilitada ? (
+            <VistaPublica_Habilitada
+              qrUrl={qrUrlPublica}
+              identificadorUnico={idAlfanumericoPublico}
+              onSuccess={() => {
+                setVistaPublicaHabilitada(false);
+                setQrUrlPublica(null);
+                setIdAlfanumericoPublico(null);
+                setModulo('dashboard');
+              }}
+              onCancel={() => setModulo('dashboard')}
+            />
+          ) : (
+            <ActivarVista_Publica
+              onSuccess={(url, idAlfanumerico) => {
+                setQrUrlPublica(url);
+                setIdAlfanumericoPublico(idAlfanumerico);
+                setVistaPublicaHabilitada(true);
+                setModulo('dashboard');
+              }}
+              onCancel={() => setModulo('dashboard')}
+            />
+          )
         ) : modulo === 'vencimientos' ? (
           vistaVencimientos === 'consolidado' ? (
             <VistaConsolidadaVencimiento

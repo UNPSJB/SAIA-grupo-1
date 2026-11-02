@@ -31,7 +31,8 @@ export type Modulo =
   | 'documentos'
   | 'incidentes'
   | 'auditoria'
-  | 'planDeCalibracion';
+  | 'planDeCalibracion'
+  | 'vistaPublica';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -155,6 +156,11 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <path d="m9 12 2 2 4-4" />
+    </svg>
+  ),
+  vistaPublica: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
   ),
 };
