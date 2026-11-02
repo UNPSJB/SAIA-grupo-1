@@ -4,6 +4,7 @@ import { apiFetch } from '../../api/client';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useVistaPublica } from './contextDeVistaPublica';
 import type { AcercaDeNosotrosConId } from './tipos';
+import ConfiguracionProductosPublicos from './configuracionProductos';
 
 interface ActivarVistaProps{
     onSuccess?: (qrBlobUrl: string,idAlfanumerico:string) => void;
@@ -24,6 +25,7 @@ export default function ActivarVista_Publica({onSuccess,onCancel}:ActivarVistaPr
     const { config, actualizarConfig } = useVistaPublica();
 
     const [formNosotros, setFormNosotros] = useState<AcercaDeNosotrosConId>(ACERCADENOSOTROS_INICIAL);
+    const [productosVisibles, setProductosVisibles] = useState<number[]>([]);
 
 
 
@@ -66,9 +68,11 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
         boder: 4,
         color_fill: "black", 
         color_back: "white",
-        texto:`http://192.168.1.42:5173/vista-publica?verGrafico=${config.verGrafico}&verAcercaDeNosotros=${config.verAcercaDeNosotros}`,
+        // el link apunta a donde esta corriendo el frontend (localhost o la IP con la que se abrio la app)
+        texto:`${window.location.origin}/vista-publica?verGrafico=${config.verGrafico}&verAcercaDeNosotros=${config.verAcercaDeNosotros}`,
         ver_grafico: config.verGrafico,
-        verAcercaDeNosotros: config.verAcercaDeNosotros
+        verAcercaDeNosotros: config.verAcercaDeNosotros,
+        verProductos: config.verProductos
     }
 
     const modulosBase = 21 + ((payload.version - 1) * 4);
@@ -79,9 +83,6 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
 
         setErrorMsg(null);
         setSuccessMsg(null);
-
-
-        setLoading(true);
 
         function soloLetrasYNumeros(nombre:string): boolean{
 
@@ -98,6 +99,9 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
         setErrorMsg("La descripcion solo puede contener letras , números y caracteres permitidos.");
         return;
     }
+
+        // recien despues de validar: si la validacion corta antes, el boton no queda trabado en "Habilitando..."
+        setLoading(true);
 
         try {
             const res = await apiFetch(`/quickCode/`, {
@@ -168,6 +172,21 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
                     throw new Error(mensaje);
                 }
             }
+
+            if (config.verProductos) {
+                // la seleccion de productos se guarda junto con la habilitacion
+                const resProductos = await apiFetch(`/productos/visibilidad-publica`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ productos_visibles: productosVisibles }),
+                });
+                if (!resProductos.ok) {
+                    const errorData = await resProductos.json().catch(() => ({}));
+                    throw new Error(typeof errorData.detail === "string" ? errorData.detail : "Error al guardar los productos a mostrar.");
+                }
+            }
         const idAlfanumerico = res.headers.get("X-Identificador-Unico");
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
@@ -221,10 +240,12 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
             checked={config.verGrafico} 
             onChange={(e) => actualizarConfig('verGrafico', e.target.checked)} 
         />
-        <span style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => actualizarConfig('verGrafico', !config.verGrafico)}>
+        <span style={{ color: 'var(--text-h)', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => actualizarConfig('verGrafico', !config.verGrafico)}>
             Mostrar Gráfico de Tareas
         </span>
     </div>
+
+        <ConfiguracionProductosPublicos onSeleccionChange={setProductosVisibles} />
 
     <div className="form-group">
       <label htmlFor="descripcion">Descripción</label>
@@ -235,7 +256,7 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
             checked={config.verAcercaDeNosotros} 
             onChange={(e) => actualizarConfig('verAcercaDeNosotros', e.target.checked)} 
             />
-        <span style={{ color: '#fff', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => actualizarConfig('verAcercaDeNosotros', !config.verAcercaDeNosotros)}>
+        <span style={{ color: 'var(--text-h)', fontSize: '13px', userSelect: 'none', cursor: 'pointer' }} onClick={() => actualizarConfig('verAcercaDeNosotros', !config.verAcercaDeNosotros)}>
             Mostrar
             </span>
         </div>

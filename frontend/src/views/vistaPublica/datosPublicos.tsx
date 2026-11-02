@@ -71,6 +71,10 @@ export const Panel_Publico: React.FC = () => {
           setConfig(prev => ({...prev, verAcercaDeNosotros:data.verAcercaDeNosotros}))
         }
 
+        if (typeof data.verProductos === 'boolean') {
+          setConfig(prev => ({ ...prev, verProductos: data.verProductos }));
+        }
+
         setQrValido(true);
       } catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
