@@ -88,7 +88,8 @@ import { DetalleProducto } from './views/producto/verDetalle';
 import { InformeInspeccion } from './views/informes/informeInspeccion';
 import ActivarVista_Publica from './views/vistaPublica/habilitarVista';
 import VistaPublica_Habilitada from './views/vistaPublica/VistaHabilitada';
-import { ListadoControlesAmbientales } from './views/controlesAmbientales/listado';
+
+import { ListadoControlesAmbientales } from './views/controlesAmbientales/listado';
 import NuevoControlAmbiental from './views/controlesAmbientales/nuevoControl';
 import { DetalleControlAmbiental } from './views/controlesAmbientales/verDetalle';
 import { EditarControlAmbiental } from './views/controlesAmbientales/editarDetalle';
@@ -197,6 +198,7 @@ function Aplicacion() {
   const [vistaPublicaHabilitada, setVistaPublicaHabilitada] = useState(false);
   const [qrUrlPublica, setQrUrlPublica] = useState<string | null>(null);
   const [idAlfanumericoPublico, setIdAlfanumericoPublico] = useState<string | null>(null);
+  const [urlTextoPublica, setUrlTextoPublica] = useState<string | null>(null);
 
   const cambiarModulo = (nuevoModulo: Modulo, limpiarFiltros: boolean = true, esDesdeDashboard: boolean = false) => {
     setModulo(nuevoModulo);
@@ -691,20 +693,23 @@ const irANotificacion = (notif: NotificacionItem) => {
           vistaPublicaHabilitada ? (
             <VistaPublica_Habilitada
               qrUrl={qrUrlPublica}
+              urlEnlace={urlTextoPublica}
               identificadorUnico={idAlfanumericoPublico}
               onSuccess={() => {
                 setVistaPublicaHabilitada(false);
                 setQrUrlPublica(null);
                 setIdAlfanumericoPublico(null);
+                setUrlTextoPublica(null);
                 setModulo('dashboard');
               }}
               onCancel={() => setModulo('dashboard')}
             />
           ) : (
             <ActivarVista_Publica
-              onSuccess={(url, idAlfanumerico) => {
+              onSuccess={(url, idAlfanumerico,urlTexto) => {
                 setQrUrlPublica(url);
                 setIdAlfanumericoPublico(idAlfanumerico);
+                setUrlTextoPublica(urlTexto);
                 setVistaPublicaHabilitada(true);
                 setModulo('dashboard');
               }}
