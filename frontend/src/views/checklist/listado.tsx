@@ -421,7 +421,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
 
         <div className="filtros-acciones">
           <button type="submit" className="btn-filtrar" title="Filtrar historial">
-            🔍 Filtrar
+            Filtrar
           </button>
           {(fechaDesde || fechaHasta || estadoFiltro || responsableFiltro) && (
             <button

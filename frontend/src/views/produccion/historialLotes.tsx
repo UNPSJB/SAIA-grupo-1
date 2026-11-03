@@ -174,7 +174,7 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
 
         <div className="filtros-acciones">
           <button type="submit" className="btn-filtrar" title="Filtrar historial">
-            🔍 Filtrar
+            Filtrar
           </button>
           {hayFiltros && (
             <button type="button" onClick={handleLimpiar} className="btn-limpiar-filtro" title="Limpiar filtros">

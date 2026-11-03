@@ -47,16 +47,16 @@ interface GraficoCumplimientoLimpiezaProps {
 }
 
 interface TooltipPayloadItem {
-  payload: PuntoCumplimiento;
+  payload?: PuntoCumplimiento;
 }
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: TooltipPayloadItem[];
+  payload?: readonly TooltipPayloadItem[];
 }
 
-const CustomTooltipContent: React.FC<CustomTooltipProps> = ({ active, payload }) => {
-  if (active && payload && payload.length) {
+const CustomTooltipContent = ({ active, payload }: CustomTooltipProps): React.ReactElement | null => {
+  if (active && payload && payload.length && payload[0].payload) {
     const data: PuntoCumplimiento = payload[0].payload;
     const color =
       data.porcentaje >= 80

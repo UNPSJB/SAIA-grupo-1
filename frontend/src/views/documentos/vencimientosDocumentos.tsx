@@ -411,10 +411,10 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
                         <button
                           type="button"
                           className="btn-icon btn-descargar"
-                          title="Descargar archivo"
+                          title="Descargar versión"
                           onClick={() => handleDescargar(doc.version_actual_id, doc.archivo_nombre_original)}
                         >
-                          ⬇ PDF
+                          ⬇
                         </button>
                       ) : (
                         '—'
