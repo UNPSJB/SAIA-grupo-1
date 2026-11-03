@@ -1,12 +1,20 @@
+from typing import Optional
 from src.exceptions import NotFound, PermissionDenied
 
 
 class NotificacionNoEncontrada(NotFound):
-    def __init__(self, mensaje: str = "La notificación no fue encontrada"):
-        super().__init__(mensaje)
+    DETAIL = "La notificación no fue encontrada"
+
+    def __init__(self, mensaje: Optional[str] = None):
+        if mensaje:
+            self.DETAIL = mensaje
+        super().__init__()
 
 
 class NotificacionNoAutorizada(PermissionDenied):
-    def __init__(self, mensaje: str = "No tienes permiso para acceder a esta notificación"):
-        super().__init__(mensaje)
+    DETAIL = "No tienes permiso para acceder a esta notificación"
 
+    def __init__(self, mensaje: Optional[str] = None):
+        if mensaje:
+            self.DETAIL = mensaje
+        super().__init__()

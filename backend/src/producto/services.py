@@ -100,7 +100,7 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
 
 
 def listar_productos(db: Session) -> List[Producto]:
-    productos = db.scalars(select(Producto).order_by(Producto.id.desc())).all()
+    productos = list(db.scalars(select(Producto).order_by(Producto.id.desc())).all())
 
     for prod in productos:
         if prod.receta:

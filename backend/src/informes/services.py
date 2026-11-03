@@ -154,7 +154,7 @@ def _incidentes_cerrados(db: Session, desde: date, hasta: date) -> List[schemas.
             reportado_el=inc.creado_el,
             reportado_por=inc.nombre_reportante,
             accion_correctiva=inc.accion_correctiva,
-            cerrado_el=inc.cerrado_el,
+            cerrado_el=inc.cerrado_el or inc.creado_el,
             resuelto_por=inc.nombre_resolutor,
         )
         for inc in db.scalars(consulta).all()

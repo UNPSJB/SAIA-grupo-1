@@ -34,9 +34,8 @@ def obtener_elementos_para_csv(
                 continue
 
         # Formatear fecha de cambio
-        fecha_cambio_str = "-"
-        if getattr(elem, "fechaCambio", None):
-            fecha_cambio_str = elem.fechaCambio.strftime("%Y-%m-%d")
+        f_cambio = getattr(elem, "fechaCambio", None)
+        fecha_cambio_str = f_cambio.strftime("%Y-%m-%d") if f_cambio else "-"
 
         frecuencia_str = (
             f"{elem.frecuenciaDeCambio} días"
@@ -72,9 +71,9 @@ def crear_elementoDeLimpieza(db: Session, elementoDeLimpieza: schemas.ElementoDe
     return _elementoDeLimpieza
 
 def listar_elementosDeLimpiezas(db: Session) -> List[schemas.ElementoDeLimpieza]:
-    return db.scalars(select(ElementoDeLimpieza)).all() 
+    return list(db.scalars(select(ElementoDeLimpieza)).all()) 
 
-def obtener_elementoDeLimpieza(db: Session, elementoDeLimpieza_id: int) -> schemas.ElementoDeLimpieza:
+def obtener_elementoDeLimpieza(db: Session, elementoDeLimpieza_id: int) -> ElementoDeLimpieza:
     db_elementoDeLimpieza = db.scalar(select(ElementoDeLimpieza).where(ElementoDeLimpieza.id ==elementoDeLimpieza_id))
     if db_elementoDeLimpieza is None:
         raise exceptions.ElementoNoEncontrado()

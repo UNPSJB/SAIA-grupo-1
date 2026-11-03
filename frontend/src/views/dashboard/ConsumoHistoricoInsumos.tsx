@@ -110,7 +110,8 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
           const list: InsumoQuimico[] = await res.json();
           setCatalogoQuimicos(list);
         }
-      } catch {
+      } catch (err) {
+        void err;
       }
     };
     fetchCatalogo();

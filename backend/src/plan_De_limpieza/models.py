@@ -1,9 +1,14 @@
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
+
+if TYPE_CHECKING:
+    import src.equipos.models
+    import src.sectores.models
+    import src.tareas.models
 
 class Plan_de_Limpieza(ModeloBase):
     __tablename__ = "plan_de_limpieza"

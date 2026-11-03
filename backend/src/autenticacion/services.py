@@ -28,10 +28,10 @@ def autenticar(db: Session, usuario: str, contrasenia: str) -> Personal:
     persona = db.query(Personal).filter(Personal.usuario == usuario.strip().lower()).first()
 
     tiene_clave = persona is not None and persona.contrasenia_hash is not None
-    hash_a_verificar = persona.contrasenia_hash if tiene_clave else _HASH_FALSO
+    hash_a_verificar = persona.contrasenia_hash if persona is not None and persona.contrasenia_hash else _HASH_FALSO
     contrasenia_ok = verificar_contrasenia(contrasenia, hash_a_verificar)
 
-    if not tiene_clave or not contrasenia_ok:
+    if not tiene_clave or not contrasenia_ok or persona is None:
         raise CredencialesInvalidas()
     if not persona.activo:
         raise UsuarioInactivo()

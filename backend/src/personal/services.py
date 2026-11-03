@@ -39,7 +39,7 @@ def obtener_personal_para_csv(
 
         # Filtro por capacidad
         cap = getattr(p, "capacidad", "") or ""
-        cap_val = cap.value if hasattr(cap, "value") else str(cap)
+        cap_val = str(getattr(cap, "value", cap))
         if capacidad and capacidad != "TODOS":
             if cap_val.upper() != capacidad.upper():
                 continue

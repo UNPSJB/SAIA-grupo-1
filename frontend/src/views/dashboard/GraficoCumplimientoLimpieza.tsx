@@ -46,6 +46,77 @@ interface GraficoCumplimientoLimpiezaProps {
   onVerMas?: () => void;
 }
 
+interface TooltipPayloadItem {
+  payload: PuntoCumplimiento;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+}
+
+const CustomTooltipContent: React.FC<CustomTooltipProps> = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const data: PuntoCumplimiento = payload[0].payload;
+    const color =
+      data.porcentaje >= 80
+        ? 'var(--color-exito, #10b981)'
+        : data.porcentaje >= 50
+        ? 'var(--color-alerta, #f59e0b)'
+        : 'var(--color-error, #ef4444)';
+
+    return (
+      <div
+        style={{
+          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+          border: '1px solid var(--color-borde)',
+          borderRadius: '8px',
+          padding: '8px 12px',
+          boxShadow: 'var(--shadow)',
+          minWidth: '170px',
+        }}
+      >
+        <div style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-h)', marginBottom: '4px' }}>
+          {data.etiqueta}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text)' }}>Cumplimiento:</span>
+          <span
+            style={{
+              fontSize: '12px',
+              fontWeight: 700,
+              color,
+              backgroundColor: 'var(--code-bg)',
+              padding: '1px 6px',
+              borderRadius: '4px',
+              border: `1px solid ${color}`,
+            }}
+          >
+            {data.porcentaje}%
+          </span>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '4px', fontSize: '11px', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Realizadas:</span>
+            <strong style={{ color: 'var(--text-h)' }}>{data.tareas_completadas} / {data.total_tareas}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Pendientes:</span>
+            <strong style={{ color: 'var(--text-h)' }}>{data.tareas_pendientes}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Checklists:</span>
+            <strong style={{ color: 'var(--text-h)' }}>{data.total_checklists}</strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaProps> = ({
   onVerMas,
 }) => {
@@ -130,11 +201,7 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
     };
   }, [agrupacion, desde, hasta, errorRango, esAdministrador]);
 
-  if (!esAdministrador) {
-    return null;
-  }
-
-  const puntos = datos?.puntos || [];
+  const puntos = useMemo(() => datos?.puntos || [], [datos?.puntos]);
   const hayDatos = puntos.length > 0;
 
   const menorPeriodo: PuntoCumplimiento | null = useMemo(() => {
@@ -165,71 +232,9 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
         { name: 'Pendientes', value: tareasPendientes, color: colores.alerta },
       ].filter((d) => d.value > 0);
 
-  interface TooltipPayloadItem {
-    payload: PuntoCumplimiento;
-  }
-
-  interface CustomTooltipProps {
-    active?: boolean;
-    payload?: TooltipPayloadItem[];
-  }
-
-  const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data: PuntoCumplimiento = payload[0].payload;
-      const color = obtenerColorPorcentaje(data.porcentaje);
-
-      return (
-        <div
-          style={{
-            backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-            border: '1px solid var(--color-borde)',
-            borderRadius: '8px',
-            padding: '8px 12px',
-            boxShadow: 'var(--shadow)',
-            minWidth: '170px',
-          }}
-        >
-          <div style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-h)', marginBottom: '4px' }}>
-            {data.etiqueta}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text)' }}>Cumplimiento:</span>
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                color,
-                backgroundColor: 'var(--code-bg)',
-                padding: '1px 6px',
-                borderRadius: '4px',
-                border: `1px solid ${color}`,
-              }}
-            >
-              {data.porcentaje}%
-            </span>
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '4px', fontSize: '11px', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Realizadas:</span>
-              <strong style={{ color: 'var(--text-h)' }}>{data.tareas_completadas} / {data.total_tareas}</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Pendientes:</span>
-              <strong style={{ color: 'var(--text-h)' }}>{data.tareas_pendientes}</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Checklists:</span>
-              <strong style={{ color: 'var(--text-h)' }}>{data.total_checklists}</strong>
-            </div>
-          </div>
-        </div>
-      );
-    }
+  if (!esAdministrador) {
     return null;
-  };
+  }
 
   return (
     <div className="dashboard-card dashboard-card-cumplimiento">
@@ -455,7 +460,7 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                       width={38}
                       unit="%"
                     />
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={CustomTooltipContent} />
                     <ReferenceLine
                       y={80}
                       stroke={colores.exito}
@@ -508,7 +513,7 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
                       width={38}
                       unit="%"
                     />
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={CustomTooltipContent} />
                     <ReferenceLine
                       y={80}
                       stroke={colores.exito}

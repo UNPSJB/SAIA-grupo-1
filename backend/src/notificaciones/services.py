@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from typing import List, Optional
+from typing import Any, List, Optional
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -515,18 +515,25 @@ def UMBRAL_STOCK_BAJO(unidad: UnidadMedidaEnum) -> float:
 
 
 def notificar_stock_bajo_quimico_si_corresponde(
-    db: Session, quimico: InsumoQuimico
+    db: Session, quimico: Any
 ) -> List[Notificacion]:
-    if not quimico.activo:
+    if not getattr(quimico, "activo", True):
         return []
 
-    umbral = UMBRAL_STOCK_BAJO(quimico.unidad_medida)
-    if quimico.stock_actual <= umbral:
+    u_medida = getattr(quimico, "unidad_medida", None)
+    if not isinstance(u_medida, UnidadMedidaEnum):
+        return []
+    umbral = UMBRAL_STOCK_BAJO(u_medida)
+    stock_actual = getattr(quimico, "stock_actual", 0.0)
+    if stock_actual <= umbral:
         str_hoy = date.today().strftime("%Y-%m-%d")
-        clave_base = f"stock_quimico_{quimico.id}_{str_hoy}"
+        q_id = getattr(quimico, "id", 0)
+        q_nombre = getattr(quimico, "nombre", "")
+        u_val = getattr(u_medida, "value", str(u_medida))
+        clave_base = f"stock_quimico_{q_id}_{str_hoy}"
         mensaje = (
-            f"El producto químico '{quimico.nombre}' tiene stock bajo "
-            f"({quimico.stock_actual} {quimico.unidad_medida.value})."
+            f"El producto químico '{q_nombre}' tiene stock bajo "
+            f"({stock_actual} {u_val})."
         )
         notifs, _ = crear_notificacion_para_admins(
             db,
@@ -534,7 +541,7 @@ def notificar_stock_bajo_quimico_si_corresponde(
             mensaje=mensaje,
             tipo=TipoNotificacion.EVENTO_STOCK_QUIMICO,
             entidad_tipo="insumo_quimico",
-            entidad_id=quimico.id,
+            entidad_id=q_id,
             clave_base=clave_base,
         )
         return notifs

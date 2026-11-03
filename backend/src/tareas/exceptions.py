@@ -14,8 +14,8 @@ class TareNoEncontrada(BadRequest):
 
 class FRECUENCIAInvalida(ValueError):
     def __init__(self, posibles_frecuencias: List[str]):
-        posibles_frecuencias = ", ".join(posibles_frecuencias)
-        message = f"{ErrorCode.FRECUENCIA_INVALIDA} {posibles_frecuencias}."
+        frecuencias_str = ", ".join(posibles_frecuencias)
+        message = f"{ErrorCode.FRECUENCIA_INVALIDA} {frecuencias_str}."
         super().__init__(message)
 
 class DescripcionInvalidad(BadRequest):

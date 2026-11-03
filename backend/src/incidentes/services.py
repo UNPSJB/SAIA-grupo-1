@@ -51,7 +51,7 @@ def obtener_incidentes_para_csv(
         rep_nombre = getattr(inc, "nombre_reportante", "") or ""
         legajo_str = str(getattr(inc, "reportado_por_id", "") or "")
         estado_raw = getattr(inc, "estado", "")
-        estado_str = estado_raw.value if hasattr(estado_raw, "value") else str(estado_raw)
+        estado_str = str(getattr(estado_raw, "value", estado_raw))
 
         # Filtro por búsqueda
         if term:
@@ -125,7 +125,7 @@ def _normalizar_motivo_reapertura(motivo: str) -> str:
 
 
 def _es_cerrado(estado: EstadoIncidente | str) -> bool:
-    val = estado.value if hasattr(estado, "value") else str(estado).lower()
+    val = str(getattr(estado, "value", estado)).lower()
     return val in (EstadoIncidente.CERRADO.value, EstadoIncidente.RESUELTO.value, "cerrado", "resuelto")
 
 
@@ -301,17 +301,6 @@ def editar_descripcion(db: Session, incidente_id: int, nueva_descripcion: str) -
     db.commit()
     db.refresh(incidente)
 
-    try:
-        from src.notificaciones.services import notificar_incidente_reabierto
-
-        notificar_incidente_reabierto(
-            db,
-            incidente_id=incidente.id,
-            motivo=texto_motivo,
-        )
-    except Exception:
-        pass
-
     return incidente
 
 
@@ -339,6 +328,7 @@ def cambiar_estado(
 
     db.commit()
     db.refresh(incidente)
+
     return incidente
 
 
@@ -375,6 +365,7 @@ def cerrar_incidente(
 
     db.commit()
     db.refresh(incidente)
+
     return incidente
 
 
@@ -410,6 +401,18 @@ def reabrir_incidente(
 
     db.commit()
     db.refresh(incidente)
+
+    try:
+        from src.notificaciones.services import notificar_incidente_reabierto
+
+        notificar_incidente_reabierto(
+            db,
+            incidente_id=incidente.id,
+            motivo=texto_motivo,
+        )
+    except Exception:
+        pass
+
     return incidente
 
 

@@ -1,9 +1,11 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 from sqlalchemy import ForeignKey, String
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 
+if TYPE_CHECKING:
+    import src.plan_de_calibracion.models
 
 
 class Calibracion_Realizada(ModeloBase):

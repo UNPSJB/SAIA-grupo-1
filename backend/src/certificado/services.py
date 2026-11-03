@@ -165,7 +165,7 @@ def listar_certificados(db: Session, legajo_persona: Optional[int] = None) -> Li
   c = select(Certificado)
   if legajo_persona is not None:
     c = c.where(Certificado.legajo_persona == legajo_persona)
-  certificados = db.scalars(c).all()
+  certificados = list(db.scalars(c).all())
 
   for cert in certificados:
     if getattr(cert, "tipo_relacion", None):

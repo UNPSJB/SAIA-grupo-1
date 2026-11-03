@@ -1,8 +1,13 @@
 from enum import StrEnum, auto
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
+
+if TYPE_CHECKING:
+    import src.personal.models
+    import src.plan_De_limpieza.models
 
 class Frecuencia(StrEnum):
     DIARIA=auto()

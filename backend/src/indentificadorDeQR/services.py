@@ -10,12 +10,12 @@ from src.producto import services as producto_services
 
 
 
-def crear_IdentificadorUnico(db:Session,ident:schemas.IdentificadorQRCreate,urldelQR:str) -> schemas.IdentificadorQR:
+def crear_IdentificadorUnico(db:Session,ident:schemas.IdentificadorQRCreate,urldelQR:str = "") -> schemas.IdentificadorQR:
     datos = ident.model_dump()
 
     datos["id_alfanumerico"]=str(uuid.uuid4())
     datos["estado"]=True
-    datos["urldelQR"]=urldelQR
+    datos["urldelQR"]=urldelQR or datos.get("urldelQR", "")
     if "ver_grafico" not in datos or datos["ver_grafico"] is None:
         datos["ver_grafico"] = True
     if "verAcercaDeNosotros" not in datos or datos["verAcercaDeNosotros"] is None:
@@ -42,12 +42,11 @@ def verificar_identificadorQR(db:Session,identificador_id:str) -> schemas.Identi
 
 def editar_identificadorQr(db:Session,identificador_id:str)-> schemas.IdentificadorQR:
      db_identQR = db.scalar(select(IndentificadorUnico).where(IndentificadorUnico.id_alfanumerico == identificador_id))
-     
+     if not db_identQR:
+         raise HTTPException(status_code=404, detail="El código QR no existe")
 
      db_identQR.estado=False
 
-     
-             
      db.commit()
      db.refresh(db_identQR)
      return db_identQR

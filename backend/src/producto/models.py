@@ -3,8 +3,11 @@ from sqlalchemy import Integer, String, ForeignKey, Boolean
 from src.models import ModeloBase
 from enum import StrEnum, auto
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from src.insumos.models import UnidadMedida
+
+if TYPE_CHECKING:
+    from src.documentos.models import Documento
 
 class Producto(ModeloBase):
     __tablename__ = "productos"
@@ -19,4 +22,3 @@ class Producto(ModeloBase):
 
     id_receta: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("documentos.id"), nullable=True ,default=None)
     receta: Mapped[Optional["Documento"]] = relationship("Documento")
-    

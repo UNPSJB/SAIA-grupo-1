@@ -1,9 +1,14 @@
 from enum import StrEnum, auto
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
+
+if TYPE_CHECKING:
+    import src.plan_de_calibracion.models
+    import src.sectores.models
+    import src.plan_De_limpieza.models
 
 class Categoria(StrEnum):
     CONSERVAMIENTO = auto()

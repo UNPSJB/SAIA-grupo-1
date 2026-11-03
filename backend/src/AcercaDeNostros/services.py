@@ -1,4 +1,3 @@
-
 import logging
 from typing import List, Literal, Optional
 from sqlalchemy import delete, select, update
@@ -18,7 +17,9 @@ def crearAcercaDeNostros(db:Session, descip:schemas.AcercaDeNosotrosCreate)->sch
 
 
 def actualizarAcercaDeNostros(db: Session, id: int, descrip: schemas.AcercaDeNosotrosCreate) -> Optional[AcercaDeNosotros]:
-    _descrip = db.query(AcercaDeNosotros).filter(AcercaDeNosotros.id == id).first() 
+    _descrip = db.query(AcercaDeNosotros).filter(AcercaDeNosotros.id == id).first()
+    if not _descrip:
+        return None
     _descrip.descripcion = descrip.descripcion
     db.commit()
     db.refresh(_descrip)

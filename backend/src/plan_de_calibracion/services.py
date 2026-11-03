@@ -78,7 +78,7 @@ def crear_plan(db: Session, plan: schemas.PlanDeCalibracionCreate) -> Plan_de_Ca
         raise exceptions.PoseePlan
 
 def listar_planes(db:Session)->List[schemas.PlanDeCalibracion]:
-    return db.scalars(select(Plan_de_Calibracion)).all()
+    return list(db.scalars(select(Plan_de_Calibracion)).all())
 
 
 def Obtener_plan(db:Session,plan_id:int)->schemas.PlanDeCalibracion:

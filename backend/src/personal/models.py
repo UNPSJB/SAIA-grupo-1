@@ -1,10 +1,13 @@
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from pydantic import EmailStr
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Enum as SQLEnum, Boolean
 from src.models import ModeloBase
 from src.personal.schemas import Capacidades
 from src.certificado.models import Certificado
+
+if TYPE_CHECKING:
+    import src.tareas.models
 
 
 class Personal(ModeloBase):

@@ -1,7 +1,7 @@
 import calendar
 import json
 from datetime import date, datetime, timedelta
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -281,6 +281,7 @@ def obtener_historico_consumo(
         hasta = hoy if desde <= hoy else desde
     elif hasta and not desde:
         desde = hasta - timedelta(days=29)
+    assert desde is not None and hasta is not None
 
     dias_periodo = max(1, (hasta - desde).days + 1)
     prev_hasta = desde - timedelta(days=1)
@@ -310,6 +311,8 @@ def obtener_historico_consumo(
             if not isinstance(usados, list):
                 continue
 
+            if not c.fecha:
+                continue
             fecha_mov = c.fecha
             fecha_hora_mov = item.fecha_hora_fin or datetime.combine(c.fecha, datetime.min.time())
 
@@ -336,9 +339,9 @@ def obtener_historico_consumo(
                     quimico_obj = quimicos_por_nombre[u_nombre.lower()]
 
                 if insumo_id is not None:
-                    if quimico_obj and quimico_obj.id != insumo_id:
+                    if quimico_obj is not None and getattr(quimico_obj, "id", None) != insumo_id:
                         continue
-                    if not quimico_obj and u_id != insumo_id:
+                    if quimico_obj is None and u_id != insumo_id:
                         continue
 
                 tipo_str = "OTRO"
@@ -550,7 +553,7 @@ def obtener_historico_consumo(
         insumo_id=insumo_id,
         unidad_seleccionada=unidad_seleccionada,
         unidades_disponibles=unidades_disponibles,
-        agrupacion_tiempo=agrupacion_tiempo,
+        agrupacion_tiempo=cast(schemas.AgrupacionTiempo, agrupacion_tiempo),
         total_registros=len(movimientos_actuales_dto),
         metricas=metricas,
         evolucion=evolucion,

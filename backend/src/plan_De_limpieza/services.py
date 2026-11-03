@@ -21,8 +21,10 @@ def obtener_planes_para_csv(
     for p in planes:
         # Resolver alcance (Equipo o Sector)
         alcance = "-"
-        nombre_equipo = p.equipo.nombre if getattr(p, "equipo", None) else ""
-        nombre_sector = p.sector.nombre if getattr(p, "sector", None) else ""
+        p_equipo = getattr(p, "equipo", None)
+        p_sector = getattr(p, "sector", None)
+        nombre_equipo = getattr(p_equipo, "nombre", "") if p_equipo else ""
+        nombre_sector = getattr(p_sector, "nombre", "") if p_sector else ""
         
         if nombre_equipo:
             alcance = f"Equipo: {nombre_equipo}"

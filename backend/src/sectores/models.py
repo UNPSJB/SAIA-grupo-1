@@ -1,7 +1,11 @@
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
+
+if TYPE_CHECKING:
+    import src.equipos.models
+    import src.plan_De_limpieza.models
 
 class Sector(ModeloBase):
     __tablename__ = "sectores"
@@ -18,4 +22,3 @@ class Sector(ModeloBase):
         back_populates="sector",
         uselist=False,
     )
-

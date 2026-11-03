@@ -47,7 +47,7 @@ def obtener_para_csv(
             "tipo": tipo_val,
             "stock_actual": getattr(item, "stock_actual", 0),
             "unidad_medida": unidad_val,
-            "estado": "Activo" if item.activo else "Inactivo",
+            "estado": "Activo" if getattr(item, "activo", True) else "Inactivo",
         })
 
     return filas

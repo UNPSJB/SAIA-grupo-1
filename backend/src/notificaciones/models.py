@@ -1,9 +1,12 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models import ModeloBase
+
+if TYPE_CHECKING:
+    import src.personal.models
 
 
 class Notificacion(ModeloBase):
@@ -26,4 +29,3 @@ class Notificacion(ModeloBase):
     clave_duplicado: Mapped[Optional[str]] = mapped_column(String(150), nullable=True, index=True)
 
     usuario: Mapped["src.personal.models.Personal"] = relationship(lazy="joined")
-

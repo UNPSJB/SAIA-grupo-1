@@ -62,7 +62,7 @@ def crear_tipo_certificado(db: Session, nombre: str) -> TipoCertificado:
 
 
 def listar_tipos_certificados(db: Session) -> List[TipoCertificado]:
-  return db.scalars(select(TipoCertificado).order_by(TipoCertificado.nombre.asc())).all()
+  return list(db.scalars(select(TipoCertificado).order_by(TipoCertificado.nombre.asc())).all())
 
 
 def obtener_tipo_certificado(db: Session, tipo_id: int) -> TipoCertificado:

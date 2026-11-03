@@ -43,7 +43,7 @@ class MarcarNoRealizadaSchema(BaseModel):
 
     @model_validator(mode="after")
     def validar_observacion(self) -> "MarcarNoRealizadaSchema":
-        m_str = str(self.motivo.value if hasattr(self.motivo, "value") else self.motivo).strip().lower()
+        m_str = str(getattr(self.motivo, "value", self.motivo)).strip().lower()
         if m_str in ("otro", MotivoNoRealizado.OTRO.value):
             if not self.observacion or not self.observacion.strip():
                 raise exceptions.ObservacionObligatoriaParaOtro()

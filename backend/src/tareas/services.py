@@ -31,15 +31,15 @@ def crear_tarea(db: Session, tarea: schemas.TareaCreate) -> schemas.Tarea:
     return _tarea
 
 def listar_tareas(db: Session) -> List[schemas.Tarea]:
-    return db.scalars(select(Tarea)).all() 
+    return list(db.scalars(select(Tarea)).all())
 
-def obtener_tarea(db: Session, tarea_id: int) -> schemas.Tarea:
+def obtener_tarea(db: Session, tarea_id: int) -> Tarea:
     db_tarea = db.scalar(select(Tarea).where(Tarea.id == tarea_id))
     if db_tarea is None:
         raise exceptions.TareNoEncontrada()
     return db_tarea
 
-def editar_tarea(db: Session, tarea_id: int, tarea: schemas.TareaUpdate) -> schemas.Tarea:
+def editar_tarea(db: Session, tarea_id: int, tarea: schemas.TareaUpdate) -> Tarea:
     db_tarea = obtener_tarea(db, tarea_id)
     validar_personal(db, tarea.personal_id)
     anterior_id = db_tarea.personal_id
@@ -53,12 +53,8 @@ def editar_tarea(db: Session, tarea_id: int, tarea: schemas.TareaUpdate) -> sche
         notificar_tarea_reasignada(db, db_tarea, tarea.personal_id)
     return db_tarea
 
-def eliminar_tarea(db: Session, tarea_id: int) -> schemas.Tarea:
+def eliminar_tarea(db: Session, tarea_id: int) -> Tarea:
     db_tarea = obtener_tarea(db, tarea_id)
-
-    if not db_tarea:
-        return False
-    
     db.execute(delete(Tarea).where(Tarea.id == tarea_id))
     db.commit()
     return db_tarea

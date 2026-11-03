@@ -87,7 +87,7 @@ def registrar_visita_control(
     db: Session,
     control_id: int,
     fecha_realizacion: date,
-    file: UploadFile,  # <--- Obligatorio
+    file: Optional[UploadFile] = None,  # <--- Obligatorio
     observaciones: Optional[str] = None
 ) -> VisitaControlAmbiental:
     control = db.scalar(select(ControlAmbiental).where(ControlAmbiental.id == control_id))

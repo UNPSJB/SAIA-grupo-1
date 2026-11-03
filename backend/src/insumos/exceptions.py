@@ -8,8 +8,8 @@ class InsumoNoEncontrado(NotFound):
 
 class UnidadMedidaInvalida(ValueError):
     def __init__(self, posibles_unidades: List[str]):
-        posibles_unidades = ", ".join(posibles_unidades)
-        message = f"{ErrorCode.UNIDAD_MEDIDA_INVALIDA} {posibles_unidades}."
+        unidades_str = ", ".join(posibles_unidades)
+        message = f"{ErrorCode.UNIDAD_MEDIDA_INVALIDA} {unidades_str}."
         super().__init__(message)
         
 class NombreInsumoVacio(BadRequest):

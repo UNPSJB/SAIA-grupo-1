@@ -9,8 +9,8 @@ class AuditoriaNoEncontrada(NotFound):
 
 class AccionAuditoriaInvalida(ValueError):
     def __init__(self, posibles_acciones: List[str]):
-        posibles_acciones = ", ".join(posibles_acciones)
-        message = f"{ErrorCode.ACCION_INVALIDA} {posibles_acciones}."
+        acciones_str = ", ".join(posibles_acciones)
+        message = f"{ErrorCode.ACCION_INVALIDA} {acciones_str}."
         super().__init__(message)
 
 

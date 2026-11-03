@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Sequence
 from pydantic import BaseModel, ConfigDict
 
 
@@ -27,11 +27,10 @@ class NotificacionOut(NotificacionBase):
 
 
 class NotificacionesListadoResponse(BaseModel):
-    items: List[NotificacionOut]
+    items: Sequence[NotificacionOut]
     total_no_leidas: int
     total_registros: int
 
 
 class MarcarTodasLeidasResponse(BaseModel):
     marcadas: int
-

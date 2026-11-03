@@ -42,8 +42,7 @@ export default function NuevoDocumento({ onSuccess, onCancel }: NuevoDocumentoPr
             });
           }
         }
-      } catch {
-      }
+      } catch (err) { void err; }
     };
     cargarTipos();
     return () => {
