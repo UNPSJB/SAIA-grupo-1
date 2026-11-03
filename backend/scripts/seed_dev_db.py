@@ -1,35 +1,28 @@
 import io
 import json
+import shutil
 import sys
+import uuid
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from fastapi import UploadFile
+from sqlalchemy import select
 from src.database import SessionLocal, engine
 from src.models import ModeloBase
 
-import src.categorias_incidentes.models
-import src.notificaciones.models
-import src.plan_de_calibracion.models
-import src.calibracion_realizada.models
-import src.tipoCertificado.models
-import src.incidentes.models
-import src.motivoNoRealizado.models
-import src.tipoDocumento.models
-import src.notificaciones.models
-import src.producto.models
-import src.produccion.models
+from src.insumos.migraciones import actualizar_tabla_insumos
+from src.produccion.migraciones import actualizar_tablas_produccion
+from src.indentificadorDeQR.migraciones import actualizar_tabla_identificador_qr
 
 from src.personal.models import Personal
 from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate, Capacidades
-from src.autenticacion.services import asegurar_usuarios_dev
+from src.autenticacion.services import asegurar_usuarios_dev, hashear_contrasenia
 
-from src.insumos.services import crear_insumo
-from src.insumos.schemas import InsumoCreate
 from src.insumos.models import UnidadMedida, Insumo
-
 from src.insumos_quimicos.models import InsumoQuimico
 from src.insumos_quimicos.services import InsumoQuimicoService
 from src.insumos_quimicos.schemas import InsumoQuimicoCreate
@@ -41,31 +34,65 @@ from src.equipos.models import Categoria, Estado, Equipo
 
 from src.sectores.services import crear_sector
 from src.sectores.schemas import SectorCreate
-import src.sectores.models
+from src.sectores.models import Sector
 
 from src.elementosDeLimpieza.services import crear_elementoDeLimpieza
 from src.elementosDeLimpieza.schemas import ElementoDeLimpiezaCreate
+from src.elementosDeLimpieza.models import ElementoDeLimpieza
 
 from src.plan_De_limpieza.services import crear_plan
 from src.plan_De_limpieza.schemas import PlanDeLimpiezaCreate
+from src.plan_De_limpieza.models import Plan_de_Limpieza
 
 from src.tareas.services import crear_tarea
 from src.tareas.schemas import TareaCreate
-from src.tareas.models import Frecuencia
+from src.tareas.models import Frecuencia, Tarea
 
 from src.checklist.services import generar_checklist, completar_tarea
 from src.checklist.schemas import ChecklistGenerar, CompletarTareaSchema, InsumoUtilizadoPlaceholder
-from src.checklist.models import Checklist, ChecklistItem, EstadoTareaItem
+from src.checklist.models import Checklist, ChecklistItem, EstadoTareaItem, ChecklistItemHistorial, ReasignacionPendiente
+
 from src.documentos.models import Documento, VersionDocumento
-from src.documentos.services import crear_documento, subir_nueva_version
-from src.auditoria.models import Auditoria
-from fastapi import UploadFile
+from src.documentos.services import crear_documento, subir_nueva_version, STORAGE_DIR as STORAGE_DOCUMENTOS
+from src.tipoDocumento.models import TipoDocumento as TipoDocModel
+from src.tipoDocumento.services import asegurar_tipos_base
+
+from src.plan_de_calibracion.models import Plan_de_Calibracion
+from src.calibracion_realizada.models import Calibracion_Realizada
+from src.calibracion_realizada.services import ARCHIVOS_DIR as carpeta_calibraciones
+
+from src.categorias_incidentes.models import CategoriaIncidente
+from src.categorias_incidentes.services import crear_categoria
+from src.categorias_incidentes.schemas import CategoriaIncidenteCreate
+
+from src.incidentes.models import Incidente
+from src.incidentes.constants import EstadoIncidente, TipoIncidente
+
+from src.tipoCertificado.models import TipoCertificado
+from src.tipoCertificado.services import crear_tipo_certificado
+from src.certificado.models import Certificado
+from src.certificado.services import crear_certificado, ARCHIVOS_DIR as carpeta_certificados
+
+from src.motivoNoRealizado.models import MotivoNoRealizado
+
+from src.notificaciones.models import Notificacion
+
+from src.producto.models import Producto
+from src.produccion.models import LoteProduccion, InsumoLote
+
+from src.controlesAmbientales.models import ControlAmbiental, VisitaControlAmbiental, TipoControlAmbiental
+from src.controlesAmbientales.services import crear_control_ambiental, STORAGE_DIR as STORAGE_CONTROLES
+
+from src.indentificadorDeQR.models import IndentificadorUnico
+from src.AcercaDeNostros.models import AcercaDeNosotros
+
+from src.auditoria.models import Auditoria, AccionAuditoria
 
 INSUMOS = [
     ("Harina 000", "HAR3-2409", 12, 150, 450.0, 320.0, UnidadMedida.KILOGRAMOS),
     ("Harina 0000", "HAR4-2409", 12, 140, 300.0, 210.0, UnidadMedida.KILOGRAMOS),
     ("Harina Integral Fina", "HIN-2409", 10, 180, 120.0, 85.0, UnidadMedida.KILOGRAMOS),
-    ("Manteca", "MAN-2409", 6, 12, 80.0, 45.0, UnidadMedida.KILOGRAMOS),
+    ("Manteca", "MAN-2409", 6, -2, 80.0, 45.0, UnidadMedida.KILOGRAMOS),
     ("Azucar Comun", "AZC-2408", 30, 365, 200.0, 145.0, UnidadMedida.KILOGRAMOS),
     ("Azucar Impalpable", "AZI-2408", 30, 300, 50.0, 32.0, UnidadMedida.KILOGRAMOS),
     ("Huevos", "HUE-2409", 4, 18, 720.0, 480.0, UnidadMedida.UNIDADES),
@@ -85,7 +112,7 @@ INSUMOS = [
     ("Membrillo", "MEM-2409", 8, 120, 50.0, 36.0, UnidadMedida.KILOGRAMOS),
     ("Jamon Cocido", "JAM-2410", 10, -1, 15.0, 5.0, UnidadMedida.KILOGRAMOS),
     ("Queso de Maquina", "QMA-2410", 5, 8, 25.0, 7.5, UnidadMedida.KILOGRAMOS),
-    ("Ricota Fresca Magra", "RIC-2410", 8, -2, 20.0, 6.0, UnidadMedida.KILOGRAMOS),
+    ("Ricota Fresca Magra", "RIC-2410", 8, 20, 20.0, 16.0, UnidadMedida.KILOGRAMOS),
     ("Cacao Amargo en Polvo", "CAC-2408", 25, 270, 20.0, 14.5, UnidadMedida.KILOGRAMOS),
     ("Nueces Mariposa", "NUE-2408", 20, 150, 15.0, 6.5, UnidadMedida.KILOGRAMOS),
     ("Almendras Peladas", "ALM-2408", 25, 160, 12.0, 7.0, UnidadMedida.KILOGRAMOS),
@@ -106,22 +133,18 @@ INSUMOS_QUIMICOS = [
     ("Desengrasante Alcalino Pesado", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.LITROS, 50.0, "Diversey"),
     ("Sanitizante Clorado Liquido", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.LITROS, 45.0, "Ecolab"),
     ("Detergente Desengrasante de Cocina", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 40.0, "JohnsonDiversey"),
-
     ("Alcohol Isopropilico 70 Spray", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.MILILITROS, 8000.0, "Química del Sur"),
     ("Limpiavidrios Antiestatico", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 5000.0, "Spartan Chemical"),
     ("Jabon Antibacterial Clorhexidina", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 6000.0, "Diversey"),
     ("Desinfectante Concentrado Peracetico", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.MILILITROS, 3500.0, "Ecolab"),
     ("Lustramuebles y Acero Inoxidable", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 3000.0, "Spartan Chemical"),
-
     ("Soda Caustica en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 60.0, "Química Industrial"),
     ("Detergente en Polvo Enzimatico", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.KILOGRAMOS, 50.0, "Spartan Chemical"),
     ("Hipoclorito de Calcio Granulado", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.KILOGRAMOS, 35.0, "Clorox Profesional"),
     ("Desincrustante Acido en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 25.0, "Ecolab"),
-
     ("Pastillas Efervescentes Cloradas", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.GRAMOS, 2500.0, "Química del Sur"),
     ("Polvo Abrasivo Sanitizante", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.GRAMOS, 4000.0, "Diversey"),
     ("Sal Regeneradora para Ablandador", TipoQuimicoEnum.OTRO, UnidadQuimico.GRAMOS, 8000.0, "Química Industrial"),
-
     ("Toallitas Desinfectantes con Alcohol", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.UNIDADES, 90.0, "Química del Sur"),
     ("Pastillas Sanitizantes de Cisterna", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.UNIDADES, 75.0, "Ecolab"),
     ("Bloque Desincrustante Quimico", TipoQuimicoEnum.OTRO, UnidadQuimico.UNIDADES, 36.0, "Spartan Chemical"),
@@ -131,7 +154,7 @@ def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
     stream_content = (
         f"BT\n/F1 18 Tf\n50 720 Td\n({titulo}) Tj\n"
         f"/F1 12 Tf\n0 -30 Td\n({subtitulo}) Tj\nET\n"
-    ).encode("latin-1")
+    ).encode("latin-1", errors="replace")
     obj5 = b"5 0 obj\n<< /Length " + str(len(stream_content)).encode() + b" >>\nstream\n" + stream_content + b"endstream\nendobj\n"
     obj1 = b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
     obj2 = b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
@@ -157,32 +180,46 @@ def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
     return header + obj1 + obj2 + obj3 + obj4 + obj5 + xref + trailer
 
 
-def main() -> None:
+def resetear_base_completa():
+    ModeloBase.metadata.drop_all(bind=engine)
     ModeloBase.metadata.create_all(bind=engine)
+    actualizar_tabla_insumos(engine)
+    actualizar_tablas_produccion(engine)
+    actualizar_tabla_identificador_qr(engine)
+
+
+def main() -> None:
+    resetear_base_completa()
     db = SessionLocal()
 
-    ya_hay_datos = db.query(Insumo).count() > 0
-    if ya_hay_datos:
-        print("La base ya tiene datos. No se duplican registros.")
-        db.close()
-        return
+    carpeta_calibraciones.mkdir(parents=True, exist_ok=True)
+    carpeta_certificados.mkdir(parents=True, exist_ok=True)
+    STORAGE_DOCUMENTOS.mkdir(parents=True, exist_ok=True)
+    STORAGE_CONTROLES.mkdir(parents=True, exist_ok=True)
 
     hoy = datetime.now()
 
-    print("Creando personal...")
-    juan = crear_personal(db, PersonalCreate(documento="30111222", nombre="Juan", apellido="Perez", email="juan.perez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
-    ana = crear_personal(db, PersonalCreate(documento="30222333", nombre="Ana", apellido="Gomez", email="ana.gomez@ejemplo.com", capacidad="ADMINISTRAR", contrasenia="Clave1234"))
-    marcos = crear_personal(db, PersonalCreate(documento="30333444", nombre="Marcos", apellido="Diaz", email="marcos.diaz@ejemplo.com", capacidad="AMBAS", contrasenia="Clave1234"))
-    lucia = crear_personal(db, PersonalCreate(documento="30444555", nombre="Lucia", apellido="Fernandez", email="lucia.fernandez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
-    sofia = crear_personal(db, PersonalCreate(documento="30555666", nombre="Sofia", apellido="Martinez", email="sofia.martinez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
-    carlos = crear_personal(db, PersonalCreate(documento="30666777", nombre="Carlos", apellido="Ruiz", email="carlos.ruiz@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
-    laura = crear_personal(db, PersonalCreate(documento="30777888", nombre="Laura", apellido="Sanchez", email="laura.sanchez@ejemplo.com", capacidad="ADMINISTRAR", contrasenia="Clave1234"))
-    diego = crear_personal(db, PersonalCreate(documento="30888999", nombre="Diego", apellido="Morales", email="diego.morales@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
-    valentina = crear_personal(db, PersonalCreate(documento="30999000", nombre="Valentina", apellido="Castro", email="valentina.castro@ejemplo.com", capacidad="AMBAS", contrasenia="Clave1234"))
-    martin = crear_personal(db, PersonalCreate(documento="30000111", nombre="Martin", apellido="Benitez", email="martin.benitez@ejemplo.com", capacidad="OPERAR", contrasenia="Clave1234"))
     asegurar_usuarios_dev(db)
+    asegurar_tipos_base(db)
 
-    print("Creando insumos (materias primas alimenticias)...")
+    admin_user = db.query(Personal).filter(Personal.usuario == "admin").first()
+    operador_user = db.query(Personal).filter(Personal.usuario == "operador").first()
+    adminopp_user = db.query(Personal).filter(Personal.usuario == "adminopp").first()
+
+    juan = crear_personal(db, PersonalCreate(documento="30111222", nombre="Juan", apellido="Perez", email="juan.perez@saia.com", capacidad="OPERAR", contrasenia="Clave1234"))
+    ana = crear_personal(db, PersonalCreate(documento="30222333", nombre="Ana", apellido="Gomez", email="ana.gomez@saia.com", capacidad="ADMINISTRAR", contrasenia="Clave1234"))
+    marcos = crear_personal(db, PersonalCreate(documento="30333444", nombre="Marcos", apellido="Diaz", email="marcos.diaz@saia.com", capacidad="AMBAS", contrasenia="Clave1234"))
+    lucia = crear_personal(db, PersonalCreate(documento="30444555", nombre="Lucia", apellido="Fernandez", email="lucia.fernandez@saia.com", capacidad="OPERAR", contrasenia="Clave1234"))
+    sofia = crear_personal(db, PersonalCreate(documento="30555666", nombre="Sofia", apellido="Martinez", email="sofia.martinez@saia.com", capacidad="OPERAR", contrasenia="Clave1234"))
+    carlos = crear_personal(db, PersonalCreate(documento="30666777", nombre="Carlos", apellido="Ruiz", email="carlos.ruiz@saia.com", capacidad="OPERAR", contrasenia="Clave1234"))
+    laura = crear_personal(db, PersonalCreate(documento="30777888", nombre="Laura", apellido="Sanchez", email="laura.sanchez@saia.com", capacidad="ADMINISTRAR", contrasenia="Clave1234"))
+    diego = crear_personal(db, PersonalCreate(documento="30888999", nombre="Diego", apellido="Morales", email="diego.morales@saia.com", capacidad="OPERAR", contrasenia="Clave1234"))
+    valentina = crear_personal(db, PersonalCreate(documento="30999000", nombre="Valentina", apellido="Castro", email="valentina.castro@saia.com", capacidad="AMBAS", contrasenia="Clave1234"))
+    martin = crear_personal(db, PersonalCreate(documento="30000111", nombre="Martin", apellido="Benitez", email="martin.benitez@saia.com", capacidad="OPERAR", contrasenia="Clave1234"))
+    pedro_inactivo = crear_personal(db, PersonalCreate(documento="30123987", nombre="Pedro", apellido="Gonzalez", email="pedro.gonzalez@saia.com", capacidad="OPERAR", contrasenia="Clave1234"))
+    pedro_inactivo.activo = False
+    db.commit()
+
     for nombre, lote, dias_recepcion, dias_venc, cant, stock, medida in INSUMOS:
         db.add(Insumo(
             nombre=nombre,
@@ -195,18 +232,16 @@ def main() -> None:
         ))
     db.commit()
 
-    print("Creando catálogo de insumos químicos...")
     for item in INSUMOS_QUIMICOS:
         if len(item) == 5:
-            nombre, tipo, unidad, stock, proveedor = item
+            nombre_q, tipo_q, unidad_q, stock_q, proveedor_q = item
         else:
-            nombre, tipo, unidad, stock = item
-            proveedor = None
+            nombre_q, tipo_q, unidad_q, stock_q = item
+            proveedor_q = None
         InsumoQuimicoService.create(db, InsumoQuimicoCreate(
-            nombre=nombre, tipo=tipo, unidad_medida=unidad, stock_actual=stock, proveedor=proveedor
+            nombre=nombre_q, tipo=tipo_q, unidad_medida=unidad_q, stock_actual=stock_q, proveedor=proveedor_q
         ))
 
-    print("Creando sectores...")
     s_salon = crear_sector(db, SectorCreate(nombre="Salon Principal"))
     s_deposito = crear_sector(db, SectorCreate(nombre="Deposito"))
     s_cuadra = crear_sector(db, SectorCreate(nombre="Cuadra"))
@@ -216,7 +251,6 @@ def main() -> None:
     s_envasado = crear_sector(db, SectorCreate(nombre="Envasado y Expedicion"))
     s_camaras = crear_sector(db, SectorCreate(nombre="Camaras de Frio"))
 
-    print("Creando equipos...")
     heladera = crear_equipo(db, EquipoCreate(nombre="Heladera Exhibidora", categoria=Categoria.CONSERVAMIENTO, sector_id=s_salon.id, estado=Estado.ACTIVO, plan_de_calibracion="Semestral"))
     freezer = crear_equipo(db, EquipoCreate(nombre="Freezer Deposito", categoria=Categoria.CONSERVAMIENTO, sector_id=s_deposito.id, estado=Estado.ACTIVO, plan_de_calibracion="Semestral"))
     camara = crear_equipo(db, EquipoCreate(nombre="Camara Frigorifica", categoria=Categoria.CONSERVAMIENTO, sector_id=s_camaras.id, estado=Estado.ACTIVO, plan_de_calibracion="Trimestral"))
@@ -231,31 +265,29 @@ def main() -> None:
     balanza_precision = crear_equipo(db, EquipoCreate(nombre="Balanza de Precision", categoria=Categoria.MANTENIMIENTO, sector_id=s_pasteleria.id, estado=Estado.ACTIVO, plan_de_calibracion="Trimestral"))
     envasadora = crear_equipo(db, EquipoCreate(nombre="Envasadora al Vacio", categoria=Categoria.MANTENIMIENTO, sector_id=s_envasado.id, estado=Estado.ACTIVO, plan_de_calibracion="Anual"))
 
-    print("Creando elementos de limpieza...")
     el1 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Trapo de Piso Bacha", frecuenciaDeCambio=1))
     el2 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Esponja de Fibra Verde", frecuenciaDeCambio=7))
     el3 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Mopa de Microfibra Cuadra", frecuenciaDeCambio=15))
     el4 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Repasador Cuadra", frecuenciaDeCambio=3))
-    el5 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Cepillo de Mesada", frecuenciaDeCambio=60))
-    el6 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Paño Absorbente Cocina", frecuenciaDeCambio=5))
+    el5 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Paño Absorbente Cocina", frecuenciaDeCambio=5))
+    el6 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Cepillo de Mesada", frecuenciaDeCambio=60))
     el7 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Escobillon Salon", frecuenciaDeCambio=30))
     el8 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Haragan Secador Pisos", frecuenciaDeCambio=90))
     el9 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Balde con Escurridor Reforzado", frecuenciaDeCambio=180))
     el10 = crear_elementoDeLimpieza(db, ElementoDeLimpiezaCreate(nombre="Guantes de Nitrilo", frecuenciaDeCambio=None))
 
     el1.fechaCambio = hoy - timedelta(days=2)
-    el2.fechaCambio = hoy - timedelta(days=1)
-    el3.fechaCambio = hoy - timedelta(days=3)
+    el2.fechaCambio = hoy - timedelta(days=8)
+    el3.fechaCambio = hoy + timedelta(days=2)
     el4.fechaCambio = hoy + timedelta(days=1)
-    el5.fechaCambio = hoy + timedelta(days=2)
-    el6.fechaCambio = hoy + timedelta(days=2)
+    el5.fechaCambio = hoy + timedelta(days=4)
+    el6.fechaCambio = hoy + timedelta(days=35)
     el7.fechaCambio = hoy + timedelta(days=20)
     el8.fechaCambio = hoy + timedelta(days=45)
     el9.fechaCambio = hoy + timedelta(days=110)
     el10.fechaCambio = None
     db.commit()
 
-    print("Creando planes de limpieza y tareas...")
     fecha_inicio_planes = hoy.date() - timedelta(days=80)
     plan_heladera = crear_plan(db, PlanDeLimpiezaCreate(nombre="Plan Heladera", fecha_inicio=fecha_inicio_planes, equipo_id=heladera.id))
     plan_freezer = crear_plan(db, PlanDeLimpiezaCreate(nombre="Plan Freezer", fecha_inicio=fecha_inicio_planes, equipo_id=freezer.id))
@@ -368,10 +400,7 @@ def main() -> None:
         ),
     )
 
-    op_dev = db.query(Personal).filter(Personal.usuario == "operador").first()
-    adminop_dev = db.query(Personal).filter(Personal.usuario == "adminopp").first()
-
-    if op_dev:
+    if operador_user:
         crear_tarea(
             db,
             TareaCreate(
@@ -379,7 +408,7 @@ def main() -> None:
                 descripcion="Paso 1. Pulverizar Alcohol Isopropilico 70 Spray. Paso 2. Secar con toallitas desinfectantes descartables.",
                 frecuencia=Frecuencia.DIARIA,
                 plan_id=plan_heladera.id,
-                personal_id=op_dev.legajo,
+                personal_id=operador_user.legajo,
             ),
         )
         crear_tarea(
@@ -389,7 +418,7 @@ def main() -> None:
                 descripcion="Paso 1. Cepillar rejilla trasera y aspirar polvo acumulado.",
                 frecuencia=Frecuencia.SEMANAL,
                 plan_id=plan_heladera.id,
-                personal_id=op_dev.legajo,
+                personal_id=operador_user.legajo,
             ),
         )
         crear_tarea(
@@ -399,11 +428,11 @@ def main() -> None:
                 descripcion="Paso 1. Limpiar manija exterior con Toallitas Desinfectantes con Alcohol. Paso 2. Dejar secar al aire.",
                 frecuencia=Frecuencia.DIARIA,
                 plan_id=plan_freezer.id,
-                personal_id=op_dev.legajo,
+                personal_id=operador_user.legajo,
             ),
         )
 
-    if adminop_dev:
+    if adminopp_user:
         crear_tarea(
             db,
             TareaCreate(
@@ -411,7 +440,7 @@ def main() -> None:
                 descripcion="Paso 1. Desconectar y retirar restos secos de harina. Paso 2. Pulverizar sanitizante neutro.",
                 frecuencia=Frecuencia.DIARIA,
                 plan_id=plan_amasadora.id,
-                personal_id=adminop_dev.legajo,
+                personal_id=adminopp_user.legajo,
             ),
         )
         crear_tarea(
@@ -421,12 +450,11 @@ def main() -> None:
                 descripcion="Paso 1. Pulverizar Limpiavidrios Antiestatico. Paso 2. Repasar con papel tissue.",
                 frecuencia=Frecuencia.DIARIA,
                 plan_id=plan_horno.id,
-                personal_id=adminop_dev.legajo,
+                personal_id=adminopp_user.legajo,
             ),
         )
     db.commit()
 
-    print("Generando historial de 75 días de checklists con insumos químicos variados...")
     responsables = [juan, ana, marcos, lucia, sofia, carlos, diego, valentina, martin]
 
     for offset in range(75, 0, -1):
@@ -518,7 +546,7 @@ def main() -> None:
             ))
 
         for j, (plan, tarea, insumos) in enumerate(items_del_dia):
-            realizada = not (offset % 6 == 0 and j == len(items_del_dia) - 1)
+            realizada = not (offset % 8 == 0 and j == len(items_del_dia) - 1)
             item = ChecklistItem(
                 plan_id=plan.id,
                 nombre_plan=plan.nombre,
@@ -535,7 +563,6 @@ def main() -> None:
         db.add(checklist)
     db.commit()
 
-    print("Generando checklist para hoy (con tareas completadas en L, ML y UN para probar el día en vivo)...")
     checklist_hoy_marcos = generar_checklist(db, ChecklistGenerar(responsable_legajo=marcos.legajo, fecha=date.today()))
     if checklist_hoy_marcos.items:
         completar_tarea(
@@ -566,7 +593,78 @@ def main() -> None:
             ),
         )
 
-    print("Creando documentos versionados con vencimientos...")
+    if operador_user:
+        checklist_hoy_op = generar_checklist(db, ChecklistGenerar(responsable_legajo=operador_user.legajo, fecha=date.today()))
+        if len(checklist_hoy_op.items) >= 2:
+            completar_tarea(
+                db,
+                checklist_hoy_op.id,
+                checklist_hoy_op.items[0].id,
+                CompletarTareaSchema(
+                    responsable_legajo=operador_user.legajo,
+                    insumos_utilizados=[
+                        InsumoUtilizadoPlaceholder(nombre="Alcohol Isopropilico 70 Spray", cantidad=150.0, unidad="ML"),
+                        InsumoUtilizadoPlaceholder(nombre="Toallitas Desinfectantes con Alcohol", cantidad=1.0, unidad="UN"),
+                    ],
+                ),
+            )
+            item_no_realizado = checklist_hoy_op.items[1]
+            item_no_realizado.estado = EstadoTareaItem.NO_REALIZADO
+            item_no_realizado.motivo_no_realizado = "Equipo en funcionamiento continuo o producción activa"
+            db.commit()
+
+            item_hist = ChecklistItemHistorial(
+                item_id=item_no_realizado.id,
+                fecha_hora=datetime.now() - timedelta(minutes=45),
+                accion="NO_REALIZADO",
+                detalle="Marcada como no realizada por operador: Equipo en funcionamiento continuo o producción activa",
+            )
+            db.add(item_hist)
+
+            reasignacion_demo = ReasignacionPendiente(
+                item_origen_id=item_no_realizado.id,
+                checklist_origen_id=checklist_hoy_op.id,
+                nuevo_responsable_legajo=carlos.legajo,
+                plan_id=item_no_realizado.plan_id,
+                nombre_plan=item_no_realizado.nombre_plan,
+                tarea_id=item_no_realizado.tarea_id,
+                nombre_tarea=item_no_realizado.nombre_tarea,
+                descripcion_tarea=item_no_realizado.descripcion_tarea,
+                frecuencia=item_no_realizado.frecuencia,
+                fecha_origen=date.today(),
+                motivo="Reasignacion operativa para turno tarde",
+            )
+            db.add(reasignacion_demo)
+            db.commit()
+
+    motivos_seed = [
+        "Falta de insumo químico o desinfectante requerido",
+        "Equipo en funcionamiento continuo o producción activa",
+        "Equipo fuera de servicio o en mantenimiento preventivo",
+        "Corte temporal de suministro de agua potable",
+        "Falta o rotura de elementos de limpieza (esponjas, cepillos, paños)",
+        "Sector bloqueado u obstaculizado por tareas de mantenimiento edilicio",
+        "Priorización operativa por urgencia sanitaria o derrame",
+        "Acceso restringido por sanitización previa o tiempo de contacto químico",
+    ]
+    for nom_m in motivos_seed:
+        if not db.query(MotivoNoRealizado).filter_by(nombre=nom_m).first():
+            db.add(MotivoNoRealizado(nombre=nom_m, activo=True))
+    db.commit()
+
+    tipos_doc_seed = [
+        "Procedimiento Operativo",
+        "Manual de Calidad",
+        "Receta Estandarizada",
+        "Registro de Control",
+        "Instructivo de Trabajo",
+        "Ficha Técnica",
+    ]
+    for nom_td in tipos_doc_seed:
+        if not db.query(TipoDocModel).filter_by(nombre=nom_td).first():
+            db.add(TipoDocModel(nombre=nom_td))
+    db.commit()
+
     pdf_poes = UploadFile(file=io.BytesIO(generar_pdf_valido("POES - Sanitizacion General", "Procedimiento Operativo Estandarizado de Saneamiento")), filename="poes_general.pdf")
     crear_documento(
         db,
@@ -622,7 +720,7 @@ def main() -> None:
         tipo="Receta",
         version="1.0",
         file=pdf_receta,
-        descripcion="Formulacion oficial para panificados dulces",
+        descripcion="Formulacion oficial para panificados dulces hojaldrados",
         fecha_vigencia=hoy.date() - timedelta(days=30),
         fecha_vencimiento=hoy.date() + timedelta(days=335),
         responsable_legajo=marcos.legajo,
@@ -642,7 +740,7 @@ def main() -> None:
     )
 
     pdf_pan_receta = UploadFile(file=io.BytesIO(generar_pdf_valido("Receta Estandar: Pan de Campo", "Version 1.0")), filename="receta_pan_campo.pdf")
-    crear_documento(
+    doc_pan_receta = crear_documento(
         db,
         titulo="Receta Estandar: Pan de Campo",
         tipo="Receta",
@@ -653,13 +751,6 @@ def main() -> None:
         fecha_vencimiento=hoy.date() + timedelta(days=320),
         responsable_legajo=marcos.legajo,
     )
-
-    print("Creando planes de calibracion y calibraciones realizadas...")
-    from src.plan_de_calibracion.models import Plan_de_Calibracion
-    from src.calibracion_realizada.models import Calibracion_Realizada
-
-    from src.calibracion_realizada.services import ARCHIVOS_DIR as carpeta_calibraciones
-    carpeta_calibraciones.mkdir(parents=True, exist_ok=True)
 
     planes_cal = [
         ("Heladera Exhibidora", 180, 210),
@@ -696,36 +787,32 @@ def main() -> None:
         ))
     db.commit()
 
-    print("Creando incidentes (críticos, medios, recientes y resueltos)...")
-    from src.incidentes.models import Incidente
-    from src.incidentes.constants import EstadoIncidente
+    cat_equip = crear_categoria(db, CategoriaIncidenteCreate(nombre="Equipamiento / Maquinaria", descripcion="Fallas mecánicas, eléctricas o desvíos térmicos en maquinarias de elaboración"))
+    cat_hig = crear_categoria(db, CategoriaIncidenteCreate(nombre="Higiene y Limpieza", descripcion="Desvíos en POES, derrames, falta de sanitización o suciedad acumulada"))
+    cat_edil = crear_categoria(db, CategoriaIncidenteCreate(nombre="Edilicio e Infraestructura", descripcion="Pérdidas de agua, rotura de vidrios, problemas de iluminación o desagües"))
+    cat_mat = crear_categoria(db, CategoriaIncidenteCreate(nombre="Materia Prima e Insumos", descripcion="Desvíos en materias primas, rotulación, embalajes o conservación"))
+    cat_plagas = crear_categoria(db, CategoriaIncidenteCreate(nombre="Control de Plagas", descripcion="Detección o indicios de vectores y problemas en barreras físicas"))
+    cat_bpm = crear_categoria(db, CategoriaIncidenteCreate(nombre="Conducta y Buenas Prácticas", descripcion="Incumplimiento de indumentaria, cofia, higiene de manos o protocolos sanitarios"))
 
-    from src.incidentes.constants import TipoIncidente
-    from src.categorias_incidentes.models import CategoriaIncidente
-    cats = {c.nombre: c.id for c in db.query(CategoriaIncidente).all()}
-
-    incidentes = [
-        ("Se detecto una perdida de agua debajo de la bacha del sector de lavado.", EstadoIncidente.PENDIENTE, 0.25, juan, None, None, None, TipoIncidente.EDILICIO, cats.get("Edilicio e Infraestructura", 3)),
-        ("El cable de conexion de la batidora planetaria presenta desgaste exterior.", EstadoIncidente.PENDIENTE, 0.5, sofia, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
-        ("La balanza digital de cuadra muestra fluctuaciones de cero.", EstadoIncidente.PENDIENTE, 0.8, carlos, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
-
-        ("La heladera exhibidora marca 9 grados, por encima del limite permitido.", EstadoIncidente.PENDIENTE, 2.0, lucia, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
-        ("Desvio en la medicion de humedad en camara de fermentacion de cuadra.", EstadoIncidente.EN_REVISION, 1.5, marcos, None, None, None, TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
-        ("Derrame accidental de aceite vegetal sobre el suelo del deposito.", EstadoIncidente.EN_REVISION, 2.5, diego, None, None, None, TipoIncidente.LIMPIEZA, cats.get("Higiene y Limpieza", 2)),
-
-        ("Se encontro un envase de crema de leche abierto y sin rotular en la camara.", EstadoIncidente.EN_REVISION, 4.0, sofia, None, None, None, TipoIncidente.MATERIA_PRIMA, cats.get("Materia Prima e Insumos", 4)),
-        ("Cerradura del deposito secundario de quimicos trabada y sin llave de repuesto.", EstadoIncidente.PENDIENTE, 5.0, juan, None, None, None, TipoIncidente.EDILICIO, cats.get("Edilicio e Infraestructura", 3)),
-        ("El termometro digital de la camara frigorifica no enciende ni registra.", EstadoIncidente.REABIERTO, 6.0, lucia, None, None, "El reemplazo temporal volvio a apagarse repentinamente.", TipoIncidente.EQUIPAMIENTO, cats.get("Equipamiento / Maquinaria", 1)),
-        ("Mancha de grasa persistente en base de la sobadora tras sanitizacion.", EstadoIncidente.REABIERTO, 7.0, martin, None, None, "Se observo nuevo goteo tras uso continuo en turno tarde.", TipoIncidente.LIMPIEZA, cats.get("Higiene y Limpieza", 2)),
-
-        ("Falta de jabon antibacterial en el lavamanos de la cocina.", EstadoIncidente.CERRADO, 9.0, marcos, ana, "Se repuso el jabon antibacterial y se agrego control al checklist diario.", None, TipoIncidente.LIMPIEZA, cats.get("Higiene y Limpieza", 2)),
-        ("Presencia de insectos cerca de la puerta del deposito.", EstadoIncidente.CERRADO, 15.0, juan, ana, "Se contrato fumigacion y se coloco cortina de aire en la puerta.", None, TipoIncidente.PLAGAS, cats.get("Control de Plagas", 5)),
-        ("Un empleado ingreso a produccion sin cofia.", EstadoIncidente.DESCARTADO, 20.0, sofia, ana, "Se realizo apercibimiento y capacitacion verbal sobre BPM.", None, TipoIncidente.CONDUCTA, cats.get("Conducta y Buenas Prácticas", 6)),
-        ("Envase de desengrasante con rotulo secundario semiborrado.", EstadoIncidente.CERRADO, 25.0, marcos, ana, "Se reimprimio y coloco etiqueta normalizada segun norma SGA.", None, TipoIncidente.LIMPIEZA, cats.get("Higiene y Limpieza", 2)),
-        ("Luminaria del sector cuadra con parpadeo constante.", EstadoIncidente.CERRADO, 30.0, carlos, laura, "Se reemplazo el tubo LED estanco por mantenimiento interno.", None, TipoIncidente.EDILICIO, cats.get("Edilicio e Infraestructura", 3)),
+    incidentes_data = [
+        ("Se detecto una perdida de agua debajo de la bacha del sector de lavado.", EstadoIncidente.PENDIENTE, 0.25, juan, None, None, None, TipoIncidente.EDILICIO, cat_edil.id),
+        ("El cable de conexion de la batidora planetaria presenta desgaste exterior.", EstadoIncidente.PENDIENTE, 0.5, sofia, None, None, None, TipoIncidente.EQUIPAMIENTO, cat_equip.id),
+        ("La balanza digital de cuadra muestra fluctuaciones de cero.", EstadoIncidente.PENDIENTE, 0.8, carlos, None, None, None, TipoIncidente.EQUIPAMIENTO, cat_equip.id),
+        ("La heladera exhibidora marca 9 grados, por encima del limite permitido.", EstadoIncidente.PENDIENTE, 2.0, lucia, None, None, None, TipoIncidente.EQUIPAMIENTO, cat_equip.id),
+        ("Desvio en la medicion de humedad en camara de fermentacion de cuadra.", EstadoIncidente.EN_REVISION, 1.5, marcos, None, None, None, TipoIncidente.EQUIPAMIENTO, cat_equip.id),
+        ("Derrame accidental de aceite vegetal sobre el suelo del deposito.", EstadoIncidente.EN_REVISION, 2.5, diego, None, None, None, TipoIncidente.LIMPIEZA, cat_hig.id),
+        ("Se encontro un envase de crema de leche abierto y sin rotular en la camara.", EstadoIncidente.EN_REVISION, 4.0, sofia, None, None, None, TipoIncidente.MATERIA_PRIMA, cat_mat.id),
+        ("Cerradura del deposito secundario de quimicos trabada y sin llave de repuesto.", EstadoIncidente.PENDIENTE, 5.0, juan, None, None, None, TipoIncidente.EDILICIO, cat_edil.id),
+        ("El termometro digital de la camara frigorifica no enciende ni registra.", EstadoIncidente.REABIERTO, 6.0, lucia, None, None, "El reemplazo temporal volvio a apagarse repentinamente.", TipoIncidente.EQUIPAMIENTO, cat_equip.id),
+        ("Mancha de grasa persistente en base de la sobadora tras sanitizacion.", EstadoIncidente.REABIERTO, 7.0, martin, None, None, "Se observo nuevo goteo tras uso continuo en turno tarde.", TipoIncidente.LIMPIEZA, cat_hig.id),
+        ("Falta de jabon antibacterial en el lavamanos de la cocina.", EstadoIncidente.CERRADO, 9.0, marcos, ana, "Se repuso el jabon antibacterial y se agrego control al checklist diario.", None, TipoIncidente.LIMPIEZA, cat_hig.id),
+        ("Presencia de insectos cerca de la puerta del deposito.", EstadoIncidente.CERRADO, 15.0, juan, ana, "Se contrato fumigacion y se coloco cortina de aire en la puerta.", None, TipoIncidente.PLAGAS, cat_plagas.id),
+        ("Un empleado ingreso a produccion sin cofia reglamentaria.", EstadoIncidente.DESCARTADO, 20.0, sofia, ana, "Se realizo apercibimiento y capacitacion verbal sobre BPM.", None, TipoIncidente.CONDUCTA, cat_bpm.id),
+        ("Envase de desengrasante con rotulo secundario semiborrado.", EstadoIncidente.CERRADO, 25.0, marcos, ana, "Se reimprimio y coloco etiqueta normalizada segun norma SGA.", None, TipoIncidente.LIMPIEZA, cat_hig.id),
+        ("Luminaria del sector cuadra con parpadeo constante.", EstadoIncidente.CERRADO, 30.0, carlos, laura, "Se reemplazo el tubo LED estanco por mantenimiento interno.", None, TipoIncidente.EDILICIO, cat_edil.id),
     ]
 
-    for desc, estado, dias, reporta, resuelve, accion, motivo, tipo_inc, cat_id in incidentes:
+    for desc, estado, dias, reporta, resuelve, accion, motivo, tipo_inc, cat_id in incidentes_data:
         creado = hoy - timedelta(days=dias)
         cerrado = creado + timedelta(days=1) if estado in (EstadoIncidente.CERRADO, EstadoIncidente.DESCARTADO) else None
         db.add(Incidente(
@@ -741,10 +828,6 @@ def main() -> None:
             motivo_reapertura=motivo,
         ))
     db.commit()
-
-    print("Creando tipos de certificado y certificados del personal...")
-    from src.tipoCertificado.services import crear_tipo_certificado
-    from src.certificado.services import crear_certificado
 
     t_manip = crear_tipo_certificado(db, "Carnet de Manipulacion de Alimentos")
     t_libreta = crear_tipo_certificado(db, "Libreta Sanitaria")
@@ -786,39 +869,36 @@ def main() -> None:
         )
     db.commit()
 
-    print("Creando motivos de no realizado y tipos de documento...")
-    from src.motivoNoRealizado.models import MotivoNoRealizado
-    from src.tipoDocumento.models import TipoDocumento as TipoDocModel
+    pdf_amb_plagas = UploadFile(file=io.BytesIO(generar_pdf_valido("Certificado de Desinsectacion y Desratizacion", "Servicio Mensual de Control de Plagas")), filename="control_plagas.pdf")
+    crear_control_ambiental(
+        db,
+        tipo=TipoControlAmbiental.PLAGAS,
+        periodicidad_dias=30,
+        observaciones="Servicio periódico realizado por Fumigaciones Ambientales SRL. Cebaderas operativas y sin novedades.",
+        fecha_realizacion_inicial=hoy.date() - timedelta(days=10),
+        file=pdf_amb_plagas,
+    )
 
-    motivos_seed = [
-        "Falta de insumo químico o desinfectante requerido",
-        "Equipo en funcionamiento continuo o producción activa",
-        "Equipo fuera de servicio o en mantenimiento preventivo",
-        "Corte temporal de suministro de agua potable",
-        "Falta o rotura de elementos de limpieza (esponjas, cepillos, paños)",
-        "Sector bloqueado u obstaculizado por tareas de mantenimiento edilicio",
-        "Priorización operativa por urgencia sanitaria o derrame",
-        "Acceso restringido por sanitización previa o tiempo de contacto químico",
-    ]
-    for nom_m in motivos_seed:
-        if not db.query(MotivoNoRealizado).filter_by(nombre=nom_m).first():
-            db.add(MotivoNoRealizado(nombre=nom_m, activo=True))
+    pdf_amb_agua = UploadFile(file=io.BytesIO(generar_pdf_valido("Analisis Fisico-Quimico y Microbiologico de Agua", "Laboratorio Central de Aguas")), filename="analisis_agua.pdf")
+    crear_control_ambiental(
+        db,
+        tipo=TipoControlAmbiental.AGUA,
+        periodicidad_dias=180,
+        observaciones="Muestreo de red y pozo apto para consumo humano segun CAA Articulo 982.",
+        fecha_realizacion_inicial=hoy.date() - timedelta(days=175),
+        file=pdf_amb_agua,
+    )
 
-    tipos_doc_seed = [
-        "Procedimiento Operativo",
-        "Manual de Calidad",
-        "Receta Estandarizada",
-        "Registro de Control",
-        "Instructivo de Trabajo",
-        "Ficha Técnica",
-    ]
-    for nom_td in tipos_doc_seed:
-        if not db.query(TipoDocModel).filter_by(nombre=nom_td).first():
-            db.add(TipoDocModel(nombre=nom_td))
-    db.commit()
+    pdf_amb_tanque = UploadFile(file=io.BytesIO(generar_pdf_valido("Certificado de Limpieza y Desinfeccion de Tanques", "Tanques de Reserva Agua Potable")), filename="limpieza_tanque.pdf")
+    crear_control_ambiental(
+        db,
+        tipo=TipoControlAmbiental.TANQUE,
+        periodicidad_dias=180,
+        observaciones="Limpieza de sedimentos, lavado a presion y cloracion de cisternas y tanques elevados.",
+        fecha_realizacion_inicial=hoy.date() - timedelta(days=190),
+        file=pdf_amb_tanque,
+    )
 
-    print("Creando notificaciones de usuario...")
-    from src.notificaciones.models import Notificacion
     notificaciones_seed = [
         (juan.legajo, "Tarea de Limpieza Asignada", "Tiene asignada la tarea Desinfeccion de Superficies en Heladera Exhibidora.", "TAREA", hoy - timedelta(hours=2), False),
         (juan.legajo, "Vencimiento Próximo de Materia Prima", "El insumo Queso de Maquina vence en 8 días.", "VENCIMIENTO", hoy - timedelta(hours=5), True),
@@ -831,6 +911,11 @@ def main() -> None:
         (carlos.legajo, "Tarea de Sanitización Asignada", "Limpieza de Vidrio y Burlete Frontal del Horno Convector asignada.", "TAREA", hoy - timedelta(hours=4), False),
         (laura.legajo, "Alerta de Stock Crítico", "El insumo Crema de Leche ha alcanzado el nivel de reposición.", "STOCK", hoy - timedelta(days=2), True),
     ]
+    if operador_user:
+        notificaciones_seed.append((operador_user.legajo, "Checklist Diario Asignado", "Tiene checklist pendiente de sanitización asignado para hoy.", "TAREA", hoy - timedelta(hours=1), False))
+    if adminopp_user:
+        notificaciones_seed.append((adminopp_user.legajo, "Control Ambiental Vencido", "El control de Limpieza de Tanque se encuentra vencido y requiere visita técnica.", "VENCIMIENTO", hoy - timedelta(days=1), False))
+
     for uid, tit, msg, tip, fec, lei in notificaciones_seed:
         db.add(Notificacion(
             usuario_id=uid,
@@ -843,20 +928,16 @@ def main() -> None:
         ))
     db.commit()
 
-    print("Creando productos y lotes de produccion con insumos asociados...")
-    from src.producto.models import Producto
-    from src.produccion.models import InsumoLote, LoteProduccion
-
-    p_pan = Producto(nombre="Pan de Campo", descripcion="Pan rústico de masa madre 500g", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True)
-    p_medialunas = Producto(nombre="Medialunas de Manteca", descripcion="Docena de medialunas dulces hojaldradas", unidadMedida=UnidadMedida.UNIDADES, activo=True, id_receta=doc_receta.id)
-    p_baguette = Producto(nombre="Baguette Tradicional", descripcion="Baguette artesanal crujiente 250g", unidadMedida=UnidadMedida.UNIDADES, activo=True)
-    p_torta = Producto(nombre="Torta de Chocolate", descripcion="Torta artesanal húmeda con cobertura semiamarga", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True)
-    p_lactal = Producto(nombre="Pan Lactal Blanco", descripcion="Pan de molde enriquecido con leche 450g", unidadMedida=UnidadMedida.UNIDADES, activo=True)
-    p_salvado = Producto(nombre="Pan de Salvado y Semillas", descripcion="Pan integral con mix de semillas 450g", unidadMedida=UnidadMedida.UNIDADES, activo=True)
-    p_facturas = Producto(nombre="Facturas Surtidas", descripcion="Variedad de medialunas, vigilantes y cañoncitos", unidadMedida=UnidadMedida.UNIDADES, activo=True)
-    p_budin = Producto(nombre="Budin de Limon y Glaseado", descripcion="Budín esponjoso con glaseado de limón 350g", unidadMedida=UnidadMedida.UNIDADES, activo=True)
-    p_chipa = Producto(nombre="Chipa Tradicional", descripcion="Chipa de queso y almidón de mandioca", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True)
-    p_ciabatta = Producto(nombre="Ciabatta Rústica", descripcion="Pan italiano de alta hidratación 300g", unidadMedida=UnidadMedida.UNIDADES, activo=True)
+    p_pan = Producto(nombre="Pan de Campo", descripcion="Pan rústico de masa madre 500g", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True, visible_publico=True, id_receta=doc_pan_receta.id)
+    p_medialunas = Producto(nombre="Medialunas de Manteca", descripcion="Docena de medialunas dulces hojaldradas", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True, id_receta=doc_receta.id)
+    p_baguette = Producto(nombre="Baguette Tradicional", descripcion="Baguette artesanal crujiente 250g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True)
+    p_torta = Producto(nombre="Torta de Chocolate", descripcion="Torta artesanal húmeda con cobertura semiamarga", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True, visible_publico=True)
+    p_lactal = Producto(nombre="Pan Lactal Blanco", descripcion="Pan de molde enriquecido con leche 450g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True)
+    p_salvado = Producto(nombre="Pan de Salvado y Semillas", descripcion="Pan integral con mix de semillas 450g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True)
+    p_facturas = Producto(nombre="Facturas Surtidas", descripcion="Variedad de medialunas, vigilantes y cañoncitos", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True)
+    p_budin = Producto(nombre="Budin de Limon y Glaseado", descripcion="Budín esponjoso con glaseado de limón 350g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=False)
+    p_chipa = Producto(nombre="Chipa Tradicional", descripcion="Chipa de queso y almidón de mandioca", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True, visible_publico=True)
+    p_ciabatta = Producto(nombre="Ciabatta Rústica", descripcion="Pan italiano de alta hidratación 300g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=False)
 
     db.add_all([p_pan, p_medialunas, p_baguette, p_torta, p_lactal, p_salvado, p_facturas, p_budin, p_chipa, p_ciabatta])
     db.commit()
@@ -928,30 +1009,85 @@ def main() -> None:
             if ins_db:
                 lote_obj.insumos.append(InsumoLote(insumo=ins_db, cantidad=cant_ins))
         db.add(lote_obj)
+    db.commit()
 
+    id_qr = str(uuid.uuid4())
+    db.add(IndentificadorUnico(
+        id_alfanumerico=id_qr,
+        estado=True,
+        urldelQR=f"http://localhost:5173/publico/{id_qr}",
+        ver_grafico=True,
+        verAcercaDeNosotros=True,
+        verProductos=True,
+    ))
+
+    db.add(AcercaDeNosotros(
+        id=1,
+        descripcion="Somos una panificadora y elaboradora de alimentos artesanales comprometida con los más altos estándares de inocuidad alimentaria, trazabilidad de materias primas y buenas prácticas de manufactura (BPM).",
+    ))
+    db.commit()
+
+    auditorias = [
+        Auditoria(
+            tabla="personal",
+            registro_id=juan.legajo,
+            accion=AccionAuditoria.CREAR,
+            campo=None,
+            valor_previo=None,
+            valor_posterior="Juan Perez (operador)",
+            creado_el=hoy - timedelta(days=60),
+        ),
+        Auditoria(
+            tabla="documentos",
+            registro_id=doc_bpm.id,
+            accion=AccionAuditoria.MODIFICAR,
+            campo="version_vigente",
+            valor_previo="1.0",
+            valor_posterior="2.0",
+            creado_el=hoy - timedelta(days=10),
+        ),
+        Auditoria(
+            tabla="controles_ambientales",
+            registro_id=1,
+            accion=AccionAuditoria.CREAR,
+            campo=None,
+            valor_previo=None,
+            valor_posterior="Control de Plagas registrado",
+            creado_el=hoy - timedelta(days=10),
+        ),
+        Auditoria(
+            tabla="incidentes",
+            registro_id=11,
+            accion=AccionAuditoria.MODIFICAR,
+            campo="estado",
+            valor_previo="PENDIENTE",
+            valor_posterior="CERRADO",
+            creado_el=hoy - timedelta(days=8),
+        ),
+    ]
+    db.add_all(auditorias)
     db.commit()
 
     db.close()
 
-    print("\n=======================================================")
-    print("Base de datos poblada exitosamente con bastantes datos de prueba:")
-    print("  - Personal: 10 colaboradores + usuarios de desarrollo (operador, adminopp, admin)")
-    print("  - Insumos Alimenticios: 35 materias primas con fechas de vencimiento y lotes realistas")
-    print("  - Insumos Químicos: 21 productos químicos en L, ML, KG, G y UN con stock y proveedores")
-    print("  - Sectores y Equipos: 8 sectores y 13 equipos con categorías de mantenimiento y conservación")
-    print("  - Elementos de Limpieza: 10 elementos con estados vencidos, próximos y vigentes")
-    print("  - Planes y Tareas de Limpieza: diarios, semanales y mensuales con instrucciones operativas")
-    print("  - Historial de Checklists: 75 días continuos de cumplimiento y consumo químico histórico")
-    print("  - Documentos del Sistema: 6 documentos oficiales versionados con vigencias y PDFs")
-    print("  - Planes de Calibración: 9 planes de calibración con certificados PDF adjuntos")
-    print("  - Incidentes Registrados: 15 incidentes categorizados (críticos, medios, recientes, reabiertos)")
-    print("  - Certificados del Personal: 18 certificados vinculados a legajos con PDFs generados")
-    print("  - Motivos de No Realizado: catálogo operativo predefinido")
-    print("  - Tipos de Documento: clasificación oficial del sistema")
-    print("  - Notificaciones: bandeja con alertas leídas y no leídas para distintos roles")
-    print("  - Productos Elaborados: 10 productos terminados con unidades de medida y recetas asociadas")
-    print("  - Lotes de Producción: 41 lotes con insumos consumidos detallados, con cobertura semanal y mensual")
-    print("=======================================================\n")
+    backend_dir = Path(__file__).resolve().parent.parent
+    root_dir = backend_dir.parent
+
+    db_paths_to_sync = [
+        backend_dir / "db.sqlite3",
+        backend_dir / "app.db",
+        root_dir / "db.sqlite3",
+        root_dir / "app.db",
+    ]
+
+    source_db = Path(engine.url.database).resolve()
+    if source_db.exists():
+        for target in db_paths_to_sync:
+            if target.resolve() != source_db:
+                shutil.copy2(source_db, target)
+        print(f"Base de datos sincronizada desde {source_db} hacia todas las ubicaciones.")
+
+    print("Base de datos regenerada exitosamente con datos consistentes y completos para todas las entidades.")
 
 if __name__ == "__main__":
     main()

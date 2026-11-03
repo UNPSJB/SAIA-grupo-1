@@ -759,7 +759,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
 
         <div className="dashboard-card">
           <div className="dashboard-card-header">
-            <h2>Estadísticas de Producción</h2>
+            <h2>Producción</h2>
             <div className="dashboard-header-controles">
               <span className="dashboard-kpi-pill">
                 Lotes producidos: <strong>{lotesProducidos}</strong>
