@@ -44,7 +44,7 @@ const ETIQUETA_ORIGEN: Record<OrigenVencimiento, string> = {
   personal: 'Personal',
   equipo: 'Calibración / Mantenimiento',
   documento: 'Documentos',
-  ambiental: 'Controles Ambientales',
+  ambiental: 'Controles Sanitarios',
 };
 
 const ETIQUETA_ESTADO: Record<EstadoVencimiento, string> = {
@@ -190,7 +190,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
         <div className="modulo-header" style={{ marginBottom: 0 }}>
           <h1>Vencimientos</h1>
-          <div className="subtitulo">01 · Control consolidado de carnets, calibraciones, documentos y controles ambientales</div>
+          <div className="subtitulo">01 · Control consolidado de carnets, calibraciones, documentos y controles sanitarios</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>

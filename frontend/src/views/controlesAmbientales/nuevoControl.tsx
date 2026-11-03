@@ -59,7 +59,7 @@ export default function NuevoControlAmbiental({ onSuccess, onCancel }: NuevoCont
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Nuevo Control Ambiental</h1>
+        <h1>Nuevo Control Sanitario</h1>
         <div className="subtitulo">02 · Configuración y Primera Visita</div>
       </div>
 

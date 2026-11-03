@@ -80,7 +80,7 @@ export const DetalleControlAmbiental: React.FC<DetalleControlProps> = ({
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Detalle de Control Ambiental</h1>
+        <h1>Detalle de Control Sanitario</h1>
         <div className="subtitulo">
           {control ? `${getTipoLabel(control.tipo)} (ID #${control.id})` : `Control #${controlId}`}
         </div>

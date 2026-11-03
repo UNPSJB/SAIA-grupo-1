@@ -260,7 +260,7 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
     <div className="modulo-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Controles Ambientales y Sanitarios</h1>
+          <h1>Controles Sanitarios</h1>
           <div className="subtitulo">
             01 · Control de Plagas, Análisis de Agua y Limpieza de Tanque
           </div>
@@ -343,13 +343,13 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
             {loading ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
-                  Cargando controles ambientales...
+                  Cargando controles sanitarios...
                 </td>
               </tr>
             ) : controlesFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
-                  No se encontraron controles ambientales.
+                  No se encontraron controles sanitarios.
                 </td>
               </tr>
             ) : (
@@ -485,7 +485,7 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
 
       <ConfirmAlertDialog
         open={dialogToggleOpen}
-        title={controlAToggle?.activo ? "¿Dar de baja control ambiental?" : "¿Reactivar control ambiental?"}
+        title={controlAToggle?.activo ? "¿Dar de baja control sanitario?" : "¿Reactivar control sanitario?"}
         description={
           controlAToggle?.activo
             ? `¿Estás seguro de que deseas dar de baja el control de "${getTipoLabel(controlAToggle?.tipo)}"?`
