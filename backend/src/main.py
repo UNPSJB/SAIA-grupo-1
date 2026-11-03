@@ -6,6 +6,7 @@ from src.database import engine, SessionLocal
 from src.insumos.migraciones import actualizar_tabla_insumos
 from src.produccion.migraciones import actualizar_tablas_produccion
 from src.indentificadorDeQR.migraciones import actualizar_tabla_identificador_qr
+from src.checklist.migraciones import actualizar_tablas_checklist
 from src.models import ModeloBase
 
 from src.config import settings
@@ -56,11 +57,14 @@ async def db_creation_lifespan(app: FastAPI):
     actualizar_tabla_insumos(engine)
     actualizar_tablas_produccion(engine)
     actualizar_tabla_identificador_qr(engine)
+    actualizar_tablas_checklist(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
             asegurar_tipos_base(db)
+            from src.dashboard.inicializacion import asegurar_datos_dashboard
+            asegurar_datos_dashboard(db)
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)

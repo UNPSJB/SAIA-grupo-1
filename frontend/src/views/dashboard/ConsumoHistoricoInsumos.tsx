@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import { apiFetch } from '../../api/client';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 import { useAuth } from '../../auth/useAuth';
 import {
   Card,
@@ -200,6 +201,47 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
 
   const paginacionMovimientos = usePaginacion(movimientosFiltrados, 10);
 
+  const exportarCSV = () => {
+    if (!movimientosFiltrados || movimientosFiltrados.length === 0) return;
+
+    const cabeceras = [
+      'Fecha y Hora',
+      'Insumo Químico',
+      'Tipo',
+      'Proveedor',
+      'Cantidad',
+      'Unidad',
+      'Responsable',
+      'Tarea',
+      'Plan de Limpieza',
+      'Sector / Equipo',
+    ];
+
+    const filas = movimientosFiltrados.map((m) => [
+      `"${formatearFechaHoraVisual(m.fecha_hora || m.fecha)}"`,
+      `"${(m.insumo_nombre || '').replace(/"/g, '""')}"`,
+      `"${(m.tipo || '').replace(/"/g, '""')}"`,
+      `"${(m.proveedor || '').replace(/"/g, '""')}"`,
+      m.cantidad,
+      m.unidad,
+      `"${(m.responsable_nombre || '').replace(/"/g, '""')}"`,
+      `"${(m.tarea_nombre || '').replace(/"/g, '""')}"`,
+      `"${(m.plan_nombre || '').replace(/"/g, '""')}"`,
+      `"${(m.sector_o_equipo || '').replace(/"/g, '""')}"`,
+    ]);
+
+    const contenidoCSV = '\uFEFF' + [cabeceras.join(';'), ...filas.map((f) => f.join(';'))].join('\r\n');
+    const blob = new Blob([contenidoCSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `consumo_historico_quimicos_${formatearFechaInput(new Date())}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
   if (!esAdministrador) {
     return (
       <div className="formulario-container" style={{ textAlign: 'center', padding: '40px 20px' }}>
@@ -275,6 +317,17 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
             Auditoría analítica, trazabilidad de uso acumulado y variaciones de consumo para optimización de stock y costos.
           </p>
         </div>
+
+        {hayDatos && (
+          <button
+            type="button"
+            onClick={exportarCSV}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
+          </button>
+        )}
       </div>
 
       <Card style={{ marginBottom: '24px' }}>

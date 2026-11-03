@@ -181,7 +181,6 @@ def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
 
 
 def resetear_base_completa():
-    ModeloBase.metadata.drop_all(bind=engine)
     ModeloBase.metadata.create_all(bind=engine)
     actualizar_tabla_insumos(engine)
     actualizar_tablas_produccion(engine)
