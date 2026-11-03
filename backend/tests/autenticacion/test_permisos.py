@@ -53,6 +53,26 @@ SOLO_ADMIN = [
     ("POST", "/documentos"),
     ("PUT", "/productos/visibilidad-publica"),
     ("PUT", "/identificadorQR/1/ver-productos"),
+    ("GET", "/controles-ambientales"),
+    ("POST", "/controles-ambientales"),
+    ("GET", "/controles-ambientales/1"),
+    ("PUT", "/controles-ambientales/1"),
+    ("DELETE", "/controles-ambientales/1"),
+    ("PATCH", "/controles-ambientales/1/reactivar"),
+    ("GET", "/productos/"),
+    ("POST", "/productos/"),
+    ("GET", "/productos/1"),
+    ("PUT", "/productos/1"),
+    ("DELETE", "/productos/1"),
+    ("POST", "/productos/1/restaurar"),
+    ("GET", "/certificados/tipos/"),
+    ("POST", "/certificados/tipos/"),
+    ("DELETE", "/certificados/tipos/1"),
+    ("GET", "/documentos/tipos/"),
+    ("POST", "/documentos/tipos/"),
+    ("PUT", "/documentos/tipos/1"),
+    ("DELETE", "/documentos/tipos/1"),
+    ("GET", "/vencimientos/"),
 ]
 
 CUALQUIER_USUARIO = [
@@ -60,6 +80,10 @@ CUALQUIER_USUARIO = [
     ("GET", "/checklist/"),
     ("GET", "/autenticacion/me"),
     ("GET", "/documentos"),
+    ("GET", "/notificaciones/"),
+    ("GET", "/lotes/"),
+    ("GET", "/incidentes/"),
+    ("GET", "/incidentes/categorias/"),
 ]
 
 def _pedir(metodo: str, ruta: str, cabeceras=None):

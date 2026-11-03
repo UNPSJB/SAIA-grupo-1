@@ -13,6 +13,7 @@ from src.producto.services import (
     eliminar_producto,
     listar_productos,
     obtener_producto,
+    obtener_productos_para_csv,
     restaurar_producto,
 )
 from tests.database import session
@@ -192,3 +193,68 @@ def test_listado_publico_ordenado_por_nombre(session: Session) -> None:
   a = _producto(session, "Alfajor de Maicena")
   actualizar_visibilidad_publica(session, [b.id, a.id])
   assert [p.nombre for p in listar_productos_publicos(session)] == ["Alfajor de Maicena", "Bizcochuelo"]
+
+
+def test_editar_producto_exitoso(session: Session) -> None:
+  receta = Documento(titulo="Receta Croissant", tipo="RECETA", descripcion="Desc", activo=True)
+  session.add(receta)
+  session.commit()
+  session.refresh(receta)
+
+  prod = crear_producto(session, ProductoCreate(nombre="Croissant", unidadMedida=UnidadMedida.UNIDADES))
+  editado = editar_producto(
+      session,
+      prod.id,
+      ProductoUpdate(nombre="Croissant Frances", descripcion="Con manteca", id_receta=receta.id),
+  )
+  assert editado.nombre == "Croissant Frances"
+  assert editado.descripcion == "Con manteca"
+  assert editado.id_receta == receta.id
+  assert editado.nombre_receta == "Receta Croissant"
+
+
+def test_editar_producto_duplicado(session: Session) -> None:
+  prod1 = crear_producto(session, ProductoCreate(nombre="Medialuna Manteca", unidadMedida=UnidadMedida.UNIDADES))
+  prod2 = crear_producto(session, ProductoCreate(nombre="Medialuna Grasa", unidadMedida=UnidadMedida.UNIDADES))
+  with pytest.raises(exceptions.NombreProductoDuplicado):
+    editar_producto(session, prod2.id, ProductoUpdate(nombre="Medialuna Manteca"))
+
+
+def test_editar_producto_inexistente(session: Session) -> None:
+  with pytest.raises(exceptions.ProductoNoEncontrado):
+    editar_producto(session, 99999, ProductoUpdate(nombre="Inexistente"))
+
+
+def test_crear_y_editar_producto_receta_inexistente(session: Session) -> None:
+  with pytest.raises(exceptions.RecetaNoEncontrada):
+    crear_producto(session, ProductoCreate(nombre="Prod Con Receta Falsa", unidadMedida=UnidadMedida.UNIDADES, id_receta=99999))
+
+  prod = crear_producto(session, ProductoCreate(nombre="Prod Sin Receta", unidadMedida=UnidadMedida.UNIDADES))
+  with pytest.raises(exceptions.RecetaNoEncontrada):
+    editar_producto(session, prod.id, ProductoUpdate(id_receta=99999))
+
+
+def test_obtener_productos_para_csv(session: Session) -> None:
+  receta = Documento(titulo="Receta Baguette", tipo="RECETA", descripcion="Desc", activo=True)
+  session.add(receta)
+  session.commit()
+  session.refresh(receta)
+
+  p1 = crear_producto(session, ProductoCreate(nombre="Baguette Tradicional", descripcion="Pan crocante", unidadMedida=UnidadMedida.UNIDADES, id_receta=receta.id))
+  p2 = crear_producto(session, ProductoCreate(nombre="Flauta Simple", descripcion="Pan blanco", unidadMedida=UnidadMedida.UNIDADES))
+  eliminar_producto(session, p2.id)
+
+  todos = obtener_productos_para_csv(session)
+  assert len(todos) >= 2
+
+  activos = obtener_productos_para_csv(session, activo=True)
+  assert any(p["id"] == p1.id for p in activos)
+  assert not any(p["id"] == p2.id for p in activos)
+
+  inactivos = obtener_productos_para_csv(session, activo=False)
+  assert any(p["id"] == p2.id for p in inactivos)
+  assert not any(p["id"] == p1.id for p in inactivos)
+
+  busqueda_receta = obtener_productos_para_csv(session, busqueda="Baguette")
+  assert any(p["id"] == p1.id for p in busqueda_receta)
+  assert not any(p["id"] == p2.id for p in busqueda_receta)

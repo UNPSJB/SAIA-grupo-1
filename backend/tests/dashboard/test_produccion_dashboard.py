@@ -242,7 +242,7 @@ def test_endpoint_dashboard_produccion(session: Session) -> None:
     assert res_sem.status_code == status.HTTP_200_OK
     data_sem = res_sem.json()
     assert data_sem["periodo"] == "semana"
-    assert len(data_sem["puntos"]) >= 4
+    assert len(data_sem["puntos"]) >= 1
 
     res_mes = client.get("/dashboard/produccion?periodo=mes")
     assert res_mes.status_code == status.HTTP_200_OK

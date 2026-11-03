@@ -42,3 +42,13 @@ def test_router_buscar_vencimientos_por_texto(session: Session):
     res_busqueda = client.get("/vencimientos/?q=Singular")
     assert res_busqueda.status_code == status.HTTP_200_OK
     assert any("Singular" in it["concepto"] for it in res_busqueda.json())
+
+
+def test_router_exportar_vencimientos_csv(session: Session):
+    tipo = crear_tipo_certificado(session, "Carnet Exportar CSV")
+    crear_certificado(session, tipo.id, date.today() + timedelta(days=5), 1)
+
+    res = client.get("/vencimientos/exportar-csv")
+    assert res.status_code == status.HTTP_200_OK
+    assert "text/csv" in res.headers["content-type"]
+    assert "Carnet Exportar CSV" in res.text

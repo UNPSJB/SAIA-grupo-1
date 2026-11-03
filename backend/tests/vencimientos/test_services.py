@@ -137,3 +137,18 @@ def test_documento_vencido_aparece_como_vencido(session: Session):
         estado=schemas.EstadoVencimiento.VENCIDO,
     )
     assert any(it.concepto == "Procedimiento Caducado (v1)" and it.estado == schemas.EstadoVencimiento.VENCIDO for it in docs_vencidos)
+
+
+def test_obtener_vencimientos_consolidados_para_csv(session: Session):
+    tipo = crear_tipo_certificado(session, "Carnet Para CSV")
+    crear_certificado(session, tipo.id, date.today() - timedelta(days=2), 1)
+    crear_certificado(session, tipo.id, date.today(), 1)
+    crear_certificado(session, tipo.id, date.today() + timedelta(days=1), 1)
+    crear_certificado(session, tipo.id, date.today() + timedelta(days=10), 1)
+
+    filas = services.obtener_vencimientos_consolidados_para_csv(session)
+    assert len(filas) >= 4
+    plazos = [f["plazo"] for f in filas]
+    assert any("Venció hace" in p for p in plazos)
+    assert any("Vence hoy" in p for p in plazos)
+    assert any("Vence en" in p for p in plazos)

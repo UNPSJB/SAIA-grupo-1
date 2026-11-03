@@ -52,3 +52,11 @@ def test_router_listar_incluye_tipos_por_defecto(session: Session):
     for tipo_defecto in ["Manual de BPM", "Ficha Técnica", "Procedimiento", "Receta"]:
         assert tipo_defecto in nombres
 
+
+
+def test_router_exportar_csv(session: Session):
+    client.post("/documentos/tipos/", data={"nombre": "Documento Para Exportar"})
+    res = client.get("/documentos/tipos/exportar-csv?busqueda=Exportar")
+    assert res.status_code == status.HTTP_200_OK
+    assert "text/csv" in res.headers["content-type"]
+    assert "Documento Para Exportar" in res.text

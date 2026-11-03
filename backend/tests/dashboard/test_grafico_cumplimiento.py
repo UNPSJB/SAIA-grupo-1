@@ -74,9 +74,8 @@ def test_grafico_cumplimiento_por_dia(session: Session) -> None:
 
 def test_grafico_cumplimiento_por_semana(session: Session) -> None:
     hoy = date.today()
-    inicio_semana = hoy - timedelta(days=hoy.weekday())
-    lunes = inicio_semana
-    martes = inicio_semana + timedelta(days=1)
+    lunes = hoy - timedelta(days=hoy.weekday() + 7)
+    martes = lunes + timedelta(days=1)
 
     c_lunes = generar_checklist(session, ChecklistGenerar(responsable_legajo=1, fecha=hoy))
     if c_lunes.items:

@@ -36,3 +36,11 @@ def test_router_eliminar_tipo_certificado(session: Session):
 
     res_check = client.get(f"/certificados/tipos/{tipo_id}")
     assert res_check.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_router_exportar_csv(session: Session):
+    client.post("/certificados/tipos/", data={"nombre": "Certificado Para Exportar"})
+    res = client.get("/certificados/tipos/exportar-csv?busqueda=Exportar")
+    assert res.status_code == status.HTTP_200_OK
+    assert "text/csv" in res.headers["content-type"]
+    assert "Certificado Para Exportar" in res.text

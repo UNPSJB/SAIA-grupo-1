@@ -90,3 +90,38 @@ def test_visibilidad_publica_rechaza_producto_dado_de_baja_api(session: Session)
 def test_visibilidad_publica_producto_inexistente_api(session: Session) -> None:
   res = client.put("/productos/visibilidad-publica", json={"productos_visibles": [9999]})
   assert res.status_code == 404
+
+
+def test_update_producto_api(session: Session) -> None:
+  create_res = client.post("/productos/", json={"nombre": "Pepas de Membrillo", "unidadMedida": "unidades"})
+  prod_id = create_res.json()["id"]
+
+  put_res = client.put(f"/productos/{prod_id}", json={"nombre": "Pepas de Batata", "descripcion": "Rellenas"})
+  assert put_res.status_code == 200
+  assert put_res.json()["nombre"] == "Pepas de Batata"
+  assert put_res.json()["descripcion"] == "Rellenas"
+
+  assert client.put("/productos/99999", json={"nombre": "Fantasma"}).status_code == 404
+
+
+def test_obtener_producto_inexistente_api(session: Session) -> None:
+  assert client.get("/productos/99999").status_code == 404
+  assert client.delete("/productos/99999").status_code == 404
+  assert client.post("/productos/99999/restaurar").status_code == 404
+
+
+def test_exportar_productos_csv_api(session: Session) -> None:
+  client.post("/productos/", json={"nombre": "Pan Lactal Integral", "unidadMedida": "unidades"})
+  res = client.get("/productos/exportar-csv?busqueda=Lactal")
+  assert res.status_code == 200
+  assert "text/csv" in res.headers["content-type"]
+  assert "Pan Lactal Integral" in res.text
+
+
+def test_read_productos_publicos_api(session: Session) -> None:
+  p1 = client.post("/productos/", json={"nombre": "Palmeritas", "unidadMedida": "unidades"}).json()["id"]
+  client.put("/productos/visibilidad-publica", json={"productos_visibles": [p1]})
+
+  res = client.get("/productos/publico")
+  assert res.status_code == 200
+  assert any(p["id"] == p1 for p in res.json())
