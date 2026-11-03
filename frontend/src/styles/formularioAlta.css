@@ -115,10 +115,7 @@
   cursor: pointer;
   box-shadow: 0 1px 2px color-mix(in srgb, var(--color-sombra) 8%, transparent);
   transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-  position: absolute;
-  top: 20px;
-  right: 30px;
-  z-index: 10;
+  white-space: nowrap;
 }
 .btn-activar:hover:not(:disabled) {
   background-color: var(--color-primario-hover);

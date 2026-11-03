@@ -313,6 +313,12 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
     <VistaPublicaProvider>
     <div className="modulo-container dashboard-container">
 
+      <div className="dashboard-titulo-fila">
+      <div className="modulo-header dashboard-header-compacto">
+        <h1>Inicio</h1>
+        <div className="subtitulo">Panel de estadísticas y control general</div>
+      </div>
+
       {/* 🟢 Botón dinámico que cambia según el estado de habilitación global */}
       <div>
         {vistaHabilitada ? (
@@ -332,10 +338,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
           </button>
         )}
       </div>
-
-      <div className="modulo-header dashboard-header-compacto">
-        <h1>Inicio</h1>
-        <div className="subtitulo">Panel de estadísticas y control general</div>
       </div>
 
       <div className="dashboard-fila-1">

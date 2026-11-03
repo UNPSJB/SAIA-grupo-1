@@ -11,6 +11,19 @@
   box-sizing: border-box;
 }
 
+.dashboard-titulo-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 0.45rem;
+  flex-shrink: 0;
+}
+
+.dashboard-titulo-fila .dashboard-header-compacto {
+  margin-bottom: 0;
+}
+
 .dashboard-header-compacto {
   margin-bottom: 0.45rem;
   flex-shrink: 0;
