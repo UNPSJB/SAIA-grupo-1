@@ -37,6 +37,7 @@ import {
 import '../../styles/dashboard.css';
 import '../../styles/formularioAlta.css';
 import '../../styles/incidentes.css';
+import { CsvIcon } from "../../components/icons/CsvIcon";
 
 interface FotoMiniaturaProps {
   incidenteId: number;
@@ -548,26 +549,10 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                 type="button"
                 className="dashboard-btn-volver"
                 onClick={exportarCSV}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 16px',
-                  backgroundColor: 'var(--color-primario)',
-                  color: 'var(--color-texto-sobre-primario, #ffffff)',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Exportar a CSV
-              </button>
+                <CsvIcon /> Exportar a CSV
+              </button> 
             )}
           </div>
         </div>
