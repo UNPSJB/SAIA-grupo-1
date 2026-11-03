@@ -500,6 +500,13 @@ button.saia-sidebar-group-label:hover {
   border-color: color-mix(in srgb, var(--color-error) 22%, transparent);
 }
 
+/* opción neutra del menú del usuario (mismo formato que cerrar sesión, sin el rojo) */
+.saia-logout-btn.saia-menu-opcion:hover {
+  background-color: var(--sidebar-hover);
+  color: var(--sidebar-heading);
+  border-color: transparent;
+}
+
 
 .saia-sidebar-rail {
   position: absolute;

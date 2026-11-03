@@ -6,10 +6,12 @@ interface HeaderAppProps {
   onNavegarNotificacion: React.ComponentProps<typeof NotificacionesPopover>['onNavegar'];
   onIrAIncidentes: () => void;
   onIrAVencimientos: () => void;
+  // todavía no hay pantalla de configuración; cuando exista, App pasa la navegación acá
+  onIrAConfiguracion?: () => void;
 }
 
 // Barra superior de la app: notificaciones, modo claro/oscuro y menú del usuario
-export const HeaderApp: React.FC<HeaderAppProps> = ({ onNavegarNotificacion, onIrAIncidentes, onIrAVencimientos }) => {
+export const HeaderApp: React.FC<HeaderAppProps> = ({ onNavegarNotificacion, onIrAIncidentes, onIrAVencimientos, onIrAConfiguracion }) => {
   const { usuario, esAdministrador, logout } = useAuth();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -98,6 +100,23 @@ export const HeaderApp: React.FC<HeaderAppProps> = ({ onNavegarNotificacion, onI
                   </span>
                   <span className="saia-user-meta">@{usuario.usuario}</span>
                 </div>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuAbierto(false);
+                    onIrAConfiguracion?.();
+                  }}
+                  className="saia-logout-btn saia-menu-opcion"
+                >
+                  <span className="saia-sidebar-menu-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+                    </svg>
+                  </span>
+                  <span className="saia-logout-label">Configuración</span>
+                </button>
                 <button type="button" role="menuitem" onClick={logout} className="saia-logout-btn">
                   <span className="saia-sidebar-menu-icon">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
