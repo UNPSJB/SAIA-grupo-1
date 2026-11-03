@@ -129,6 +129,7 @@ function Aplicacion() {
   const [vistaPublicaHabilitada, setVistaPublicaHabilitada] = useState(false);
   const [qrUrlPublica, setQrUrlPublica] = useState<string | null>(null);
   const [idAlfanumericoPublico, setIdAlfanumericoPublico] = useState<string | null>(null);
+  const [urlTextoPublica, setUrlTextoPublica] = useState<string | null>(null);
 
   const cambiarModulo = (nuevoModulo: Modulo) => {
     setModulo(nuevoModulo);
@@ -223,20 +224,23 @@ function Aplicacion() {
           vistaPublicaHabilitada ? (
             <VistaPublica_Habilitada
               qrUrl={qrUrlPublica}
+              urlEnlace={urlTextoPublica}
               identificadorUnico={idAlfanumericoPublico}
               onSuccess={() => {
                 setVistaPublicaHabilitada(false);
                 setQrUrlPublica(null);
                 setIdAlfanumericoPublico(null);
+                setUrlTextoPublica(null);
                 setModulo('dashboard');
               }}
               onCancel={() => setModulo('dashboard')}
             />
           ) : (
             <ActivarVista_Publica
-              onSuccess={(url, idAlfanumerico) => {
+              onSuccess={(url, idAlfanumerico,urlTexto) => {
                 setQrUrlPublica(url);
                 setIdAlfanumericoPublico(idAlfanumerico);
+                setUrlTextoPublica(urlTexto);
                 setVistaPublicaHabilitada(true);
                 setModulo('dashboard');
               }}

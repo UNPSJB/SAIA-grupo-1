@@ -116,7 +116,6 @@ export const Panel: React.FC<PanelProps> = ({ onIrAVistaPublica, vistaHabilitada
     <VistaPublicaProvider>
       <div className="modulo-container dashboard-container">
 
-        {/* 🟢 Botón dinámico que cambia según el estado de habilitación global */}
         <div>
           {vistaHabilitada ? (
             <button 

@@ -21,8 +21,3 @@ async def createQR(quickResponse:schemas.QRCodeCreate,db: Session = Depends(get_
     ident_data = ident.crear_IdentificadorUnico(db,datos_ident,urldelQR=quickResponse.texto)
     imagen=services.CrearCodigoQr(db,quickResponse,ident_data)
     return Response(content=imagen,media_type="image/png",headers={"X-Identificador-Unico": str(ident_data.id_alfanumerico)})
-
-
-@router.get("/",response_model=schemas.QRCode)
-async def getQR():
-    return services.MostrarQR()

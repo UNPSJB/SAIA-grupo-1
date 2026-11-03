@@ -7,7 +7,7 @@ import type { AcercaDeNosotrosConId } from './tipos';
 //const host = window.location.host;
 
 interface ActivarVistaProps{
-    onSuccess?: (qrBlobUrl: string,idAlfanumerico:string) => void;
+    onSuccess?: (qrBlobUrl: string,idAlfanumerico:string,urlTexto:string) => void;
     onCancel?: () => void;
 }
 
@@ -88,7 +88,6 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
         setSuccessMsg(null);
 
 
-        setLoading(true);
 
         function soloLetrasYNumeros(nombre:string): boolean{
 
@@ -105,6 +104,8 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
         setErrorMsg("La descripcion solo puede contener letras , números y caracteres permitidos.");
         return;
     }
+
+    setLoading(true);
 
         try {
             const res = await apiFetch(`/quickCode/`, {
@@ -178,9 +179,12 @@ function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement 
         const idAlfanumerico = res.headers.get("X-Identificador-Unico");
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
+        const urlTextoCompleta = idAlfanumerico 
+            ? `http://192.168.1.42:5173/vista-publica/${idAlfanumerico}?verGrafico=${config.verGrafico}&verAcercaDeNosotros=${config.verAcercaDeNosotros}`
+            : payload.texto;
         setSuccessMsg("Vista Publica habilitada exitosamente");
         if (idAlfanumerico) {
-            onSuccess?.(url, idAlfanumerico);
+            onSuccess?.(url, idAlfanumerico,urlTextoCompleta);
         } else {
             setErrorMsg("No se pudo recuperar el identificador único del QR.");
         }

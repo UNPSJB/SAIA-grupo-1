@@ -6,6 +6,7 @@ import type { AcercaDeNosotrosConId } from './tipos';
 
 interface VistaHabilitadaProps{
     qrUrl: string | null;
+    urlEnlace?: string | null;
     identificadorUnico?: string | null;
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -16,7 +17,7 @@ const ACERCADENOSOTROS_INICIAL: AcercaDeNosotrosConId = {
     descripcion: ""
 };
 
-export default function VistaPublica_Habilitada({qrUrl,identificadorUnico,onSuccess,onCancel}:VistaHabilitadaProps){
+export default function VistaPublica_Habilitada({qrUrl,urlEnlace,identificadorUnico,onSuccess,onCancel}:VistaHabilitadaProps){
     const [loading,setLoading]=useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -166,6 +167,13 @@ async function handleDesactivar(){
 
 }
 
+const handleCopiarEnlace = () => {
+        if (urlEnlace) {
+            navigator.clipboard.writeText(urlEnlace);
+            setSuccessMsg("¡Enlace copiado al portapapeles!");
+            setTimeout(() => setSuccessMsg(null), 3000);
+        }
+    };
 
  async function handleToggleGrafico(nuevoValor: boolean) {
     actualizarConfig('verGrafico',nuevoValor); // Lo cambia visualmente en tu PC al instante
@@ -320,6 +328,31 @@ return (
                         Descargar QR 📥
                     </button>
                 </div>
+
+                {urlEnlace && (
+                    <div className="enlace-acceso-derecha">
+                        <label className="textarea-label-titulo enlace-label-chico">Enlace de acceso directo:</label>
+                        <div className="enlace-fila-control">
+                            <a 
+                                href={urlEnlace} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="descripcion enlace-estilo-link" 
+                                title="Hacer clic para abrir en otra pestaña"
+                            >
+                                {urlEnlace} ↗
+                            </a>
+                            <button 
+                                type="button" 
+                                className="btn-guardar enlace-btn-copiar" 
+                                onClick={handleCopiarEnlace}
+                                title="Copiar enlace"
+                            >
+                                Copiar 📋
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
         </div>

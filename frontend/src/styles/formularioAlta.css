@@ -1249,19 +1249,19 @@ dialog .btn-guardar{
     align-self: flex-end;
 }
 
-/* Botón Cancelar bajado bastante más para que quede alineado con el botón de la derecha */
 .contenedor-cancelar-izq {
     display: flex;
     justify-content: flex-start;
-    margin-top: 250px; /* 👈 Lo baja considerablemente como pediste */
+    margin-top: 250px; 
 }
 
-/* Columna Derecha: QR y Botón Descargar */
+
 .qr-columna-derecha {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 300px;
+    position: relative ;
+    display: flex ;
+    flex-direction: column ;
+    align-items: center ;
+    width: 300px ;
 }
 
 .qr-preview-container-original {
@@ -1289,8 +1289,8 @@ dialog .btn-guardar{
 }
 
 .qr-imagen-original {
-    width: 280px !important; 
-    height: 280px !important;
+    width: 280px ; 
+    height: 280px ;
     display: block;
 }
 
@@ -1298,5 +1298,57 @@ dialog .btn-guardar{
     display: flex;
     justify-content: center;
     width: 100%;
-    margin-top: 25px; /* Sincronizado a la misma altura del botón Cancelar */
+    margin-top: 25px; 
+}
+
+
+.enlace-acceso-derecha {
+    position: absolute ;
+    top: 50px ;  
+    left: 310px ; 
+    display: flex ;
+    flex-direction: column ;
+    gap: 6px ;
+    width: 260px ;
+    text-align: left ;
+    background-color: var(--color-superficie, rgba(15, 23, 42, 0.9));
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border, #334155);
+    z-index: 10;
+}
+
+.enlace-label-chico {
+    font-size: 13px ;
+}
+
+.enlace-fila-control {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    width: 100%;
+}
+
+/* Estilo del enlace web interactivo */
+.enlace-estilo-link {
+    height: 36px ;
+    display: flex ;
+    align-items: center ;
+    text-decoration: underline ;
+    color: #38bdf8 ;
+    overflow: hidden ;
+    text-overflow: ellipsis ;
+    white-space: nowrap ;
+    padding: 0 10px ;
+    background-color: var(--color-superficie-elevada, #1e293b) ;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.enlace-btn-copiar {
+    height: 36px ;
+    padding: 0 12px ;
+    white-space: nowrap ;
+    width: 100%;
 }
