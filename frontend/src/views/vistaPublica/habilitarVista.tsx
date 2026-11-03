@@ -83,7 +83,7 @@ export default function ActivarVista_Publica({ onSuccess, onCancel }: ActivarVis
         setSuccessMsg(null);
 
         function soloLetrasYNumeros(nombre: string): boolean {
-            const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s-]+$/;
+            const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s,.\-():;'"/]+$/;
             return patron.test(nombre);
         }
 
@@ -169,7 +169,7 @@ export default function ActivarVista_Publica({ onSuccess, onCancel }: ActivarVis
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
             const urlTextoCompleta = idAlfanumerico 
-                ? `http://192.168.1.42:5173/vista-publica/${idAlfanumerico}?verGrafico=${config.verGrafico}&verAcercaDeNosotros=${config.verAcercaDeNosotros}`
+                ? `${window.location.origin}/vista-publica/${idAlfanumerico}?verGrafico=${config.verGrafico}&verAcercaDeNosotros=${config.verAcercaDeNosotros}`
                 : payload.texto;
             
             setSuccessMsg("Vista Publica habilitada exitosamente");
@@ -248,12 +248,14 @@ export default function ActivarVista_Publica({ onSuccess, onCancel }: ActivarVis
                 </div>
             </div>
 
-            {errorMsg && <div className="alerta-error">{errorMsg}</div>}
-            {successMsg && <div className="alerta-exito">{successMsg}</div>}
+            
+            
            
             <div className="config-bottom-grid">
                 
                 <div className="columna-izquierda">
+                    {errorMsg && <div className="alerta-error">{errorMsg}</div>}
+                    {successMsg && <div className="alerta-exito">{successMsg}</div>}
                     <div className="textarea-container-angosto">
                         <div className="textarea-header-row">
                             <label htmlFor="descripcion" className="textarea-label-titulo">Acerca de Nosotros</label>

@@ -18,7 +18,7 @@ class AcercaDeNosotrosCreate(AcercaDeNosotrosBase):
     def validar_nombre(cls, v: Optional[str]) -> Optional[str]:
             if v is None:
              return v
-            if all(c.isalnum() or c.isspace() for c in v):
+            if all(c.isalnum() or c.isspace() or c in ",.-():;'\"/" for c in v):
                 return v
             raise exceptions.Descripcion_vacia()
 
@@ -28,7 +28,7 @@ class AcercaDeNosotrosUpdate(BaseModel):
     @field_validator("descripcion")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
-                 if all(c.isalnum() or c.isspace() for c in v):
+                 if all(c.isalnum() or c.isspace() or c in ",.-():;'\"/" for c in v):
                      return v
                  raise exceptions.Descripcion_vacia()
 

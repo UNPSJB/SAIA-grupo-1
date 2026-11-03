@@ -1137,7 +1137,7 @@ dialog .btn-guardar{
     justify-content: space-between;
     align-items: flex-start;
     width: 100%;
-    max-width: 950px;
+    max-width: 100%;
     gap: 40px;
     margin-top: 15px;
 }
@@ -1154,7 +1154,7 @@ dialog .btn-guardar{
 /* Título principal */
 .config-titulo-principal {
     font-size: 30px !important; 
-    white-space: white-space;
+    white-space: nowrap;
     margin: 0;
     color: var(--color-texto) !important; /* Dinámico según el tema (negro en modo claro) */
 }
@@ -1173,7 +1173,7 @@ dialog .btn-guardar{
     padding: 14px 18px;
     border-radius: 8px;
     border: 1px solid var(--border, #334155);
-    width: 300px;
+    width: 330px;
     box-sizing: border-box;
     margin-top: 25px;
 }
@@ -1207,7 +1207,7 @@ dialog .btn-guardar{
     justify-content: space-between;
     align-items: flex-start;
     width: 100%;
-    max-width: 950px;
+    max-width: 100%;
     gap: 40px;
     margin-top: 15px; 
 }
@@ -1260,7 +1260,7 @@ dialog .btn-guardar{
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 300px;
+    width: 330px;
     transform: translateY(40px);
 }
 

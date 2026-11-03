@@ -70,7 +70,7 @@ async function handleGuardarEdicion() {
         setSuccessMsg(null);
 
         function soloLetrasYNumeros(nombre: string): boolean {
-            const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s-]+$/;
+            const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s,.\-():;'"/]+$/;
             return patron.test(nombre);
         }
 
@@ -270,14 +270,16 @@ return (
             </div>
         </div>
 
-        {errorMsg && <div className="alerta-error">{errorMsg}</div>}
-        {successMsg && <div className="alerta-exito">{successMsg}</div>}
+
+
 
   
         <div className="config-bottom-grid">
             
          
             <div className="columna-izquierda">
+                {errorMsg && <div className="alerta-error">{errorMsg}</div>}
+                {successMsg && <div className="alerta-exito">{successMsg}</div>}
                 <div className="textarea-container-angosto">
                     <div className="textarea-header-row">
                         <label htmlFor="descripcion" className="textarea-label-titulo">Acerca de Nosotros</label>
