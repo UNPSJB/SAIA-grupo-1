@@ -13,12 +13,14 @@ interface ListadoProductosProps {
   onNuevoClick?: () => void;
   onDetalleClick?: (id: number) => void;
   onEditarClick?: (id: number) => void;
+  onIngredientesClick?: (id: number) => void;
 }
 
 export const ListadoProductos: React.FC<ListadoProductosProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
+  onIngredientesClick,
 }) => {
   const [productos, setProductos] = useState<ProductoConId[]>([]);
   const [loading, setLoading] = useState(true);
@@ -241,6 +243,13 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
+                      <button
+                        className="btn-icon"
+                        title="Ordenar ingredientes y aditivos (Rótulo)"
+                        onClick={() => onIngredientesClick?.(i.id)}
+                      >
+                        🏷
+                      </button>
                       <button
                         className="btn-icon btn-ver"
                         title="Ver detalles"

@@ -9,9 +9,15 @@ interface DetalleProductoProps {
   onCancel?: () => void;
   productoId?: number | null;
   onVerReceta?: (recetaId: number) => void;
+  onGestionarIngredientes?: (id: number) => void;
 }
 
-export const DetalleProducto: React.FC<DetalleProductoProps> = ({ onCancel, productoId, onVerReceta }) => {
+export const DetalleProducto: React.FC<DetalleProductoProps> = ({
+  onCancel,
+  productoId,
+  onVerReceta,
+  onGestionarIngredientes,
+}) => {
   const [producto, setProducto] = useState<ProductoConId | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +164,15 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({ onCancel, prod
             <button type="button" className="btn-cancelar" onClick={onCancel}>
               Volver
             </button>
+            {onGestionarIngredientes && producto && (
+              <button
+                type="button"
+                className="btn-guardar"
+                onClick={() => onGestionarIngredientes(producto.id)}
+              >
+                🏷 Ordenar ingredientes y aditivos (Rótulo)
+              </button>
+            )}
           </div>
         </form>
       ) : (

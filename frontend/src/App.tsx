@@ -85,6 +85,7 @@ import { ListadoProductos } from './views/producto/listado';
 import NuevoProducto  from './views/producto/nuevoProducto';
 import EditarProducto from './views/producto/editarDetalle';
 import { DetalleProducto } from './views/producto/verDetalle';
+import { OrdenarIngredientes } from './views/producto/ordenarIngredientes';
 import { InformeInspeccion } from './views/informes/informeInspeccion';
 import ActivarVista_Publica from './views/vistaPublica/habilitarVista';
 import VistaPublica_Habilitada from './views/vistaPublica/VistaHabilitada';
@@ -109,7 +110,7 @@ type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
 type VistaMotivos = 'listado' | 'alta' | 'detalle';
 type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
-type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar' | 'receta';
+type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar' | 'receta' | 'ingredientes';
 type VistaControlesAmbientales = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
@@ -1208,6 +1209,10 @@ const irANotificacion = (notif: NotificacionItem) => {
                 setProductoSeleccionado(id);
                 setVistaProductos('editar');
               }}
+              onIngredientesClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('ingredientes');
+              }}
             />
           ) : vistaProductos === 'alta' ? (
             <NuevoProducto
@@ -1222,12 +1227,21 @@ const irANotificacion = (notif: NotificacionItem) => {
                 setRecetaDesdeProducto(recetaId);
                 setVistaProductos('receta');
               }}
+              onGestionarIngredientes={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('ingredientes');
+              }}
             />
           ) : vistaProductos === 'receta' ? (
             <DetalleDocumento
               documentoId={recetaDesdeProducto}
               onVolver={() => setVistaProductos('detalle')}
               textoVolver="Volver al Producto"
+            />
+          ) : vistaProductos === 'ingredientes' && productoSeleccionado ? (
+            <OrdenarIngredientes
+              productoId={productoSeleccionado}
+              onVolver={() => setVistaProductos('detalle')}
             />
           ) : (
             <EditarProducto

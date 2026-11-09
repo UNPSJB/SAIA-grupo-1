@@ -7,6 +7,7 @@ from src.insumos.migraciones import actualizar_tabla_insumos
 from src.produccion.migraciones import actualizar_tablas_produccion
 from src.indentificadorDeQR.migraciones import actualizar_tabla_identificador_qr
 from src.checklist.migraciones import actualizar_tablas_checklist
+from src.rotulado.migraciones import actualizar_tablas_rotulado
 from src.models import ModeloBase
 
 from src.config import settings
@@ -44,6 +45,7 @@ from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
+from src.rotulado.router import router as rotulado_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -58,6 +60,7 @@ async def db_creation_lifespan(app: FastAPI):
     actualizar_tablas_produccion(engine)
     actualizar_tabla_identificador_qr(engine)
     actualizar_tablas_checklist(engine)
+    actualizar_tablas_rotulado(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
@@ -123,3 +126,4 @@ app.include_router(AcercaDeNostrosRouter)
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SOLO_ADMIN)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
+app.include_router(rotulado_router)
