@@ -307,7 +307,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         },
         { id: 'auditoria', label: 'Auditoría', icono: ICONOS_MODULO.auditoria },
         { id: 'informes', label: 'Informe de Inspección', icono: ICONOS_MODULO.informes },
-        { id: 'controlesAmbientales', label: 'Controles Ambientales', icono: ICONOS_MODULO.controlesAmbientales },
+        { id: 'controlesAmbientales', label: 'Controles Sanitarios', icono: ICONOS_MODULO.controlesAmbientales },
       ],
     },
   ];

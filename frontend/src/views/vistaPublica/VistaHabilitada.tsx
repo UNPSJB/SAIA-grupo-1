@@ -7,6 +7,7 @@ import ConfiguracionProductosPublicos from './configuracionProductos';
 
 interface VistaHabilitadaProps{
     qrUrl: string | null;
+    urlEnlace?: string | null;
     identificadorUnico?: string | null;
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -17,7 +18,7 @@ const ACERCADENOSOTROS_INICIAL: AcercaDeNosotrosConId = {
     descripcion: ""
 };
 
-export default function VistaPublica_Habilitada({qrUrl,identificadorUnico,onSuccess,onCancel}:VistaHabilitadaProps){
+export default function VistaPublica_Habilitada({qrUrl,urlEnlace,identificadorUnico,onSuccess,onCancel}:VistaHabilitadaProps){
     const [loading,setLoading]=useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -69,7 +70,7 @@ async function handleGuardarEdicion() {
         setSuccessMsg(null);
 
         function soloLetrasYNumeros(nombre: string): boolean {
-            const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s-]+$/;
+            const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s,.\-():;'"/]+$/;
             return patron.test(nombre);
         }
 
@@ -119,6 +120,15 @@ async function handleGuardarEdicion() {
             setLoading(false);
         }
     }
+
+const handleCopiarEnlace = () => {
+        if (urlEnlace) {
+            navigator.clipboard.writeText(urlEnlace);
+            setSuccessMsg("¡Enlace copiado al portapapeles!");
+            setTimeout(() => setSuccessMsg(null), 3000);
+        }
+    };
+    
 function handleDescargarQR() {
         if (!qrUrl) return;
 
@@ -245,17 +255,31 @@ return (
                         Mostrar Acerca de Nosotros
                     </label>
                 </div>
+                <div className="config-switch-item">
+                        <input 
+                            type="checkbox" 
+                            className="switch-input"
+                            id="switch-productos"
+                            checked={config.verProductos} 
+                            onChange={(e) => actualizarConfig('verProductos', e.target.checked)}
+                        />
+                        <label htmlFor="switch-productos" className="config-switch-label" onClick={() => actualizarConfig('verProductos', !config.verProductos)}>
+                            Mostrar listado de productos
+                        </label>
+                    </div>
             </div>
         </div>
 
-        {errorMsg && <div className="alerta-error">{errorMsg}</div>}
-        {successMsg && <div className="alerta-exito">{successMsg}</div>}
+
+
 
   
         <div className="config-bottom-grid">
             
          
             <div className="columna-izquierda">
+                {errorMsg && <div className="alerta-error">{errorMsg}</div>}
+                {successMsg && <div className="alerta-exito">{successMsg}</div>}
                 <div className="textarea-container-angosto">
                     <div className="textarea-header-row">
                         <label htmlFor="descripcion" className="textarea-label-titulo">Acerca de Nosotros</label>
@@ -322,6 +346,31 @@ return (
                         Descargar QR 📥
                     </button>
                 </div>
+
+                {urlEnlace && (
+                    <div className="enlace-acceso-derecha">
+                        <label className="textarea-label-titulo enlace-label-chico">Enlace de acceso directo:</label>
+                        <div className="enlace-fila-control">
+                            <a 
+                                href={urlEnlace} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="descripcion enlace-estilo-link" 
+                                title="Hacer clic para abrir en otra pestaña"
+                            >
+                                {urlEnlace} ↗
+                            </a>
+                            <button 
+                                type="button" 
+                                className="btn-guardar enlace-btn-copiar" 
+                                onClick={handleCopiarEnlace}
+                                title="Copiar enlace"
+                            >
+                                Copiar 📋
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
         </div>

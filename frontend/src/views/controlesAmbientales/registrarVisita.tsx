@@ -15,9 +15,18 @@ export const ModalRegistrarVisita: React.FC<ModalRegistrarVisitaProps> = ({
   control,
   onSuccess,
 }) => {
-  const [fechaRealizacion, setFechaRealizacion] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  // Calculamos la fecha de hoy en formato local YYYY-MM-DD para evitar desfases de zona horaria
+  const obtenerFechaHoy = () => {
+    const hoy = new Date();
+    const year = hoy.getFullYear();
+    const month = String(hoy.getMonth() + 1).padStart(2, "0");
+    const day = String(hoy.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const fechaHoyStr = obtenerFechaHoy();
+
+  const [fechaRealizacion, setFechaRealizacion] = useState(fechaHoyStr);
   const [observaciones, setObservaciones] = useState("");
   const [archivo, setArchivo] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +63,12 @@ export const ModalRegistrarVisita: React.FC<ModalRegistrarVisitaProps> = ({
 
     if (!fechaRealizacion) {
       setErrorMsg("Debe especificar la fecha de realización.");
+      return;
+    }
+
+    // Validación de fecha futura
+    if (fechaRealizacion > fechaHoyStr) {
+      setErrorMsg("La fecha de realización no puede ser posterior al día de hoy.");
       return;
     }
 
@@ -114,6 +129,7 @@ export const ModalRegistrarVisita: React.FC<ModalRegistrarVisitaProps> = ({
                 id="fecha_realizacion"
                 type="date"
                 required
+                max={fechaHoyStr} // Bloquea los días futuros en el calendario del navegador
                 value={fechaRealizacion}
                 onChange={(e) => setFechaRealizacion(e.target.value)}
               />

@@ -19,8 +19,8 @@ class IdentificadorQRCreate(IdentificadorQRBase):
     id_alfanumerico:Optional[str]=None
     estado:Optional[bool]=None
     urldelQR:Optional[str]=None
-    ver_grafico:Optional[bool]= True
-    verAcercaDeNosotros:Optional[bool]=True
+    ver_grafico:Optional[bool]= False
+    verAcercaDeNosotros:Optional[bool]=False
     verProductos:Optional[bool]=False
 
 

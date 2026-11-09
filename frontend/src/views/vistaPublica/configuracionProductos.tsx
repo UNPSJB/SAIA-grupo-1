@@ -6,8 +6,6 @@ import type { ProductoConId } from '../producto/tipos';
 
 interface ConfiguracionProductosProps {
     identificadorUnico?: string | null;
-    // al habilitar la vista todavia no hay QR: la seleccion se le pasa a la pantalla de habilitacion,
-    // que la guarda junto con el boton "Habilitar" (no se muestra el boton de guardar propio)
     onSeleccionChange?: (productosVisibles: number[]) => void;
 }
 
@@ -22,9 +20,8 @@ async function mensajeDeError(res: Response, porDefecto: string): Promise<string
 
 const textoClaro = { color: 'var(--text-h)', fontSize: '13px', userSelect: 'none' as const };
 
-// Sección del panel de la vista pública: interruptor general del listado + qué productos se muestran
 export default function ConfiguracionProductosPublicos({ identificadorUnico, onSeleccionChange }: ConfiguracionProductosProps) {
-    const { config, actualizarConfig } = useVistaPublica();
+    const { config } = useVistaPublica();
     const modoHabilitacion = !identificadorUnico;
 
     const [productos, setProductos] = useState<ProductoConId[]>([]);
@@ -36,26 +33,11 @@ export default function ConfiguracionProductosPublicos({ identificadorUnico, onS
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
     useEffect(() => {
-        // el estado real del interruptor es el guardado en el QR
-        async function sincronizarInterruptor() {
-            if (!identificadorUnico) return;
-            try {
-                const res = await apiFetch(`/identificadorQR/verificar/${identificadorUnico}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (typeof data.verProductos === 'boolean') actualizarConfig('verProductos', data.verProductos);
-                }
-            } catch (err) {
-                console.error("Error al sincronizar el listado de productos:", err);
-            }
-        }
-
         async function cargarProductos() {
             try {
                 const res = await apiFetch(`/productos/`);
                 if (!res.ok) throw new Error(await mensajeDeError(res, "No se pudieron cargar los productos."));
                 const data: ProductoConId[] = await res.json();
-                // los dados de baja no se pueden mostrar, así que ni se ofrecen
                 const activos = data.filter(p => p.activo).sort((a, b) => a.nombre.localeCompare(b.nombre));
                 const visibles = new Set(activos.filter(p => p.visible_publico).map(p => p.id));
                 setProductos(activos);
@@ -68,38 +50,17 @@ export default function ConfiguracionProductosPublicos({ identificadorUnico, onS
             }
         }
 
-        sincronizarInterruptor();
         cargarProductos();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [identificadorUnico]);
 
     useEffect(() => {
         onSeleccionChange?.([...seleccion]);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [seleccion]);
 
     const hayCambios = useMemo(
         () => seleccion.size !== guardados.size || [...seleccion].some(id => !guardados.has(id)),
         [seleccion, guardados]
     );
-
-    async function handleToggleProductos(nuevoValor: boolean) {
-        setErrorMsg(null);
-        setSuccessMsg(null);
-        actualizarConfig('verProductos', nuevoValor);
-        if (modoHabilitacion) return; // se guarda al crear el QR
-        try {
-            const res = await apiFetch(`/identificadorQR/${identificadorUnico}/ver-productos`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ verProductos: nuevoValor }),
-            });
-            if (!res.ok) throw new Error(await mensajeDeError(res, "No se pudo actualizar el listado de productos."));
-        } catch (err: unknown) {
-            actualizarConfig('verProductos', !nuevoValor); // se vuelve atrás si el backend no lo guardó
-            setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
-        }
-    }
 
     function toggleProducto(id: number) {
         setSuccessMsg(null);
@@ -139,18 +100,6 @@ export default function ConfiguracionProductosPublicos({ identificadorUnico, onS
 
     return (
         <div className="form-group">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: 'fit-content' }}>
-                <input
-                    type="checkbox"
-                    className="switch-input"
-                    checked={config.verProductos}
-                    onChange={(e) => handleToggleProductos(e.target.checked)}
-                />
-                <span style={{ ...textoClaro, cursor: 'pointer' }} onClick={() => handleToggleProductos(!config.verProductos)}>
-                    Mostrar listado de productos
-                </span>
-            </div>
-
             {errorMsg && <div className="alerta-error" style={{ marginTop: '8px' }}>{errorMsg}</div>}
             {successMsg && <div className="alerta-exito" style={{ marginTop: '8px' }}>{successMsg}</div>}
 
@@ -176,7 +125,7 @@ export default function ConfiguracionProductosPublicos({ identificadorUnico, onS
                         </div>
                     </div>
 
-                    <div className="tabla-wrapper" style={{ maxHeight: '220px', overflowY: 'auto', opacity: config.verProductos ? 1 : 0.55 }}>
+                    <div className="tabla-wrapper" style={{ maxHeight: '275px', overflowY: 'auto', opacity: config.verProductos ? 1 : 0.55 }}>
                         <table className="tabla-custom">
                             <thead>
                                 <tr>

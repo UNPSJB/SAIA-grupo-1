@@ -106,7 +106,7 @@ export const EditarControlAmbiental: React.FC<EditarControlProps> = ({
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Editar Control Ambiental</h1>
+        <h1>Editar Control Sanitario</h1>
         <div className="subtitulo">
           Modificar configuración · {getTipoLabel(tipo)} (ID #{controlId})
         </div>

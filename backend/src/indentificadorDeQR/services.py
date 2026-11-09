@@ -17,9 +17,9 @@ def crear_IdentificadorUnico(db:Session,ident:schemas.IdentificadorQRCreate,urld
     datos["estado"]=True
     datos["urldelQR"]=urldelQR or datos.get("urldelQR", "")
     if "ver_grafico" not in datos or datos["ver_grafico"] is None:
-        datos["ver_grafico"] = True
+        datos["ver_grafico"] = False
     if "verAcercaDeNosotros" not in datos or datos["verAcercaDeNosotros"] is None:
-            datos["verAcercaDeNosotros"] = True
+            datos["verAcercaDeNosotros"] = False
     # el listado de productos arranca desactivado
     if datos.get("verProductos") is None:
         datos["verProductos"] = False
