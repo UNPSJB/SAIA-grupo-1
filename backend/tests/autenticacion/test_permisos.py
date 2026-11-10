@@ -1,0 +1,275 @@
+from datetime import date, timedelta
+from typing import Dict
+import pytest
+from fastapi import status
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+from src.checklist.models import Checklist
+from src.personal.models import Personal
+from src.tareas.models import Tarea
+from tests.autenticacion.conftest import headers
+from tests.database import app
+
+client = TestClient(app)
+
+SOLO_ADMIN = [
+    ("GET", "/personal/"),
+    ("POST", "/personal/"),
+    ("PUT", "/personal/1"),
+    ("GET", "/insumos/"),
+    ("POST", "/insumos/"),
+    ("PATCH", "/insumos/1"),
+    ("DELETE", "/insumos/1"),
+    ("PATCH", "/insumos/1/stock"),
+    ("GET", "/equipos/"),
+    ("POST", "/equipos/"),
+    ("PUT", "/equipos/1"),
+    ("DELETE", "/equipos/1"),
+    ("PATCH", "/equipos/1/reactivar"),
+    ("GET", "/elementosDeLimpieza/"),
+    ("POST", "/elementosDeLimpieza/"),
+    ("PUT", "/elementosDeLimpieza/1"),
+    ("DELETE", "/elementosDeLimpieza/1"),
+    ("POST", "/elementosDeLimpieza/1/cambiar"),
+    ("GET", "/plan_De_limpieza/"),
+    ("POST", "/plan_De_limpieza/"),
+    ("PUT", "/plan_De_limpieza/1"),
+    ("GET", "/tareas/"),
+    ("POST", "/tareas/"),
+    ("PUT", "/tareas/1"),
+    ("DELETE", "/tareas/1"),
+    ("GET", "/auditoria/"),
+    ("GET", "/dashboard/resumen"),
+    ("GET", "/dashboard/cumplimiento"),
+    ("GET", "/dashboard/consumo-insumos"),
+    ("POST", "/api/insumos-quimicos"),
+    ("PUT", "/api/insumos-quimicos/1"),
+    ("PATCH", "/api/insumos-quimicos/1/toggle"),
+    ("GET", "/sectores/"),
+    ("POST", "/sectores/"),
+    ("GET", "/sectores/1"),
+    ("PUT", "/sectores/1"),
+    ("DELETE", "/sectores/1"),
+    ("POST", "/documentos"),
+    ("PUT", "/productos/visibilidad-publica"),
+    ("PUT", "/identificadorQR/1/ver-productos"),
+    ("GET", "/controles-ambientales"),
+    ("POST", "/controles-ambientales"),
+    ("GET", "/controles-ambientales/1"),
+    ("PUT", "/controles-ambientales/1"),
+    ("DELETE", "/controles-ambientales/1"),
+    ("PATCH", "/controles-ambientales/1/reactivar"),
+    ("GET", "/productos/"),
+    ("POST", "/productos/"),
+    ("GET", "/productos/1"),
+    ("PUT", "/productos/1"),
+    ("DELETE", "/productos/1"),
+    ("POST", "/productos/1/restaurar"),
+    ("GET", "/certificados/tipos/"),
+    ("POST", "/certificados/tipos/"),
+    ("DELETE", "/certificados/tipos/1"),
+    ("GET", "/documentos/tipos/"),
+    ("POST", "/documentos/tipos/"),
+    ("PUT", "/documentos/tipos/1"),
+    ("DELETE", "/documentos/tipos/1"),
+    ("GET", "/vencimientos/"),
+]
+
+CUALQUIER_USUARIO = [
+    ("GET", "/api/insumos-quimicos"),
+    ("GET", "/checklist/"),
+    ("GET", "/autenticacion/me"),
+    ("GET", "/documentos"),
+    ("GET", "/notificaciones/"),
+    ("GET", "/lotes/"),
+    ("GET", "/incidentes/"),
+    ("GET", "/incidentes/categorias/"),
+]
+
+def _pedir(metodo: str, ruta: str, cabeceras=None):
+    return client.request(metodo, ruta, headers=cabeceras, json={} if metodo in ("POST", "PUT", "PATCH") else None)
+
+@pytest.mark.parametrize("metodo,ruta", SOLO_ADMIN + CUALQUIER_USUARIO)
+def test_sin_token_no_se_puede_entrar(usuarios: Dict[str, Personal], metodo: str, ruta: str) -> None:
+    assert _pedir(metodo, ruta).status_code == status.HTTP_401_UNAUTHORIZED
+
+@pytest.mark.parametrize("metodo,ruta", SOLO_ADMIN)
+def test_el_operador_no_puede_administrar(usuarios: Dict[str, Personal], metodo: str, ruta: str) -> None:
+    respuesta = _pedir(metodo, ruta, headers(usuarios["operador"]))
+    assert respuesta.status_code == status.HTTP_403_FORBIDDEN
+
+@pytest.mark.parametrize("rol", ["administrador", "ambos"])
+@pytest.mark.parametrize("metodo,ruta", SOLO_ADMIN)
+def test_el_administrador_pasa_el_control_de_permisos(
+    usuarios: Dict[str, Personal], rol: str, metodo: str, ruta: str
+) -> None:
+
+    respuesta = _pedir(metodo, ruta, headers(usuarios[rol]))
+    assert respuesta.status_code not in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
+
+@pytest.mark.parametrize("rol", ["operador", "administrador", "ambos"])
+@pytest.mark.parametrize("metodo,ruta", CUALQUIER_USUARIO)
+def test_endpoints_para_cualquier_usuario_logueado(
+    usuarios: Dict[str, Personal], rol: str, metodo: str, ruta: str
+) -> None:
+    assert _pedir(metodo, ruta, headers(usuarios[rol])).status_code == status.HTTP_200_OK
+
+
+def test_el_catalogo_publico_no_pide_token(usuarios: Dict[str, Personal]) -> None:
+    # lo abre cualquiera con el QR; un identificador inexistente da 404, no 401
+    assert client.get("/identificadorQR/no-existe/productos").status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_la_imagen_de_evidencia_no_pide_token(usuarios: Dict[str, Personal]) -> None:
+
+    respuesta = client.get("/checklist/imagenes/no_existe.jpg")
+    assert respuesta.status_code == status.HTTP_404_NOT_FOUND
+
+def _generar_checklist_de_hoy(persona: Personal) -> dict:
+    respuesta = client.post("/checklist/generar", json={}, headers=headers(persona))
+    assert respuesta.status_code == status.HTTP_201_CREATED
+    return respuesta.json()
+
+def test_generar_checklist_pide_estar_logueado(usuarios: Dict[str, Personal]) -> None:
+    assert _pedir("POST", "/checklist/generar").status_code == status.HTTP_401_UNAUTHORIZED
+
+def test_el_operador_genera_solo_su_propio_checklist(usuarios: Dict[str, Personal]) -> None:
+    operador = usuarios["operador"]
+    cabeceras = headers(operador)
+
+    propio = client.post("/checklist/generar", json={"responsable_legajo": usuarios["ambos"].legajo}, headers=cabeceras)
+    assert propio.status_code == status.HTTP_201_CREATED
+    assert propio.json()["responsable_legajo"] == operador.legajo
+
+    assert all(t["responsable_legajo"] == operador.legajo for t in propio.json()["items"])
+
+def test_un_administrador_puro_no_puede_generar_checklist(usuarios: Dict[str, Personal]) -> None:
+    respuesta = client.post("/checklist/generar", json={"responsable_legajo": usuarios["operador"].legajo},
+                            headers=headers(usuarios["administrador"]))
+    assert respuesta.status_code == status.HTTP_403_FORBIDDEN
+
+def test_el_operador_no_genera_dos_checklists_el_mismo_dia(usuarios: Dict[str, Personal]) -> None:
+    _generar_checklist_de_hoy(usuarios["operador"])
+    respuesta = client.post("/checklist/generar", json={}, headers=headers(usuarios["operador"]))
+    assert respuesta.status_code == status.HTTP_400_BAD_REQUEST
+
+def test_el_checklist_solo_trae_las_tareas_del_responsable(session: Session, usuarios: Dict[str, Personal]) -> None:
+    tarea = session.get(Tarea, 2)
+    tarea.personal_id = usuarios["ambos"].legajo
+    session.commit()
+
+    del_operador = _generar_checklist_de_hoy(usuarios["operador"])
+    assert [t["nombre_tarea"] for t in del_operador["items"]] == ["Desinfeccion"]
+
+    del_otro = _generar_checklist_de_hoy(usuarios["ambos"])
+    assert [t["nombre_tarea"] for t in del_otro["items"]] == ["Descongelar"]
+
+def test_el_operador_ve_solo_sus_checklists_con_su_historial(session: Session, usuarios: Dict[str, Personal]) -> None:
+    propio = _generar_checklist_de_hoy(usuarios["operador"])
+    ajeno = client.post("/checklist/generar", json={}, headers=headers(usuarios["ambos"]))
+
+    assert ajeno.status_code == status.HTTP_400_BAD_REQUEST
+    ayer = date.today() - timedelta(days=1)
+    session.get(Checklist, propio["id"]).fecha = ayer
+    session.commit()
+    otro = Checklist(fecha=date.today(), responsable_legajo=usuarios["ambos"].legajo)
+    session.add(otro)
+    session.commit()
+
+    operador = headers(usuarios["operador"])
+    administrador = headers(usuarios["administrador"])
+
+    ids = [c["id"] for c in client.get("/checklist/", headers=operador).json()]
+    assert propio["id"] in ids and otro.id not in ids
+    assert client.get(f"/checklist/{propio['id']}", headers=operador).status_code == status.HTTP_200_OK
+    assert client.get(f"/checklist/{otro.id}", headers=operador).status_code == status.HTTP_403_FORBIDDEN
+
+    assert propio["id"] not in [c["id"] for c in client.get(f"/checklist/?fecha={date.today().isoformat()}", headers=operador).json()]
+
+    ids_admin = [c["id"] for c in client.get("/checklist/", headers=administrador).json()]
+    assert propio["id"] in ids_admin and otro.id in ids_admin
+
+    filtrado = client.get(f"/checklist/?responsable_legajo={usuarios['ambos'].legajo}", headers=administrador)
+    assert [c["id"] for c in filtrado.json()] == [otro.id]
+
+    pedido = client.get(f"/checklist/?responsable_legajo={usuarios['ambos'].legajo}", headers=operador)
+    assert otro.id not in [c["id"] for c in pedido.json()]
+
+def test_nadie_completa_una_tarea_asignada_a_otro(session: Session, usuarios: Dict[str, Personal]) -> None:
+    checklist = _generar_checklist_de_hoy(usuarios["operador"])
+    item = checklist["items"][0]["id"]
+
+    respuesta = client.post(
+        f"/checklist/{checklist['id']}/tareas/{item}/completar",
+        json={"responsable_legajo": usuarios["ambos"].legajo},
+        headers=headers(usuarios["ambos"]),
+    )
+    assert respuesta.status_code == status.HTTP_403_FORBIDDEN
+
+def test_el_responsable_de_la_tarea_debe_ser_un_usuario_activo(session: Session, usuarios: Dict[str, Personal]) -> None:
+    datos = {"nombre": "Tarea nueva", "descripcion": "Paso 1 limpiar", "frecuencia": "diaria", "plan_id": 1}
+    cabeceras = headers(usuarios["administrador"])
+
+    assert client.post("/tareas/", json={**datos, "personal_id": 9999}, headers=cabeceras).status_code == 400
+    assert client.post("/tareas/", json=datos, headers=cabeceras).status_code == 422
+
+    assert client.post("/tareas/", json={**datos, "personal_id": usuarios["administrador"].legajo},
+                       headers=cabeceras).status_code == 400
+
+    usuarios["ambos"].activo = False
+    session.commit()
+    assert client.post("/tareas/", json={**datos, "personal_id": usuarios["ambos"].legajo},
+                       headers=cabeceras).status_code == 400
+
+    ok = client.post("/tareas/", json={**datos, "personal_id": usuarios["operador"].legajo}, headers=cabeceras)
+    assert ok.status_code == 200
+    assert ok.json()["personal_id"] == usuarios["operador"].legajo
+
+def test_la_autoria_de_la_tarea_sale_del_token(usuarios: Dict[str, Personal]) -> None:
+    checklist = _generar_checklist_de_hoy(usuarios["operador"])
+    tarea = checklist["items"][0]["id"]
+    operador = usuarios["operador"]
+
+    otra_persona = usuarios["administrador"].legajo
+    respuesta = client.post(
+        f"/checklist/{checklist['id']}/tareas/{tarea}/completar",
+        json={"responsable_legajo": otra_persona},
+        headers=headers(operador),
+    )
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert respuesta.json()["responsable_legajo"] == operador.legajo
+
+def test_un_administrador_puro_no_puede_operar(usuarios: Dict[str, Personal]) -> None:
+    checklist = _generar_checklist_de_hoy(usuarios["operador"])
+    tarea = checklist["items"][0]["id"]
+    ruta = f"/checklist/{checklist['id']}/tareas/{tarea}"
+    cabeceras = headers(usuarios["administrador"])
+
+    completar = client.post(f"{ruta}/completar", json={"responsable_legajo": 1}, headers=cabeceras)
+    assert completar.status_code == status.HTTP_403_FORBIDDEN
+    assert client.delete(f"{ruta}/imagen", headers=cabeceras).status_code == status.HTTP_403_FORBIDDEN
+    subir = client.post(f"{ruta}/imagen", files={"file": ("a.png", b"x", "image/png")}, headers=cabeceras)
+    assert subir.status_code == status.HTTP_403_FORBIDDEN
+
+def test_el_rol_ambos_puede_operar(session: Session, usuarios: Dict[str, Personal]) -> None:
+    for tarea in session.query(Tarea).all():
+        tarea.personal_id = usuarios["ambos"].legajo
+    session.commit()
+    checklist = _generar_checklist_de_hoy(usuarios["ambos"])
+    tarea = checklist["items"][0]["id"]
+    respuesta = client.post(
+        f"/checklist/{checklist['id']}/tareas/{tarea}/completar",
+        json={"responsable_legajo": 1},
+        headers=headers(usuarios["ambos"]),
+    )
+    assert respuesta.status_code == status.HTTP_200_OK
+    assert respuesta.json()["responsable_legajo"] == usuarios["ambos"].legajo
+
+def test_operador_puede_consultar_documentos_pero_no_crear_ni_modificar(usuarios: Dict[str, Personal]) -> None:
+    operador = headers(usuarios["operador"])
+
+    res_crear_operador = client.post("/documentos", headers=operador, data={"titulo": "Test", "tipo": "RECETA"})
+    assert res_crear_operador.status_code == status.HTTP_403_FORBIDDEN
+
+    res_list = client.get("/documentos", headers=operador)
+    assert res_list.status_code == status.HTTP_200_OK

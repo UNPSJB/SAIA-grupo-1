@@ -1,10 +1,17 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import './styles/tema.css'
 import './index.css'
 import App from './App.tsx'
+import { AuthProvider } from './auth/AuthProvider.tsx'
+import { VistaPublicaProvider } from './views/vistaPublica/contextDeVistaPublica.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AuthProvider>
+      <VistaPublicaProvider>
+        <App />
+      </VistaPublicaProvider>
+    </AuthProvider>
   </StrictMode>,
 )

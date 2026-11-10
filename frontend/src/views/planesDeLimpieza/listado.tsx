@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import type { PlanConId } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
+import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
 
 interface ListadoPlanesProps {
   onNuevoClick?: () => void;
   onDetalleClick?: (id: number) => void;
   onEditarClick?: (id: number) => void;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
   onNuevoClick,
@@ -17,6 +21,9 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
 }) => {
   const [planes, setPlanes] = useState<PlanConId[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroFrecuencia, setFiltroFrecuencia] = useState('TODOS');
   const [filtroTareas, setFiltroTareas] = useState('TODOS');
@@ -25,7 +32,7 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
     let ignore = false;
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/plan_De_limpieza/`);
+        const res = await apiFetch(`/plan_De_limpieza/`);
         if (res.ok) {
           const data = await res.json();
           if (!ignore) setPlanes(data);
@@ -49,7 +56,8 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
     const coincideBusqueda =
       !term ||
       (p.nombre?.toLowerCase().includes(term) ?? false) ||
-      (p.nombre_equipo?.toLowerCase().includes(term) ?? false);
+      (p.nombre_equipo?.toLowerCase().includes(term) ?? false) ||
+      (p.nombre_sector?.toLowerCase().includes(term) ?? false);
     const coincideFrecuencia =
       filtroFrecuencia === 'TODOS' ||
       (p.tareas ?? []).some((t) => t.frecuencia?.toUpperCase() === filtroFrecuencia);
@@ -60,6 +68,50 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
     return coincideBusqueda && coincideFrecuencia && coincideTareas;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+
+      // Construcción dinámica de la URL con los filtros activos
+      const params = new URLSearchParams();
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroFrecuencia !== 'TODOS') params.append('frecuencia', filtroFrecuencia);
+      if (filtroTareas !== 'TODOS') params.append('tareas', filtroTareas);
+
+      const queryString = params.toString();
+      const url = `/plan_De_limpieza/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, "planes_de_limpieza.csv");
+      setDialogExportarAbierto(false);
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "Error al exportar los planes de limpieza a CSV."
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroFrecuencia !== 'TODOS') partes.push(`Frecuencia: ${filtroFrecuencia}`);
+    if (filtroTareas !== 'TODOS') partes.push(`Tareas: ${filtroTareas}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
+  const {
+    itemsPaginados: planesPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(planesFiltrados);
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -68,18 +120,29 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Crear Plan
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Crear Plan
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="filtros-top-bar">
         <input
           type="text"
           className="input-busqueda"
-          placeholder="Buscar por plan o equipo..."
+          placeholder="Buscar por plan, equipo o sector..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
@@ -111,7 +174,7 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
           <thead>
             <tr>
               <th>Nombre</th>
-              <th>Equipo</th>
+              <th>Asignado a</th>
               <th>Tareas</th>
               <th className="acciones-col">Acciones</th>
             </tr>
@@ -132,10 +195,10 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
                 </td>
               </tr>
             ) : (
-              planesFiltrados.map((p) => (
+              planesPaginados.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
-                  <td>{p.nombre_equipo}</td>
+                  <td>{p.nombre_equipo || p.nombre_sector || '-'}</td>
                   <td>{p.tareas?.length}</td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
@@ -161,6 +224,27 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="planes de limpieza"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={planesFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
     </div>
   );
 };

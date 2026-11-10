@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import type { Checklist, PersonalResumen } from './tipos';
-import { parsearPasos } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
+import { apiFetch } from '../../api/client';
+import { useAuth } from '../../auth/useAuth';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoChecklistsProps {
   onDetalleClick: (id: number) => void;
+  onTareasNoRealizadasClick?: () => void;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 const obtenerFechaLocalHoy = (): string => {
   const ahora = new Date();
   const anio = ahora.getFullYear();
@@ -19,22 +23,41 @@ const obtenerFechaLocalHoy = (): string => {
   return `${anio}-${mes}-${dia}`;
 };
 
+const formatearMotivo = (motivo?: string | null): string => {
+  if (!motivo) return '';
+  switch (motivo) {
+    case 'equipo_fuera_de_uso':
+      return 'Equipo fuera de uso';
+    case 'falta_de_insumo':
+      return 'Falta de insumo';
+    case 'otro':
+      return 'Otro';
+    default:
+      return motivo;
+  }
+};
+
 export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   onDetalleClick,
+  onTareasNoRealizadasClick,
 }) => {
+  const { esAdministrador, esOperador, usuario } = useAuth();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   const [personal, setPersonal] = useState<PersonalResumen[]>([]);
   const [modalGenerar, setModalGenerar] = useState(false);
-  const [responsableLegajo, setResponsableLegajo] = useState<number | ''>('');
   const [generando, setGenerando] = useState(false);
 
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState('');
+  const [responsableFiltro, setResponsableFiltro] = useState('');
   const [checklistHoyId, setChecklistHoyId] = useState<number | null>(null);
   const [checklistExpandido, setChecklistExpandido] = useState<number | null>(null);
+  const columnas = esAdministrador ? 6 : 5;
 
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
@@ -57,7 +80,8 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
   const recargarChecklists = async (
     desde: string = fechaDesde,
     hasta: string = fechaHasta,
-    estado: string = estadoFiltro
+    estado: string = estadoFiltro,
+    responsable: string = responsableFiltro
   ) => {
     setLoading(true);
     try {
@@ -65,8 +89,9 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
       if (desde) params.append('fecha_desde', desde);
       if (hasta) params.append('fecha_hasta', hasta);
       if (estado) params.append('estado', estado);
+      if (responsable) params.append('responsable_legajo', responsable);
       const query = params.toString() ? `?${params.toString()}` : '';
-      const res = await fetch(`${API_URL}/checklist/${query}`);
+      const res = await apiFetch(`/checklist/${query}`);
       if (res.ok) {
         const data = await res.json();
         setChecklists(data);
@@ -87,15 +112,16 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     let cancelado = false;
 
     const cargarDatos = async () => {
-      // 1. Cargar Checklists de forma aislada
       try {
-        const resChecklists = await fetch(`${API_URL}/checklist/`);
+        const resChecklists = await apiFetch(`/checklist/`);
         if (!cancelado) {
           if (resChecklists.ok) {
             const data: Checklist[] = await resChecklists.json();
             setChecklists(data);
             const hoyIso = obtenerFechaLocalHoy();
-            const encontrado = data.find((c) => c.fecha === hoyIso);
+            const encontrado = data.find(
+              (c) => c.fecha === hoyIso && c.responsable_legajo === usuario?.legajo
+            );
             if (encontrado) {
               setChecklistHoyId(encontrado.id);
             }
@@ -115,13 +141,17 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         }
       }
 
-      // 2. Cargar Personal de forma tolerante a fallos (sin barra final)
+      if (!esAdministrador) return;
       try {
-        const resPersonal = await fetch(`${API_URL}/personal`);
+        const resPersonal = await apiFetch(`/personal`);
         if (!cancelado && resPersonal.ok) {
           const dataPersonal: PersonalResumen[] = await resPersonal.json();
           if (Array.isArray(dataPersonal)) {
-            setPersonal(dataPersonal.filter((p) => p.activo));
+            setPersonal(
+              dataPersonal.filter(
+                (p) => p.activo && (p.capacidad === 'OPERAR' || p.capacidad === 'AMBAS')
+              )
+            );
           }
         }
       } catch (err) {
@@ -134,24 +164,48 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [esAdministrador, usuario]);
 
   const hoy = obtenerFechaLocalHoy();
 
+  const {
+    itemsPaginados: checklistsPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(checklists);
+
   const handleFiltrar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (fechaDesde && fechaDesde < '2000-01-01') {
+      mostrarError("La fecha 'Desde' no puede ser anterior al año 2000.", "Rango de fechas inválido");
+      return;
+    }
     if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
       mostrarError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.", "Rango de fechas inválido");
       return;
     }
-    await recargarChecklists(fechaDesde, fechaHasta, estadoFiltro);
+    await recargarChecklists(fechaDesde, fechaHasta, estadoFiltro, responsableFiltro);
   };
 
   const handleEstadoChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nuevoEstado = e.target.value;
     setEstadoFiltro(nuevoEstado);
-    if (!(fechaDesde && fechaHasta && fechaDesde > fechaHasta)) {
-      await recargarChecklists(fechaDesde, fechaHasta, nuevoEstado);
+    if (!((fechaDesde && fechaDesde < '2000-01-01') || (fechaDesde && fechaHasta && fechaDesde > fechaHasta))) {
+      await recargarChecklists(fechaDesde, fechaHasta, nuevoEstado, responsableFiltro);
+    }
+  };
+
+  const handleResponsableChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nuevoResponsable = e.target.value;
+    setResponsableFiltro(nuevoResponsable);
+    if (!((fechaDesde && fechaDesde < '2000-01-01') || (fechaDesde && fechaHasta && fechaDesde > fechaHasta))) {
+      await recargarChecklists(fechaDesde, fechaHasta, estadoFiltro, nuevoResponsable);
     }
   };
 
@@ -159,33 +213,56 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     setFechaDesde('');
     setFechaHasta('');
     setEstadoFiltro('');
-    await recargarChecklists('', '', '');
+    setResponsableFiltro('');
+    await recargarChecklists('', '', '', '');
+  };
+
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+      if (fechaDesde) params.append('fecha_desde', fechaDesde);
+      if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+      if (estadoFiltro) params.append('estado', estadoFiltro);
+      if (responsableFiltro) params.append('responsable_legajo', responsableFiltro);
+
+      const queryString = params.toString();
+      const url = `/checklist/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'historial_checklists.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      mostrarError(err instanceof Error ? err.message : 'Error al exportar el historial a CSV.', 'Error de exportación');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (fechaDesde) partes.push(`Desde: ${fechaDesde}`);
+    if (fechaHasta) partes.push(`Hasta: ${fechaHasta}`);
+    if (estadoFiltro) partes.push(`Estado: ${estadoFiltro}`);
+    if (responsableFiltro) {
+      const p = personal.find((item) => String(item.legajo) === responsableFiltro);
+      partes.push(`Operador: ${p ? `${p.apellido}, ${p.nombre}` : `#${responsableFiltro}`}`);
+    }
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
   };
 
   const handleGenerarChecklist = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!responsableLegajo) {
-      mostrarError('Debe seleccionar un responsable válido para generar el checklist.', 'Dato requerido');
-      return;
-    }
-
     setGenerando(true);
     try {
-      const res = await fetch(`${API_URL}/checklist/generar`, {
+      const res = await apiFetch(`/checklist/generar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          responsable_legajo: Number(responsableLegajo),
-        }),
+        body: JSON.stringify({}),
       });
 
       if (res.ok) {
         const nueva = await res.json();
         setModalGenerar(false);
-        setResponsableLegajo('');
-        if (nueva.fecha === hoy) {
-          setChecklistHoyId(nueva.id);
-        }
         setChecklistHoyId(nueva.id);
         await recargarChecklists();
         onDetalleClick(nueva.id);
@@ -210,28 +287,80 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     <div className="checklist-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Historial de Checklists</h1>
-          <div className="subtitulo">01 · Historial y Seguimiento</div>
+          <h1>{esAdministrador ? 'Historial de Checklists' : 'Mis Checklists'}</h1>
+          <div className="subtitulo">
+            {esAdministrador ? '01 · Historial y Seguimiento' : '01 · Mis tareas e historial'}
+          </div>
         </div>
 
-        <div className="top-bar-acciones">
-          {checklistHoyId ? (
+        <div className="top-bar-acciones" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {esAdministrador && (
             <button
-              onClick={() => onDetalleClick(checklistHoyId)}
-              className="btn-dia-ver"
-              title="Abrir el checklist generado para el día de hoy"
+              type="button"
+              onClick={() => setDialogExportarAbierto(true)}
+              className="btn-cancelar"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              📅 Ver Checklist del Día
+              <CsvIcon /> Exportar CSV
             </button>
-          ) : (
+          )}
+
+          {esAdministrador && onTareasNoRealizadasClick && (
+            <button
+              onClick={onTareasNoRealizadasClick}
+              className="btn-guardar"
+              style={{
+                backgroundColor: 'var(--color-alerta-fondo, #fffbeb)',
+                color: 'var(--color-alerta-texto, #b45309)',
+                border: '1px solid var(--color-alerta-borde, #fde68a)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                padding: '0.65rem 1.25rem',
+                cursor: 'pointer',
+              }}
+              title="Ver tareas no realizadas que aún se pueden reasignar"
+            >
+              Tareas No Realizadas Reasignables
+            </button>
+          )}
+
+          {checklistHoyId ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => onDetalleClick(checklistHoyId)}
+                className="btn-dia-ver"
+                title="Abrir tu checklist de hoy"
+              >
+                📅 Ver mi Checklist del Día
+              </button>
+              {checklists.find((c) => c.id === checklistHoyId)?.tiene_reasignacion_no_leida && (
+                <span
+                  style={{
+                    backgroundColor: 'var(--color-primario-fondo, #eff6ff)',
+                    color: 'var(--color-primario, #1d4ed8)',
+                    border: '1px solid var(--color-primario, #3b82f6)',
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  ✦ Nueva tarea reasignada
+                </span>
+              )}
+            </div>
+          ) : esOperador ? (
             <button
               onClick={() => setModalGenerar(true)}
               className="btn-guardar"
-              title="Generar checklist del día de hoy"
+              title="Generar tu checklist de hoy con las tareas que tenés asignadas"
             >
-              + Generar Checklist del Día
+              + Generar mi Checklist del Día
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -242,6 +371,8 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             <input
               id="fecha-desde"
               type="date"
+              min="2000-01-01"
+              max={fechaHasta || undefined}
               value={fechaDesde}
               onChange={(e) => setFechaDesde(e.target.value)}
             />
@@ -251,6 +382,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
             <input
               id="fecha-hasta"
               type="date"
+              min={fechaDesde || '2000-01-01'}
               value={fechaHasta}
               onChange={(e) => setFechaHasta(e.target.value)}
             />
@@ -268,13 +400,30 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
               <option value="vencido">Vencido</option>
             </select>
           </div>
+          {esAdministrador && (
+            <div className="filtro-campo-grupo">
+              <label htmlFor="filtro-responsable">Operador:</label>
+              <select
+                id="filtro-responsable"
+                value={responsableFiltro}
+                onChange={handleResponsableChange}
+              >
+                <option value="">Todos los operadores</option>
+                {personal.map((p) => (
+                  <option key={p.legajo} value={p.legajo}>
+                    {p.apellido}, {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="filtros-acciones">
           <button type="submit" className="btn-filtrar" title="Filtrar historial">
-            🔍 Filtrar
+            Filtrar
           </button>
-          {(fechaDesde || fechaHasta || estadoFiltro) && (
+          {(fechaDesde || fechaHasta || estadoFiltro || responsableFiltro) && (
             <button
               type="button"
               onClick={handleLimpiarFiltro}
@@ -295,27 +444,29 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
               <th>Fecha</th>
               <th>Estado</th>
               <th>Cumplimiento</th>
-              <th>Responsable</th>
+              {esAdministrador && <th>Responsable</th>}
               <th className="acciones-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem' }}>
+                <td colSpan={columnas} style={{ textAlign: 'center', padding: '2.5rem' }}>
                   Cargando historial de checklists...
                 </td>
               </tr>
             ) : checklists.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem' }}>
-                  {fechaDesde || fechaHasta || estadoFiltro
+                <td colSpan={columnas} style={{ textAlign: 'center', padding: '2.5rem' }}>
+                  {fechaDesde || fechaHasta || estadoFiltro || responsableFiltro
                     ? 'No se encontraron checklists registrados con los filtros seleccionados.'
-                    : 'No se encontraron checklists registrados.'}
+                    : esAdministrador
+                    ? 'No se encontraron checklists registrados.'
+                    : 'Todavía no generaste ningún checklist. Usá "Generar mi Checklist del Día" para empezar.'}
                 </td>
               </tr>
             ) : (
-              checklists.map((c) => {
+              checklistsPaginados.map((c) => {
                 const fillClass =
                   c.porcentaje_cumplimiento === 100
                     ? ''
@@ -341,9 +492,58 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                       </td>
                       <td>{c.fecha}</td>
                       <td>
-                        <span className={`badge-estado ${c.estado}`}>
-                          {c.estado}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-start' }}>
+                          <span className={`badge-estado ${c.estado}`}>
+                            {c.estado}
+                          </span>
+                          {c.responsable_legajo === usuario?.legajo && c.tiene_reasignacion_no_leida && (
+                            <span
+                              className="badge-nueva-tarea-pill"
+                              style={{
+                                backgroundColor: 'var(--color-primario-fondo, #eff6ff)',
+                                color: 'var(--color-primario, #1d4ed8)',
+                                border: '1px solid var(--color-primario, #3b82f6)',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                              title="Tenés una nueva tarea reasignada en este checklist"
+                            >
+                              ✦ Nueva tarea reasignada
+                            </span>
+                          )}
+                          {(c.tareas_reasignadas ?? 0) > 0 && (
+                            <span
+                              className="badge-reasignada-pill"
+                              style={{
+                                backgroundColor: 'var(--color-alerta-fondo, #fffbeb)',
+                                color: 'var(--color-alerta, #d97706)',
+                                border: '1px solid var(--color-alerta, #f59e0b)',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                              }}
+                              title={`${c.tareas_reasignadas ?? 0} tarea(s) reasignada(s)`}
+                            >
+                              ↻ {c.tareas_reasignadas ?? 0} reasignada{(c.tareas_reasignadas ?? 0) > 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {(c.tareas_no_realizadas ?? 0) > 0 && (
+                            <span className="badge-justificada-pill" title={`${c.tareas_no_realizadas ?? 0} tarea(s) no realizada(s) justificada(s)`}>
+                              ✓ {c.tareas_no_realizadas ?? 0} justificada{(c.tareas_no_realizadas ?? 0) > 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {(c.tareas_vencidas ?? 0) > 0 && (
+                            <span className="badge-vencida-pill" title={`${c.tareas_vencidas ?? 0} tarea(s) vencida(s)`}>
+                              ✕ {c.tareas_vencidas ?? 0} vencida{(c.tareas_vencidas ?? 0) > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div className="barra-progreso-wrapper">
@@ -358,9 +558,11 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                           </span>
                         </div>
                       </td>
-                      <td>
-                        {c.nombre_responsable || `Legajo: ${c.responsable_legajo}`}
-                      </td>
+                      {esAdministrador && (
+                        <td>
+                          {c.nombre_responsable || `Legajo: ${c.responsable_legajo}`}
+                        </td>
+                      )}
                       <td className="acciones-col">
                         <div className="acciones-btns">
                           <button
@@ -375,7 +577,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                     </tr>
                     {estaExpandido && (
                       <tr className="fila-tareas-expandida">
-                        <td colSpan={6}>
+                        <td colSpan={columnas}>
                           <div className="tareas-expandidas-contenedor">
                             <div className="tareas-expandidas-header">
                               <h4>Tareas y Procedimientos del Checklist #{c.id} ({c.fecha})</h4>
@@ -394,21 +596,39 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                                     <div className="tarea-expandida-top">
                                       <span className="tarea-expandida-nombre">{item.nombre_tarea}</span>
                                       <span className="tarea-expandida-plan">{item.nombre_plan}</span>
-                                      <span className={`badge-estado ${item.estado}`}>{item.estado}</span>
+                                      {item.estado === 'no_realizado' ? (
+                                        <span className="badge-estado no_realizado" title="Tarea justificada como no realizada">
+                                          Justificada
+                                        </span>
+                                      ) : item.estado === 'vencido' ? (
+                                        <span className="badge-estado vencido" title="Tarea vencida">
+                                          Vencida
+                                        </span>
+                                      ) : (
+                                        <span className={`badge-estado ${item.estado}`}>{item.estado}</span>
+                                      )}
                                     </div>
+                                    {item.estado === 'no_realizado' && (
+                                      <div className="tarea-justificacion-box">
+                                        <div className="tarea-justificacion-header">
+                                          <span className="tarea-justificacion-tag">Motivo de no realización:</span>
+                                          <span className="tarea-justificacion-motivo">{formatearMotivo(item.motivo_no_realizado)}</span>
+                                        </div>
+                                        {item.observacion_no_realizado && (
+                                          <p className="tarea-justificacion-texto">
+                                            <strong>Observación:</strong> {item.observacion_no_realizado}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
                                     {item.descripcion_tarea && (
                                       <div className="tarea-procedimiento-box">
                                         <div className="tarea-procedimiento-header">
-                                          <span className="tarea-procedimiento-tag">📋 Procedimiento / Instrucciones:</span>
+                                          <span className="tarea-procedimiento-tag">Procedimiento / Instrucciones:</span>
                                         </div>
-                                        <div className="tarea-procedimiento-pasos">
-                                          {parsearPasos(item.descripcion_tarea).map((paso, idx) => (
-                                            <div key={idx} className="paso-item">
-                                              {paso.numero && <span className="paso-numero-badge">{paso.numero}</span>}
-                                              <span className="paso-texto">{paso.texto}</span>
-                                            </div>
-                                          ))}
-                                        </div>
+                                        <p className="tarea-procedimiento-texto">
+                                          {item.descripcion_tarea}
+                                        </p>
                                       </div>
                                     )}
                                   </div>
@@ -429,53 +649,54 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
         </table>
       </div>
 
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="checklists"
+      />
+
+      {esAdministrador && (
+        <ConfirmExportDialog
+          open={dialogExportarAbierto}
+          totalRegistros={checklists.length}
+          filtrosAplicados={obtenerResumenFiltros()}
+          loading={exportando}
+          onConfirm={ejecutarExportacion}
+          onCancel={() => setDialogExportarAbierto(false)}
+        />
+      )}
+
       {modalGenerar && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>Generar Checklist del Día</h2>
+              <h2>Generar mi Checklist del Día</h2>
               <p>
                 Fecha programada: <strong>{hoy}</strong>
               </p>
             </div>
 
             <form onSubmit={handleGenerarChecklist}>
-              <div className="form-group">
-                <label htmlFor="responsable">Responsable de la Checklist *</label>
-                <select
-                  id="responsable"
-                  value={responsableLegajo}
-                  onChange={(e) =>
-                    setResponsableLegajo(
-                      e.target.value ? Number(e.target.value) : ''
-                    )
-                  }
-                  required
-                >
-                  <option value="">-- Seleccione una persona activa --</option>
-                  {personal.map((p) => (
-                    <option key={p.legajo} value={p.legajo}>
-                      {p.apellido}, {p.nombre} (Legajo: {p.legajo})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <p>Se generará tu checklist de hoy con las tareas de limpieza que tenés asignadas.</p>
 
               <div className="form-acciones">
                 <button
                   type="submit"
                   className="btn-guardar"
-                  disabled={generando || !responsableLegajo}
+                  disabled={generando}
                 >
-                  {generando ? 'Generando...' : 'Generar Checklist del Día'}
+                  {generando ? 'Generando...' : 'Generar mi Checklist del Día'}
                 </button>
                 <button
                   type="button"
                   className="btn-cancelar"
-                  onClick={() => {
-                    setModalGenerar(false);
-                    setResponsableLegajo('');
-                  }}
+                  onClick={() => setModalGenerar(false)}
                   disabled={generando}
                 >
                   Cancelar
@@ -495,3 +716,5 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     </div>
   );
 };
+
+export default ListadoChecklists;

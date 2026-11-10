@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
-import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
+import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoEquiposProps {
     onNuevoClick?: () => void;
     onDetalleClick?: (id: number) => void;
     onEditarClick?: (id: number) => void;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
     onNuevoClick,
@@ -18,18 +22,22 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
 }) => {
     const [equipos, setEquipos] = useState<EquipoConId[]>([]);
     const [loading, setLoading] = useState(true);
+    const [exportando, setExportando] = useState(false);
+    const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
     const [busqueda, setBusqueda] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('TODOS');
     const [filtroCategoria, setFiltroCategoria] = useState('TODOS');
 
     const [equipoAConfirmar, setEquipoAConfirmar] = useState<EquipoConId | null>(null);
     const [dialogAbierto, setDialogAbierto] = useState(false);
+    const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelado = false;
         const fetchEquipos = async () => {
             try {
-                const res = await fetch(`${API_URL}/equipos/`);
+                const res = await apiFetch(`/equipos/`);
                 if (!cancelado) {
                     if (res.ok) {
                         const data = await res.json();
@@ -66,10 +74,10 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
         const accion = esActivo ? 'dar de baja' : 'reactivar';
         try {
             const url = esActivo
-                ? `${API_URL}/equipos/${equipoAConfirmar.id}`
-                : `${API_URL}/equipos/${equipoAConfirmar.id}/reactivar`;
+                ? `/equipos/${equipoAConfirmar.id}`
+                : `/equipos/${equipoAConfirmar.id}/reactivar`;
             const method = esActivo ? 'DELETE' : 'PATCH';
-            const res = await fetch(url, { method });
+            const res = await apiFetch(url, { method });
             if (res.ok) {
                 const nuevoEstado = esActivo ? 'inactivo' : 'activo';
                 setEquipos((prev) =>
@@ -77,10 +85,10 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                 );
             } else {
                 const err = await res.json().catch(() => ({}));
-                alert(err.detail || `No se pudo ${accion} el equipo.`);
+                setErrorDialogMsg(err.detail || `No se pudo ${accion} el equipo.`);
             }
         } catch {
-            alert(`Error de conexión al ${accion} el equipo.`);
+            setErrorDialogMsg(`Error de conexión al ${accion} el equipo.`);
         } finally {
             setDialogAbierto(false);
             setEquipoAConfirmar(null);
@@ -93,7 +101,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
         const term = busqueda.toLowerCase().trim();
         const matchBusqueda = !term ||
             eq.nombre.toLowerCase().includes(term) ||
-            (eq.ubicacion && eq.ubicacion.toLowerCase().includes(term)) ||
+            (eq.ubicacion?.nombre && eq.ubicacion.nombre.toLowerCase().includes(term)) ||
             (eq.categoria && eq.categoria.toLowerCase().includes(term)) ||
             (eq.plan_de_Limpieza?.nombre && eq.plan_de_Limpieza.nombre.toLowerCase().includes(term));
 
@@ -103,19 +111,71 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
         return matchBusqueda && matchEstado && matchCat;
     });
 
+    const ejecutarExportacion = async () => {
+        try {
+            setExportando(true);
+            const params = new URLSearchParams();
+
+            if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+            if (filtroCategoria !== 'TODOS') params.append('categoria', filtroCategoria);
+            if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
+
+            const queryString = params.toString();
+            const url = `/equipos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+            await descargarCSV(url, 'equipos.csv');
+            setDialogExportarAbierto(false);
+        } catch (err) {
+            setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar los equipos a CSV.');
+        } finally {
+            setExportando(false);
+        }
+    };
+
+    const obtenerResumenFiltros = () => {
+        const partes: string[] = [];
+        if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+        if (filtroCategoria !== 'TODOS') partes.push(`Categoría: ${filtroCategoria}`);
+        if (filtroEstado !== 'TODOS') partes.push(`Estado: ${filtroEstado}`);
+        return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+    };
+
+    const {
+        itemsPaginados: equiposPaginados,
+        paginaActual,
+        setPaginaActual,
+        filasPorPagina,
+        setFilasPorPagina,
+        totalRegistros,
+        totalPaginas,
+        indiceInicio,
+        indiceFin,
+    } = usePaginacion(equiposFiltrados);
+
     return (
         <div className="modulo-container">
             <div className="listado-top-bar">
                 <div className="modulo-header">
-                    <h1>Listado de Equipos</h1>
+                    <h1>Lista de Equipos</h1>
                     <div className="subtitulo">01 · Listado</div>
                 </div>
 
-                {onNuevoClick && (
-                    <button onClick={onNuevoClick} className="btn-guardar">
-                        + Agregar Equipo
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                        type="button"
+                        onClick={() => setDialogExportarAbierto(true)}
+                        className="btn-cancelar"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                        <CsvIcon /> Exportar CSV
                     </button>
-                )}
+
+                    {onNuevoClick && (
+                        <button onClick={onNuevoClick} className="btn-guardar">
+                            + Registrar Equipo
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="filtros-top-bar">
@@ -154,6 +214,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                     <thead>
                         <tr>
                             <th>Nombre</th>
+                            <th>Ubicación</th>
                             <th>Categoría</th>
                             <th>Plan de Limpieza</th>
                             <th>Estado</th>
@@ -163,22 +224,23 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                     <tbody>
                         {loading ? (
                             <tr>
-                                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
                                     Cargando equipos...
                                 </td>
                             </tr>
                         ) : equiposFiltrados.length === 0 ? (
                             <tr>
-                                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
                                     {busqueda || filtroEstado !== 'TODOS' || filtroCategoria !== 'TODOS'
                                         ? 'No se encontraron equipos que coincidan con los filtros.'
                                         : 'No hay equipos registrados.'}
                                 </td>
                             </tr>
                         ) : (
-                            equiposFiltrados.map((i) => (
+                            equiposPaginados.map((i) => (
                                 <tr key={i.id}>
                                     <td style={{ fontWeight: 500 }}>{i.nombre}</td>
+                                    <td>{i.ubicacion?.nombre || '-'}</td>
                                     <td>{i.categoria}</td>
                                     <td>{i.plan_de_Limpieza?.nombre || 'Sin plan asignado'}</td>
                                     <td>
@@ -218,6 +280,27 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                 </table>
             </div>
 
+            <Paginacion
+                paginaActual={paginaActual}
+                totalPaginas={totalPaginas}
+                totalRegistros={totalRegistros}
+                indiceInicio={indiceInicio}
+                indiceFin={indiceFin}
+                filasPorPagina={filasPorPagina}
+                onCambiarPagina={setPaginaActual}
+                onCambiarFilasPorPagina={setFilasPorPagina}
+                etiqueta="equipos"
+            />
+
+            <ConfirmExportDialog
+                open={dialogExportarAbierto}
+                totalRegistros={equiposFiltrados.length}
+                filtrosAplicados={obtenerResumenFiltros()}
+                loading={exportando}
+                onConfirm={ejecutarExportacion}
+                onCancel={() => setDialogExportarAbierto(false)}
+            />
+
             <ConfirmAlertDialog
                 open={dialogAbierto}
                 title={equipoAConfirmar?.estado.toLowerCase() === 'activo' ? '¿Dar de baja equipo?' : '¿Reactivar equipo?'}
@@ -234,6 +317,13 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                     setDialogAbierto(false);
                     setEquipoAConfirmar(null);
                 }}
+            />
+
+            <ErrorAlertDialog
+                open={Boolean(errorDialogMsg)}
+                title="No se pudo completar la acción"
+                description={errorDialogMsg || ''}
+                onClose={() => setErrorDialogMsg(null)}
             />
         </div>
     );

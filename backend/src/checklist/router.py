@@ -3,10 +3,72 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from src.autenticacion.dependencies import (
+    es_administrador,
+    get_usuario_actual,
+    requiere_operador,
+    requiere_admin
+)
 from src.checklist import schemas, services
 from src.database import get_db
+from src.exceptions import PermissionDenied
+from src.personal.models import Personal
+from src.utils.csv import generar_respuesta_csv
 
 router = APIRouter(prefix="/checklist", tags=["Checklist"])
+
+
+@router.get("/exportar-csv", dependencies=[Depends(requiere_admin)])
+async def exportar_checklists_csv_endpoint(
+    fecha: Optional[date] = Query(None),
+    fecha_desde: Optional[date] = Query(None),
+    fecha_hasta: Optional[date] = Query(None),
+    estado: Optional[str] = Query(None),
+    responsable_legajo: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_checklists_para_csv(
+        db,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        estado=estado,
+        responsable_legajo=responsable_legajo,
+    )
+
+    columnas = {
+        "id": "ID Checklist",
+        "fecha": "Fecha",
+        "estado": "Estado",
+        "cumplimiento": "Cumplimiento (%)",
+        "responsable_legajo": "Legajo Responsable",
+        "responsable": "Nombre Responsable",
+        "cantidad_tareas": "Cantidad Tareas",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="historial_checklists.csv",
+    )
+
+def _verificar_acceso(db: Session, checklist_id: int, usuario: Personal) -> None:
+    """Un operador solo accede a sus propios checklists (de cualquier fecha); los ajenos son del administrador."""
+    if es_administrador(usuario):
+        return
+    checklist = services.obtener_checklist(db, checklist_id)
+    if checklist.responsable_legajo != usuario.legajo:
+        raise PermissionDenied()
+
+
+def _verificar_tarea_propia(db: Session, checklist_id: int, item_id: int, usuario: Personal) -> None:
+    """Cada tarea la ejecuta solo quien la tiene asignada, en su propio checklist (aunque sea administrador)."""
+    checklist = services.obtener_checklist(db, checklist_id)
+    if checklist.responsable_legajo != usuario.legajo:
+        raise PermissionDenied()
+    tarea = services.obtener_tarea(db, checklist_id, item_id)
+    if tarea.responsable_legajo is not None and tarea.responsable_legajo != usuario.legajo:
+        raise PermissionDenied()
 
 
 @router.post(
@@ -17,7 +79,10 @@ router = APIRouter(prefix="/checklist", tags=["Checklist"])
 async def generar_checklist_endpoint(
     datos: schemas.ChecklistGenerar,
     db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_operador),
 ):
+    # Cada operador genera su propio checklist: el responsable lo define la sesión, no el cliente.
+    datos = datos.model_copy(update={"responsable_legajo": usuario.legajo})
     return services.generar_checklist(db, datos)
 
 
@@ -30,17 +95,26 @@ async def listar_checklists_endpoint(
     fecha_desde: Optional[date] = Query(None),
     fecha_hasta: Optional[date] = Query(None),
     estado: Optional[str] = Query(None),
+    responsable_legajo: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
 ):
+    # el administrador puede filtrar por operador; el operador siempre ve solo los suyos
+    if not es_administrador(usuario):
+        # el operador solo ve sus propios checklists (con su historial); los filtros siguen valiendo
+        responsable_legajo = usuario.legajo
     return services.listar_checklists(
         db,
         fecha=fecha,
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta,
         estado=estado,
+        responsable_legajo=responsable_legajo,
     )
 
 
+# Pública a propósito: el navegador pide las fotos con <img src=...> y no puede mandar
+# el token. Los nombres de archivo llevan un sufijo aleatorio (uuid) que no se puede adivinar.
 @router.get(
     "/imagenes/{nombre_archivo}",
     response_class=FileResponse,
@@ -52,14 +126,29 @@ async def obtener_imagen_endpoint(
 
 
 @router.get(
+    "/tareas-no-realizadas",
+    response_model=List[schemas.ChecklistItem],
+)
+async def listar_tareas_no_realizadas_endpoint(
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
+):
+    if not es_administrador(usuario):
+        raise PermissionDenied()
+    return services.listar_tareas_no_realizadas_reasignables(db)
+
+
+@router.get(
     "/{checklist_id}",
     response_model=schemas.Checklist,
 )
 async def obtener_checklist_endpoint(
     checklist_id: int,
     db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
 ):
-    return services.obtener_checklist(db, checklist_id)
+    _verificar_acceso(db, checklist_id, usuario)
+    return services.obtener_checklist(db, checklist_id, usuario=usuario)
 
 
 @router.get(
@@ -70,7 +159,9 @@ async def obtener_tarea_endpoint(
     checklist_id: int,
     item_id: int,
     db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
 ):
+    _verificar_acceso(db, checklist_id, usuario)
     return services.obtener_tarea(db, checklist_id, item_id)
 
 
@@ -84,8 +175,34 @@ async def completar_tarea_endpoint(
     item_id: int,
     datos: schemas.CompletarTareaSchema,
     db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_operador),
 ):
+    _verificar_tarea_propia(db, checklist_id, item_id, usuario)
+    # La autoría la define la sesión, no el cliente: nadie puede completar una tarea a nombre de otro.
+    datos = datos.model_copy(update={"responsable_legajo": usuario.legajo})
     return services.completar_tarea(db, checklist_id, item_id, datos)
+
+
+@router.post(
+    "/{checklist_id}/tareas/{item_id}/no-realizada",
+    response_model=schemas.ChecklistItem,
+)
+@router.put(
+    "/{checklist_id}/tareas/{item_id}/no-realizada",
+    response_model=schemas.ChecklistItem,
+)
+async def marcar_tarea_no_realizada_endpoint(
+    checklist_id: int,
+    item_id: int,
+    datos: schemas.MarcarNoRealizadaSchema,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_operador),
+):
+    _verificar_tarea_propia(db, checklist_id, item_id, usuario)
+    return services.marcar_tarea_no_realizada(
+        db, checklist_id, item_id, datos, usuario.legajo
+    )
+
 
 
 @router.post(
@@ -97,7 +214,9 @@ async def subir_imagen_tarea_endpoint(
     item_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_operador),
 ):
+    _verificar_tarea_propia(db, checklist_id, item_id, usuario)
     return services.guardar_archivo_imagen_tarea(db, checklist_id, item_id, file)
 
 
@@ -109,5 +228,24 @@ async def eliminar_imagen_tarea_endpoint(
     checklist_id: int,
     item_id: int,
     db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_operador),
 ):
+    _verificar_tarea_propia(db, checklist_id, item_id, usuario)
     return services.eliminar_imagen_tarea(db, checklist_id, item_id)
+
+
+@router.post(
+    "/{checklist_id}/tareas/{item_id}/reasignar",
+    response_model=schemas.ChecklistItem,
+)
+async def reasignar_tarea_endpoint(
+    checklist_id: int,
+    item_id: int,
+    datos: schemas.ReasignarTareaSchema,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
+):
+    if not es_administrador(usuario):
+        raise PermissionDenied()
+    return services.reasignar_tarea(db, checklist_id, item_id, datos, usuario)
+

@@ -1,49 +1,69 @@
 import React, { useState, useEffect } from "react";
 import type { Persona } from "./tipos";
 import '../../styles/formularioAlta.css';
-import { ConfirmAlertDialog } from "../../components/ui/alert-dialog";
+import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
+import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
+import { CsvIcon } from "../../components/icons/CsvIcon";
+import { Paginacion } from "../../components/ui/paginacion";
+import { usePaginacion } from "../../components/ui/usePaginacion";
+import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 export interface ListadoPersonasProps {
   onNuevoClick: () => void;
   onDetalleClick: (legajo: number) => void;
   onEditarClick: (legajo: number) => void;
+  onVerCertificados: (legajo: number, nombreCompleto: string) => void;
 }
 
 export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
+  onVerCertificados,
 }) => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCapacidad, setFiltroCapacidad] = useState<string>("TODOS");
   const [filtroEstado, setFiltroEstado] = useState<string>("TODOS");
 
   const [personaAConfirmar, setPersonaAConfirmar] = useState<Persona | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
-  const cargarPersonas = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:8000/personal/", {
-        method: "GET",
-        headers: { "Accept": "application/json" },
-      });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setPersonas(data);
-      }
-    } catch (e) {
-      console.error("Error al cargar personas:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    cargarPersonas();
-  }, []);
+    let cancelado = false;
+    const cargar = async () => {
+      try {
+        const res = await apiFetch("/personal/", {
+          method: "GET",
+          headers: { "Accept": "application/json" },
+        });
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setPersonas(data);
+          }
+        }
+      } catch (e) {
+        console.error("Error al cargar personas:", e);
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
+      }
+    };
+    cargar();
+    return () => {
+      cancelado = true;
+    };
+  }, [refreshKey]);
 
   const abrirConfirmacion = (p: Persona) => {
     setPersonaAConfirmar(p);
@@ -57,7 +77,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     const accion = estadoActual ? "dar de baja" : "reactivar";
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/personal/${identificador}`, {
+      const res = await apiFetch(`/personal/${identificador}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ activo: !estadoActual }),
@@ -66,9 +86,9 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || `Error al ${accion} la persona`);
       }
-      cargarPersonas();
-    } catch (err: any) {
-      alert(err.message || `Error al ${accion} la persona.`);
+      setRefreshKey((k) => k + 1);
+    } catch (err: unknown) {
+      setErrorDialogMsg((err instanceof Error ? err.message : null) || `Error al ${accion} la persona.`);
     } finally {
       setDialogAbierto(false);
       setPersonaAConfirmar(null);
@@ -85,6 +105,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
       (p.nombre && p.nombre.toLowerCase().includes(term)) ||
       (p.apellido && p.apellido.toLowerCase().includes(term)) ||
       docStr.includes(term) ||
+      (p.usuario && p.usuario.toLowerCase().includes(term)) ||
       (p.email && p.email.toLowerCase().includes(term));
 
     const matchCapacidad =
@@ -97,6 +118,47 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     return matchBusqueda && matchCapacidad && matchEstado;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (searchTerm.trim()) params.append("busqueda", searchTerm.trim());
+      if (filtroCapacidad !== "TODOS") params.append("capacidad", filtroCapacidad);
+      if (filtroEstado !== "TODOS") params.append("estado", filtroEstado);
+
+      const queryString = params.toString();
+      const url = `/personal/exportar-csv${queryString ? `?${queryString}` : ""}`;
+
+      await descargarCSV(url, "personal.csv");
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorDialogMsg(err instanceof Error ? err.message : "Error al exportar la lista de personal a CSV.");
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (searchTerm.trim()) partes.push(`Búsqueda: "${searchTerm}"`);
+    if (filtroCapacidad !== "TODOS") partes.push(`Capacidad: ${filtroCapacidad}`);
+    if (filtroEstado !== "TODOS") partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(" | ") : "Sin filtros aplicados";
+  };
+
+  const {
+    itemsPaginados: personasPaginadas,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(personasFiltradas);
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -105,9 +167,20 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        <button onClick={onNuevoClick} className="btn-guardar">
-          + Agregar Persona
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <CsvIcon /> Exportar CSV
+          </button>
+
+          <button onClick={onNuevoClick} className="btn-guardar">
+            + Agregar Persona
+          </button>
+        </div>
       </div>
 
       <div className="filtros-top-bar">
@@ -147,6 +220,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
             <tr>
               <th>DNI</th>
               <th>Nombre Completo</th>
+              <th>Usuario</th>
               <th>Correo Electrónico</th>
               <th>Capacidad</th>
               <th>Estado</th>
@@ -156,25 +230,26 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
                   Cargando personas...
                 </td>
               </tr>
             ) : personasFiltradas.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
+                <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
                   {searchTerm || filtroCapacidad !== "TODOS" || filtroEstado !== "TODOS"
                     ? "No se encontraron personas con los filtros seleccionados."
                     : "No hay personas registradas."}
                 </td>
               </tr>
             ) : (
-              personasFiltradas.map((p) => {
+              personasPaginadas.map((p) => {
                 const identificador = p.legajo;
                 return (
                   <tr key={identificador}>
                     <td>{p.documento ?? p.dni}</td>
                     <td>{`${p.nombre ?? ""} ${p.apellido ?? ""}`.trim()}</td>
+                    <td>{p.usuario}</td>
                     <td className="col-correo">{p.email}</td>
                     <td>
                       {p.capacidad === "OPERAR"
@@ -192,6 +267,14 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                     </td>
                     <td className="acciones-col">
                       <div className="acciones-btns">
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Ver certificados"
+                          onClick={() => onVerCertificados(identificador, `${p.nombre} ${p.apellido}`)}
+                        >
+                          🗎
+                        </button>
                         <button
                           className="btn-icon btn-ver"
                           title="Ver detalle"
@@ -223,6 +306,27 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
         </table>
       </div>
 
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="personas"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={personasFiltradas.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
       <ConfirmAlertDialog
         open={dialogAbierto}
         title={personaAConfirmar?.activo ? "¿Dar de baja persona?" : "¿Reactivar persona?"}
@@ -239,6 +343,13 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
           setDialogAbierto(false);
           setPersonaAConfirmar(null);
         }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ""}
+        onClose={() => setErrorDialogMsg(null)}
       />
     </div>
   );

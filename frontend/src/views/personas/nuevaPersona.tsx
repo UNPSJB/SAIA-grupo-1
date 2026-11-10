@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import type { PersonaCrear } from "./tipos";
+import type { Persona, PersonaCrear } from "./tipos";
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 export interface NuevoPersonaProps {
   onSuccess: () => void;
@@ -15,30 +16,38 @@ export const NuevaPersona: React.FC<NuevoPersonaProps> = ({ onSuccess, onCancel 
     email: "",
     activo: true,
     capacidad: "OPERAR",
+    contrasenia: "",
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [personaCreada, setPersonaCreada] = useState<Persona | null>(null);
 
-  const validateField = (name: string, value: any) => {
+  const validateField = (name: string, value?: string | number | null) => {
     let error = "";
+    const strVal = String(value ?? "").trim();
     switch (name) {
       case "nombre":
-        if (!value.trim()) error = "El nombre es obligatorio.";
-        else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(value)) error = "Solo letras y espacios.";
+        if (!strVal) error = "El nombre es obligatorio.";
+        else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(strVal)) error = "Solo letras y espacios.";
         break;
       case "apellido":
-        if (!value.trim()) error = "El apellido es obligatorio.";
-        else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(value)) error = "Solo letras y espacios.";
+        if (!strVal) error = "El apellido es obligatorio.";
+        else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(strVal)) error = "Solo letras y espacios.";
         break;
       case "documento":
-        if (!String(value).trim()) error = "El DNI es obligatorio.";
-        else if (!/^\d{7,8}$/.test(String(value).trim())) error = "DNI de 7 u 8 dígitos numéricos.";
+        if (!strVal) error = "El DNI es obligatorio.";
+        else if (!/^\d{7,8}$/.test(strVal)) error = "DNI de 7 u 8 dígitos numéricos.";
         break;
       case "email":
-        if (!value.trim()) error = "El correo electrónico es obligatorio.";
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = "Correo electrónico inválido.";
+        if (!strVal) error = "El correo electrónico es obligatorio.";
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strVal)) error = "Correo electrónico inválido.";
+        break;
+      case "contrasenia":
+        if (!value) error = "La contraseña es obligatoria.";
+        else if (String(value).length < 8) error = "Mínimo 8 caracteres.";
+        else if (String(value).length > 72) error = "Máximo 72 caracteres.";
         break;
       default:
         break;
@@ -61,12 +70,15 @@ export const NuevaPersona: React.FC<NuevoPersonaProps> = ({ onSuccess, onCancel 
     validateField("apellido", formData.apellido);
     validateField("documento", formData.documento);
     validateField("email", formData.email);
+    validateField("contrasenia", formData.contrasenia);
 
     if (
       !formData.nombre ||
       !formData.apellido ||
       !formData.documento ||
       !formData.email ||
+      formData.contrasenia.length < 8 ||
+      formData.contrasenia.length > 72 ||
       Object.values(errors).some((err) => err !== "")
     ) {
       return;
@@ -81,9 +93,10 @@ export const NuevaPersona: React.FC<NuevoPersonaProps> = ({ onSuccess, onCancel 
         email: formData.email.trim(),
         activo: true,
         capacidad: formData.capacidad,
+        contrasenia: formData.contrasenia,
       };
 
-      const res = await fetch("http://127.0.0.1:8000/personal/", {
+      const res = await apiFetch("/personal/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,20 +113,47 @@ export const NuevaPersona: React.FC<NuevoPersonaProps> = ({ onSuccess, onCancel 
           if (typeof errorData.detail === "string") {
             mensaje = errorData.detail;
           } else if (Array.isArray(errorData.detail)) {
-            mensaje = errorData.detail.map((d: any) => d.msg).join(". ");
+            mensaje = errorData.detail.map((d: { msg?: string }) => d.msg || "").join(". ");
           }
         }
         setApiError(mensaje);
         return;
       }
 
-      onSuccess();
-    } catch (err: any) {
-      setApiError(err.message || "Error de conexión con el servidor.");
+      setPersonaCreada(await res.json());
+    } catch (err: unknown) {
+      setApiError(err instanceof Error ? err.message : "Error de conexión con el servidor.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (personaCreada) {
+    return (
+      <div className="modulo-container formulario-box">
+        <div className="modulo-header">
+          <h1>Persona registrada</h1>
+          <div className="subtitulo">02 · Formulario</div>
+        </div>
+
+        <p style={{ marginBottom: "16px" }}>
+          {personaCreada.nombre} {personaCreada.apellido} ya puede iniciar sesión. Comunicale el usuario
+          asignado y la contraseña que definiste.
+        </p>
+
+        <div className="form-group">
+          <label htmlFor="usuario-asignado">Usuario asignado</label>
+          <input id="usuario-asignado" value={personaCreada.usuario} readOnly />
+        </div>
+
+        <div className="form-acciones">
+          <button type="button" className="btn-guardar" onClick={onSuccess}>
+            Aceptar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modulo-container formulario-box">
@@ -175,6 +215,20 @@ export const NuevaPersona: React.FC<NuevoPersonaProps> = ({ onSuccess, onCancel 
             onChange={handleChange}
           />
           {errors.email && <span className="campo-error">{errors.email}</span>}
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="contrasenia">Contraseña</label>
+          <input
+            id="contrasenia"
+            type="password"
+            name="contrasenia"
+            placeholder="Mínimo 8 caracteres"
+            autoComplete="new-password"
+            value={formData.contrasenia}
+            onChange={handleChange}
+          />
+          {errors.contrasenia && <span className="campo-error">{errors.contrasenia}</span>}
         </div>
 
         <div className="form-group">

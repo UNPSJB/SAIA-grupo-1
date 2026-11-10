@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import type { ElementoDeLimpiezaCreate } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface NuevoElementoLimpiezaProps {
   onSuccess?: () => void;
   onCancel?: () => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
+}export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
   onSuccess,
   onCancel,
 }) => {
@@ -30,8 +27,8 @@ export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
     setErrorMsg(null);
 
     if (name === 'nombre') {
-      if (value.length > 20) {
-        setAdvertenciaInput('El nombre no puede tener más de 20 caracteres.');
+      if (value.length > 50) {
+        setAdvertenciaInput('El nombre no puede tener más de 50 caracteres.');
         return;
       }
       setFormData((prev) => ({ ...prev, nombre: value }));
@@ -75,8 +72,8 @@ export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
       return;
     }
 
-    if (nombreLimpio.length > 20) {
-      setErrorMsg('El nombre no puede superar los 20 caracteres.');
+    if (nombreLimpio.length > 50) {
+      setErrorMsg('El nombre no puede superar los 50 caracteres.');
       return;
     }
 
@@ -95,7 +92,7 @@ export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
         frecuenciaDeCambio: formData.frecuenciaDeCambio,
       };
 
-      const response = await fetch(`${API_URL}/elementosDeLimpieza/`, {
+      const response = await apiFetch(`/elementosDeLimpieza/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +143,7 @@ export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
       <form onSubmit={handleSubmit} noValidate>
         <div className="form-group">
           <label htmlFor="nombre">
-            Nombre <span style={{ color: '#dc2626' }}>*</span>
+            Nombre <span style={{ color: 'var(--color-error-texto)' }}>*</span>
           </label>
           <input
             id="nombre"
@@ -156,7 +153,7 @@ export const NuevoElementoDeLimpieza: React.FC<NuevoElementoLimpiezaProps> = ({
             value={formData.nombre}
             onChange={handleChange}
             onBlur={handleBlurNombre}
-            maxLength={20}
+            maxLength={50}
             required
           />
         </div>

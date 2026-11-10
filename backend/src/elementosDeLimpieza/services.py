@@ -1,12 +1,57 @@
 import logging
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Dict, Any
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from src.elementosDeLimpieza.models import ElementoDeLimpieza
-from src.elementosDeLimpieza import schemas, exceptions
+from src.elementosDeLimpieza import schemas, exceptions, models
 from datetime import datetime, timedelta
-
+ 
 #CRUD de Elementos de Limpieza
+
+def obtener_elementos_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None,
+    estado: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    
+    query = select(ElementoDeLimpieza)
+    elementos = db.scalars(query).all()
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+
+    for elem in elementos:
+        nombre = getattr(elem, "nombre", "") or ""
+        
+        # Filtro por búsqueda de nombre
+        if term and term not in nombre.lower():
+            continue
+
+        # Filtro por estado
+        if estado and estado != "TODOS":
+            if estado.upper() == "ACTIVO" and not elem.activo:
+                continue
+            elif estado.upper() == "INACTIVO" and elem.activo:
+                continue
+
+        # Formatear fecha de cambio
+        f_cambio = getattr(elem, "fechaCambio", None)
+        fecha_cambio_str = f_cambio.strftime("%Y-%m-%d") if f_cambio else "-"
+
+        frecuencia_str = (
+            f"{elem.frecuenciaDeCambio} días"
+            if getattr(elem, "frecuenciaDeCambio", None) is not None
+            else "Sin especificar"
+        )
+
+        filas.append({
+            "id": elem.id,
+            "nombre": nombre,
+            "frecuenciaDeCambio": frecuencia_str,
+            "proximoRecambio": fecha_cambio_str,
+            "estado": "Activo" if elem.activo else "Inactivo",
+        })
+
+    return filas
 
 def calcular_fecha_cambio(frecuencia: Optional[int]) -> Optional[datetime]:
     if frecuencia is not None and frecuencia > 0:
@@ -26,9 +71,9 @@ def crear_elementoDeLimpieza(db: Session, elementoDeLimpieza: schemas.ElementoDe
     return _elementoDeLimpieza
 
 def listar_elementosDeLimpiezas(db: Session) -> List[schemas.ElementoDeLimpieza]:
-    return db.scalars(select(ElementoDeLimpieza)).all() 
+    return list(db.scalars(select(ElementoDeLimpieza)).all()) 
 
-def obtener_elementoDeLimpieza(db: Session, elementoDeLimpieza_id: int) -> schemas.ElementoDeLimpieza:
+def obtener_elementoDeLimpieza(db: Session, elementoDeLimpieza_id: int) -> ElementoDeLimpieza:
     db_elementoDeLimpieza = db.scalar(select(ElementoDeLimpieza).where(ElementoDeLimpieza.id ==elementoDeLimpieza_id))
     if db_elementoDeLimpieza is None:
         raise exceptions.ElementoNoEncontrado()
@@ -63,9 +108,6 @@ def eliminar_elementoDeLimpieza(db: Session, elementoDeLimpieza_id: int) -> sche
             db.refresh(db_elementoDeLimpieza)
     
     return db_elementoDeLimpieza
-
-from datetime import datetime, timedelta
-from src.elementosDeLimpieza.models import ElementoDeLimpieza
 
 def registrar_cambio_fecha(db: Session, elemento_id: int) -> ElementoDeLimpieza:
     elemento = obtener_elementoDeLimpieza(db, elemento_id)

@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import type { Auditoria } from "./tipos";
+import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return "No aplica";
@@ -38,6 +42,9 @@ const getBadgeClass = (accion?: string) => {
 export const ListadoAuditoria: React.FC = () => {
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
   const [busqueda, setBusqueda] = useState('');
   const [filtroAccion, setFiltroAccion] = useState<string>('TODAS');
   const [filtroTabla, setFiltroTabla] = useState<string>('TODAS');
@@ -46,7 +53,7 @@ export const ListadoAuditoria: React.FC = () => {
     let ignore = false;
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/auditoria/`);
+        const res = await apiFetch(`/auditoria/`);
         if (res.ok) {
           const data = await res.json();
           if (!ignore) setAuditorias(data);
@@ -93,6 +100,47 @@ export const ListadoAuditoria: React.FC = () => {
     return matchBusqueda && matchAccion && matchTabla;
   });
 
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroAccion !== 'TODAS') params.append('accion', filtroAccion);
+      if (filtroTabla !== 'TODAS') params.append('tabla', filtroTabla);
+
+      const queryString = params.toString();
+      const url = `/auditoria/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'auditoria.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al exportar los registros de auditoría a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroAccion !== 'TODAS') partes.push(`Acción: ${filtroAccion}`);
+    if (filtroTabla !== 'TODAS') partes.push(`Tabla: ${filtroTabla}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
+  const {
+    itemsPaginados: auditoriasPaginadas,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(auditoriasFiltradas);
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -100,9 +148,17 @@ export const ListadoAuditoria: React.FC = () => {
           <h1>Lista de Auditoría</h1>
           <div className="subtitulo">01 · Listado</div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setDialogExportarAbierto(true)}
+          className="btn-cancelar"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <CsvIcon /> Exportar CSV
+        </button>
       </div>
 
-      {/* Barra de Filtros */}
       <div className="filtros-top-bar">
         <input
           type="text"
@@ -165,11 +221,11 @@ export const ListadoAuditoria: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              auditoriasFiltradas.map((a) => (
+              auditoriasPaginadas.map((a) => (
                 <tr key={a.id}>
                   <td style={{ fontWeight: 500 }}>
                     {a.tabla}
-                    <span style={{ marginLeft: '6px', fontSize: '0.85em', color: 'var(--text-muted, #6b7280)' }}>
+                    <span style={{ marginLeft: '6px', fontSize: '0.85em', color: 'var(--text-muted, var(--color-texto-sec))' }}>
                       #{a.registro_id}
                     </span>
                   </td>
@@ -188,6 +244,27 @@ export const ListadoAuditoria: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="registros de auditoría"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={auditoriasFiltradas.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
     </div>
   );
 };

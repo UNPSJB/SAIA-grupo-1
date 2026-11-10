@@ -1,0 +1,411 @@
+from datetime import date, timedelta
+from typing import Any
+import pytest
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+from src.insumos.exceptions import InsumoNoEncontrado
+from src.insumos.models import Insumo, UnidadMedida
+from src.insumos.services import eliminar_insumo
+from src.produccion import exceptions, schemas, services
+from src.produccion.models import InsumoLote, LoteProduccion
+from src.producto.models import Producto
+from tests.database import session  # noqa: F401  (session es una fixture)
+
+LEGAJO = 1  # Juan Perez, el del seed de tests
+# ids de los insumos del seed de tests: 80 kg de harina, 35 l de aceite y 1500 g de levadura
+HARINA, ACEITE, LEVADURA = 1, 2, 3
+# ids de los productos que crea la fixture `productos`
+PAN, TARTA, DADO_DE_BAJA = 1, 2, 3
+
+
+@pytest.fixture(autouse=True)
+def productos(session: Session) -> None:
+    """Productos como los da de alta el ABM de productos; el lote solo los referencia."""
+    session.add_all([
+        Producto(id=PAN, nombre="Pan lactal", unidadMedida=UnidadMedida.KILOGRAMOS),
+        Producto(id=TARTA, nombre="Tarta", unidadMedida=UnidadMedida.UNIDADES),
+        Producto(id=DADO_DE_BAJA, nombre="Budín", unidadMedida=UnidadMedida.UNIDADES, activo=False),
+    ])
+    session.commit()
+
+
+def _datos(**cambios: Any) -> schemas.LoteProduccionCreate:
+    base: dict[str, Any] = dict(producto_id=PAN, fecha=date.today(), cantidad=120.5)
+    base.update(cambios)
+    return schemas.LoteProduccionCreate(**base)
+
+
+def _cantidad_de(db: Session, modelo: type) -> int:
+    return db.scalar(select(func.count()).select_from(modelo))
+
+
+# ------------------------------------------------------------------ registro
+
+
+def test_registrar_lote(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+
+    assert lote.id is not None
+    assert lote.producto_id == PAN
+    assert lote.producto.nombre == "Pan lactal"
+    assert lote.fecha == date.today()
+    assert lote.cantidad == 120.5
+    # la unidad del lote es la del producto
+    assert lote.producto.unidadMedida == UnidadMedida.KILOGRAMOS
+    assert lote.responsable_legajo == LEGAJO
+    assert lote.nombre_responsable == "Juan Perez"
+    # registrar un lote no crea productos
+    assert _cantidad_de(session, Producto) == 3
+
+
+def test_producto_inexistente(session: Session) -> None:
+    with pytest.raises(exceptions.ProductoNoEncontrado):
+        services.registrar_lote(session, LEGAJO, _datos(producto_id=999))
+    assert _cantidad_de(session, LoteProduccion) == 0
+
+
+def test_producto_dado_de_baja(session: Session) -> None:
+    with pytest.raises(exceptions.ProductoInactivo):
+        services.registrar_lote(session, LEGAJO, _datos(producto_id=DADO_DE_BAJA))
+    assert _cantidad_de(session, LoteProduccion) == 0
+
+
+def test_los_lotes_de_un_producto_dado_de_baja_se_siguen_consultando(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    session.get(Producto, PAN).activo = False
+    session.commit()
+
+    assert services.leer_lote(session, lote.id).producto.activo is False
+    assert [l.id for l in services.listar_lotes(session, producto_id=PAN)] == [lote.id]
+
+
+def test_se_puede_registrar_con_fecha_pasada(session: Session) -> None:
+    fecha = date.today() - timedelta(days=400)
+    lote = services.registrar_lote(session, LEGAJO, _datos(fecha=fecha))
+    assert lote.fecha == fecha
+
+
+# ------------------------------------------------------------------ validaciones
+
+
+@pytest.mark.parametrize("campo", ["producto_id", "fecha", "cantidad"])
+def test_no_se_permite_lote_sin_producto_fecha_o_cantidad(campo: str) -> None:
+    datos = dict(producto_id=PAN, fecha=date.today(), cantidad=1)
+    del datos[campo]
+    with pytest.raises(Exception) as error:
+        schemas.LoteProduccionCreate(**datos)
+    assert campo in str(error.value)
+
+
+def test_ya_no_se_crean_productos_desde_el_lote() -> None:
+    # los campos del producto nuevo se ignoran: sin producto_id el lote no es valido
+    with pytest.raises(Exception) as error:
+        schemas.LoteProduccionCreate(
+            producto_nombre="Pan", producto_unidad_medida="kilogramos", fecha=date.today(), cantidad=1
+        )
+    assert "producto_id" in str(error.value)
+
+
+@pytest.mark.parametrize("cantidad", [0, -1, -0.01])
+def test_la_cantidad_debe_ser_mayor_a_cero(cantidad: float) -> None:
+    with pytest.raises(exceptions.CantidadInvalida):
+        _datos(cantidad=cantidad)
+
+
+def test_la_fecha_no_puede_ser_futura() -> None:
+    with pytest.raises(exceptions.FechaLoteInvalida):
+        _datos(fecha=date.today() + timedelta(days=1))
+
+
+# ------------------------------------------------------------------ codigo
+
+
+def test_codigo_con_fecha_del_lote_y_correlativo_del_dia(session: Session) -> None:
+    fecha = date(2026, 10, 22)
+    codigos = [services.registrar_lote(session, LEGAJO, _datos(fecha=fecha)).codigo for _ in range(3)]
+    assert codigos == ["L-20261022-01", "L-20261022-02", "L-20261022-03"]
+
+
+def test_el_correlativo_se_reinicia_cada_dia_y_usa_la_fecha_del_lote(session: Session) -> None:
+    a = services.registrar_lote(session, LEGAJO, _datos(fecha=date(2026, 10, 22)))
+    b = services.registrar_lote(session, LEGAJO, _datos(fecha=date(2026, 10, 21)))
+    c = services.registrar_lote(session, LEGAJO, _datos(fecha=date(2026, 10, 22)))
+    assert (a.codigo, b.codigo, c.codigo) == ("L-20261022-01", "L-20261021-01", "L-20261022-02")
+
+
+def test_el_correlativo_pasa_de_99_sin_romper_el_orden(session: Session) -> None:
+    fecha = date(2026, 10, 22)
+    for n in range(1, 100):
+        session.add(LoteProduccion(codigo=f"L-20261022-{n:02d}", producto_id=PAN, fecha=fecha,
+                                   cantidad=1, responsable_legajo=LEGAJO))
+    session.commit()
+
+    assert services.registrar_lote(session, LEGAJO, _datos(fecha=fecha)).codigo == "L-20261022-100"
+
+
+def test_si_el_codigo_se_repite_se_reintenta(session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    existente = services.registrar_lote(session, LEGAJO, _datos())
+    reales = services._siguiente_codigo
+    llamadas = []
+
+    def con_un_choque(db: Session, fecha: date) -> str:
+        llamadas.append(fecha)
+        return existente.codigo if len(llamadas) == 1 else reales(db, fecha)
+
+    monkeypatch.setattr(services, "_siguiente_codigo", con_un_choque)
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+
+    assert len(llamadas) == 2
+    assert lote.codigo != existente.codigo
+
+
+def test_si_nunca_se_genera_un_codigo_no_queda_nada_guardado(session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    existente = services.registrar_lote(session, LEGAJO, _datos())
+    monkeypatch.setattr(services, "_siguiente_codigo", lambda db, fecha: existente.codigo)
+
+    with pytest.raises(exceptions.CodigoLoteNoGenerado):
+        services.registrar_lote(session, LEGAJO, _datos(producto_id=TARTA))
+
+    assert _cantidad_de(session, LoteProduccion) == 1
+
+
+# ------------------------------------------------------------------ consultas
+
+
+def test_leer_lote(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    assert services.leer_lote(session, lote.id).codigo == lote.codigo
+    with pytest.raises(exceptions.LoteNoEncontrado):
+        services.leer_lote(session, 999)
+
+
+def test_listar_lotes_del_mas_reciente_al_mas_antiguo(session: Session) -> None:
+    hoy = date.today()
+    viejo = services.registrar_lote(session, LEGAJO, _datos(fecha=hoy - timedelta(days=5)))
+    nuevo = services.registrar_lote(session, LEGAJO, _datos(fecha=hoy))
+    medio = services.registrar_lote(session, LEGAJO, _datos(fecha=hoy - timedelta(days=2)))
+
+    assert [l.id for l in services.listar_lotes(session)] == [nuevo.id, medio.id, viejo.id]
+
+
+def test_listar_lotes_filtra_por_producto_y_fechas(session: Session) -> None:
+    hoy = date.today()
+    pan = services.registrar_lote(session, LEGAJO, _datos(fecha=hoy - timedelta(days=10)))
+    pan_hoy = services.registrar_lote(session, LEGAJO, _datos(fecha=hoy))
+    tarta = services.registrar_lote(session, LEGAJO, _datos(producto_id=TARTA, fecha=hoy))
+
+    assert {l.id for l in services.listar_lotes(session, producto_id=pan.producto_id)} == {pan.id, pan_hoy.id}
+    assert {l.id for l in services.listar_lotes(session, desde=hoy - timedelta(days=1))} == {pan_hoy.id, tarta.id}
+    assert {l.id for l in services.listar_lotes(session, hasta=hoy - timedelta(days=1))} == {pan.id}
+    combinados = services.listar_lotes(
+        session, producto_id=pan.producto_id, desde=hoy - timedelta(days=10), hasta=hoy - timedelta(days=1)
+    )
+    assert [l.id for l in combinados] == [pan.id]
+
+
+def test_listar_lotes_de_un_solo_dia_incluye_ese_dia(session: Session) -> None:
+    hoy = date.today()
+    lote = services.registrar_lote(session, LEGAJO, _datos(fecha=hoy))
+    assert [l.id for l in services.listar_lotes(session, desde=hoy, hasta=hoy)] == [lote.id]
+
+
+def test_listar_lotes_con_rango_de_fechas_invalido(session: Session) -> None:
+    hoy = date.today()
+    with pytest.raises(exceptions.RangoFechasInvalido):
+        services.listar_lotes(session, desde=hoy, hasta=hoy - timedelta(days=1))
+
+
+# ------------------------------------------------------------------ insumos del lote
+
+
+def _insumos(*pares: tuple) -> schemas.AsociarInsumos:
+    return schemas.AsociarInsumos(insumos=[{"insumo_id": i, "cantidad": c} for i, c in pares])
+
+
+def _stock(db: Session, insumo_id: int) -> float:
+    db.expire_all()
+    return db.get(Insumo, insumo_id).stock
+
+
+def test_asociar_insumos_descuenta_el_stock(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+
+    lote = services.asociar_insumos(session, lote.id, _insumos((HARINA, 30), (LEVADURA, 250.5)))
+
+    assert [(i.insumo.nombre, i.insumo.lote, i.cantidad) for i in lote.insumos] == [
+        ("Harina de Trigo 000", "ING-HAR-001", 30),
+        ("Levadura Fresca", "ING-LEV-003", 250.5),
+    ]
+    assert _stock(session, HARINA) == 50
+    assert _stock(session, LEVADURA) == 1249.5
+
+
+def test_se_pueden_agregar_insumos_en_varias_veces(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 10)))
+    services.asociar_insumos(session, lote.id, _insumos((ACEITE, 5)))
+
+    assert [i.insumo_id for i in services.leer_lote(session, lote.id).insumos] == [HARINA, ACEITE]
+
+
+def test_se_puede_usar_todo_el_stock(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((ACEITE, 35)))
+
+    assert _stock(session, ACEITE) == 0
+    assert ACEITE not in [i.id for i in services.listar_insumos_disponibles(session)]
+
+
+def test_el_mismo_insumo_puede_usarse_en_lotes_distintos(session: Session) -> None:
+    uno = services.registrar_lote(session, LEGAJO, _datos())
+    otro = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, uno.id, _insumos((HARINA, 10)))
+    services.asociar_insumos(session, otro.id, _insumos((HARINA, 10)))
+
+    assert _stock(session, HARINA) == 60
+
+
+def test_no_se_puede_asociar_un_insumo_ya_asociado(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 10)))
+
+    with pytest.raises(exceptions.InsumoYaAsociado):
+        services.asociar_insumos(session, lote.id, _insumos((HARINA, 5)))
+    assert _stock(session, HARINA) == 70
+
+
+def test_no_se_puede_usar_mas_que_el_stock(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    with pytest.raises(exceptions.StockInsuficiente):
+        services.asociar_insumos(session, lote.id, _insumos((ACEITE, 35.01)))
+    assert _stock(session, ACEITE) == 35
+
+
+@pytest.mark.parametrize(
+    "error, pares",
+    [
+        (exceptions.StockInsuficiente, ((HARINA, 10), (ACEITE, 999))),
+        (InsumoNoEncontrado, ((HARINA, 10), (999, 1))),
+    ],
+)
+def test_si_un_insumo_falla_no_se_guarda_ninguno(session: Session, error: type, pares: tuple) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+
+    with pytest.raises(error):
+        services.asociar_insumos(session, lote.id, _insumos(*pares))
+
+    # la harina, que sí era válida, tampoco se descuenta
+    assert _stock(session, HARINA) == 80
+    assert _cantidad_de(session, InsumoLote) == 0
+
+
+def test_asociar_insumos_a_un_lote_inexistente(session: Session) -> None:
+    with pytest.raises(exceptions.LoteNoEncontrado):
+        services.asociar_insumos(session, 999, _insumos((HARINA, 1)))
+
+
+def test_quitar_insumo_devuelve_el_stock(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 30), (ACEITE, 5)))
+
+    lote = services.quitar_insumo(session, lote.id, HARINA)
+
+    assert [i.insumo_id for i in lote.insumos] == [ACEITE]
+    assert _stock(session, HARINA) == 80
+    assert _cantidad_de(session, InsumoLote) == 1
+    # una vez quitado se puede volver a asociar
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 1)))
+
+
+def test_quitar_un_insumo_no_asociado(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    with pytest.raises(exceptions.InsumoNoAsociado):
+        services.quitar_insumo(session, lote.id, HARINA)
+    with pytest.raises(exceptions.LoteNoEncontrado):
+        services.quitar_insumo(session, 999, HARINA)
+
+
+def test_listar_insumos_disponibles_ordenados_por_nombre(session: Session) -> None:
+    nombres = [i.nombre for i in services.listar_insumos_disponibles(session)]
+    assert nombres == ["Aceite de Girasol", "Harina de Trigo 000", "Levadura Fresca"]
+
+
+def test_un_insumo_dado_de_baja_no_se_puede_asociar_pero_el_lote_lo_conserva(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 10)))
+
+    eliminar_insumo(session, HARINA)
+
+    assert HARINA not in [i.id for i in services.listar_insumos_disponibles(session)]
+    with pytest.raises(InsumoNoEncontrado):
+        services.asociar_insumos(session, services.registrar_lote(session, LEGAJO, _datos()).id, _insumos((HARINA, 1)))
+    # la trazabilidad no se pierde: el lote sigue mostrando de qué insumo salió
+    asociado = services.leer_lote(session, lote.id).insumos[0]
+    assert (asociado.insumo.nombre, asociado.insumo.lote, asociado.cantidad) == ("Harina de Trigo 000", "ING-HAR-001", 10)
+
+
+@pytest.mark.parametrize("cantidad", [0, -1, -0.01])
+def test_la_cantidad_del_insumo_debe_ser_mayor_a_cero(cantidad: float) -> None:
+    with pytest.raises(exceptions.CantidadInsumoInvalida):
+        _insumos((HARINA, cantidad))
+
+
+def test_no_se_permite_insumo_sin_cantidad() -> None:
+    with pytest.raises(Exception) as error:
+        schemas.AsociarInsumos(insumos=[{"insumo_id": HARINA}])
+    assert "cantidad" in str(error.value)
+
+
+def test_hay_que_indicar_al_menos_un_insumo() -> None:
+    with pytest.raises(exceptions.InsumosRequeridos):
+        _insumos()
+
+
+def test_no_se_permite_el_mismo_insumo_dos_veces_en_el_pedido() -> None:
+    with pytest.raises(exceptions.InsumoRepetido):
+        _insumos((HARINA, 1), (HARINA, 2))
+
+
+# ------------------------------------------------------------------ lotes cerrados
+
+
+def _cerrar(db: Session, lote: LoteProduccion) -> None:
+    """Simula que el lote es de ayer (los lotes se cierran al terminar su día)."""
+    lote.fecha = date.today() - timedelta(days=1)
+    db.commit()
+
+
+def test_solo_los_lotes_del_dia_son_editables(session: Session) -> None:
+    hoy = services.registrar_lote(session, LEGAJO, _datos())
+    ayer = services.registrar_lote(session, LEGAJO, _datos(fecha=date.today() - timedelta(days=1)))
+    assert hoy.editable
+    assert not ayer.editable
+
+
+def test_no_se_pueden_asociar_insumos_a_un_lote_cerrado(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos(fecha=date.today() - timedelta(days=1)))
+
+    with pytest.raises(exceptions.LoteCerrado):
+        services.asociar_insumos(session, lote.id, _insumos((HARINA, 10)))
+    assert _stock(session, HARINA) == 80
+    assert _cantidad_de(session, InsumoLote) == 0
+
+
+def test_no_se_pueden_quitar_insumos_de_un_lote_cerrado(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 10)))
+    _cerrar(session, lote)
+
+    with pytest.raises(exceptions.LoteCerrado):
+        services.quitar_insumo(session, lote.id, HARINA)
+    assert _stock(session, HARINA) == 70
+    assert _cantidad_de(session, InsumoLote) == 1
+
+
+def test_un_lote_cerrado_se_sigue_pudiendo_consultar(session: Session) -> None:
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    services.asociar_insumos(session, lote.id, _insumos((HARINA, 10)))
+    _cerrar(session, lote)
+
+    assert [i.insumo_id for i in services.leer_lote(session, lote.id).insumos] == [HARINA]
+    assert [l.id for l in services.listar_lotes(session)] == [lote.id]

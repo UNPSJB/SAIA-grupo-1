@@ -1,17 +1,94 @@
-from typing import List
-from datetime import datetime, timedelta
-from sqlalchemy import delete, select, update
+from typing import Any, Dict, List, Optional
+from datetime import date, datetime, timedelta
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 from src.insumos.models import Insumo
 from src.insumos import schemas, exceptions
 
 
 # operaciones CRUD para Insumo
+# La baja es logica (activo = False): los insumos dados de baja no se listan ni se pueden leer,
+# pero siguen existiendo para los lotes de produccion que los usaron.
 
+
+def _validar_nombre_unico(db: Session, nombre: str, excluir_id: Optional[int] = None) -> None:
+    """El nombre no puede repetirse (sin distinguir mayusculas) entre los insumos activos."""
+    consulta = select(Insumo.id).where(
+        Insumo.activo, func.lower(Insumo.nombre) == nombre.strip().lower()
+    )
+    if excluir_id is not None:
+        consulta = consulta.where(Insumo.id != excluir_id)
+    if db.scalar(consulta) is not None:
+        raise exceptions.NombreInsumoDuplicado()
+
+def obtener_insumos_para_csv(
+    db: Session,
+    busqueda: Optional[str] = None,
+    unidad: Optional[str] = None,
+    vencimiento: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    
+    query = select(Insumo)
+    insumos = db.scalars(query).all()
+    filas = []
+    term = busqueda.lower().strip() if busqueda else None
+
+    for i in insumos:
+        nombre = getattr(i, "nombre", "") or ""
+        lote = getattr(i, "lote", "") or ""
+        medida_val = i.medida.value if hasattr(i.medida, "value") else str(i.medida or "")
+
+        # Filtro por término de búsqueda (nombre o lote)
+        if term and (term not in nombre.lower() and term not in lote.lower()):
+            continue
+
+        # Filtro por unidad de medida
+        if unidad and unidad != "TODOS":
+            if medida_val.upper() != unidad.upper():
+                continue
+
+        # Calcular estado de vencimiento para filtro y reporte
+        f_venc = getattr(i, "fechaVencimiento", None)
+        f_rec = getattr(i, "fechaRecepcion", None)
+
+        str_venc = f_venc.strftime("%Y-%m-%d") if isinstance(f_venc, (datetime, date)) else "No aplica"
+        str_rec = f_rec.strftime("%Y-%m-%d") if isinstance(f_rec, (datetime, date)) else "No aplica"
+
+        estado_venc = "SIN_VENCIMIENTO"
+        if f_venc:
+            now_dt = datetime.now()
+            f_venc_dt = datetime.combine(f_venc, datetime.min.time()) if isinstance(f_venc, date) and not isinstance(f_venc, datetime) else f_venc
+            dias = (f_venc_dt - now_dt).total_seconds() / (1000 * 60 * 60 * 24)
+            if dias < 0:
+                estado_venc = "VENCIDO"
+            elif dias <= 15:
+                estado_venc = "POR_VENCER"
+            else:
+                estado_venc = "VIGENTE"
+
+        # Filtro por vencimiento
+        if vencimiento and vencimiento != "TODOS":
+            if estado_venc != vencimiento.upper():
+                continue
+
+        filas.append({
+            "id": i.id,
+            "nombre": nombre,
+            "lote": lote,
+            "stock": getattr(i, "stock", 0),
+            "cantRecibida": getattr(i, "cantRecibida", 0),
+            "medida": medida_val,
+            "fechaRecepcion": str_rec,
+            "fechaVencimiento": str_venc,
+            "estadoVencimiento": estado_venc.replace("_", " ").capitalize(),
+        })
+
+    return filas
 
 def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> Insumo:
     if not insumo.nombre or insumo.nombre.strip() == "":
         raise exceptions.NombreInsumoVacio()
+    _validar_nombre_unico(db, insumo.nombre)
     _insumo = Insumo(**insumo.model_dump())
     db.add(_insumo)
     db.commit()
@@ -20,11 +97,11 @@ def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> Insumo:
 
 
 def listar_insumos(db: Session) -> List[Insumo]:
-    return list(db.scalars(select(Insumo)).all())
+    return list(db.scalars(select(Insumo).where(Insumo.activo)).all())
 
 
 def leer_insumo(db: Session, insumo_id: int) -> Insumo:
-    db_insumo = db.scalar(select(Insumo).where(Insumo.id == insumo_id))
+    db_insumo = db.scalar(select(Insumo).where(Insumo.id == insumo_id, Insumo.activo))
     if db_insumo is None:
         raise exceptions.InsumoNoEncontrado()
     return db_insumo
@@ -46,6 +123,7 @@ def modificar_insumo(
         nombre_val = datos_actualizados["nombre"]
         if nombre_val.strip() == "":
             raise exceptions.NombreInsumoVacio()
+        _validar_nombre_unico(db, nombre_val, excluir_id=insumo_id)
 
     if "fechaVencimiento" in datos_actualizados and datos_actualizados["fechaVencimiento"] is not None:
         f_venc = datos_actualizados["fechaVencimiento"]
@@ -72,9 +150,7 @@ def modificar_insumo(
 
 def eliminar_insumo(db: Session, insumo_id: int) -> Insumo:
     db_insumo = leer_insumo(db, insumo_id)
-    db.execute(
-        delete(Insumo).where(Insumo.id == insumo_id)
-    )
+    db_insumo.activo = False
     db.commit()
     return db_insumo
 

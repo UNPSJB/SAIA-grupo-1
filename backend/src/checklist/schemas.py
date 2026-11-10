@@ -1,9 +1,9 @@
 import json
 from datetime import date, datetime
-from typing import Any, List, Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Any, List, Optional, Union
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.checklist import exceptions
-from src.checklist.models import EstadoGeneralChecklist, EstadoTareaItem
+from src.checklist.models import EstadoGeneralChecklist, EstadoTareaItem, MotivoNoRealizado
 from src.tareas.models import Frecuencia
 
 
@@ -22,6 +22,50 @@ class CompletarTareaSchema(BaseModel):
     insumos_utilizados: List[InsumoUtilizadoPlaceholder] = Field(default_factory=list)
 
 
+class MarcarNoRealizadaSchema(BaseModel):
+    motivo: Union[MotivoNoRealizado, str]
+    observacion: Optional[str] = None
+
+    @field_validator("motivo", mode="before")
+    @classmethod
+    def parse_motivo(cls, v: Any) -> Any:
+        if not v or (isinstance(v, str) and not v.strip()):
+            raise exceptions.MotivoNoRealizadoRequerido()
+        if isinstance(v, MotivoNoRealizado):
+            return v
+        if isinstance(v, str):
+            val_clean = v.strip().lower()
+            for m in MotivoNoRealizado:
+                if m.value == val_clean or m.name.lower() == val_clean:
+                    return m
+            return v.strip()
+        raise exceptions.MotivoInvalido()
+
+    @model_validator(mode="after")
+    def validar_observacion(self) -> "MarcarNoRealizadaSchema":
+        m_str = str(getattr(self.motivo, "value", self.motivo)).strip().lower()
+        if m_str in ("otro", MotivoNoRealizado.OTRO.value):
+            if not self.observacion or not self.observacion.strip():
+                raise exceptions.ObservacionObligatoriaParaOtro()
+        return self
+
+
+class HistorialItemSchema(BaseModel):
+    id: int
+    fecha_hora: datetime
+    usuario_legajo: Optional[int] = None
+    usuario_nombre: Optional[str] = None
+    accion: str
+    detalle: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReasignarTareaSchema(BaseModel):
+    nuevo_responsable_legajo: int = Field(..., gt=0)
+    motivo: Optional[str] = Field(None, max_length=500)
+
+
 class ChecklistItem(BaseModel):
     id: int
     checklist_id: int
@@ -38,6 +82,14 @@ class ChecklistItem(BaseModel):
     imagen: Optional[str] = None
     insumos_utilizados: List[InsumoUtilizadoPlaceholder] = Field(default_factory=list)
     fecha_hora_fin: Optional[datetime] = None
+    motivo_no_realizado: Optional[Union[MotivoNoRealizado, str]] = None
+    observacion_no_realizado: Optional[str] = None
+    fecha_hora_no_realizado: Optional[datetime] = None
+    es_reasignada: bool = False
+    fecha_original: Optional[date] = None
+    checklist_fecha: Optional[date] = None
+    dias_restantes: Optional[int] = None
+    historial: List[HistorialItemSchema] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,7 +122,8 @@ class ChecklistItem(BaseModel):
 
 
 class ChecklistGenerar(BaseModel):
-    responsable_legajo: int = Field(...)
+    # Lo completa el router con el usuario de la sesión: cada operador genera su propio checklist.
+    responsable_legajo: Optional[int] = None
     fecha: Optional[date] = Field(default_factory=date.today)
 
     @field_validator("fecha", mode="before")
@@ -105,8 +158,11 @@ class Checklist(BaseModel):
     porcentaje_cumplimiento: float
     total_tareas: int
     tareas_completadas: int
+    tareas_reasignadas: int = 0
+    tareas_no_realizadas: int = 0
     tareas_pendientes: int
+    tareas_vencidas: int = 0
+    tiene_reasignacion_no_leida: bool = False
     items: List[ChecklistItem]
 
     model_config = ConfigDict(from_attributes=True)
-

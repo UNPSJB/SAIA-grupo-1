@@ -2,16 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza, ElementoDeLimpiezaUpdate } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { apiFetch } from '../../api/client';
 
 interface EditarElementoProps {
   elementoId?: number | null;
   onSuccess?: () => void;
   onCancel?: () => void;
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
+}export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
   elementoId,
   onSuccess,
   onCancel,
@@ -35,7 +32,7 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
     if (elementoId) {
       const fetchElemento = async () => {
         try {
-          const res = await fetch(`${API_URL}/elementosDeLimpieza/${elementoId}`);
+          const res = await apiFetch(`/elementosDeLimpieza/${elementoId}`);
           if (res.ok) {
             const data: ElementoDeLimpieza = await res.json();
             setFormData({
@@ -77,8 +74,8 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
     setErrorMsg(null);
 
     if (name === 'nombre') {
-      if (value.length > 20) {
-        setAdvertenciaInput('El nombre no puede tener más de 20 caracteres.');
+      if (value.length > 50) {
+        setAdvertenciaInput('El nombre no puede tener más de 50 caracteres.');
         return;
       }
       setFormData((prev) => ({ ...prev, nombre: value }));
@@ -124,8 +121,8 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
       return;
     }
 
-    if (nom.length > 20) {
-      setErrorMsg('El nombre no puede superar los 20 caracteres.');
+    if (nom.length > 50) {
+      setErrorMsg('El nombre no puede superar los 50 caracteres.');
       return;
     }
 
@@ -145,7 +142,7 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
         activo: formData.activo,
       };
 
-      const res = await fetch(`${API_URL}/elementosDeLimpieza/${elementoId}`, {
+      const res = await apiFetch(`/elementosDeLimpieza/${elementoId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -204,17 +201,17 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
 
         <div className="form-group">
           <label htmlFor="nombre">
-            Nombre <span style={{ color: '#dc2626' }}>*</span>
+            Nombre <span style={{ color: 'var(--color-error-texto)' }}>*</span>
           </label>
           <input
             id="nombre"
             name="nombre"
             type="text"
-            placeholder="Introduce el nombre (máx. 20 caracteres)"
+            placeholder="Introduce el nombre (máx. 50 caracteres)"
             value={formData.nombre || ''}
             onChange={handleChange}
             onBlur={handleBlurNombre}
-            maxLength={20}
+            maxLength={50}
             required
           />
         </div>
@@ -248,8 +245,8 @@ export const EditarElementoDeLimpieza: React.FC<EditarElementoProps> = ({
               cursor: 'pointer',
               fontWeight: 600,
               fontSize: '0.85rem',
-              color: '#fff',
-              backgroundColor: formData.activo ? '#16a34a' : '#dc2626',
+              color: 'var(--color-texto-sobre-primario)',
+              backgroundColor: formData.activo ? 'var(--color-exito)' : 'var(--color-error)',
               width: 'fit-content',
               transition: 'background-color 0.2s ease',
             }}

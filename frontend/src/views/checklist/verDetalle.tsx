@@ -3,44 +3,84 @@ import type {
   Checklist,
   ChecklistItem,
   InsumoUtilizado,
-  PersonalResumen,
   CompletarTareaPayload,
+  MotivoNoRealizado,
+  MarcarNoRealizadaPayload,
+  PersonalResumen,
+  ReasignarTareaPayload,
 } from './tipos';
-import { parsearPasos } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
+import { apiFetch, API_URL } from '../../api/client';
+import { useAuth } from '../../auth/useAuth';
+
+const formatearMotivo = (motivo?: string | null): string => {
+  if (!motivo) return '';
+  switch (motivo) {
+    case 'equipo_fuera_de_uso':
+      return 'Equipo fuera de uso';
+    case 'falta_de_insumo':
+      return 'Falta de insumo';
+    case 'otro':
+      return 'Otro';
+    default:
+      return motivo;
+  }
+};
 
 interface DetalleChecklistProps {
   checklistId: number | null;
   onVolver: () => void;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
   checklistId,
   onVolver,
 }) => {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [loading, setLoading] = useState(Boolean(checklistId));
-  const [personal, setPersonal] = useState<PersonalResumen[]>([]);
+  const { usuario, esOperador, esAdministrador } = useAuth();
 
   // Insumos químicos activos disponibles en la BD
   const [quimicosDisponibles, setQuimicosDisponibles] = useState<
     { id: number; nombre: string; unidad_medida: string; stock_actual: number; activo: boolean }[]
   >([]);
 
+  const [motivosDisponibles, setMotivosDisponibles] = useState<
+    { id: number; nombre: string }[]
+  >([]);
+
   const [planesAbiertos, setPlanesAbiertos] = useState<Record<string, boolean>>({});
 
   const [tareaSeleccionada, setTareaSeleccionada] = useState<ChecklistItem | null>(null);
   const [modalTareaAbierto, setModalTareaAbierto] = useState(false);
-  const [formResponsable, setFormResponsable] = useState<number | ''>('');
   const [modalArchivoImagen, setModalArchivoImagen] = useState<File | null>(null);
   const [formInsumos, setFormInsumos] = useState<InsumoUtilizado[]>([]);
   const [guardandoTarea, setGuardandoTarea] = useState(false);
   const [modalImagenVer, setModalImagenVer] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [modalNoRealizadaAbierto, setModalNoRealizadaAbierto] = useState(false);
+  const [tareaNoRealizadaSeleccionada, setTareaNoRealizadaSeleccionada] = useState<ChecklistItem | null>(null);
+  const [formMotivo, setFormMotivo] = useState<MotivoNoRealizado | ''>('');
+  const [formObservacion, setFormObservacion] = useState('');
+  const [guardandoNoRealizada, setGuardandoNoRealizada] = useState(false);
+
+  const [operadoresDisponibles, setOperadoresDisponibles] = useState<PersonalResumen[]>([]);
+  const [modalReasignarAbierto, setModalReasignarAbierto] = useState(false);
+  const [tareaAReasignar, setTareaAReasignar] = useState<ChecklistItem | null>(null);
+  const [nuevoResponsableLegajo, setNuevoResponsableLegajo] = useState<number | ''>('');
+  const [motivoReasignacion, setMotivoReasignacion] = useState('');
+  const [guardandoReasignacion, setGuardandoReasignacion] = useState(false);
+  const [historialExpandido, setHistorialExpandido] = useState<Record<number, boolean>>({});
+
+  const toggleHistorial = (tareaId: number) => {
+    setHistorialExpandido((prev) => ({
+      ...prev,
+      [tareaId]: !prev[tareaId],
+    }));
+  };
+
 
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
@@ -68,7 +108,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     if (!checklistId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/checklist/${checklistId}`);
+      const res = await apiFetch(`/checklist/${checklistId}`);
       if (res.ok) {
         const data: Checklist = await res.json();
         setChecklist(data);
@@ -88,7 +128,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     const cargarDatos = async () => {
       // 1. Carga Checklist
       try {
-        const resChecklist = await fetch(`${API_URL}/checklist/${checklistId}`);
+        const resChecklist = await apiFetch(`/checklist/${checklistId}`);
         if (!cancelado && resChecklist.ok) {
           const data: Checklist = await resChecklist.json();
           setChecklist(data);
@@ -117,22 +157,9 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         }
       }
 
-      // 2. Carga Personal sin barra final
+      // 2. Carga Insumos Químicos Activos
       try {
-        const resPersonal = await fetch(`${API_URL}/personal`);
-        if (!cancelado && resPersonal.ok) {
-          const dataPersonal: PersonalResumen[] = await resPersonal.json();
-          if (Array.isArray(dataPersonal)) {
-            setPersonal(dataPersonal.filter((p) => p.activo));
-          }
-        }
-      } catch (err) {
-        console.warn('No se pudo cargar el listado de personal:', err);
-      }
-
-      // 3. Carga Insumos Químicos Activos
-      try {
-        const resQuimicos = await fetch(`${API_URL}/api/insumos-quimicos`);
+        const resQuimicos = await apiFetch(`/api/insumos-quimicos`);
         if (!cancelado && resQuimicos.ok) {
           const dataQuimicos = await resQuimicos.json();
           if (Array.isArray(dataQuimicos)) {
@@ -141,6 +168,34 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
         }
       } catch (err) {
         console.warn('No se pudieron cargar los insumos químicos:', err);
+      }
+
+      try {
+        const resMotivos = await apiFetch(`/checklist/motivos/?solo_activos=true`);
+        if (!cancelado && resMotivos.ok) {
+          const dataMotivos = await resMotivos.json();
+          if (Array.isArray(dataMotivos) && dataMotivos.length > 0) {
+            setMotivosDisponibles(dataMotivos);
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudieron cargar los motivos:', err);
+      }
+
+      if (esAdministrador) {
+        try {
+          const resPers = await apiFetch('/personal/');
+          if (!cancelado && resPers.ok) {
+            const dataPers = await resPers.json();
+            if (Array.isArray(dataPers)) {
+              setOperadoresDisponibles(
+                dataPers.filter((p: PersonalResumen) => p.activo && (p.capacidad === 'OPERAR' || p.capacidad === 'AMBAS'))
+              );
+            }
+          }
+        } catch (err) {
+          console.warn('No se pudieron cargar los operadores:', err);
+        }
       }
     };
 
@@ -162,7 +217,6 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
     if (checklist?.estado !== 'pendiente') return;
     if (tarea.estado === 'realizado') return;
     setTareaSeleccionada(tarea);
-    setFormResponsable(tarea.responsable_legajo ?? '');
     setModalArchivoImagen(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setFormInsumos(
@@ -210,14 +264,6 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       return;
     }
 
-    if (!formResponsable) {
-      mostrarError(
-        'Debe asignar un responsable para marcar la tarea como realizada.',
-        'Dato requerido'
-      );
-      return;
-    }
-
     for (const ins of formInsumos) {
       if (!ins.nombre.trim()) {
         mostrarError('Debe seleccionar un insumo químico válido.', 'Insumo inválido');
@@ -237,8 +283,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       if (modalArchivoImagen) {
         const formData = new FormData();
         formData.append('file', modalArchivoImagen);
-        const resImg = await fetch(
-          `${API_URL}/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/imagen`,
+        const resImg = await apiFetch(`/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/imagen`,
           {
             method: 'POST',
             body: formData,
@@ -256,12 +301,15 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       }
 
       const payload: CompletarTareaPayload = {
-        responsable_legajo: Number(formResponsable),
+        responsable_legajo:
+          tareaSeleccionada.responsable_legajo ??
+          checklist.responsable_legajo ??
+          usuario?.legajo ??
+          0,
         insumos_utilizados: formInsumos,
       };
 
-      const res = await fetch(
-        `${API_URL}/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/completar`,
+      const res = await apiFetch(`/checklist/${checklist.id}/tareas/${tareaSeleccionada.id}/completar`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -285,6 +333,140 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
       mostrarError('Error de red al intentar completar la tarea.', 'Error de conexión');
     } finally {
       setGuardandoTarea(false);
+    }
+  };
+
+  const abrirModalNoRealizada = (tarea: ChecklistItem) => {
+    if (checklist?.estado !== 'pendiente' || tarea.estado !== 'pendiente') return;
+    setTareaNoRealizadaSeleccionada(tarea);
+    setFormMotivo('');
+    setFormObservacion('');
+    setModalNoRealizadaAbierto(true);
+  };
+
+  const handleGuardarNoRealizada = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checklist || !tareaNoRealizadaSeleccionada) return;
+
+    if (checklist.estado !== 'pendiente') {
+      mostrarError(
+        'El checklist se encuentra completado o vencido y no admite modificaciones.',
+        'Auditoría cerrada'
+      );
+      return;
+    }
+
+    if (!formMotivo) {
+      mostrarError(
+        'Debe seleccionar un motivo para marcar la tarea como no realizada.',
+        'Motivo requerido'
+      );
+      return;
+    }
+
+    const esOtro = formMotivo.toLowerCase().trim() === 'otro';
+    if (esOtro && !formObservacion.trim()) {
+      mostrarError(
+        'La observación es obligatoria cuando el motivo es "Otro".',
+        'Observación requerida'
+      );
+      return;
+    }
+
+    setGuardandoNoRealizada(true);
+    try {
+      const payload: MarcarNoRealizadaPayload = {
+        motivo: formMotivo,
+        observacion: formObservacion.trim() || undefined,
+      };
+
+      const res = await apiFetch(
+        `/checklist/${checklist.id}/tareas/${tareaNoRealizadaSeleccionada.id}/no-realizada`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (res.ok) {
+        setModalNoRealizadaAbierto(false);
+        setTareaNoRealizadaSeleccionada(null);
+        setFormMotivo('');
+        setFormObservacion('');
+        await recargarChecklist();
+      } else {
+        const err = await res.json();
+        mostrarError(
+          err.detail || 'No se pudo registrar la justificación.',
+          'Error al guardar'
+        );
+      }
+    } catch {
+      mostrarError('Error de red al intentar registrar la justificación.', 'Error de conexión');
+    } finally {
+      setGuardandoNoRealizada(false);
+    }
+  };
+
+  const abrirModalReasignar = (tarea: ChecklistItem) => {
+    setTareaAReasignar(tarea);
+    setNuevoResponsableLegajo('');
+    setMotivoReasignacion('');
+    setModalReasignarAbierto(true);
+  };
+
+  const handleGuardarReasignacion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!checklist || !tareaAReasignar) return;
+
+    if (!nuevoResponsableLegajo) {
+      mostrarError('Debe seleccionar un operador destino para reasignar la tarea.', 'Operador requerido');
+      return;
+    }
+
+    const esMismoOperador = Number(nuevoResponsableLegajo) === checklist.responsable_legajo;
+    if (esMismoOperador && tareaAReasignar.estado !== 'no_realizado') {
+      mostrarError(
+        'Una tarea solo puede reasignarse a la misma persona si se encuentra en estado no realizada.',
+        'Operador inválido'
+      );
+      return;
+    }
+
+    setGuardandoReasignacion(true);
+    try {
+      const payload: ReasignarTareaPayload = {
+        nuevo_responsable_legajo: Number(nuevoResponsableLegajo),
+        motivo: motivoReasignacion.trim() || undefined,
+      };
+
+      const res = await apiFetch(
+        `/checklist/${checklist.id}/tareas/${tareaAReasignar.id}/reasignar`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (res.ok) {
+        setModalReasignarAbierto(false);
+        setTareaAReasignar(null);
+        setNuevoResponsableLegajo('');
+        setMotivoReasignacion('');
+        await recargarChecklist();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        mostrarError(
+          err.detail || 'No se pudo reasignar la tarea.',
+          'Error al reasignar'
+        );
+      }
+    } catch {
+      mostrarError('Error de red al intentar reasignar la tarea.', 'Error de conexión');
+    } finally {
+      setGuardandoReasignacion(false);
     }
   };
 
@@ -337,12 +519,12 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                     {checklist.estado}
                   </span>
                   {checklist.estado === 'vencido' && (
-                    <span style={{ fontSize: '0.825rem', color: '#dc2626', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--color-error-texto)', fontWeight: 600 }}>
                       (Auditoría cerrada · No admite modificaciones)
                     </span>
                   )}
                   {checklist.estado === 'completado' && (
-                    <span style={{ fontSize: '0.825rem', color: '#059669', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--color-exito-texto)', fontWeight: 600 }}>
                       (Auditoría cerrada · Checklist finalizado)
                     </span>
                   )}
@@ -356,12 +538,14 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                 <span className="valor">{checklist.fecha}</span>
               </div>
 
-              <div className="checklist-meta-item">
-                <span className="label">Responsable del Checklist</span>
-                <span className="valor">
-                  {checklist.nombre_responsable || `Legajo: ${checklist.responsable_legajo}`}
-                </span>
-              </div>
+              {esAdministrador && (
+                <div className="checklist-meta-item">
+                  <span className="label">Responsable del Checklist</span>
+                  <span className="valor">
+                    {checklist.nombre_responsable || `Legajo: ${checklist.responsable_legajo}`}
+                  </span>
+                </div>
+              )}
 
               <div className="checklist-meta-item">
                 <span className="label">Creado en</span>
@@ -398,18 +582,41 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                 <div className="metrica-desc">Total Tareas</div>
               </div>
               <div className="metrica-caja">
-                <div className="metrica-num" style={{ color: '#059669' }}>
+                <div className="metrica-num" style={{ color: 'var(--color-exito-texto)' }}>
                   {checklist.tareas_completadas}
                 </div>
                 <div className="metrica-desc">Realizadas</div>
               </div>
+              {(checklist.tareas_reasignadas ?? 0) > 0 && (
+                <div className="metrica-caja">
+                  <div className="metrica-num" style={{ color: 'var(--color-alerta-texto)' }}>
+                    {checklist.tareas_reasignadas}
+                  </div>
+                  <div className="metrica-desc">Reasignadas</div>
+                </div>
+              )}
               <div className="metrica-caja">
-                <div className="metrica-num" style={{ color: '#d97706' }}>
+                <div className="metrica-num" style={{ color: 'var(--color-primario-texto)' }}>
+                  {checklist.tareas_no_realizadas ?? 0}
+                </div>
+                <div className="metrica-desc">Justificadas</div>
+              </div>
+              <div className="metrica-caja">
+                <div className="metrica-num" style={{ color: 'var(--color-alerta-texto)' }}>
                   {checklist.tareas_pendientes}
                 </div>
                 <div className="metrica-desc">Pendientes</div>
               </div>
+              {(checklist.tareas_vencidas ?? 0) > 0 && (
+                <div className="metrica-caja">
+                  <div className="metrica-num" style={{ color: 'var(--color-error-texto)' }}>
+                    {checklist.tareas_vencidas}
+                  </div>
+                  <div className="metrica-desc">Vencidas</div>
+                </div>
+              )}
             </div>
+
           </div>
 
           <div className="planes-seccion-titulo">
@@ -460,37 +667,128 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                               <span className="tarea-frecuencia">
                                 {tarea.frecuencia}
                               </span>
-                              <span className={`badge-estado ${tarea.estado}`}>
-                                {tarea.estado}
-                              </span>
+                              {tarea.estado === 'no_realizado' ? (
+                                <span className="badge-estado no_realizado" title="Tarea no realizada justificada">
+                                  Justificada
+                                </span>
+                              ) : tarea.estado === 'reasignado' ? (
+                                <span
+                                  className="badge-estado reasignado"
+                                  style={{
+                                    backgroundColor: 'var(--color-alerta-fondo, #fffbeb)',
+                                    color: 'var(--color-alerta, #d97706)',
+                                    border: '1px solid var(--color-alerta, #f59e0b)',
+                                  }}
+                                  title="Tarea reasignada (cuenta como completada para el cumplimiento de este checklist)"
+                                >
+                                  ↻ Reasignada
+                                </span>
+                              ) : tarea.estado === 'vencido' ? (
+                                <span className="badge-estado vencido" title="Tarea vencida">
+                                  Vencida
+                                </span>
+                              ) : (
+                                <span className={`badge-estado ${tarea.estado}`}>
+                                  {tarea.estado}
+                                </span>
+                              )}
+                              {tarea.es_reasignada && (
+                                <span
+                                  style={{
+                                    backgroundColor: 'var(--color-primario-fondo, #eff6ff)',
+                                    color: 'var(--color-primario, #1d4ed8)',
+                                    border: '1px solid var(--color-primario, #3b82f6)',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                  }}
+                                  title="Esta tarea fue asignada mediante una reasignación"
+                                >
+                                  ✦ Asignada por reasignación
+                                </span>
+                              )}
                             </div>
                           </div>
 
-                          {checklist.estado === 'pendiente' && tarea.estado === 'pendiente' && (
-                            <button
-                              className="btn-guardar"
-                              style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
-                              onClick={() => abrirModalCompletarTarea(tarea)}
-                              title="Completar tarea"
-                            >
-                              ✓ Completar
-                            </button>
-                          )}
+                          {/* solo un operador ejecuta tareas, y solo las de su propio checklist */}
+                          {esOperador &&
+                            checklist.responsable_legajo === usuario?.legajo &&
+                            (tarea.responsable_legajo == null ||
+                              tarea.responsable_legajo === usuario?.legajo) &&
+                            checklist.estado === 'pendiente' &&
+                            tarea.estado === 'pendiente' && (
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="btn-guardar"
+                                  style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                                  onClick={() => abrirModalCompletarTarea(tarea)}
+                                  title="Completar tarea"
+                                >
+                                  ✓ Completar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-cancelar"
+                                  style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem' }}
+                                  onClick={() => abrirModalNoRealizada(tarea)}
+                                  title="Indicar motivo de no realización"
+                                >
+                                  ✕ No realizada
+                                </button>
+                              </div>
+                            )}
+
+                          {esAdministrador &&
+                            checklist.estado === 'pendiente' &&
+                            tarea.estado !== 'vencido' &&
+                            (tarea.estado === 'pendiente' || tarea.estado === 'no_realizado') && (
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="btn-guardar"
+                                  style={{
+                                    backgroundColor: 'var(--color-alerta, #d97706)',
+                                    padding: '0.45rem 0.9rem',
+                                    fontSize: '0.85rem',
+                                  }}
+                                  onClick={() => abrirModalReasignar(tarea)}
+                                  title="Reasignar tarea a otro operador"
+                                >
+                                  ↻ Reasignar
+                                </button>
+                              </div>
+                            )}
                         </div>
+
+                        {tarea.estado === 'no_realizado' && (
+                          <div className="tarea-justificacion-box">
+                            <div className="tarea-justificacion-header">
+                              <span className="tarea-justificacion-tag">Justificación de no realización:</span>
+                              <span className="tarea-justificacion-motivo">{formatearMotivo(tarea.motivo_no_realizado)}</span>
+                            </div>
+                            {tarea.observacion_no_realizado && (
+                              <p className="tarea-justificacion-texto">
+                                <strong>Observación:</strong> {tarea.observacion_no_realizado}
+                              </p>
+                            )}
+                            {tarea.fecha_hora_no_realizado && (
+                              <div style={{ fontSize: '0.78rem', color: 'var(--color-texto-sec)', marginTop: '0.35rem' }}>
+                                Registrado el {new Date(tarea.fecha_hora_no_realizado).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {tarea.descripcion_tarea && (
                           <div className="tarea-procedimiento-box">
                             <div className="tarea-procedimiento-header">
-                              <span className="tarea-procedimiento-tag">📋 Procedimiento / Instrucciones a seguir</span>
+                              <span className="tarea-procedimiento-tag">Procedimiento / Instrucciones a seguir</span>
                             </div>
-                            <div className="tarea-procedimiento-pasos">
-                              {parsearPasos(tarea.descripcion_tarea).map((paso, idx) => (
-                                <div key={idx} className="paso-item">
-                                  {paso.numero && <span className="paso-numero-badge">{paso.numero}</span>}
-                                  <span className="paso-texto">{paso.texto}</span>
-                                </div>
-                              ))}
-                            </div>
+                            <p className="tarea-procedimiento-texto">
+                              {tarea.descripcion_tarea}
+                            </p>
                           </div>
                         )}
 
@@ -506,13 +804,18 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           </div>
 
                           <div className="tarea-detalle-dato">
-                            <span>Finalización</span>
+                            <span>Estado / Registro</span>
                             <span>
-                              {tarea.fecha_hora_fin
-                                ? new Date(tarea.fecha_hora_fin).toLocaleString()
+                              {tarea.estado === 'realizado' && tarea.fecha_hora_fin
+                                ? `Completada: ${new Date(tarea.fecha_hora_fin).toLocaleString()}`
+                                : tarea.estado === 'no_realizado' && tarea.fecha_hora_no_realizado
+                                ? `Justificada: ${new Date(tarea.fecha_hora_no_realizado).toLocaleString()}`
+                                : tarea.estado === 'vencido'
+                                ? 'Vencida (no completada a tiempo)'
                                 : 'No completada'}
                             </span>
                           </div>
+
 
                           <div className="tarea-detalle-dato" style={{ gridColumn: 'span 2' }}>
                             <span>Insumos Químicos Consumidos</span>
@@ -559,6 +862,91 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             </div>
                           </div>
                         </div>
+
+                        <div
+                          className="tarea-mini-historial-box"
+                          style={{
+                            marginTop: '0.75rem',
+                            padding: '0.65rem 0.85rem',
+                            background: 'var(--color-fondo-panel, #f8fafc)',
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-borde, #e2e8f0)',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => toggleHistorial(tarea.id)}
+                            title="Haga clic para ver u ocultar el historial de cambios de esta tarea"
+                          >
+                            <span
+                              style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                color: 'var(--color-texto-sec)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              📜 Historial de la Tarea ({tarea.historial?.length || 0})
+                            </span>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--color-primario)' }}>
+                              {historialExpandido[tarea.id] ? '▲ Ocultar' : '▼ Ver historial'}
+                            </span>
+                          </div>
+                          {historialExpandido[tarea.id] && (
+                            <div
+                              style={{
+                                marginTop: '0.6rem',
+                                paddingTop: '0.5rem',
+                                borderTop: '1px dashed var(--color-borde, #e2e8f0)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.4rem',
+                              }}
+                            >
+                              {!tarea.historial || tarea.historial.length === 0 ? (
+                                <div style={{ fontSize: '0.8rem', color: 'var(--color-texto-sec)' }}>
+                                  Sin registros históricos disponibles.
+                                </div>
+                              ) : (
+                                tarea.historial.map((h) => (
+                                  <div
+                                    key={h.id}
+                                    style={{
+                                      display: 'flex',
+                                      flexWrap: 'wrap',
+                                      gap: '0.4rem',
+                                      alignItems: 'baseline',
+                                      fontSize: '0.8rem',
+                                    }}
+                                  >
+                                    <span style={{ color: 'var(--color-texto-sec)', fontWeight: 600 }}>
+                                      🕒 {new Date(h.fecha_hora).toLocaleString()}
+                                    </span>
+                                    <span
+                                      style={{
+                                        backgroundColor: 'var(--color-fondo, #f1f5f9)',
+                                        padding: '1px 6px',
+                                        borderRadius: '4px',
+                                        fontWeight: 700,
+                                        fontSize: '0.75rem',
+                                      }}
+                                    >
+                                      {h.accion}
+                                    </span>
+                                    <span>{h.detalle}</span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -580,43 +968,22 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
             {tareaSeleccionada.descripcion_tarea && (
               <div className="modal-procedimiento-box">
                 <div className="tarea-procedimiento-header">
-                  <span className="tarea-procedimiento-tag">📋 Procedimiento a seguir:</span>
+                  <span className="tarea-procedimiento-tag">Procedimiento a seguir:</span>
                 </div>
-                <div className="tarea-procedimiento-pasos">
-                  {parsearPasos(tareaSeleccionada.descripcion_tarea).map((paso, idx) => (
-                    <div key={idx} className="paso-item">
-                      {paso.numero && <span className="paso-numero-badge">{paso.numero}</span>}
-                      <span className="paso-texto">{paso.texto}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="tarea-procedimiento-texto">
+                  {tareaSeleccionada.descripcion_tarea}
+                </p>
               </div>
             )}
 
             <form onSubmit={handleGuardarTarea}>
               <div className="form-group">
-                <label htmlFor="tarea-responsable">
-                  Responsable *
-                </label>
-                <select
-                  id="tarea-responsable"
-                  value={formResponsable}
-                  onChange={(e) =>
-                    setFormResponsable(
-                      e.target.value ? Number(e.target.value) : ''
-                    )
-                  }
-                  required
-                >
-                  <option value="">-- Seleccionar personal activo --</option>
-                  {personal
-                    .filter((p) => p.activo)
-                    .map((p) => (
-                      <option key={p.legajo} value={p.legajo}>
-                        {p.apellido}, {p.nombre} (Legajo: {p.legajo})
-                      </option>
-                    ))}
-                </select>
+                <label>Responsable</label>
+                <p style={{ margin: '0.25rem 0 0', fontWeight: 600 }}>
+                  {tareaSeleccionada.nombre_responsable ||
+                    checklist?.nombre_responsable ||
+                    (usuario ? `${usuario.apellido}, ${usuario.nombre}` : '')}
+                </p>
               </div>
 
               <div className="form-group">
@@ -641,7 +1008,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                 />
                 {modalArchivoImagen ? (
                   <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ fontSize: '0.825rem', color: '#059669', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--color-exito-texto)', fontWeight: 600 }}>
                       ✓ Archivo seleccionado: {modalArchivoImagen.name}
                     </span>
                     <button
@@ -693,7 +1060,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                       <div key={idx} className="insumo-form-fila" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <select
                           value={ins.id || ins.nombre}
-                          style={{ flex: 2, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
+                          style={{ flex: 2, padding: '8px', borderRadius: '6px', border: '1px solid var(--color-borde)' }}
                           onChange={(e) => {
                             const seleccionado = quimicosDisponibles.find(
                               (q) => q.id === Number(e.target.value) || q.nombre === e.target.value
@@ -728,7 +1095,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           min="0.01"
                           placeholder="Cantidad"
                           value={ins.cantidad}
-                          style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
+                          style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--color-borde)' }}
                           onChange={(e) =>
                             actualizarInsumoFila(
                               idx,
@@ -739,7 +1106,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           required
                         />
 
-                        <span style={{ fontSize: '13px', color: '#555', minWidth: '35px' }}>
+                        <span style={{ fontSize: '13px', color: 'var(--color-texto-sec)', minWidth: '35px' }}>
                           {ins.unidad}
                         </span>
 
@@ -780,6 +1147,175 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                   className="btn-cancelar"
                   onClick={() => setModalTareaAbierto(false)}
                   disabled={guardandoTarea}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {modalNoRealizadaAbierto && tareaNoRealizadaSeleccionada && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2>Marcar Tarea como No Realizada</h2>
+              <p>Tarea: <strong>{tareaNoRealizadaSeleccionada.nombre_tarea}</strong></p>
+            </div>
+
+            <form onSubmit={handleGuardarNoRealizada}>
+              <div className="form-group">
+                <label htmlFor="motivo-no-realizado">
+                  Motivo <span style={{ color: 'var(--color-error)' }}>*</span>
+                </label>
+                <select
+                  id="motivo-no-realizado"
+                  value={formMotivo}
+                  onChange={(e) => setFormMotivo(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-borde)' }}
+                >
+                  <option value="">Seleccione un motivo...</option>
+                  {motivosDisponibles.length > 0 ? (
+                    motivosDisponibles.map((m) => (
+                      <option key={m.id} value={m.nombre}>
+                        {m.nombre}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="equipo_fuera_de_uso">Equipo fuera de uso</option>
+                      <option value="falta_de_insumo">Falta de insumo</option>
+                      <option value="otro">Otro</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="observacion-no-realizado">
+                  Observación {formMotivo.toLowerCase().trim() === 'otro' ? <span style={{ color: 'var(--color-error)' }}>(Obligatoria) *</span> : '(Opcional)'}
+                </label>
+                <textarea
+                  id="observacion-no-realizado"
+                  value={formObservacion}
+                  onChange={(e) => setFormObservacion(e.target.value)}
+                  placeholder={
+                    formMotivo.toLowerCase().trim() === 'otro'
+                      ? 'Especifique detalladamente el motivo por el cual no se pudo realizar la tarea...'
+                      : 'Observaciones o detalles adicionales (opcional)...'
+                  }
+                  required={formMotivo.toLowerCase().trim() === 'otro'}
+                  rows={4}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-borde)', resize: 'vertical' }}
+                />
+              </div>
+
+              <div className="form-acciones">
+                <button
+                  type="submit"
+                  className="btn-guardar"
+                  disabled={guardandoNoRealizada}
+                >
+                  {guardandoNoRealizada ? 'Guardando...' : 'Guardar Justificación'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-cancelar"
+                  onClick={() => {
+                    setModalNoRealizadaAbierto(false);
+                    setTareaNoRealizadaSeleccionada(null);
+                    setFormMotivo('');
+                    setFormObservacion('');
+                  }}
+                  disabled={guardandoNoRealizada}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {modalReasignarAbierto && tareaAReasignar && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2>Reasignar Tarea: {tareaAReasignar.nombre_tarea}</h2>
+              <p>Plan: <strong>{tareaAReasignar.nombre_plan}</strong></p>
+            </div>
+
+            <form onSubmit={handleGuardarReasignacion} style={{ padding: '1.25rem' }}>
+              <div style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--color-texto-sec)' }}>
+                Esta tarea pasará al estado <strong>Reasignada</strong> en este checklist (contando como completada para el cumplimiento)
+                y se generará como pendiente en el checklist del operador seleccionado.
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="nuevo-operador-select">
+                  Nuevo Operador Responsable <span style={{ color: 'var(--color-error)' }}>*</span>
+                </label>
+                <select
+                  id="nuevo-operador-select"
+                  value={nuevoResponsableLegajo}
+                  onChange={(e) => setNuevoResponsableLegajo(e.target.value ? Number(e.target.value) : '')}
+                  required
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-borde)' }}
+                >
+                  <option value="">Seleccione un operador...</option>
+                  {operadoresDisponibles.map((op) => {
+                    const esMismo = op.legajo === checklist?.responsable_legajo;
+                    const deshabilitado = esMismo && tareaAReasignar.estado !== 'no_realizado';
+                    return (
+                      <option
+                        key={op.legajo}
+                        value={op.legajo}
+                        disabled={deshabilitado}
+                      >
+                        {op.apellido}, {op.nombre} (Legajo {op.legajo})
+                        {esMismo ? ' - Mismo operador' + (deshabilitado ? ' (solo si no realizada)' : '') : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginTop: '1rem' }}>
+                <label htmlFor="motivo-reasignacion">
+                  Motivo / Justificación de la Reasignación (Opcional)
+                </label>
+                <textarea
+                  id="motivo-reasignacion"
+                  value={motivoReasignacion}
+                  onChange={(e) => setMotivoReasignacion(e.target.value)}
+                  placeholder="Detalle el motivo del cambio de responsable..."
+                  rows={3}
+                  maxLength={500}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-borde)', resize: 'vertical' }}
+                />
+              </div>
+
+              <div className="form-acciones" style={{ marginTop: '1.25rem' }}>
+                <button
+                  type="submit"
+                  className="btn-guardar"
+                  style={{ backgroundColor: 'var(--color-alerta, #d97706)' }}
+                  disabled={guardandoReasignacion || !nuevoResponsableLegajo}
+                >
+                  {guardandoReasignacion ? 'Reasignando...' : 'Confirmar Reasignación'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-cancelar"
+                  onClick={() => {
+                    setModalReasignarAbierto(false);
+                    setTareaAReasignar(null);
+                    setNuevoResponsableLegajo('');
+                    setMotivoReasignacion('');
+                  }}
+                  disabled={guardandoReasignacion}
                 >
                   Cancelar
                 </button>

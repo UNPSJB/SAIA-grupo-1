@@ -3,12 +3,14 @@ from typing import Generator
 from datetime import datetime, timedelta
 from sqlalchemy import StaticPool, create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
+from types import SimpleNamespace
 from src.main import app
+from src.autenticacion.dependencies import get_usuario_actual
 from src.database import get_db
 from src.config import settings
 from src.models import ModeloBase
 from src.personal.services import crear_personal
-from src.personal.schemas import PersonalCreate
+from src.personal.schemas import PersonalCreate, Capacidades
 from src.insumos.services import crear_insumo
 from src.insumos.schemas import InsumoCreate
 from src.insumos.models import UnidadMedida
@@ -18,14 +20,14 @@ from src.insumos_quimicos.constants import TipoQuimicoEnum, UnidadMedidaEnum as 
 from src.equipos.services import crear_equipo
 from src.equipos.schemas import EquipoCreate
 from src.equipos.models import Categoria, Estado
+from src.sectores.services import crear_sector
+from src.sectores.schemas import SectorCreate
 from src.plan_De_limpieza.services import crear_plan
 from src.plan_De_limpieza.schemas import PlanDeLimpiezaCreate
 from src.tareas.services import crear_tarea
 from src.tareas.schemas import TareaCreate
 from src.tareas.models import Frecuencia
 
-
-# creamos una db para testing
 engine = create_engine(
     settings.DB_URL_TEST,
     connect_args={"check_same_thread": False},
@@ -33,33 +35,30 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
 def override_get_db():
-    # utilizaremos esta funcion para "pisar" la que definimos en src/database.py.
+
     db = TestingSessionLocal()
-    # Para usar restricciones de FK en SQLite, debemos habilitar la siguiente opción:
+
     db.execute(text("PRAGMA foreign_keys = ON"))
     try:
         yield db
     finally:
         db.close()
 
-
-# forzamos a fastapi para que utilice la db para testing.
 app.dependency_overrides[get_db] = override_get_db
 
+USUARIO_DE_PRUEBA = SimpleNamespace(legajo=1, capacidad=Capacidades.AMBAS, activo=True)
+app.dependency_overrides[get_usuario_actual] = lambda: USUARIO_DE_PRUEBA
 
 @pytest.fixture
 def session() -> Generator[Session, None, None]:
-    # Creamos las tablas en la db de pruebas
+
     ModeloBase.metadata.create_all(bind=engine)
 
     db = TestingSessionLocal()
-    # Para usar restricciones de FK en SQLite, debemos habilitar la siguiente opción:
+
     db.execute(text("PRAGMA foreign_keys = ON"))
 
-    # aqui podemos crear instancias de objetos para hacer tests
-    # haciendo uso de las funciones "create_<clase>" de services y los schemas <Clase>Create.
     persona_1 = crear_personal(
         db,
         PersonalCreate(
@@ -67,6 +66,7 @@ def session() -> Generator[Session, None, None]:
             nombre="Juan",
             apellido="Perez",
             email="juan.perez@gmail.com",
+            contrasenia="Clave1234",
         ),
     )
     persona_2 = crear_personal(
@@ -76,6 +76,7 @@ def session() -> Generator[Session, None, None]:
             nombre="Ana",
             apellido="Dominguez",
             email="ana.dominguez@gmail.com",
+            contrasenia="Clave1234",
         ),
     )
 
@@ -157,12 +158,15 @@ def session() -> Generator[Session, None, None]:
         ),
     )
 
+    sector_1 = crear_sector(db, SectorCreate(nombre="Cocina"))
+    sector_2 = crear_sector(db, SectorCreate(nombre="Deposito"))
+
     equipo_1 = crear_equipo(
         db,
         EquipoCreate(
             nombre="Heladera",
             categoria=Categoria.CONSERVAMIENTO,
-            ubicacion="Cocina",
+            sector_id=sector_1.id,
             estado=Estado.ACTIVO,
             plan_de_calibracion="Semestral",
         ),
@@ -173,7 +177,7 @@ def session() -> Generator[Session, None, None]:
         EquipoCreate(
             nombre="Freezer",
             categoria=Categoria.CONSERVAMIENTO,
-            ubicacion="Deposito",
+            sector_id=sector_2.id,
             estado=Estado.ACTIVO,
             plan_de_calibracion="Semestral",
         ),
@@ -195,6 +199,7 @@ def session() -> Generator[Session, None, None]:
             descripcion="Desinfectar estantes con alcohol al 70",
             frecuencia=Frecuencia.DIARIA,
             plan_id=plan_semilla.id,
+            personal_id=persona_1.legajo,
         ),
     )
 
@@ -205,6 +210,7 @@ def session() -> Generator[Session, None, None]:
             descripcion="Descongelar y lavar burletes",
             frecuencia=Frecuencia.SEMANAL,
             plan_id=plan_semilla.id,
+            personal_id=persona_1.legajo,
         ),
     )
 

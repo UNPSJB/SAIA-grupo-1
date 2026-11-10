@@ -1,8 +1,19 @@
 export type Frecuencia = 'diaria' | 'semanal' | 'mensual';
 
-export type EstadoTareaItem = 'pendiente' | 'realizado';
+export type EstadoTareaItem = 'pendiente' | 'realizado' | 'no_realizado' | 'vencido' | 'reasignado';
+
+export type MotivoNoRealizado = 'equipo_fuera_de_uso' | 'falta_de_insumo' | 'otro' | string;
 
 export type EstadoGeneralChecklist = 'pendiente' | 'completado' | 'vencido';
+
+export interface HistorialItem {
+  id: number;
+  fecha_hora: string;
+  usuario_legajo?: number | null;
+  usuario_nombre?: string | null;
+  accion: string;
+  detalle: string;
+}
 
 export interface InsumoUtilizado {
   id?: number;
@@ -27,6 +38,13 @@ export interface ChecklistItem {
   imagen?: string | null;
   insumos_utilizados: InsumoUtilizado[];
   fecha_hora_fin?: string | null;
+  motivo_no_realizado?: MotivoNoRealizado | null;
+  observacion_no_realizado?: string | null;
+  fecha_hora_no_realizado?: string | null;
+  es_reasignada?: boolean;
+  checklist_fecha?: string | null;
+  dias_restantes?: number | null;
+  historial?: HistorialItem[];
 }
 
 export interface Checklist {
@@ -40,7 +58,11 @@ export interface Checklist {
   porcentaje_cumplimiento: number;
   total_tareas: number;
   tareas_completadas: number;
+  tareas_reasignadas?: number;
+  tareas_no_realizadas?: number;
   tareas_pendientes: number;
+  tareas_vencidas?: number;
+  tiene_reasignacion_no_leida?: boolean;
   items: ChecklistItem[];
 }
 
@@ -49,10 +71,11 @@ export interface PersonalResumen {
   nombre: string;
   apellido: string;
   activo: boolean;
+  capacidad?: 'OPERAR' | 'ADMINISTRAR' | 'AMBAS';
 }
 
+/** El responsable no se manda: lo define la sesión del operador que genera. */
 export interface ChecklistGenerarPayload {
-  responsable_legajo: number;
   fecha?: string;
 }
 
@@ -61,41 +84,12 @@ export interface CompletarTareaPayload {
   insumos_utilizados?: InsumoUtilizado[];
 }
 
-export interface PasoProcedimiento {
-  numero?: string;
-  texto: string;
+export interface MarcarNoRealizadaPayload {
+  motivo: MotivoNoRealizado;
+  observacion?: string;
 }
 
-export const parsearPasos = (texto?: string | null): PasoProcedimiento[] => {
-  if (!texto || !texto.trim()) return [];
-
-  const limpio = texto.trim();
-  const regexPaso = /Paso\s+(\d+)[\.:]\s*/gi;
-  const matches = Array.from(limpio.matchAll(regexPaso));
-
-  if (matches.length > 0) {
-    const pasos: PasoProcedimiento[] = [];
-    for (let i = 0; i < matches.length; i++) {
-      const match = matches[i];
-      const num = match[1];
-      const startIdx = (match.index ?? 0) + match[0].length;
-      const endIdx = i + 1 < matches.length ? (matches[i + 1].index ?? limpio.length) : limpio.length;
-      const pasoTexto = limpio.substring(startIdx, endIdx).trim();
-      pasos.push({
-        numero: `Paso ${num}`,
-        texto: pasoTexto,
-      });
-    }
-    return pasos;
-  }
-
-  if (limpio.includes('\n')) {
-    return limpio
-      .split('\n')
-      .map((linea) => linea.trim())
-      .filter(Boolean)
-      .map((linea) => ({ texto: linea }));
-  }
-
-  return [{ texto: limpio }];
-};
+export interface ReasignarTareaPayload {
+  nuevo_responsable_legajo: number;
+  motivo?: string;
+}
