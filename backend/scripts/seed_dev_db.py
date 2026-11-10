@@ -13,10 +13,6 @@ from sqlalchemy import select
 from src.database import SessionLocal, engine
 from src.models import ModeloBase
 
-from src.insumos.migraciones import actualizar_tabla_insumos
-from src.produccion.migraciones import actualizar_tablas_produccion
-from src.indentificadorDeQR.migraciones import actualizar_tabla_identificador_qr
-
 from src.personal.models import Personal
 from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate, Capacidades
@@ -181,10 +177,8 @@ def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
 
 
 def resetear_base_completa():
+    ModeloBase.metadata.drop_all(bind=engine)
     ModeloBase.metadata.create_all(bind=engine)
-    actualizar_tabla_insumos(engine)
-    actualizar_tablas_produccion(engine)
-    actualizar_tabla_identificador_qr(engine)
 
 
 def main() -> None:
