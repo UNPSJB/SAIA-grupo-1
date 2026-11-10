@@ -163,3 +163,21 @@ def exportar_borrador_rotulo_endpoint(
     return services.exportar_borrador(db, producto_id, datos)
 
 
+@router.post(
+    "/productos/{producto_id}/borrador-rotulo/autocompletar",
+    response_model=schemas.BorradorRotuloResponse,
+    dependencies=[Depends(requiere_admin)],
+)
+def autocompletar_borrador_rotulo_endpoint(
+    producto_id: int,
+    datos: schemas.AutocompletarBorradorRequest,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    borrador = services.autocompletar_datos_borrador(
+        db, producto_id, campos=datos.campos, usuario=usuario
+    )
+    lista = services.obtener_lista_rotulo(db, producto_id)
+    return services.mapear_respuesta_borrador(borrador, lista)
+
+

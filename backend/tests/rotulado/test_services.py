@@ -855,13 +855,16 @@ def test_detectar_datos_faltantes_y_tabla(session: Session):
     borrador.contenido_neto = ""
     borrador.rnpa_rppa = None
     borrador.rne = None
+    borrador.razon_social = ""
+    borrador.direccion_origen = ""
+    borrador.pais_origen = ""
     borrador.lote = ""
     borrador.fecha_duracion = ""
     borrador.tabla_marcada_incompleta = True
     session.commit()
 
-    faltantes, tabla_inc, motivos, es_comp = services.detectar_datos_faltantes_y_tabla(
-        borrador, None
+    faltantes, tabla_inc, motivos, es_comp, pct, tot, comp = (
+        services.detectar_datos_faltantes_y_tabla(borrador, None)
     )
     assert es_comp is False
     assert tabla_inc is True
@@ -869,6 +872,9 @@ def test_detectar_datos_faltantes_y_tabla(session: Session):
     assert any("contenido neto" in f for f in faltantes)
     assert any("RNPA o RPPA" in f for f in faltantes)
     assert any("RNE o RPE" in f for f in faltantes)
+    assert any("razón social" in f for f in faltantes)
+    assert any("dirección o domicilio" in f for f in faltantes)
+    assert any("país de origen" in f for f in faltantes)
     assert any("lote" in f for f in faltantes)
     assert any("duración" in f for f in faltantes)
     assert any("incompleta" in m for m in motivos)
@@ -877,6 +883,9 @@ def test_detectar_datos_faltantes_y_tabla(session: Session):
     borrador.contenido_neto = "500 g"
     borrador.rnpa_rppa = "02-12345"
     borrador.rne = "02-54321"
+    borrador.razon_social = "SAIA Alimentos S.A."
+    borrador.direccion_origen = "Parque Industrial Trelew"
+    borrador.pais_origen = "Industria Argentina"
     borrador.lote = "L-001"
     borrador.fecha_duracion = "Vence: 30/12/2026"
     borrador.tabla_marcada_incompleta = False
@@ -898,12 +907,37 @@ def test_detectar_datos_faltantes_y_tabla(session: Session):
             porcentaje=80.0,
         )
     ]
-    falt_ok, tab_ok, mot_ok, comp_ok = services.detectar_datos_faltantes_y_tabla(
-        borrador, lista_ok
+    falt_ok, tab_ok, mot_ok, comp_ok, pct_ok, tot_ok, c_ok = (
+        services.detectar_datos_faltantes_y_tabla(borrador, lista_ok)
     )
     assert comp_ok is True
     assert tab_ok is False
     assert len(falt_ok) == 0
+    assert pct_ok == 100
+    assert tot_ok == 11
+    assert c_ok == 11
+
+    borrador.es_importado = True
+    borrador.razon_social_importador = None
+    borrador.domicilio_importador = None
+    session.commit()
+    falt_imp, _, _, comp_imp, pct_imp, tot_imp, ok_imp = (
+        services.detectar_datos_faltantes_y_tabla(borrador, lista_ok)
+    )
+    assert comp_imp is False
+    assert tot_imp == 13
+    assert any("importador" in f for f in falt_imp)
+
+    borrador.razon_social_importador = "Importadora Patagónica S.A."
+    borrador.domicilio_importador = "Ruta 3 km 1400"
+    session.commit()
+    falt_imp_ok, _, _, comp_imp_ok, pct_imp_ok, tot_imp_ok, ok_imp_ok = (
+        services.detectar_datos_faltantes_y_tabla(borrador, lista_ok)
+    )
+    assert comp_imp_ok is True
+    assert pct_imp_ok == 100
+    assert tot_imp_ok == 13
+    assert ok_imp_ok == 13
 
 
 def test_generar_filas_tabla_nutricional_y_mapeo(session: Session):
@@ -957,12 +991,50 @@ def test_exportar_borrador_validaciones(session: Session):
     assert prod1.nombre in res.contenido_html
     assert "CONTIENE EDULCORANTES" in res.contenido_html
 
+    borrador.es_importado = True
+    borrador.razon_social_importador = "Importador Patagónico S.A."
+    borrador.domicilio_importador = "Ruta 3 km 1400"
+    session.commit()
+    res_imp = services.exportar_borrador(session, prod1.id, req_con_sellos)
+    assert "Importador Patagónico S.A." in res_imp.contenido_html
+
+
+def test_autocompletar_datos_borrador(session: Session):
+    prod, user = _crear_prod_y_user_aux(session, "Prod Auto 1")
+    borrador = services.obtener_o_crear_borrador(session, prod.id)
+    borrador.lote = "LOTE-MANUAL"
+    borrador.lote_editado_manualmente = True
+    borrador.denominacion_venta = "Denom Manual"
+    borrador.denominacion_editada_manualmente = True
+    session.commit()
+
+    borrador_auto = services.autocompletar_datos_borrador(
+        session, prod.id, campos=["lote"], usuario=user
+    )
+    assert borrador_auto.lote_editado_manualmente is False
+    assert borrador_auto.denominacion_editada_manualmente is True
+
+    borrador_todo = services.autocompletar_datos_borrador(
+        session, prod.id, campos=None, usuario=user
+    )
+    assert borrador_todo.denominacion_editada_manualmente is False
+    assert borrador_todo.denominacion_venta == "Prod Auto 1"
+
 
 def test_migraciones_tablas_rotulado_en_motor_vacio():
-    from sqlalchemy import create_engine
+    from sqlalchemy import create_engine, text
     from backend.src.rotulado.migraciones import actualizar_tablas_rotulado
 
+    engine_limpio = create_engine("sqlite:///:memory:")
+    actualizar_tablas_rotulado(engine_limpio)
+
     engine_nuevo = create_engine("sqlite:///:memory:")
+    with engine_nuevo.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE borradores_rotulo (id INTEGER PRIMARY KEY, producto_id INTEGER UNIQUE)"
+            )
+        )
     actualizar_tablas_rotulado(engine_nuevo)
     actualizar_tablas_rotulado(engine_nuevo)
 

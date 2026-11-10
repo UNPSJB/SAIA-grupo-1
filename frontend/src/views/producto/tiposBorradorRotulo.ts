@@ -23,6 +23,9 @@ export interface BorradorRotuloResponse {
   razon_social: string | null;
   direccion_origen: string | null;
   pais_origen: string;
+  es_importado: boolean;
+  razon_social_importador: string | null;
+  domicilio_importador: string | null;
   lote: string | null;
   fecha_duracion: string | null;
   instrucciones_conservacion: string | null;
@@ -51,6 +54,15 @@ export interface BorradorRotuloResponse {
   contiene_edulcorantes: boolean;
   contiene_cafeina: boolean;
   modo_calculo_octogonos: string;
+  lote_editado_manualmente: boolean;
+  ingredientes_editado_manualmente: boolean;
+  denominacion_editada_manualmente: boolean;
+  contenido_neto_editado_manualmente: boolean;
+  sellos_editados_manualmente: boolean;
+  tabla_editada_manualmente: boolean;
+  porcentaje_completitud: number;
+  campos_obligatorios_totales: number;
+  campos_obligatorios_completados: number;
   octogonos: OctogonoItem[];
   tiene_octogonos: boolean;
   mensaje_octogonos: string;
@@ -72,6 +84,9 @@ export interface BorradorRotuloUpdate {
   razon_social?: string | null;
   direccion_origen?: string | null;
   pais_origen?: string;
+  es_importado?: boolean;
+  razon_social_importador?: string | null;
+  domicilio_importador?: string | null;
   lote?: string | null;
   fecha_duracion?: string | null;
   instrucciones_conservacion?: string | null;
@@ -98,6 +113,16 @@ export interface BorradorRotuloUpdate {
   contiene_edulcorantes?: boolean;
   contiene_cafeina?: boolean;
   modo_calculo_octogonos?: string;
+  lote_editado_manualmente?: boolean;
+  ingredientes_editado_manualmente?: boolean;
+  denominacion_editada_manualmente?: boolean;
+  contenido_neto_editado_manualmente?: boolean;
+  sellos_editados_manualmente?: boolean;
+  tabla_editada_manualmente?: boolean;
+}
+
+export interface AutocompletarBorradorRequest {
+  campos?: string[];
 }
 
 export interface ExportarBorradorRequest {

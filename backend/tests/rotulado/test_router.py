@@ -283,3 +283,28 @@ def test_borrador_rotulo_endpoints_router(session: Session):
     assert data_exp["leyenda_incluida"] is True
     assert "BORRADOR NO COMERCIAL" in data_exp["contenido_html"]
 
+    res_put_imp = client.put(
+        f"/productos/{prod.id}/borrador-rotulo",
+        json={
+            "es_importado": True,
+            "razon_social_importador": "Importadora Global S.A.",
+            "domicilio_importador": "Calle Falsa 123",
+            "lote": "LOTE-EDIT-01",
+        },
+    )
+    assert res_put_imp.status_code == 200
+    data_imp = res_put_imp.json()
+    assert data_imp["es_importado"] is True
+    assert data_imp["razon_social_importador"] == "Importadora Global S.A."
+    assert data_imp["lote_editado_manualmente"] is True
+
+    res_auto = client.post(
+        f"/productos/{prod.id}/borrador-rotulo/autocompletar",
+        json={"campos": ["lote", "denominacion"]},
+    )
+    assert res_auto.status_code == 200
+    data_auto = res_auto.json()
+    assert data_auto["denominacion_venta"] == "Borrador Router Test"
+    assert data_auto["lote_editado_manualmente"] is False
+    assert data_auto["denominacion_editada_manualmente"] is False
+

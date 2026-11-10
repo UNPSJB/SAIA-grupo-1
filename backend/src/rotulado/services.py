@@ -568,8 +568,85 @@ def guardar_borrador(
 ) -> BorradorRotulo:
     borrador = obtener_o_crear_borrador(db, producto_id)
     payload = datos.model_dump(exclude_unset=True)
+
+    if "lote" in payload and payload["lote"] != borrador.lote and "lote_editado_manualmente" not in payload:
+        borrador.lote_editado_manualmente = True
+
+    if "denominacion_venta" in payload and payload["denominacion_venta"] != borrador.denominacion_venta and "denominacion_editada_manualmente" not in payload:
+        borrador.denominacion_editada_manualmente = True
+
+    if "contenido_neto" in payload and payload["contenido_neto"] != borrador.contenido_neto and "contenido_neto_editado_manualmente" not in payload:
+        borrador.contenido_neto_editado_manualmente = True
+
+    if ("modo_calculo_octogonos" in payload or any(k.startswith("tiene_exceso_") or k.startswith("contiene_") for k in payload)) and "sellos_editados_manualmente" not in payload:
+        nuevo_modo = payload.get("modo_calculo_octogonos", borrador.modo_calculo_octogonos)
+        borrador.sellos_editados_manualmente = (nuevo_modo == "manual")
+
+    nutri_keys = [
+        "porcion", "porciones_por_envase", "valor_energetico_kcal", "valor_energetico_kj",
+        "carbohidratos", "azucares_totales", "azucares_anadidos", "proteinas",
+        "grasas_totales", "grasas_saturadas", "grasas_trans", "fibra_alimentaria",
+        "sodio", "tabla_marcada_incompleta"
+    ]
+    if any(nk in payload for nk in nutri_keys) and "tabla_editada_manualmente" not in payload:
+        borrador.tabla_editada_manualmente = True
+
     for k, v in payload.items():
         setattr(borrador, k, v)
+
+    borrador.usuario_actualizacion = _obtener_nombre_usuario(usuario)
+    borrador.actualizado_el = datetime.now()
+    db.commit()
+    db.refresh(borrador)
+    return borrador
+
+
+def autocompletar_datos_borrador(
+    db: Session,
+    producto_id: int,
+    campos: Optional[List[str]] = None,
+    usuario: Optional[Any] = None,
+) -> BorradorRotulo:
+    producto = obtener_producto_o_404(db, producto_id)
+    borrador = obtener_o_crear_borrador(db, producto_id)
+
+    u_lote = (
+        db.query(LoteProduccion)
+        .filter(LoteProduccion.producto_id == producto_id)
+        .order_by(LoteProduccion.fecha.desc(), LoteProduccion.id.desc())
+        .first()
+    )
+    cod_lote = u_lote.codigo if u_lote else "L-001"
+    unidad_str = (
+        producto.unidadMedida.value
+        if hasattr(producto.unidadMedida, "value")
+        else str(producto.unidadMedida)
+    )
+
+    t_campos = set(campos) if campos else {"lote", "denominacion", "contenido_neto", "sellos", "tabla", "ingredientes"}
+
+    if "lote" in t_campos:
+        borrador.lote = cod_lote
+        borrador.lote_editado_manualmente = False
+
+    if "denominacion" in t_campos:
+        borrador.denominacion_venta = producto.nombre
+        borrador.denominacion_editada_manualmente = False
+
+    if "contenido_neto" in t_campos:
+        borrador.contenido_neto = f"1 {unidad_str}"
+        borrador.contenido_neto_editado_manualmente = False
+
+    if "sellos" in t_campos:
+        borrador.modo_calculo_octogonos = "automatico"
+        borrador.sellos_editados_manualmente = False
+
+    if "tabla" in t_campos:
+        borrador.tabla_editada_manualmente = False
+
+    if "ingredientes" in t_campos:
+        borrador.ingredientes_editado_manualmente = False
+
     borrador.usuario_actualizacion = _obtener_nombre_usuario(usuario)
     borrador.actualizado_el = datetime.now()
     db.commit()
@@ -760,7 +837,7 @@ def calcular_octogonos_e12(
 
 def detectar_datos_faltantes_y_tabla(
     borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
-) -> tuple[List[str], bool, List[str], bool]:
+) -> tuple[List[str], bool, List[str], bool, int, int, int]:
     datos_faltantes: List[str] = []
 
     if not borrador.denominacion_venta or not borrador.denominacion_venta.strip():
@@ -788,11 +865,36 @@ def detectar_datos_faltantes_y_tabla(
             "Falta ingresar el número de registro del establecimiento (RNE o RPE)"
         )
 
+    if not borrador.razon_social or not borrador.razon_social.strip():
+        datos_faltantes.append(
+            "Falta indicar la razón social o titular del establecimiento elaborador"
+        )
+
+    if not borrador.direccion_origen or not borrador.direccion_origen.strip():
+        datos_faltantes.append(
+            "Falta indicar la dirección o domicilio del establecimiento elaborador"
+        )
+
+    if not borrador.pais_origen or not borrador.pais_origen.strip():
+        datos_faltantes.append(
+            "Falta indicar el país de origen del producto"
+        )
+
     if not borrador.lote or not borrador.lote.strip():
         datos_faltantes.append("Falta indicar la identificación del lote")
 
     if not borrador.fecha_duracion or not borrador.fecha_duracion.strip():
         datos_faltantes.append("Falta indicar la fecha de duración o vencimiento")
+
+    if borrador.es_importado:
+        if not borrador.razon_social_importador or not borrador.razon_social_importador.strip():
+            datos_faltantes.append(
+                "Falta indicar la razón social o titular del importador (obligatorio para producto importado)"
+            )
+        if not borrador.domicilio_importador or not borrador.domicilio_importador.strip():
+            datos_faltantes.append(
+                "Falta indicar el domicilio fiscal o legal del importador (obligatorio para producto importado)"
+            )
 
     motivos_incompleta: List[str] = []
     if borrador.tabla_marcada_incompleta:
@@ -820,8 +922,21 @@ def detectar_datos_faltantes_y_tabla(
             "La tabla de información nutricional está incompleta o faltan nutrientes obligatorios"
         )
 
-    es_completo = len(datos_faltantes) == 0 and not tabla_incompleta
-    return datos_faltantes, tabla_incompleta, motivos_incompleta, es_completo
+    campos_totales = 13 if borrador.es_importado else 11
+    faltantes_count = len(datos_faltantes)
+    completados = max(0, campos_totales - faltantes_count)
+    porcentaje_completitud = int(round((completados / campos_totales) * 100))
+    es_completo = (faltantes_count == 0) and not tabla_incompleta
+
+    return (
+        datos_faltantes,
+        tabla_incompleta,
+        motivos_incompleta,
+        es_completo,
+        porcentaje_completitud,
+        campos_totales,
+        completados,
+    )
 
 
 def generar_filas_tabla_nutricional(
@@ -973,7 +1088,7 @@ def mapear_respuesta_borrador(
     tiene_ingr = bool(lista and lista.items and len(lista.items) > 0)
 
     octogonos, tiene_oct, msg_oct = calcular_octogonos_e12(borrador, lista)
-    faltantes, tabla_inc, motivos_inc, es_compl = (
+    faltantes, tabla_inc, motivos_inc, es_compl, pct, tot, comp = (
         detectar_datos_faltantes_y_tabla(borrador, lista)
     )
     filas_nutri = generar_filas_tabla_nutricional(borrador)
@@ -989,6 +1104,9 @@ def mapear_respuesta_borrador(
         razon_social=borrador.razon_social,
         direccion_origen=borrador.direccion_origen,
         pais_origen=borrador.pais_origen,
+        es_importado=borrador.es_importado,
+        razon_social_importador=borrador.razon_social_importador,
+        domicilio_importador=borrador.domicilio_importador,
         lote=borrador.lote,
         fecha_duracion=borrador.fecha_duracion,
         instrucciones_conservacion=borrador.instrucciones_conservacion,
@@ -1017,6 +1135,15 @@ def mapear_respuesta_borrador(
         contiene_edulcorantes=borrador.contiene_edulcorantes,
         contiene_cafeina=borrador.contiene_cafeina,
         modo_calculo_octogonos=borrador.modo_calculo_octogonos,
+        lote_editado_manualmente=borrador.lote_editado_manualmente,
+        ingredientes_editado_manualmente=borrador.ingredientes_editado_manualmente,
+        denominacion_editada_manualmente=borrador.denominacion_editada_manualmente,
+        contenido_neto_editado_manualmente=borrador.contenido_neto_editado_manualmente,
+        sellos_editados_manualmente=borrador.sellos_editados_manualmente,
+        tabla_editada_manualmente=borrador.tabla_editada_manualmente,
+        porcentaje_completitud=pct,
+        campos_obligatorios_totales=tot,
+        campos_obligatorios_completados=comp,
         octogonos=octogonos,
         tiene_octogonos=tiene_oct,
         mensaje_octogonos=msg_oct,
@@ -1133,6 +1260,7 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Aria
                 <strong>Origen:</strong> {datos_rotulo.pais_origen}<br>
                 <strong>RNE:</strong> {datos_rotulo.rne or 'Trámite pendiente'}<br>
                 <strong>RNPA/RPPA:</strong> {datos_rotulo.rnpa_rppa or 'Trámite pendiente'}<br>
+                {f"<strong>Importador:</strong> {datos_rotulo.razon_social_importador or 'No declarado'}<br><strong>Domicilio importador:</strong> {datos_rotulo.domicilio_importador or 'No declarado'}<br>" if datos_rotulo.es_importado else ""}
                 <strong>Lote:</strong> {datos_rotulo.lote or 'Sin lote'}<br>
                 <strong>Duración:</strong> {datos_rotulo.fecha_duracion or 'Ver envase'}<br>
                 <strong>Conservación:</strong> {datos_rotulo.instrucciones_conservacion or 'Lugar fresco y seco'}

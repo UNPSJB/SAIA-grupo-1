@@ -101,6 +101,13 @@ class BorradorRotulo(ModeloBase):
     pais_origen: Mapped[str] = mapped_column(
         String(80), default="Industria Argentina"
     )
+    es_importado: Mapped[bool] = mapped_column(Boolean, default=False)
+    razon_social_importador: Mapped[Optional[str]] = mapped_column(
+        String(150), nullable=True, default=None
+    )
+    domicilio_importador: Mapped[Optional[str]] = mapped_column(
+        String(200), nullable=True, default=None
+    )
     lote: Mapped[Optional[str]] = mapped_column(
         String(50), nullable=True, default=None
     )
@@ -180,6 +187,24 @@ class BorradorRotulo(ModeloBase):
     )
     modo_calculo_octogonos: Mapped[str] = mapped_column(
         String(20), default="automatico"
+    )
+    lote_editado_manualmente: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    ingredientes_editado_manualmente: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    denominacion_editada_manualmente: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    contenido_neto_editado_manualmente: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    sellos_editados_manualmente: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    tabla_editada_manualmente: Mapped[bool] = mapped_column(
+        Boolean, default=False
     )
 
     actualizado_el: Mapped[datetime] = mapped_column(

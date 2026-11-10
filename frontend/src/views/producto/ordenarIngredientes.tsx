@@ -563,12 +563,18 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
           <span style={{ fontSize: "0.95rem", fontWeight: 600 }}>Estado del Orden:</span>
           {ajustadoManualmente ? (
-            <Badge variant="secondary" style={{ padding: "6px 12px", fontSize: "0.88rem" }}>
-              ✏ Modificado manualmente
+            <Badge variant="secondary" style={{ padding: "6px 12px", fontSize: "0.88rem", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                edit
+              </span>
+              <span>Modificado manualmente</span>
             </Badge>
           ) : (
-            <Badge variant="activo" style={{ padding: "6px 12px", fontSize: "0.88rem" }}>
-              ✓ Automático (proporción decreciente)
+            <Badge variant="activo" style={{ padding: "6px 12px", fontSize: "0.88rem", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                check_circle
+              </span>
+              <span>Automático (proporción decreciente)</span>
             </Badge>
           )}
           {ajustadoManualmente && fechaAjuste && (
@@ -579,32 +585,41 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
           )}
         </div>
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
           {ajustadoManualmente && (
             <button
               type="button"
               className="btn-cancelar"
-              style={{ fontSize: "0.9rem", padding: "8px 16px" }}
+              style={{ fontSize: "0.9rem", padding: "8px 16px", display: "inline-flex", alignItems: "center", gap: "6px" }}
               onClick={() => setDialogResetAbierto(true)}
             >
-              ↺ Restablecer orden automático
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                restart_alt
+              </span>
+              <span>Restablecer orden automático</span>
             </button>
           )}
           <button
             type="button"
             className="btn-cancelar"
-            style={{ fontSize: "0.9rem", padding: "8px 16px" }}
+            style={{ fontSize: "0.9rem", padding: "8px 16px", display: "inline-flex", alignItems: "center", gap: "6px" }}
             onClick={() => setDialogImportarAbierto(true)}
           >
-            📥 Importar de lote
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+              download
+            </span>
+            <span>Importar de lote</span>
           </button>
           <button
             type="button"
             className="btn-agregar"
-            style={{ fontSize: "0.9rem", padding: "8px 18px" }}
+            style={{ fontSize: "0.9rem", padding: "8px 18px", display: "inline-flex", alignItems: "center", gap: "6px" }}
             onClick={abrirModalNuevo}
           >
-            + Agregar ingrediente / aditivo
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+              add
+            </span>
+            <span>Agregar ingrediente / aditivo</span>
           </button>
         </div>
       </div>
@@ -666,30 +681,39 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
 
       <Card
         style={{
-          marginBottom: "32px",
+          marginBottom: "36px",
           width: "100%",
           overflow: "hidden",
-          border: "1px solid var(--color-borde)",
-          borderRadius: "12px",
-          boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
+          border: "1.5px solid var(--color-borde)",
+          borderRadius: "14px",
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
         }}
       >
         <CardHeader
           style={{
-            padding: "24px 28px",
+            padding: "26px 32px",
             borderBottom: "1px solid var(--color-borde)",
             background: "var(--color-superficie)",
           }}
         >
-          <CardTitle style={{ fontSize: "1.35rem", fontWeight: 700 }}>
-            Ingredientes y Aditivos del Producto
-          </CardTitle>
-          <CardDescription style={{ fontSize: "0.95rem", marginTop: "4px", lineHeight: "1.5" }}>
-            Los ingredientes principales se ubican al inicio en orden
-            decreciente según su proporción; los aditivos continúan a
-            continuación agrupados por función. Utilice los controles para
-            ajustar el orden manual si fuese necesario.
-          </CardDescription>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+            <div>
+              <CardTitle style={{ fontSize: "1.45rem", fontWeight: 800 }}>
+                Ingredientes y Aditivos del Producto
+              </CardTitle>
+              <CardDescription style={{ fontSize: "0.98rem", marginTop: "6px", lineHeight: "1.55" }}>
+                Los ingredientes principales se ubican al inicio en orden
+                decreciente según su proporción; los aditivos continúan a
+                continuación agrupados por función. Utilice los controles para
+                ajustar el orden manual si fuese necesario.
+              </CardDescription>
+            </div>
+            {items.length > 0 && (
+              <Badge variant="outline" style={{ fontSize: "0.92rem", padding: "6px 14px", fontWeight: 600 }}>
+                {items.length} {items.length === 1 ? "componente" : "componentes"}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent style={{ padding: "0" }}>
           {loading ? (
@@ -725,10 +749,13 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                 <button
                   type="button"
                   className="btn-cancelar"
-                  style={{ fontSize: "0.95rem", padding: "10px 20px" }}
+                  style={{ fontSize: "0.95rem", padding: "10px 20px", display: "inline-flex", alignItems: "center", gap: "6px" }}
                   onClick={() => setDialogImportarAbierto(true)}
                 >
-                  📥 Cargar desde producción
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                    download
+                  </span>
+                  <span>Cargar desde producción</span>
                 </button>
               </div>
             </div>
@@ -743,14 +770,21 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                 overflowX: "auto",
               }}
             >
-              <table className="tabla-custom" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table
+                className="tabla-custom"
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  tableLayout: "fixed",
+                }}
+              >
                 <thead>
                   <tr>
                     <th
                       style={{
-                        width: "120px",
+                        width: "90px",
                         textAlign: "center",
-                        padding: "1.2rem 1.1rem",
+                        padding: "1.1rem 0.85rem",
                         fontSize: "0.85rem",
                       }}
                     >
@@ -758,8 +792,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     </th>
                     <th
                       style={{
-                        minWidth: "240px",
-                        padding: "1.2rem 1.4rem",
+                        width: "25%",
+                        padding: "1.1rem 1.25rem",
                         fontSize: "0.85rem",
                       }}
                     >
@@ -767,8 +801,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     </th>
                     <th
                       style={{
-                        minWidth: "220px",
-                        padding: "1.2rem 1.4rem",
+                        width: "18%",
+                        padding: "1.1rem 1.25rem",
                         fontSize: "0.85rem",
                       }}
                     >
@@ -776,9 +810,9 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     </th>
                     <th
                       style={{
-                        width: "150px",
+                        width: "12%",
                         textAlign: "right",
-                        padding: "1.2rem 1.4rem",
+                        padding: "1.1rem 1.25rem",
                         fontSize: "0.85rem",
                       }}
                     >
@@ -786,20 +820,18 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     </th>
                     <th
                       style={{
-                        minWidth: "280px",
-                        padding: "1.2rem 1.4rem",
+                        width: "29%",
+                        padding: "1.1rem 1.25rem",
                         fontSize: "0.85rem",
                       }}
                     >
                       Declaración en Rótulo
                     </th>
                     <th
-                      className="acciones-col"
                       style={{
-                        width: "160px",
-                        minWidth: "160px",
-                        textAlign: "right",
-                        padding: "1.2rem 1.4rem",
+                        width: "110px",
+                        textAlign: "center",
+                        padding: "1.1rem 0.85rem",
                         fontSize: "0.85rem",
                         whiteSpace: "nowrap",
                       }}
@@ -822,7 +854,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                         style={{
                           textAlign: "center",
                           fontWeight: 600,
-                          padding: "1.2rem 1.1rem",
+                          padding: "1.1rem 0.85rem",
                         }}
                       >
                         <div
@@ -836,7 +868,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                           <span
                             style={{
                               minWidth: "32px",
-                              fontSize: "1.05rem",
+                              fontSize: "1.1rem",
                               fontWeight: 700,
                             }}
                           >
@@ -857,9 +889,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                               onClick={() => moverItem(idx, "arriba")}
                               style={{
                                 padding: 0,
-                                width: "26px",
-                                height: "22px",
-                                fontSize: "12px",
+                                width: "28px",
+                                height: "24px",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -870,7 +901,9 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                                 opacity: idx === 0 ? 0.3 : 1,
                               }}
                             >
-                              ▲
+                              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                                keyboard_arrow_up
+                              </span>
                             </button>
                             <button
                               type="button"
@@ -880,9 +913,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                               onClick={() => moverItem(idx, "abajo")}
                               style={{
                                 padding: 0,
-                                width: "26px",
-                                height: "22px",
-                                fontSize: "12px",
+                                width: "28px",
+                                height: "24px",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -893,17 +925,19 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                                 opacity: idx === items.length - 1 ? 0.3 : 1,
                               }}
                             >
-                              ▼
+                              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                                keyboard_arrow_down
+                              </span>
                             </button>
                           </div>
                         </div>
                       </td>
 
-                      <td style={{ padding: "1.2rem 1.4rem" }}>
+                      <td style={{ padding: "1.1rem 1.25rem", wordBreak: "break-word" }}>
                         <div
                           style={{
                             fontWeight: 600,
-                            fontSize: "1.02rem",
+                            fontSize: "1.05rem",
                           }}
                         >
                           {it.denominacion_rotulo || it.nombre}
@@ -922,7 +956,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                           )}
                       </td>
 
-                      <td style={{ padding: "1.2rem 1.4rem" }}>
+                      <td style={{ padding: "1.1rem 1.25rem" }}>
                         {it.es_aditivo ? (
                           <div
                             style={{
@@ -961,8 +995,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                         style={{
                           textAlign: "right",
                           fontWeight: 700,
-                          fontSize: "1.05rem",
-                          padding: "1.2rem 1.4rem",
+                          fontSize: "1.1rem",
+                          padding: "1.1rem 1.25rem",
                         }}
                       >
                         {it.porcentaje.toFixed(2)} %
@@ -972,9 +1006,10 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                         style={{
                           fontStyle: "italic",
                           color: "var(--color-texto)",
-                          fontSize: "1rem",
+                          fontSize: "1.02rem",
                           lineHeight: "1.6",
-                          padding: "1.2rem 1.4rem",
+                          padding: "1.1rem 1.25rem",
+                          wordBreak: "break-word",
                         }}
                       >
                         {it.texto_declaracion ||
@@ -982,34 +1017,36 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       </td>
 
                       <td
-                        className="acciones-col"
                         style={{
-                          textAlign: "right",
-                          padding: "1.2rem 1.4rem",
+                          textAlign: "center",
+                          padding: "1.1rem 0.85rem",
                           whiteSpace: "nowrap",
                         }}
                       >
                         <div
-                          className="acciones-btns"
-                          style={{ justifyContent: "flex-end", gap: "8px" }}
+                          style={{ display: "flex", justifyContent: "center", gap: "8px" }}
                         >
                           <button
                             type="button"
                             className="btn-icon btn-editar"
                             title="Editar"
                             onClick={() => abrirModalEditar(idx)}
-                            style={{ padding: "8px 12px", fontSize: "1rem" }}
+                            style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                           >
-                            ✎
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                              edit
+                            </span>
                           </button>
                           <button
                             type="button"
                             className="btn-icon btn-eliminar"
                             title="Eliminar"
                             onClick={() => eliminarItem(idx)}
-                            style={{ padding: "8px 12px", fontSize: "1rem" }}
+                            style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                           >
-                            🗑
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                              delete
+                            </span>
                           </button>
                         </div>
                       </td>
@@ -1026,8 +1063,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
         style={{
           border: "2px solid rgba(37, 99, 235, 0.3)",
           background: "var(--color-superficie)",
-          boxShadow: "0 4px 14px rgba(0, 0, 0, 0.05)",
-          borderRadius: "12px",
+          boxShadow: "0 6px 20px rgba(0, 0, 0, 0.05)",
+          borderRadius: "14px",
           width: "100%",
         }}
       >
@@ -1035,7 +1072,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
           style={{
             borderBottom: "1px solid rgba(37, 99, 235, 0.2)",
             background: "rgba(37, 99, 235, 0.03)",
-            padding: "24px 28px",
+            padding: "26px 32px",
           }}
         >
           <div
@@ -1048,39 +1085,40 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
             }}
           >
             <div>
-              <CardTitle style={{ fontSize: "1.35rem", fontWeight: 700 }}>
+              <CardTitle style={{ fontSize: "1.45rem", fontWeight: 800 }}>
                 Vista Previa para el Rótulo
               </CardTitle>
-              <CardDescription style={{ fontSize: "0.95rem", marginTop: "4px" }}>
+              <CardDescription style={{ fontSize: "0.98rem", marginTop: "6px" }}>
                 Texto estandarizado listo para imprimirse en la etiqueta del
                 producto. Disponible para el módulo de rotulado sin requerir
                 recargas.
               </CardDescription>
             </div>
-            <Badge variant="al_dia" style={{ fontSize: "0.9rem", padding: "6px 14px" }}>
+            <Badge variant="al_dia" style={{ fontSize: "0.92rem", padding: "6px 14px", fontWeight: 600 }}>
               Rótulo generado
             </Badge>
           </div>
         </CardHeader>
-        <CardContent style={{ padding: "28px" }}>
+        <CardContent style={{ padding: "30px 32px" }}>
           {textoRotulo ? (
             <div
               style={{
-                padding: "22px 28px",
+                padding: "26px 32px",
                 background: "var(--color-fondo, #f8fafc)",
-                border: "1px dashed var(--color-borde)",
-                borderRadius: "10px",
+                border: "1.5px dashed var(--color-borde)",
+                borderRadius: "12px",
                 fontFamily: "monospace",
-                fontSize: "1.1rem",
-                lineHeight: "1.8",
+                fontSize: "1.15rem",
+                lineHeight: "1.9",
                 color: "var(--color-texto)",
                 wordBreak: "break-word",
+                minHeight: "100px",
               }}
             >
               {textoRotulo}
             </div>
           ) : (
-            <p style={{ color: "var(--color-texto-sec)", margin: 0, fontSize: "1rem" }}>
+            <p style={{ color: "var(--color-texto-sec)", margin: 0, fontSize: "1.05rem" }}>
               Cargue al menos un ingrediente para generar la declaración del
               rótulo.
             </p>
@@ -1096,7 +1134,9 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               gap: "8px",
             }}
           >
-            <span>ℹ</span>
+            <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "var(--color-primario, #2563eb)" }}>
+              info
+            </span>
             <span>
               Regulación CAA / Mercosur Res. 26/03: Aromatizantes declarados
               únicamente por función; aditivos al final agrupados por función.

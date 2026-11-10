@@ -112,6 +112,9 @@ class BorradorRotuloUpdate(BaseModel):
     razon_social: Optional[str] = None
     direccion_origen: Optional[str] = None
     pais_origen: Optional[str] = "Industria Argentina"
+    es_importado: Optional[bool] = None
+    razon_social_importador: Optional[str] = None
+    domicilio_importador: Optional[str] = None
     lote: Optional[str] = None
     fecha_duracion: Optional[str] = None
     instrucciones_conservacion: Optional[str] = None
@@ -138,7 +141,12 @@ class BorradorRotuloUpdate(BaseModel):
     contiene_edulcorantes: bool = False
     contiene_cafeina: bool = False
     modo_calculo_octogonos: str = "automatico"
-
+    lote_editado_manualmente: Optional[bool] = None
+    ingredientes_editado_manualmente: Optional[bool] = None
+    denominacion_editada_manualmente: Optional[bool] = None
+    contenido_neto_editado_manualmente: Optional[bool] = None
+    sellos_editados_manualmente: Optional[bool] = None
+    tabla_editada_manualmente: Optional[bool] = None
 
 class BorradorRotuloResponse(BaseModel):
     id: int
@@ -151,6 +159,9 @@ class BorradorRotuloResponse(BaseModel):
     razon_social: Optional[str] = None
     direccion_origen: Optional[str] = None
     pais_origen: str = "Industria Argentina"
+    es_importado: bool = False
+    razon_social_importador: Optional[str] = None
+    domicilio_importador: Optional[str] = None
     lote: Optional[str] = None
     fecha_duracion: Optional[str] = None
     instrucciones_conservacion: Optional[str] = None
@@ -179,6 +190,15 @@ class BorradorRotuloResponse(BaseModel):
     contiene_edulcorantes: bool = False
     contiene_cafeina: bool = False
     modo_calculo_octogonos: str = "automatico"
+    lote_editado_manualmente: bool = False
+    ingredientes_editado_manualmente: bool = False
+    denominacion_editada_manualmente: bool = False
+    contenido_neto_editado_manualmente: bool = False
+    sellos_editados_manualmente: bool = False
+    tabla_editada_manualmente: bool = False
+    porcentaje_completitud: int = 0
+    campos_obligatorios_totales: int = 0
+    campos_obligatorios_completados: int = 0
     octogonos: List[OctogonoItem] = []
     tiene_octogonos: bool = False
     mensaje_octogonos: str
@@ -192,6 +212,10 @@ class BorradorRotuloResponse(BaseModel):
     usuario_actualizacion: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AutocompletarBorradorRequest(BaseModel):
+    campos: Optional[List[str]] = None
 
 
 class ExportarBorradorRequest(BaseModel):

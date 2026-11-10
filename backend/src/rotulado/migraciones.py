@@ -85,6 +85,9 @@ def actualizar_tablas_rotulado(engine: Engine) -> None:
                         razon_social VARCHAR(150),
                         direccion_origen VARCHAR(200),
                         pais_origen VARCHAR(80) NOT NULL DEFAULT 'Industria Argentina',
+                        es_importado BOOLEAN NOT NULL DEFAULT 0,
+                        razon_social_importador VARCHAR(150),
+                        domicilio_importador VARCHAR(200),
                         lote VARCHAR(50),
                         fecha_duracion VARCHAR(100),
                         instrucciones_conservacion VARCHAR(255),
@@ -111,6 +114,12 @@ def actualizar_tablas_rotulado(engine: Engine) -> None:
                         contiene_edulcorantes BOOLEAN NOT NULL DEFAULT 0,
                         contiene_cafeina BOOLEAN NOT NULL DEFAULT 0,
                         modo_calculo_octogonos VARCHAR(20) NOT NULL DEFAULT 'automatico',
+                        lote_editado_manualmente BOOLEAN NOT NULL DEFAULT 0,
+                        ingredientes_editado_manualmente BOOLEAN NOT NULL DEFAULT 0,
+                        denominacion_editada_manualmente BOOLEAN NOT NULL DEFAULT 0,
+                        contenido_neto_editado_manualmente BOOLEAN NOT NULL DEFAULT 0,
+                        sellos_editados_manualmente BOOLEAN NOT NULL DEFAULT 0,
+                        tabla_editada_manualmente BOOLEAN NOT NULL DEFAULT 0,
                         actualizado_el DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         usuario_actualizacion VARCHAR(100)
                     )
@@ -127,5 +136,28 @@ def actualizar_tablas_rotulado(engine: Engine) -> None:
                     "CREATE UNIQUE INDEX IF NOT EXISTS ix_borradores_rotulo_producto_id ON borradores_rotulo (producto_id)"
                 )
             )
+    else:
+        columnas_existentes = {
+            col["name"] for col in inspector.get_columns("borradores_rotulo")
+        }
+        columnas_nuevas = [
+            ("es_importado", "BOOLEAN NOT NULL DEFAULT 0"),
+            ("razon_social_importador", "VARCHAR(150)"),
+            ("domicilio_importador", "VARCHAR(200)"),
+            ("lote_editado_manualmente", "BOOLEAN NOT NULL DEFAULT 0"),
+            ("ingredientes_editado_manualmente", "BOOLEAN NOT NULL DEFAULT 0"),
+            ("denominacion_editada_manualmente", "BOOLEAN NOT NULL DEFAULT 0"),
+            ("contenido_neto_editado_manualmente", "BOOLEAN NOT NULL DEFAULT 0"),
+            ("sellos_editados_manualmente", "BOOLEAN NOT NULL DEFAULT 0"),
+            ("tabla_editada_manualmente", "BOOLEAN NOT NULL DEFAULT 0"),
+        ]
+        with engine.begin() as conexion:
+            for nombre_col, tipo_col in columnas_nuevas:
+                if nombre_col not in columnas_existentes:
+                    conexion.execute(
+                        text(
+                            f"ALTER TABLE borradores_rotulo ADD COLUMN {nombre_col} {tipo_col}"
+                        )
+                    )
 
 

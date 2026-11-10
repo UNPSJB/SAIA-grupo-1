@@ -83,6 +83,9 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
       razon_social: data.razon_social || "",
       direccion_origen: data.direccion_origen || "",
       pais_origen: data.pais_origen || "Industria Argentina",
+      es_importado: Boolean(data.es_importado),
+      razon_social_importador: data.razon_social_importador || "",
+      domicilio_importador: data.domicilio_importador || "",
       lote: data.lote || "",
       fecha_duracion: data.fecha_duracion || "",
       instrucciones_conservacion: data.instrucciones_conservacion || "",
@@ -176,6 +179,42 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
       });
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const handleAutocompletarCampo = async (campo: string) => {
+    try {
+      setCargando(true);
+      const res = await apiFetch(
+        `/productos/${productoId}/borrador-rotulo/autocompletar`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ campos: [campo] }),
+        }
+      );
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || "Error al autocompletar campo");
+      }
+      const data: BorradorRotuloResponse = await res.json();
+      setBorrador(data);
+      sincronizarFormData(data);
+      setDialogoExito({
+        abierto: true,
+        titulo: "Campo Restablecido",
+        mensaje: `Se restableció el valor sugerido del sistema para el campo seleccionado.`,
+      });
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error ? err.message : "Error al autocompletar campo";
+      setDialogoError({
+        abierto: true,
+        titulo: "Error",
+        mensaje: errorMsg,
+      });
+    } finally {
+      setCargando(false);
     }
   };
 
@@ -407,9 +446,9 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
         flexDirection: "column",
         gap: "24px",
         width: "100%",
-        maxWidth: "1400px",
-        margin: "0 auto",
-        padding: "8px 16px 40px 16px",
+        maxWidth: "100%",
+        margin: "0",
+        padding: "8px 0 40px 0",
       }}
     >
       <div
@@ -557,6 +596,118 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
           </div>
         </div>
       </div>
+
+      <Card
+        style={{
+          border: "1px solid var(--color-borde)",
+          borderRadius: "12px",
+          background: "var(--color-superficie)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+          padding: "20px 24px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "12px",
+            marginBottom: "12px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: "1.15rem",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ color: "var(--color-primario, #2563eb)", fontSize: "22px" }}
+              >
+                fact_check
+              </span>
+              <span>Indicador de Completitud del Rótulo (Capítulo V CAA)</span>
+            </div>
+            <p
+              style={{
+                margin: "4px 0 0 0",
+                fontSize: "0.9rem",
+                color: "var(--color-texto-sec)",
+              }}
+            >
+              {borrador.campos_obligatorios_completados} de {borrador.campos_obligatorios_totales} campos obligatorios completados ({borrador.porcentaje_completitud}%)
+              {borrador.es_importado
+                ? " · Producto importado (requiere razón social y domicilio del importador)"
+                : " · Producto nacional (11 campos reglamentarios)"}
+            </p>
+          </div>
+          <div>
+            {borrador.porcentaje_completitud === 100 ? (
+              <Badge
+                variant="al_dia"
+                style={{
+                  fontSize: "0.92rem",
+                  padding: "6px 14px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  verified
+                </span>
+                <span>100% Completo para trámite</span>
+              </Badge>
+            ) : (
+              <Badge
+                variant="destructive"
+                style={{
+                  fontSize: "0.92rem",
+                  padding: "6px 14px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  pending_actions
+                </span>
+                <span>{borrador.porcentaje_completitud}% · Faltan campos obligatorios</span>
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            width: "100%",
+            height: "10px",
+            backgroundColor: "rgba(100, 116, 139, 0.15)",
+            borderRadius: "999px",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${borrador.porcentaje_completitud}%`,
+              backgroundColor:
+                borrador.porcentaje_completitud === 100
+                  ? "#16a34a"
+                  : borrador.porcentaje_completitud >= 70
+                  ? "#2563eb"
+                  : "#f59e0b",
+              transition: "width 0.4s ease-in-out",
+            }}
+          />
+        </div>
+      </Card>
 
       <div
         style={{
@@ -793,7 +944,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   letterSpacing: "0.5px",
                 }}
               >
-                Sellos de Advertencia Nutricional (E12)
+                Sellos de Advertencia Nutricional
               </div>
 
               {borrador.tiene_octogonos && octogonos.length > 0 ? (
@@ -967,16 +1118,21 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   type="button"
                   onClick={onIrAIngredientes}
                   style={{
-                    fontSize: "0.8rem",
+                    fontSize: "0.82rem",
                     color: "var(--color-primario, #2563eb)",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
                     fontWeight: 600,
-                    textDecoration: "underline",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
                   }}
                 >
-                  Editar orden / aditivos →
+                  <span>Editar orden / aditivos</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                    arrow_forward
+                  </span>
                 </button>
               </div>
               <p
@@ -994,31 +1150,37 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
 
             <div
               style={{
-                border: "2px solid #000000",
-                padding: "12px",
+                border: "3px solid #000000",
+                borderRadius: "4px",
+                padding: "20px 24px",
                 backgroundColor: "#ffffff",
                 color: "#000000",
                 fontFamily: "Helvetica, Arial, sans-serif",
                 position: "relative",
+                width: "100%",
+                boxSizing: "border-box",
+                boxShadow: "0 4px 14px rgba(0, 0, 0, 0.08)",
               }}
             >
               <div
                 style={{
                   fontWeight: 900,
-                  fontSize: "1.05rem",
+                  fontSize: "1.35rem",
                   textAlign: "center",
-                  borderBottom: "2px solid #000000",
-                  paddingBottom: "4px",
+                  borderBottom: "3px solid #000000",
+                  paddingBottom: "8px",
                   textTransform: "uppercase",
+                  letterSpacing: "0.5px",
                 }}
               >
                 Información Nutricional
               </div>
               <div
                 style={{
-                  fontSize: "0.82rem",
-                  padding: "4px 0",
-                  borderBottom: "1px solid #000000",
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  padding: "8px 0",
+                  borderBottom: "2px solid #000000",
                   display: "flex",
                   justifyContent: "space-between",
                 }}
@@ -1031,16 +1193,16 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  fontSize: "0.82rem",
-                  marginTop: "4px",
+                  fontSize: "0.92rem",
+                  marginTop: "8px",
                 }}
               >
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #000000" }}>
-                    <th style={{ textAlign: "left", padding: "3px 0" }}>Cantidad</th>
-                    <th style={{ textAlign: "right", padding: "3px 4px" }}>100 g</th>
-                    <th style={{ textAlign: "right", padding: "3px 4px" }}>Porción</th>
-                    <th style={{ textAlign: "right", padding: "3px 0" }}>% VD (*)</th>
+                  <tr style={{ borderBottom: "2px solid #000000" }}>
+                    <th style={{ textAlign: "left", padding: "6px 4px", fontWeight: 800 }}>Cantidad</th>
+                    <th style={{ textAlign: "right", padding: "6px 8px", fontWeight: 800 }}>100 g</th>
+                    <th style={{ textAlign: "right", padding: "6px 8px", fontWeight: 800 }}>Porción</th>
+                    <th style={{ textAlign: "right", padding: "6px 4px", fontWeight: 800 }}>% VD (*)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1048,7 +1210,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     <tr
                       key={idx}
                       style={{
-                        borderBottom: "1px solid #e5e7eb",
+                        borderBottom: "1px solid #d1d5db",
                         fontWeight:
                           fila.nutriente === "Valor energético" ||
                           fila.nutriente === "Carbohidratos" ||
@@ -1057,16 +1219,16 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                             : 400,
                       }}
                     >
-                      <td style={{ padding: "3px 0" }}>
+                      <td style={{ padding: "6px 4px" }}>
                         {fila.es_subitem ? `  · ${fila.nutriente}` : fila.nutriente}
                       </td>
-                      <td style={{ textAlign: "right", padding: "3px 4px" }}>
+                      <td style={{ textAlign: "right", padding: "6px 8px" }}>
                         {fila.por_100g || "-"}
                       </td>
-                      <td style={{ textAlign: "right", padding: "3px 4px" }}>
+                      <td style={{ textAlign: "right", padding: "6px 8px" }}>
                         {fila.por_porcion || "-"}
                       </td>
-                      <td style={{ textAlign: "right", padding: "3px 0" }}>
+                      <td style={{ textAlign: "right", padding: "6px 4px" }}>
                         {fila.porcentaje_vd || "-"}
                       </td>
                     </tr>
@@ -1076,12 +1238,12 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
 
               <div
                 style={{
-                  fontSize: "0.68rem",
-                  color: "#4b5563",
-                  marginTop: "6px",
-                  borderTop: "1px solid #000000",
-                  paddingTop: "4px",
-                  lineHeight: "1.25",
+                  fontSize: "0.78rem",
+                  color: "#374151",
+                  marginTop: "10px",
+                  borderTop: "2px solid #000000",
+                  paddingTop: "8px",
+                  lineHeight: "1.35",
                 }}
               >
                 * % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser mayores o menores según sus necesidades energéticas.
@@ -1168,6 +1330,31 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   {borrador.pais_origen || "Industria Argentina"}
                 </div>
               </div>
+
+              {borrador.es_importado && (
+                <div
+                  style={{
+                    backgroundColor: "rgba(59, 130, 246, 0.05)",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(59, 130, 246, 0.3)",
+                    gridColumn: "span 2",
+                  }}
+                >
+                  <div style={{ color: "var(--color-primario, #2563eb)", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                      public
+                    </span>
+                    <span>Producto Importado:</span>
+                  </div>
+                  <div style={{ fontWeight: 600, marginTop: "2px", fontSize: "0.88rem" }}>
+                    Importado por: {borrador.razon_social_importador || "Importador pendiente de declaración"}
+                  </div>
+                  <div style={{ fontSize: "0.82rem", color: "var(--color-texto-sec)", marginTop: "2px" }}>
+                    Domicilio legal: {borrador.domicilio_importador || "Domicilio fiscal pendiente"}
+                  </div>
+                </div>
+              )}
             </div>
 
             {(borrador.instrucciones_conservacion || borrador.modo_empleo) && (
@@ -1300,7 +1487,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                 fontSize: "0.9rem",
               }}
             >
-              Sellos E12
+              Sellos y Advertencias
             </button>
             <button
               type="button"
@@ -1336,7 +1523,32 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             {pestanaModal === "general" && (
               <>
                 <div className="campo">
-                  <label>Denominación de Venta Reglamentaria</label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "6px" }}>
+                    <label style={{ margin: 0 }}>Denominación de Venta Reglamentaria</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {borrador.denominacion_editada_manualmente ? (
+                        <Badge variant="secondary" style={{ fontSize: "0.78rem", padding: "2px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>edit</span>
+                          <span>Modificado manualmente</span>
+                        </Badge>
+                      ) : (
+                        <Badge variant="activo" style={{ fontSize: "0.78rem", padding: "2px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>smart_toy</span>
+                          <span>Autocompletado del sistema</span>
+                        </Badge>
+                      )}
+                      {borrador.denominacion_editada_manualmente && (
+                        <button
+                          type="button"
+                          className="btn-secundario"
+                          style={{ padding: "2px 8px", fontSize: "0.78rem" }}
+                          onClick={() => handleAutocompletarCampo("denominacion")}
+                        >
+                          Restablecer
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <input
                     type="text"
                     value={formData.denominacion_venta || ""}
@@ -1354,7 +1566,19 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   }}
                 >
                   <div className="campo">
-                    <label>Contenido Neto</label>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "6px" }}>
+                      <label style={{ margin: 0 }}>Contenido Neto</label>
+                      {borrador.contenido_neto_editado_manualmente && (
+                        <button
+                          type="button"
+                          className="btn-secundario"
+                          style={{ padding: "2px 8px", fontSize: "0.78rem" }}
+                          onClick={() => handleAutocompletarCampo("contenido_neto")}
+                        >
+                          Restablecer
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={formData.contenido_neto || ""}
@@ -1365,7 +1589,32 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     />
                   </div>
                   <div className="campo">
-                    <label>Identificación de Lote</label>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "6px" }}>
+                      <label style={{ margin: 0 }}>Identificación de Lote</label>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {borrador.lote_editado_manualmente ? (
+                          <Badge variant="secondary" style={{ fontSize: "0.78rem", padding: "2px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>edit</span>
+                            <span>Manual</span>
+                          </Badge>
+                        ) : (
+                          <Badge variant="activo" style={{ fontSize: "0.78rem", padding: "2px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>precision_manufacturing</span>
+                            <span>Lote de producción</span>
+                          </Badge>
+                        )}
+                        {borrador.lote_editado_manualmente && (
+                          <button
+                            type="button"
+                            className="btn-secundario"
+                            style={{ padding: "2px 8px", fontSize: "0.78rem" }}
+                            onClick={() => handleAutocompletarCampo("lote")}
+                          >
+                            Restablecer
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <input
                       type="text"
                       value={formData.lote || ""}
@@ -1394,13 +1643,101 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               <>
                 <div
                   style={{
+                    backgroundColor: "rgba(37, 99, 235, 0.05)",
+                    border: "1px solid rgba(37, 99, 235, 0.2)",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    id="chk-es-importado"
+                    checked={formData.es_importado || false}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        es_importado: e.target.checked,
+                        pais_origen: e.target.checked
+                          ? (formData.pais_origen === "Industria Argentina" ? "" : formData.pais_origen)
+                          : "Industria Argentina",
+                      })
+                    }
+                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                  />
+                  <div>
+                    <label
+                      htmlFor="chk-es-importado"
+                      style={{
+                        cursor: "pointer",
+                        fontWeight: 700,
+                        fontSize: "0.95rem",
+                        color: "var(--color-texto)",
+                        margin: 0,
+                      }}
+                    >
+                      ¿Es un producto importado?
+                    </label>
+                    <div style={{ fontSize: "0.82rem", color: "var(--color-texto-sec)", marginTop: "2px" }}>
+                      Active esta casilla si el alimento fue elaborado fuera del país. Se habilitarán los campos obligatorios del importador.
+                    </div>
+                  </div>
+                </div>
+
+                {formData.es_importado && (
+                  <div
+                    style={{
+                      border: "1.5px solid #3b82f6",
+                      borderRadius: "8px",
+                      padding: "14px 16px",
+                      backgroundColor: "rgba(59, 130, 246, 0.03)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1d4ed8", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                        public
+                      </span>
+                      <span>Datos Obligatorios del Importador (Capítulo V CAA)</span>
+                    </div>
+                    <div className="campo">
+                      <label>Razón Social o Titular del Importador *</label>
+                      <input
+                        type="text"
+                        value={formData.razon_social_importador || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, razon_social_importador: e.target.value })
+                        }
+                        placeholder="Ej: Importadora Andina S.A."
+                      />
+                    </div>
+                    <div className="campo">
+                      <label>Domicilio Legal / Fiscal del Importador *</label>
+                      <input
+                        type="text"
+                        value={formData.domicilio_importador || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, domicilio_importador: e.target.value })
+                        }
+                        placeholder="Ej: Av. del Libertador 1200, CABA"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
                     gap: "12px",
                   }}
                 >
                   <div className="campo">
-                    <label>R.N.P.A. / R.P.P.A.</label>
+                    <label>R.N.P.A. / R.P.P.A. (Dato declarado)</label>
                     <input
                       type="text"
                       value={formData.rnpa_rppa || ""}
@@ -1423,7 +1760,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   </div>
                 </div>
                 <div className="campo">
-                  <label>Razón Social / Titular</label>
+                  <label>Razón Social / Titular Elaborador</label>
                   <input
                     type="text"
                     value={formData.razon_social || ""}
@@ -1434,7 +1771,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   />
                 </div>
                 <div className="campo">
-                  <label>Dirección y Origen de Elaboración</label>
+                  <label>Dirección y Domicilio de Elaboración</label>
                   <input
                     type="text"
                     value={formData.direccion_origen || ""}
@@ -1442,6 +1779,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                       setFormData({ ...formData, direccion_origen: e.target.value })
                     }
                     placeholder="Ej: Ruta 3 Km 1400, Trelew, Chubut"
+                  />
+                </div>
+                <div className="campo">
+                  <label>País de Origen</label>
+                  <input
+                    type="text"
+                    value={formData.pais_origen || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, pais_origen: e.target.value })
+                    }
+                    placeholder="Ej: Industria Argentina / Brasil / Italia"
                   />
                 </div>
               </>
@@ -1697,12 +2045,37 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     }
                     style={{ width: "18px", height: "18px", cursor: "pointer" }}
                   />
-                  <label
-                    htmlFor="chk-auto-sellos"
-                    style={{ cursor: "pointer", fontSize: "0.95rem", fontWeight: 700 }}
-                  >
-                    Calcular sellos automáticamente según la Ley 27.642 (Recomendado)
-                  </label>
+                  <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                    <label
+                      htmlFor="chk-auto-sellos"
+                      style={{ cursor: "pointer", fontSize: "0.95rem", fontWeight: 700, margin: 0 }}
+                    >
+                      Calcular sellos automáticamente según la Ley 27.642 (Recomendado)
+                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      {borrador.sellos_editados_manualmente ? (
+                        <Badge variant="secondary" style={{ fontSize: "0.78rem", padding: "2px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>edit</span>
+                          <span>Modificado manualmente</span>
+                        </Badge>
+                      ) : (
+                        <Badge variant="activo" style={{ fontSize: "0.78rem", padding: "2px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>auto_awesome</span>
+                          <span>Cálculo automático</span>
+                        </Badge>
+                      )}
+                      {borrador.sellos_editados_manualmente && (
+                        <button
+                          type="button"
+                          className="btn-secundario"
+                          style={{ padding: "2px 8px", fontSize: "0.78rem" }}
+                          onClick={() => handleAutocompletarCampo("sellos")}
+                        >
+                          Restablecer cálculo
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {formData.modo_calculo_octogonos === "manual" && (
@@ -1834,7 +2207,12 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   fontWeight: 600,
                 }}
               >
-                ✓ La leyenda regulatoria obligatoria se incluyó en la exportación:
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#16a34a" }}>
+                    check_circle
+                  </span>
+                  <span>La leyenda regulatoria obligatoria se incluyó en la exportación:</span>
+                </div>
                 <div style={{ fontWeight: 800, marginTop: "4px" }}>
                   {borrador.leyenda_obligatoria}
                 </div>
