@@ -3,10 +3,6 @@ from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
-from src.insumos.migraciones import actualizar_tabla_insumos
-from src.produccion.migraciones import actualizar_tablas_produccion
-from src.indentificadorDeQR.migraciones import actualizar_tabla_identificador_qr
-from src.checklist.migraciones import actualizar_tablas_checklist
 from src.rotulado.migraciones import actualizar_tablas_rotulado
 from src.models import ModeloBase
 
@@ -55,19 +51,12 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
-    # las bases que ya existian no reciben los cambios de columnas de create_all
-    actualizar_tabla_insumos(engine)
-    actualizar_tablas_produccion(engine)
-    actualizar_tabla_identificador_qr(engine)
-    actualizar_tablas_checklist(engine)
     actualizar_tablas_rotulado(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
             asegurar_tipos_base(db)
-            from src.dashboard.inicializacion import asegurar_datos_dashboard
-            asegurar_datos_dashboard(db)
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
