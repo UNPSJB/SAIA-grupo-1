@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from tests.database import session
 from src.insumos import exceptions
@@ -10,8 +10,23 @@ from src.insumos.services import (
     modificar_insumo,
     modificar_stock,
     eliminar_insumo,
+    recibir_lote_insumo,
+    listar_insumos_agrupados_por_tipo,
+    listar_insumos_para_selector,
+    desechar_insumo,
+    obtener_trazabilidad_insumo,
 )
-from src.insumos.schemas import InsumoBase, InsumoCreate, InsumoUpdate, InsumoUpdateStock
+from src.insumos.schemas import (
+    InsumoBase,
+    InsumoCreate,
+    InsumoUpdate,
+    InsumoUpdateStock,
+    RecepcionInsumoRequest,
+)
+from src.tipoInsumo.schemas import TipoInsumoCreate
+from src.tipoInsumo.services import crear_tipo_insumo
+from src.proveedores.schemas import ProveedorCreate
+from src.proveedores.services import crear_proveedor
 from src.insumos.models import Insumo, UnidadMedida
 
 def test_listar_insumos(session: Session) -> None:
@@ -199,3 +214,160 @@ def test_no_se_puede_renombrar_con_el_nombre_de_otro_activo(session: Session) ->
         modificar_insumo(session, 1, InsumoUpdate(nombre="aceite de girasol"))
     # mantener el propio nombre (o cambiarle las mayusculas) no es un duplicado
     assert modificar_insumo(session, 1, InsumoUpdate(nombre="HARINA DE TRIGO 000")).nombre == "HARINA DE TRIGO 000"
+
+
+def test_recibir_lote_insumo_exitoso(session: Session) -> None:
+    tipo = crear_tipo_insumo(session, TipoInsumoCreate(nombre="Levadura Seca", unidadMedida=UnidadMedida.KILOGRAMOS))
+    prov = crear_proveedor(session, ProveedorCreate(nombre="Distribuidora Alimentos"))
+    hoy = date.today()
+    req = RecepcionInsumoRequest(
+        tipo_insumo_id=tipo.id,
+        proveedor_id=prov.id,
+        nombre="Levadura Seca Instantánea",
+        lote="LEV-001",
+        fechaRecepcion=hoy,
+        fechaVencimiento=hoy + timedelta(days=30),
+        cantRecibida=25.0,
+    )
+    insumo = recibir_lote_insumo(session, req)
+    assert insumo.id is not None
+    assert insumo.stock == 25.0
+    assert insumo.medida == UnidadMedida.KILOGRAMOS
+    assert insumo.tipo_insumo_id == tipo.id
+    assert insumo.proveedor_id == prov.id
+
+
+def test_recibir_lote_fecha_recepcion_invalida(session: Session) -> None:
+    tipo = crear_tipo_insumo(session, TipoInsumoCreate(nombre="Canela", unidadMedida=UnidadMedida.GRAMOS))
+    prov = crear_proveedor(session, ProveedorCreate(nombre="Especias SA"))
+    ayer = date.today() - timedelta(days=2)
+    with pytest.raises(exceptions.FechaRecepcionSoloHoy):
+        recibir_lote_insumo(
+            session,
+            RecepcionInsumoRequest(
+                tipo_insumo_id=tipo.id,
+                proveedor_id=prov.id,
+                nombre="Canela en Polvo",
+                lote="CAN-002",
+                fechaRecepcion=ayer,
+                fechaVencimiento=date.today() + timedelta(days=30),
+                cantRecibida=500.0,
+            ),
+        )
+
+
+def test_recibir_lote_fecha_vencimiento_menor_7_dias(session: Session) -> None:
+    tipo = crear_tipo_insumo(session, TipoInsumoCreate(nombre="Ricota", unidadMedida=UnidadMedida.KILOGRAMOS))
+    prov = crear_proveedor(session, ProveedorCreate(nombre="Lacteos SA"))
+    hoy = date.today()
+    with pytest.raises(exceptions.FechaVencimientoPosterior):
+        recibir_lote_insumo(
+            session,
+            RecepcionInsumoRequest(
+                tipo_insumo_id=tipo.id,
+                proveedor_id=prov.id,
+                nombre="Ricota Magra",
+                lote="RIC-003",
+                fechaRecepcion=hoy,
+                fechaVencimiento=hoy + timedelta(days=3),
+                cantRecibida=10.0,
+            ),
+        )
+
+
+def test_listar_insumos_agrupados_por_tipo(session: Session) -> None:
+    tipo = crear_tipo_insumo(session, TipoInsumoCreate(nombre="Avena Integral", unidadMedida=UnidadMedida.KILOGRAMOS))
+    prov = crear_proveedor(session, ProveedorCreate(nombre="Granos SA"))
+    hoy = date.today()
+    recibir_lote_insumo(
+        session,
+        RecepcionInsumoRequest(
+            tipo_insumo_id=tipo.id,
+            proveedor_id=prov.id,
+            nombre="Avena Fina Lote A",
+            lote="AVE-A",
+            fechaRecepcion=hoy,
+            fechaVencimiento=hoy + timedelta(days=20),
+            cantRecibida=15.0,
+        ),
+    )
+    agrupados = listar_insumos_agrupados_por_tipo(session)
+    encontrado = next((g for g in agrupados if g.tipo_id == tipo.id), None)
+    assert encontrado is not None
+    assert encontrado.stock_total >= 15.0
+    assert len(encontrado.lotes) >= 1
+
+
+def test_listar_insumos_para_selector_orden_fefo(session: Session) -> None:
+    tipo = crear_tipo_insumo(session, TipoInsumoCreate(nombre="Cacao Puro", unidadMedida=UnidadMedida.KILOGRAMOS))
+    prov = crear_proveedor(session, ProveedorCreate(nombre="Chocolates SA"))
+    hoy = date.today()
+    recibir_lote_insumo(
+        session,
+        RecepcionInsumoRequest(
+            tipo_insumo_id=tipo.id,
+            proveedor_id=prov.id,
+            nombre="Cacao Tarde",
+            lote="CAC-TARDE",
+            fechaRecepcion=hoy,
+            fechaVencimiento=hoy + timedelta(days=60),
+            cantRecibida=10.0,
+        ),
+    )
+    recibir_lote_insumo(
+        session,
+        RecepcionInsumoRequest(
+            tipo_insumo_id=tipo.id,
+            proveedor_id=prov.id,
+            nombre="Cacao Temprano",
+            lote="CAC-TEMPRANO",
+            fechaRecepcion=hoy,
+            fechaVencimiento=hoy + timedelta(days=15),
+            cantRecibida=10.0,
+        ),
+    )
+    items = listar_insumos_para_selector(session, tipo_id=tipo.id)
+    assert len(items) == 2
+    assert items[0].lote == "CAC-TEMPRANO"
+    assert items[1].lote == "CAC-TARDE"
+
+
+def test_desechar_insumo_vencido(session: Session) -> None:
+    tipo = crear_tipo_insumo(session, TipoInsumoCreate(nombre="Queso Barra", unidadMedida=UnidadMedida.KILOGRAMOS))
+    insumo_vencido = Insumo(
+        nombre="Queso Danbo",
+        lote="Q-VENCIDO",
+        fechaRecepcion=datetime.now() - timedelta(days=40),
+        fechaVencimiento=datetime.now() - timedelta(days=2),
+        cantRecibida=10.0,
+        stock=8.0,
+        medida=UnidadMedida.KILOGRAMOS,
+        tipo_insumo_id=tipo.id,
+        activo=True,
+    )
+    session.add(insumo_vencido)
+    session.commit()
+
+    desechado = desechar_insumo(session, insumo_vencido.id)
+    assert desechado.stock == 0.0
+
+
+def test_desechar_insumo_no_vencido_falla(session: Session) -> None:
+    tipo = crear_tipo_insumo(session, TipoInsumoCreate(nombre="Queso Fresco", unidadMedida=UnidadMedida.KILOGRAMOS))
+    insumo_vigente = Insumo(
+        nombre="Queso Mozzarella",
+        lote="Q-VIGENTE",
+        fechaRecepcion=datetime.now() - timedelta(days=5),
+        fechaVencimiento=datetime.now() + timedelta(days=20),
+        cantRecibida=10.0,
+        stock=8.0,
+        medida=UnidadMedida.KILOGRAMOS,
+        tipo_insumo_id=tipo.id,
+        activo=True,
+    )
+    session.add(insumo_vigente)
+    session.commit()
+
+    with pytest.raises(exceptions.InsumoNoVencido):
+        desechar_insumo(session, insumo_vigente.id)
+

@@ -1,19 +1,13 @@
-import { useState } from "react";
-import type { InsumoForm } from "./tipos";
+import { useEffect, useState } from "react";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
+import type { TipoInsumo } from '../tipoInsumo/tipos';
+import type { Proveedor } from '../proveedores/tipos';
 
-const UNIDADES = ["kilogramos", "gramos", "litros", "mililitros", "unidades"];
-
-const INSUMO_INICIAL: InsumoForm = {
-  nombre: "",
-  lote: "",
-  fechaRecepcion: "",
-  fechaVencimiento: "",
-  cantRecibida: "",
-  stock: "",
-  medida: "",
-};
+interface NuevoInsumoProps {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
 
 const obtenerFechaLocal = (fecha: Date = new Date()): string => {
   const anio = fecha.getFullYear();
@@ -28,24 +22,63 @@ const getMinVencimiento = () => {
   return obtenerFechaLocal(d);
 };
 
-interface NuevoInsumoProps {
-  onSuccess?: () => void;
-  onCancel?: () => void;
-}
-
 export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
-  const [insumo, setInsumo] = useState<InsumoForm>(INSUMO_INICIAL);
+  const [tipos, setTipos] = useState<TipoInsumo[]>([]);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [tipoSeleccionadoId, setTipoSeleccionadoId] = useState<number | "">("");
+  const [proveedorSeleccionadoId, setProveedorSeleccionadoId] = useState<number | "">("");
+  const [nombre, setNombre] = useState("");
+  const [lote, setLote] = useState("");
+  const [fechaRecepcion] = useState(obtenerFechaLocal());
+  const [fechaVencimiento, setFechaVencimiento] = useState(getMinVencimiento());
+  const [cantRecibida, setCantRecibida] = useState<number | "">("");
+  const [unidadMedida, setUnidadMedida] = useState("");
+
   const [loading, setLoading] = useState(false);
+  const [cargandoCatalogos, setCargandoCatalogos] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setInsumo({ ...insumo, [e.target.name]: e.target.value });
-  }
+  useEffect(() => {
+    let cancelado = false;
+    async function cargarCatalogos() {
+      try {
+        const [resTipos, resProvs] = await Promise.all([
+          apiFetch('/insumos/tipos/?solo_activos=true'),
+          apiFetch('/proveedores/?solo_activos=true'),
+        ]);
 
-  function handleNumberChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const val = e.target.value;
-    setInsumo({ ...insumo, [e.target.name]: val === "" ? "" : Number(val) });
+        if (!cancelado && resTipos.ok) {
+          const dataTipos = await resTipos.json();
+          setTipos(dataTipos);
+        }
+        if (!cancelado && resProvs.ok) {
+          const dataProvs = await resProvs.json();
+          setProveedores(dataProvs);
+        }
+      } catch {
+        if (!cancelado) setErrorMsg("Error de conexión al cargar catálogos.");
+      } finally {
+        if (!cancelado) setCargandoCatalogos(false);
+      }
+    }
+    cargarCatalogos();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  function handleTipoChange(tipoIdNum: number) {
+    setTipoSeleccionadoId(tipoIdNum);
+    const encontrado = tipos.find((t) => t.id === tipoIdNum);
+    if (encontrado) {
+      setUnidadMedida(encontrado.unidadMedida);
+      if (!nombre) {
+        setNombre(encontrado.nombre);
+      }
+    } else {
+      setUnidadMedida("");
+    }
   }
 
   async function handleGuardar(e: React.SubmitEvent<HTMLFormElement>) {
@@ -53,69 +86,69 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    // Validaciones en cliente
-    if (!insumo.nombre.trim()) {
-      setErrorMsg("El nombre del insumo no puede estar vacío.");
+    if (tipoSeleccionadoId === "") {
+      setErrorMsg("Debe seleccionar un Tipo de Insumo.");
       return;
     }
 
-    if (insumo.cantRecibida === "" || Number(insumo.cantRecibida) <= 0) {
-      setErrorMsg("La cantidad recibida debe ser mayor a cero.");
+    if (proveedorSeleccionadoId === "") {
+      setErrorMsg("Debe seleccionar un Proveedor.");
       return;
     }
 
-    if (insumo.stock === "" || Number(insumo.stock) < 0) {
-      setErrorMsg("El stock debe ser mayor o igual a cero.");
+    const loteLimpio = lote.trim();
+    if (!loteLimpio) {
+      setErrorMsg("El código de lote es obligatorio.");
       return;
     }
 
-    const cantNum = Number(insumo.cantRecibida);
-    const stockNum = Number(insumo.stock);
-
-    if (stockNum > cantNum) {
-      setErrorMsg("El stock no puede ser mayor a la cantidad recibida.");
+    if (cantRecibida === "" || Number(cantRecibida) <= 0) {
+      setErrorMsg("La cantidad recibida debe ser estrictamente mayor a cero.");
       return;
     }
 
-    if (insumo.fechaRecepcion > obtenerFechaLocal()) {
-      setErrorMsg("La fecha de recepción no puede ser posterior a la fecha actual.");
+    const hoyStr = obtenerFechaLocal();
+    if (fechaRecepcion !== hoyStr) {
+      setErrorMsg("La fecha de recepción debe ser la fecha actual (hoy).");
       return;
     }
 
-    if (insumo.fechaVencimiento) {
-      const minVenc = getMinVencimiento();
-      if (insumo.fechaVencimiento < minVenc) {
-        setErrorMsg("La fecha de vencimiento no puede ser anterior a dentro de 7 días.");
-        return;
-      }
-      if (insumo.fechaVencimiento < insumo.fechaRecepcion) {
-        setErrorMsg("La fecha de vencimiento no puede ser anterior a la fecha de recepción.");
-        return;
-      }
+    const minVenc = getMinVencimiento();
+    if (!fechaVencimiento || fechaVencimiento < minVenc) {
+      setErrorMsg("La fecha de vencimiento es obligatoria y debe ser al menos 7 días posterior a la recepción.");
+      return;
     }
 
     setLoading(true);
 
     const payload = {
-      nombre: insumo.nombre.trim(),
-      lote: insumo.lote.trim(),
-      fechaRecepcion: insumo.fechaRecepcion,
-      fechaVencimiento: insumo.fechaVencimiento || null,
-      cantRecibida: cantNum,
-      stock: stockNum,
-      medida: insumo.medida,
+      tipo_insumo_id: Number(tipoSeleccionadoId),
+      proveedor_id: Number(proveedorSeleccionadoId),
+      lote: loteLimpio,
+      nombre: nombre.trim() || undefined,
+      fechaRecepcion: fechaRecepcion,
+      fechaVencimiento: fechaVencimiento,
+      cantRecibida: Number(cantRecibida),
     };
 
     try {
-      const res = await apiFetch(`/insumos/`, {
+      let res = await apiFetch(`/insumos/recepcion`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
+      if (res.status === 403 || res.status === 404) {
+        res = await apiFetch(`/insumos-operador/recepcion`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        let mensaje = "Error al guardar el insumo.";
+        let mensaje = "Error al registrar la recepción del insumo.";
         if (typeof errorData.detail === "string") {
           mensaje = errorData.detail;
         } else if (Array.isArray(errorData.detail)) {
@@ -126,11 +159,10 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
         throw new Error(mensaje);
       }
 
-      setSuccessMsg("Insumo dado de alta exitosamente.");
-      setInsumo(INSUMO_INICIAL);
+      setSuccessMsg("Recepción de insumo registrada exitosamente con stock disponible.");
       setTimeout(() => {
         onSuccess?.();
-      }, 1200);
+      }, 1000);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
     } finally {
@@ -139,17 +171,24 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
   }
 
   function handleCancelar() {
-    setInsumo(INSUMO_INICIAL);
     setErrorMsg(null);
     setSuccessMsg(null);
     onCancel?.();
   }
 
+  if (cargandoCatalogos) {
+    return (
+      <div className="modulo-container formulario-box">
+        <p style={{ textAlign: 'center', padding: '2rem' }}>Cargando catálogo de tipos y proveedores...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Nuevo Insumo</h1>
-        <div className="subtitulo">02 · Formulario</div>
+        <h1>Recepción de Insumo</h1>
+        <div className="subtitulo">Registro de lote recibido y control de vencimiento</div>
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
@@ -157,103 +196,114 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
 
       <form onSubmit={handleGuardar}>
         <div className="form-group">
-          <label htmlFor="nombre">Nombre</label>
+          <label htmlFor="tipo_insumo_id">Tipo de Insumo *</label>
+          <select
+            id="tipo_insumo_id"
+            name="tipo_insumo_id"
+            value={tipoSeleccionadoId}
+            onChange={(e) => handleTipoChange(Number(e.target.value))}
+            required
+          >
+            <option value="" disabled>Seleccione un tipo genérico...</option>
+            {tipos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre} ({t.unidadMedida})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="proveedor_id">Proveedor *</label>
+          <select
+            id="proveedor_id"
+            name="proveedor_id"
+            value={proveedorSeleccionadoId}
+            onChange={(e) => setProveedorSeleccionadoId(Number(e.target.value))}
+            required
+          >
+            <option value="" disabled>Seleccione el proveedor...</option>
+            {proveedores.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre} {p.cuit ? `(CUIT: ${p.cuit})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="nombre">Nombre Específico / Marca</label>
           <input
             id="nombre"
             name="nombre"
             type="text"
-            placeholder="Introduce el nombre"
-            value={insumo.nombre}
-            onChange={handleChange}
-            required
+            placeholder="Ej: Harina 000 Pureza, Manteca La Serenísima..."
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="lote">Lote</label>
+          <label htmlFor="lote">Código de Lote *</label>
           <input
             id="lote"
             name="lote"
             type="text"
-            placeholder="Introduce el lote"
-            value={insumo.lote}
-            onChange={handleChange}
+            placeholder="Ej: HAR3-2410"
+            value={lote}
+            onChange={(e) => setLote(e.target.value)}
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="fechaRecepcion">Fecha de recepción</label>
+          <label htmlFor="fechaRecepcion">Fecha de Recepción (Solo hoy) *</label>
           <input
             id="fechaRecepcion"
             name="fechaRecepcion"
             type="date"
-            max={obtenerFechaLocal()}
-            value={insumo.fechaRecepcion}
-            onChange={handleChange}
+            value={fechaRecepcion}
+            readOnly
+            style={{ opacity: 0.8, cursor: 'not-allowed' }}
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="fechaVencimiento">Fecha de vencimiento (opcional)</label>
+          <label htmlFor="fechaVencimiento">Fecha de Vencimiento (Mínimo 7 días posteriores) *</label>
           <input
             id="fechaVencimiento"
             name="fechaVencimiento"
             type="date"
             min={getMinVencimiento()}
-            value={insumo.fechaVencimiento}
-            onChange={handleChange}
+            value={fechaVencimiento}
+            onChange={(e) => setFechaVencimiento(e.target.value)}
+            required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="cantRecibida">Cantidad recibida</label>
+          <label htmlFor="cantRecibida">
+            Cantidad Recibida {unidadMedida ? `(${unidadMedida})` : ''} *
+          </label>
           <input
             id="cantRecibida"
             name="cantRecibida"
             type="number"
             min="0.01"
             step="any"
-            placeholder="Introduce la cantidad recibida"
-            value={insumo.cantRecibida}
-            onChange={handleNumberChange}
+            placeholder={unidadMedida ? `Cantidad en ${unidadMedida}` : "Introduce la cantidad"}
+            value={cantRecibida}
+            onChange={(e) => setCantRecibida(e.target.value === "" ? "" : Number(e.target.value))}
             required
           />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="stock">Stock</label>
-          <input
-            id="stock"
-            name="stock"
-            type="number"
-            min="0"
-            step="any"
-            placeholder="Introduce el stock"
-            value={insumo.stock}
-            onChange={handleNumberChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="medida">Unidad de Medida</label>
-          <select id="medida" name="medida" value={insumo.medida} onChange={handleChange} required>
-            <option value="" disabled>Seleccione una unidad</option>
-            {UNIDADES.map((unidad) => (
-              <option key={unidad} value={unidad}>
-                {unidad}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
-            {loading ? "Guardando..." : "Guardar"}
+            {loading ? "Registrando recepción..." : "Registrar Recepción"}
           </button>
-          <button type="button" className="btn-cancelar" onClick={handleCancelar}>
+          <button type="button" className="btn-cancelar" onClick={handleCancelar} disabled={loading}>
             Cancelar
           </button>
         </div>

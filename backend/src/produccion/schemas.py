@@ -76,6 +76,8 @@ class InsumoResumen(BaseModel):
 class InsumoDisponible(InsumoResumen):
     stock: float
     fechaVencimiento: Optional[datetime]
+    tipo_insumo_id: Optional[int] = None
+    estadoVencimiento: Optional[str] = None
 
 
 class InsumoLote(BaseModel):

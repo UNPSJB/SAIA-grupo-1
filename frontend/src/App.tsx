@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { apiFetch } from './api/client';
 import NuevoInsumo from './views/insumos/nuevoInsumo';
 import { ListadoInsumos } from './views/insumos/listado';
 import VerInsumo from './views/insumos/verInsumo';
@@ -94,7 +95,18 @@ import NuevoControlAmbiental from './views/controlesAmbientales/nuevoControl';
 import { DetalleControlAmbiental } from './views/controlesAmbientales/verDetalle';
 import { EditarControlAmbiental } from './views/controlesAmbientales/editarDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales';
+import { ListadoTiposInsumos } from './views/tipoInsumo/listado';
+import { NuevoTipoInsumo } from './views/tipoInsumo/nuevoTipoInsumo';
+import { EditarTipoInsumo } from './views/tipoInsumo/editarTipoInsumo';
+import { VerDetalleTipoInsumo } from './views/tipoInsumo/verDetalle';
+
+import { ListadoProveedores } from './views/proveedores/listado';
+import { NuevoProveedor } from './views/proveedores/nuevoProveedor';
+import { EditarProveedor } from './views/proveedores/editarProveedor';
+
+type Modulo = 'dashboard' | 'insumos' | 'tipoInsumo' | 'proveedores' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales';
+type VistaTipoInsumo = 'listado' | 'alta' | 'editar' | 'detalle';
+type VistaProveedores = 'listado' | 'alta' | 'editar';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -127,6 +139,12 @@ function Aplicacion() {
   
   const [vistaInsumos, setVistaInsumos] = useState<VistaInsumos>('listado');
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<InsumoConId | null>(null);
+
+  const [vistaTipoInsumo, setVistaTipoInsumo] = useState<VistaTipoInsumo>('listado');
+  const [tipoInsumoSeleccionado, setTipoInsumoSeleccionado] = useState<number | null>(null);
+
+  const [vistaProveedores, setVistaProveedores] = useState<VistaProveedores>('listado');
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState<number | null>(null);
 
   
   const [vistaPersonas, setVistaPersonas] = useState<VistaPersonas>('listado');
@@ -771,6 +789,67 @@ const irANotificacion = (notif: NotificacionItem) => {
               insumo={insumoSeleccionado}
               onSuccess={volverAListadoInsumos}
               onCancel={volverAListadoInsumos}
+            />
+          ) : null
+        ) : modulo === 'tipoInsumo' ? (
+          vistaTipoInsumo === 'listado' ? (
+            <ListadoTiposInsumos
+              onNuevoClick={() => setVistaTipoInsumo('alta')}
+              onEditarClick={(id) => {
+                setTipoInsumoSeleccionado(id);
+                setVistaTipoInsumo('editar');
+              }}
+              onVerDetalleClick={(id) => {
+                setTipoInsumoSeleccionado(id);
+                setVistaTipoInsumo('detalle');
+              }}
+            />
+          ) : vistaTipoInsumo === 'alta' ? (
+            <NuevoTipoInsumo
+              onSuccess={() => setVistaTipoInsumo('listado')}
+              onCancel={() => setVistaTipoInsumo('listado')}
+            />
+          ) : vistaTipoInsumo === 'editar' && tipoInsumoSeleccionado !== null ? (
+            <EditarTipoInsumo
+              id={tipoInsumoSeleccionado}
+              onSuccess={() => setVistaTipoInsumo('listado')}
+              onCancel={() => setVistaTipoInsumo('listado')}
+            />
+          ) : vistaTipoInsumo === 'detalle' && tipoInsumoSeleccionado !== null ? (
+            <VerDetalleTipoInsumo
+              id={tipoInsumoSeleccionado}
+              onVolver={() => setVistaTipoInsumo('listado')}
+              onVerLote={async (loteId) => {
+                try {
+                  const res = await apiFetch(`/insumos/${loteId}`);
+                  if (res.ok) {
+                    const data = await res.json();
+                    irAVerInsumo(data);
+                    setModulo('insumos');
+                  }
+                } catch {}
+              }}
+            />
+          ) : null
+        ) : modulo === 'proveedores' ? (
+          vistaProveedores === 'listado' ? (
+            <ListadoProveedores
+              onNuevoClick={() => setVistaProveedores('alta')}
+              onEditarClick={(id) => {
+                setProveedorSeleccionado(id);
+                setVistaProveedores('editar');
+              }}
+            />
+          ) : vistaProveedores === 'alta' ? (
+            <NuevoProveedor
+              onSuccess={() => setVistaProveedores('listado')}
+              onCancel={() => setVistaProveedores('listado')}
+            />
+          ) : vistaProveedores === 'editar' && proveedorSeleccionado !== null ? (
+            <EditarProveedor
+              id={proveedorSeleccionado}
+              onSuccess={() => setVistaProveedores('listado')}
+              onCancel={() => setVistaProveedores('listado')}
             />
           ) : null
         ) : modulo === 'equipos' ? (

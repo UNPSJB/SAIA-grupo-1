@@ -8,7 +8,7 @@ from src.models import ModeloBase
 from src.config import settings
 from src.logger import setup_logging
 
-from src.insumos.router import router as insumos_router
+from src.insumos.router import router as insumos_router, operador_router as insumos_operador_router
 from src.equipos.router import router as equipos_router
 from src.personal.router import router as personal_router
 from src.elementosDeLimpieza.router import router as elementoDeLimpieza_router
@@ -40,6 +40,8 @@ from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
+from src.tipoInsumo.router import router as tipo_insumo_router
+from src.proveedores.router import router as proveedores_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -80,6 +82,7 @@ SOLO_ADMIN = [Depends(requiere_admin)]
 SESION = [Depends(get_usuario_actual)]
 
 app.include_router(insumos_router, prefix="/insumos", tags=["Insumos"], dependencies=SOLO_ADMIN)
+app.include_router(insumos_operador_router, dependencies=SESION)
 app.include_router(equipos_router, prefix="/equipos", tags=["Equipos"], dependencies=SOLO_ADMIN)
 app.include_router(personal_router, prefix="/personal", tags=["Personal"], dependencies=SOLO_ADMIN)
 app.include_router(elementoDeLimpieza_router, dependencies=SOLO_ADMIN)
@@ -112,3 +115,5 @@ app.include_router(AcercaDeNostrosRouter)
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SOLO_ADMIN)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
+app.include_router(tipo_insumo_router, dependencies=SESION)
+app.include_router(proveedores_router, dependencies=SESION)

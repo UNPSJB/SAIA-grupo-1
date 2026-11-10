@@ -88,9 +88,12 @@ def listar_lotes(
 # ------------------------------------------------------------------ insumos del lote
 
 
-def listar_insumos_disponibles(db: Session) -> List[Insumo]:
+def listar_insumos_disponibles(db: Session, tipo_id: Optional[int] = None) -> List[Insumo]:
     """Insumos activos del maestro que todavía tienen stock para usar en un lote."""
-    consulta = select(Insumo).where(Insumo.activo, Insumo.stock > 0).order_by(func.lower(Insumo.nombre))
+    consulta = select(Insumo).where(Insumo.activo, Insumo.stock > 0)
+    if tipo_id is not None:
+        consulta = consulta.where(Insumo.tipo_insumo_id == tipo_id)
+    consulta = consulta.order_by(Insumo.fechaVencimiento.asc().nulls_last(), func.lower(Insumo.nombre))
     return list(db.scalars(consulta).all())
 
 
