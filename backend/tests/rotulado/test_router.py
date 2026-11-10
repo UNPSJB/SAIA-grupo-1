@@ -235,3 +235,51 @@ def test_e13_endpoint_router(session: Session):
     assert data["disponible"] is True
     assert data["texto_rotulo"] == "INGREDIENTES: Cacao."
     assert len(data["items"]) == 1
+
+
+def test_borrador_rotulo_endpoints_router(session: Session):
+    prod = crear_producto_aux(session, "Borrador Router Test")
+
+    res_get = client.get(f"/productos/{prod.id}/borrador-rotulo")
+    assert res_get.status_code == 200
+    data_get = res_get.json()
+    assert data_get["producto_id"] == prod.id
+    assert data_get["denominacion_venta"] == "Borrador Router Test"
+    assert "BORRADOR: debe ser revisado" in data_get["leyenda_obligatoria"]
+
+    update_payload = {
+        "denominacion_venta": "Pan de Molde Especial Test",
+        "contenido_neto": "600 g",
+        "rnpa_rppa": "RNPA 02-999888",
+        "rne": "RNE 02-111222",
+        "porcion": "50 g",
+        "valor_energetico_kcal": 150.0,
+        "carbohidratos": 25.0,
+        "proteinas": 5.0,
+        "grasas_totales": 2.0,
+        "sodio": 200.0,
+        "tiene_exceso_sodio": True,
+        "modo_calculo_octogonos": "manual",
+    }
+    res_put = client.put(f"/productos/{prod.id}/borrador-rotulo", json=update_payload)
+    assert res_put.status_code == 200
+    data_put = res_put.json()
+    assert data_put["denominacion_venta"] == "Pan de Molde Especial Test"
+    assert data_put["contenido_neto"] == "600 g"
+    assert data_put["tiene_octogonos"] is True
+
+    res_exp_err = client.post(
+        f"/productos/{prod.id}/borrador-rotulo/exportar",
+        json={"incluir_leyenda": False},
+    )
+    assert res_exp_err.status_code == 400
+
+    res_exp_ok = client.post(
+        f"/productos/{prod.id}/borrador-rotulo/exportar",
+        json={"incluir_leyenda": True},
+    )
+    assert res_exp_ok.status_code == 200
+    data_exp = res_exp_ok.json()
+    assert data_exp["leyenda_incluida"] is True
+    assert "BORRADOR NO COMERCIAL" in data_exp["contenido_html"]
+

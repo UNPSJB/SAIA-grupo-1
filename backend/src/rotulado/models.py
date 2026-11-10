@@ -72,3 +72,123 @@ class ItemIngredienteRotulo(ModeloBase):
 
     lista: Mapped[ListaIngredientesRotulo] = relationship(back_populates="items")
 
+
+class BorradorRotulo(ModeloBase):
+    __tablename__ = "borradores_rotulo"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    producto_id: Mapped[int] = mapped_column(
+        ForeignKey("productos.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    denominacion_venta: Mapped[Optional[str]] = mapped_column(
+        String(200), nullable=True, default=None
+    )
+    contenido_neto: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, default=None
+    )
+    rnpa_rppa: Mapped[Optional[str]] = mapped_column(
+        String(80), nullable=True, default=None
+    )
+    rne: Mapped[Optional[str]] = mapped_column(
+        String(80), nullable=True, default=None
+    )
+    razon_social: Mapped[Optional[str]] = mapped_column(
+        String(150), nullable=True, default=None
+    )
+    direccion_origen: Mapped[Optional[str]] = mapped_column(
+        String(200), nullable=True, default=None
+    )
+    pais_origen: Mapped[str] = mapped_column(
+        String(80), default="Industria Argentina"
+    )
+    lote: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, default=None
+    )
+    fecha_duracion: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, default=None
+    )
+    instrucciones_conservacion: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, default=None
+    )
+    modo_empleo: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, default=None
+    )
+
+    porcion: Mapped[Optional[str]] = mapped_column(
+        String(80), nullable=True, default=None
+    )
+    porciones_por_envase: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, default=None
+    )
+    valor_energetico_kcal: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    valor_energetico_kj: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    carbohidratos: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    azucares_totales: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    azucares_anadidos: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    proteinas: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    grasas_totales: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    grasas_saturadas: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    grasas_trans: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    fibra_alimentaria: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    sodio: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True, default=None
+    )
+    tabla_marcada_incompleta: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+
+    tiene_exceso_azucares: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    tiene_exceso_sodio: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    tiene_exceso_grasas_saturadas: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    tiene_exceso_grasas_totales: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    tiene_exceso_calorias: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    contiene_edulcorantes: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    contiene_cafeina: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    modo_calculo_octogonos: Mapped[str] = mapped_column(
+        String(20), default="automatico"
+    )
+
+    actualizado_el: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, onupdate=datetime.now
+    )
+    usuario_actualizacion: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, default=None
+    )
+
+    producto: Mapped[Producto] = relationship(lazy="joined")
+
+

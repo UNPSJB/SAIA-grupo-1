@@ -120,3 +120,46 @@ def obtener_para_rotulado_e13_endpoint(
 ):
     return services.obtener_para_e13(db, producto_id)
 
+
+@router.get(
+    "/productos/{producto_id}/borrador-rotulo",
+    response_model=schemas.BorradorRotuloResponse,
+    dependencies=[Depends(get_usuario_actual)],
+)
+def obtener_borrador_rotulo_endpoint(
+    producto_id: int,
+    db: Session = Depends(get_db),
+):
+    borrador = services.obtener_o_crear_borrador(db, producto_id)
+    lista = services.obtener_lista_rotulo(db, producto_id)
+    return services.mapear_respuesta_borrador(borrador, lista)
+
+
+@router.put(
+    "/productos/{producto_id}/borrador-rotulo",
+    response_model=schemas.BorradorRotuloResponse,
+)
+def actualizar_borrador_rotulo_endpoint(
+    producto_id: int,
+    datos: schemas.BorradorRotuloUpdate,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    borrador = services.guardar_borrador(db, producto_id, datos, usuario)
+    lista = services.obtener_lista_rotulo(db, producto_id)
+    return services.mapear_respuesta_borrador(borrador, lista)
+
+
+@router.post(
+    "/productos/{producto_id}/borrador-rotulo/exportar",
+    response_model=schemas.ExportarBorradorResponse,
+    dependencies=[Depends(requiere_admin)],
+)
+def exportar_borrador_rotulo_endpoint(
+    producto_id: int,
+    datos: schemas.ExportarBorradorRequest,
+    db: Session = Depends(get_db),
+):
+    return services.exportar_borrador(db, producto_id, datos)
+
+

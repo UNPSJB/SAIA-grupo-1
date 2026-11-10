@@ -29,6 +29,7 @@ import "../../styles/formularioAlta.css";
 interface OrdenarIngredientesProps {
   productoId: number;
   onVolver: () => void;
+  onPrevisualizarBorrador?: () => void;
 }
 
 const FUNCIONES_COMUNES = [
@@ -48,6 +49,7 @@ const FUNCIONES_COMUNES = [
 export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
   productoId,
   onVolver,
+  onPrevisualizarBorrador,
 }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [guardando, setGuardando] = useState<boolean>(false);
@@ -480,6 +482,25 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
           >
             Volver al producto
           </button>
+          {onPrevisualizarBorrador && (
+            <button
+              type="button"
+              className="btn-secundario"
+              onClick={onPrevisualizarBorrador}
+              style={{
+                fontSize: "0.95rem",
+                padding: "10px 18px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                label
+              </span>
+              <span>Previsualizar Rótulo</span>
+            </button>
+          )}
           <button
             type="button"
             className="btn-guardar"

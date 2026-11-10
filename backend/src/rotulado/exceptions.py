@@ -33,3 +33,12 @@ class FormatoInvalido(BadRequest):
 class SinLotesDisponibles(BadRequest):
     DETAIL = ErrorCode.SIN_LOTES_DISPONIBLES
 
+
+class BorradorNoEncontrado(NotFound):
+    DETAIL = ErrorCode.BORRADOR_NO_ENCONTRADO
+
+
+class ExportacionSinLeyendaError(BadRequest):
+    DETAIL = ErrorCode.EXPORTACION_SIN_LEYENDA
+
+

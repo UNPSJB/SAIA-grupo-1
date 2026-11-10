@@ -6,7 +6,7 @@ from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.produccion.models import InsumoLote, LoteProduccion
 from src.producto.models import Producto
-from src.rotulado import exceptions, schemas, services
+from src.rotulado import constants, exceptions, models, schemas, services
 from src.rotulado.models import FormatoDeclaracionAditivos
 from tests.database import session
 
@@ -726,4 +726,245 @@ def test_ramas_auxiliares_cobertura(session: Session):
     res_dim = services.importar_desde_lote(session, prod1.id, lote_diminuto.id)
     item_dim = next(it for it in res_dim.items if it.nombre == "Aditivo Diminuto")
     assert item_dim.porcentaje == 0.01
+
+
+def _crear_prod_y_user_aux(session: Session, nombre_prod: str):
+    prod = Producto(
+        nombre=nombre_prod,
+        unidadMedida=UnidadMedida.KILOGRAMOS,
+        activo=True,
+    )
+    user = Personal(
+        nombre="Admin",
+        apellido="Rotulo",
+        email=f"admin_{abs(hash(nombre_prod)) % 100000}@saia.com",
+        usuario=f"user_{abs(hash(nombre_prod)) % 100000}",
+        documento=f"99{abs(hash(nombre_prod)) % 1000000:06d}",
+        capacidad=Capacidades.ADMINISTRAR,
+    )
+    session.add_all([prod, user])
+    session.commit()
+    return prod, user
+
+
+def test_obtener_o_crear_borrador_y_guardar(session: Session):
+    prod1, user = _crear_prod_y_user_aux(session, "Prod Borrador 1")
+    borrador = services.obtener_o_crear_borrador(session, prod1.id)
+    assert borrador.producto_id == prod1.id
+    assert borrador.denominacion_venta == prod1.nombre
+    assert borrador.pais_origen == "Industria Argentina"
+
+    mismo = services.obtener_o_crear_borrador(session, prod1.id)
+    assert mismo.id == borrador.id
+
+    datos_up = schemas.BorradorRotuloUpdate(
+        denominacion_venta="Pan Lactal Blanco Especial Enriquecido",
+        contenido_neto="550 g",
+        rnpa_rppa="RNPA 02-567890",
+        rne="RNE 02-034567",
+        razon_social="SAIA Panificados S.A.",
+        porcion="50 g (2 rebanadas)",
+        porciones_por_envase="11",
+        valor_energetico_kcal=140.0,
+        valor_energetico_kj=586.0,
+        carbohidratos=26.0,
+        azucares_totales=2.5,
+        azucares_anadidos=1.5,
+        proteinas=4.5,
+        grasas_totales=2.0,
+        grasas_saturadas=0.5,
+        grasas_trans=0.0,
+        fibra_alimentaria=1.5,
+        sodio=240.0,
+        modo_calculo_octogonos="manual",
+        tiene_exceso_sodio=True,
+    )
+    actualizado = services.guardar_borrador(session, prod1.id, datos_up, user)
+    assert actualizado.denominacion_venta == "Pan Lactal Blanco Especial Enriquecido"
+    assert actualizado.contenido_neto == "550 g"
+    assert actualizado.rnpa_rppa == "RNPA 02-567890"
+    assert actualizado.tiene_exceso_sodio is True
+
+
+def test_octogonos_automaticos_y_manuales(session: Session):
+    prod1, user = _crear_prod_y_user_aux(session, "Prod Octogonos 2")
+    borrador = services.obtener_o_crear_borrador(session, prod1.id)
+    borrador.modo_calculo_octogonos = "manual"
+    borrador.tiene_exceso_azucares = True
+    borrador.tiene_exceso_grasas_totales = True
+    borrador.tiene_exceso_grasas_saturadas = True
+    borrador.tiene_exceso_calorias = True
+    borrador.tiene_exceso_sodio = True
+    borrador.contiene_edulcorantes = True
+    borrador.contiene_cafeina = True
+    session.commit()
+
+    octs, tiene, msg = services.calcular_octogonos_e12(borrador, None)
+    assert tiene is True
+    assert len(octs) == 7
+    assert any(o.id == "azucares" for o in octs)
+    assert any(o.id == "edulcorantes" for o in octs)
+
+    borrador.modo_calculo_octogonos = "automatico"
+    borrador.valor_energetico_kcal = 300.0
+    borrador.azucares_anadidos = 15.0
+    borrador.grasas_totales = 15.0
+    borrador.grasas_saturadas = 5.0
+    borrador.sodio = 400.0
+    session.commit()
+
+    lista_mock = models.ListaIngredientesRotulo(producto_id=prod1.id)
+    item_aroma = models.ItemIngredienteRotulo(
+        lista=lista_mock,
+        orden=1,
+        nombre="Extracto de Café y Edulcorante Sucralosa",
+        denominacion_rotulo="Saborizante",
+        porcentaje=2.0,
+        es_aditivo=True,
+    )
+    lista_mock.items = [item_aroma]
+
+    octs_auto, tiene_auto, msg_auto = services.calcular_octogonos_e12(borrador, lista_mock)
+    assert tiene_auto is True
+    assert any(o.id == "azucares" for o in octs_auto)
+    assert any(o.id == "grasas_totales" for o in octs_auto)
+    assert any(o.id == "calorias" for o in octs_auto)
+    assert any(o.id == "sodio" for o in octs_auto)
+    assert any(o.id == "edulcorantes" for o in octs_auto)
+    assert any(o.id == "cafeina" for o in octs_auto)
+
+    borrador_sano = models.BorradorRotulo(
+        producto_id=prod1.id,
+        modo_calculo_octogonos="automatico",
+        valor_energetico_kcal=80.0,
+        azucares_anadidos=0.0,
+        grasas_totales=1.0,
+        grasas_saturadas=0.2,
+        sodio=30.0,
+    )
+    octs_sano, tiene_sano, msg_sano = services.calcular_octogonos_e12(borrador_sano, None)
+    assert tiene_sano is False
+    assert len(octs_sano) == 0
+    assert msg_sano == constants.MENSAJE_SIN_OCTOGONOS
+
+
+def test_detectar_datos_faltantes_y_tabla(session: Session):
+    prod1, user = _crear_prod_y_user_aux(session, "Prod Faltantes 3")
+    borrador = services.obtener_o_crear_borrador(session, prod1.id)
+    borrador.denominacion_venta = ""
+    borrador.contenido_neto = ""
+    borrador.rnpa_rppa = None
+    borrador.rne = None
+    borrador.lote = ""
+    borrador.fecha_duracion = ""
+    borrador.tabla_marcada_incompleta = True
+    session.commit()
+
+    faltantes, tabla_inc, motivos, es_comp = services.detectar_datos_faltantes_y_tabla(
+        borrador, None
+    )
+    assert es_comp is False
+    assert tabla_inc is True
+    assert any("denominación de venta" in f for f in faltantes)
+    assert any("contenido neto" in f for f in faltantes)
+    assert any("RNPA o RPPA" in f for f in faltantes)
+    assert any("RNE o RPE" in f for f in faltantes)
+    assert any("lote" in f for f in faltantes)
+    assert any("duración" in f for f in faltantes)
+    assert any("incompleta" in m for m in motivos)
+
+    borrador.denominacion_venta = "Pan de molde"
+    borrador.contenido_neto = "500 g"
+    borrador.rnpa_rppa = "02-12345"
+    borrador.rne = "02-54321"
+    borrador.lote = "L-001"
+    borrador.fecha_duracion = "Vence: 30/12/2026"
+    borrador.tabla_marcada_incompleta = False
+    borrador.porcion = "50 g"
+    borrador.valor_energetico_kcal = 120.0
+    borrador.carbohidratos = 22.0
+    borrador.proteinas = 4.0
+    borrador.grasas_totales = 1.5
+    borrador.sodio = 180.0
+    session.commit()
+
+    lista_ok = models.ListaIngredientesRotulo(producto_id=prod1.id)
+    lista_ok.items = [
+        models.ItemIngredienteRotulo(
+            lista=lista_ok,
+            orden=1,
+            nombre="Harina",
+            denominacion_rotulo="Harina de trigo",
+            porcentaje=80.0,
+        )
+    ]
+    falt_ok, tab_ok, mot_ok, comp_ok = services.detectar_datos_faltantes_y_tabla(
+        borrador, lista_ok
+    )
+    assert comp_ok is True
+    assert tab_ok is False
+    assert len(falt_ok) == 0
+
+
+def test_generar_filas_tabla_nutricional_y_mapeo(session: Session):
+    prod1, user = _crear_prod_y_user_aux(session, "Prod Tabla 4")
+    borrador = services.obtener_o_crear_borrador(session, prod1.id)
+    borrador.valor_energetico_kcal = 200.0
+    borrador.valor_energetico_kj = 840.0
+    borrador.carbohidratos = 30.0
+    borrador.azucares_totales = 5.0
+    borrador.azucares_anadidos = 2.0
+    borrador.proteinas = 7.5
+    borrador.grasas_totales = 5.5
+    borrador.grasas_saturadas = 2.2
+    borrador.grasas_trans = 0.0
+    borrador.fibra_alimentaria = 2.5
+    borrador.sodio = 200.0
+    session.commit()
+
+    filas = services.generar_filas_tabla_nutricional(borrador)
+    assert len(filas) >= 7
+    fila_energia = next(f for f in filas if f.nutriente == "Valor energético")
+    assert "200 kcal" in (fila_energia.por_porcion or "")
+    assert fila_energia.porcentaje_vd == "10 %"
+
+    resp = services.mapear_respuesta_borrador(borrador, None)
+    assert resp.producto_id == prod1.id
+    assert resp.leyenda_obligatoria == constants.LEYENDA_BORRADOR_OBLIGATORIA
+
+
+def test_exportar_borrador_validaciones(session: Session):
+    prod1, user = _crear_prod_y_user_aux(session, "Prod Exportar 5")
+    req_invalido = schemas.ExportarBorradorRequest(incluir_leyenda=False)
+    with pytest.raises(exceptions.ExportacionSinLeyendaError):
+        services.exportar_borrador(session, prod1.id, req_invalido)
+
+    req_sin_sellos = schemas.ExportarBorradorRequest(incluir_leyenda=True)
+    res_sin_sellos = services.exportar_borrador(session, prod1.id, req_sin_sellos)
+    assert res_sin_sellos.leyenda_incluida is True
+    assert constants.MENSAJE_SIN_OCTOGONOS in res_sin_sellos.contenido_html
+
+    borrador = services.obtener_o_crear_borrador(session, prod1.id)
+    borrador.contiene_edulcorantes = True
+    borrador.modo_calculo_octogonos = "manual"
+    borrador.tiene_exceso_azucares = True
+    session.commit()
+
+    req_con_sellos = schemas.ExportarBorradorRequest(incluir_leyenda=True)
+    res = services.exportar_borrador(session, prod1.id, req_con_sellos)
+    assert res.leyenda_incluida is True
+    assert constants.LEYENDA_BORRADOR_OBLIGATORIA in res.contenido_html
+    assert prod1.nombre in res.contenido_html
+    assert "CONTIENE EDULCORANTES" in res.contenido_html
+
+
+def test_migraciones_tablas_rotulado_en_motor_vacio():
+    from sqlalchemy import create_engine
+    from backend.src.rotulado.migraciones import actualizar_tablas_rotulado
+
+    engine_nuevo = create_engine("sqlite:///:memory:")
+    actualizar_tablas_rotulado(engine_nuevo)
+    actualizar_tablas_rotulado(engine_nuevo)
+
+
 

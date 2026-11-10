@@ -14,6 +14,7 @@ interface ListadoProductosProps {
   onDetalleClick?: (id: number) => void;
   onEditarClick?: (id: number) => void;
   onIngredientesClick?: (id: number) => void;
+  onBorradorRotuloClick?: (id: number) => void;
 }
 
 export const ListadoProductos: React.FC<ListadoProductosProps> = ({
@@ -21,6 +22,7 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
   onDetalleClick,
   onEditarClick,
   onIngredientesClick,
+  onBorradorRotuloClick,
 }) => {
   const [productos, setProductos] = useState<ProductoConId[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,10 +247,21 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                     <div className="acciones-btns">
                       <button
                         className="btn-icon"
+                        title="Previsualizar borrador de rótulo"
+                        onClick={() => onBorradorRotuloClick?.(i.id)}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                          label
+                        </span>
+                      </button>
+                      <button
+                        className="btn-icon"
                         title="Ordenar ingredientes y aditivos (Rótulo)"
                         onClick={() => onIngredientesClick?.(i.id)}
                       >
-                        🏷
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                          format_list_numbered
+                        </span>
                       </button>
                       <button
                         className="btn-icon btn-ver"

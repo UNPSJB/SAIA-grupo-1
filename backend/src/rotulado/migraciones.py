@@ -70,3 +70,62 @@ def actualizar_tablas_rotulado(engine: Engine) -> None:
                 )
             )
 
+    if not inspector.has_table("borradores_rotulo"):
+        with engine.begin() as conexion:
+            conexion.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS borradores_rotulo (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        producto_id INTEGER NOT NULL UNIQUE REFERENCES productos(id) ON DELETE CASCADE,
+                        denominacion_venta VARCHAR(200),
+                        contenido_neto VARCHAR(50),
+                        rnpa_rppa VARCHAR(80),
+                        rne VARCHAR(80),
+                        razon_social VARCHAR(150),
+                        direccion_origen VARCHAR(200),
+                        pais_origen VARCHAR(80) NOT NULL DEFAULT 'Industria Argentina',
+                        lote VARCHAR(50),
+                        fecha_duracion VARCHAR(100),
+                        instrucciones_conservacion VARCHAR(255),
+                        modo_empleo VARCHAR(255),
+                        porcion VARCHAR(80),
+                        porciones_por_envase VARCHAR(50),
+                        valor_energetico_kcal FLOAT,
+                        valor_energetico_kj FLOAT,
+                        carbohidratos FLOAT,
+                        azucares_totales FLOAT,
+                        azucares_anadidos FLOAT,
+                        proteinas FLOAT,
+                        grasas_totales FLOAT,
+                        grasas_saturadas FLOAT,
+                        grasas_trans FLOAT,
+                        fibra_alimentaria FLOAT,
+                        sodio FLOAT,
+                        tabla_marcada_incompleta BOOLEAN NOT NULL DEFAULT 0,
+                        tiene_exceso_azucares BOOLEAN NOT NULL DEFAULT 0,
+                        tiene_exceso_sodio BOOLEAN NOT NULL DEFAULT 0,
+                        tiene_exceso_grasas_saturadas BOOLEAN NOT NULL DEFAULT 0,
+                        tiene_exceso_grasas_totales BOOLEAN NOT NULL DEFAULT 0,
+                        tiene_exceso_calorias BOOLEAN NOT NULL DEFAULT 0,
+                        contiene_edulcorantes BOOLEAN NOT NULL DEFAULT 0,
+                        contiene_cafeina BOOLEAN NOT NULL DEFAULT 0,
+                        modo_calculo_octogonos VARCHAR(20) NOT NULL DEFAULT 'automatico',
+                        actualizado_el DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        usuario_actualizacion VARCHAR(100)
+                    )
+                    """
+                )
+            )
+            conexion.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_borradores_rotulo_id ON borradores_rotulo (id)"
+                )
+            )
+            conexion.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_borradores_rotulo_producto_id ON borradores_rotulo (producto_id)"
+                )
+            )
+
+

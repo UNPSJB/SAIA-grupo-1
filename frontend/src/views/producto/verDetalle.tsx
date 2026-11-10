@@ -10,6 +10,7 @@ interface DetalleProductoProps {
   productoId?: number | null;
   onVerReceta?: (recetaId: number) => void;
   onGestionarIngredientes?: (id: number) => void;
+  onVerBorradorRotulo?: (id: number) => void;
 }
 
 export const DetalleProducto: React.FC<DetalleProductoProps> = ({
@@ -17,6 +18,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
   productoId,
   onVerReceta,
   onGestionarIngredientes,
+  onVerBorradorRotulo,
 }) => {
   const [producto, setProducto] = useState<ProductoConId | null>(null);
   const [loading, setLoading] = useState(true);
@@ -167,10 +169,27 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
             {onGestionarIngredientes && producto && (
               <button
                 type="button"
-                className="btn-guardar"
+                className="btn-secundario"
                 onClick={() => onGestionarIngredientes(producto.id)}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
               >
-                🏷 Ordenar ingredientes y aditivos (Rótulo)
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  format_list_numbered
+                </span>
+                <span>Ordenar ingredientes y aditivos</span>
+              </button>
+            )}
+            {onVerBorradorRotulo && producto && (
+              <button
+                type="button"
+                className="btn-guardar"
+                onClick={() => onVerBorradorRotulo(producto.id)}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  label
+                </span>
+                <span>Previsualizar Borrador de Rótulo</span>
               </button>
             )}
           </div>
