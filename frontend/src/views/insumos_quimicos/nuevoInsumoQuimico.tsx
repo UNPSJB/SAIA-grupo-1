@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { TipoQuimico, UnidadMedida } from './tipos';
 import { OPCIONES_TIPO, OPCIONES_UNIDAD } from './tipos';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
 
 interface Props {
   onVolver: () => void;
@@ -14,11 +15,13 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
     tipo: TipoQuimico;
     unidad_medida: UnidadMedida;
     stock_actual: string;
+    proveedor: string;
   }>({
     nombre: '',
     tipo: 'DETERGENTE',
     unidad_medida: 'L',
     stock_actual: '',
+    proveedor: '',
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +44,7 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
 
     try {
       setCargando(true);
-      const res = await fetch('http://localhost:8000/api/insumos-quimicos', {
+      const res = await apiFetch('/api/insumos-quimicos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -49,6 +52,7 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
           tipo: formData.tipo,
           unidad_medida: formData.unidad_medida,
           stock_actual: valorStock,
+          proveedor: formData.proveedor.trim() || null,
         }),
       });
 
@@ -58,8 +62,8 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
       }
 
       onCreado();
-    } catch (err: any) {
-      setError(err.message || 'Error de conexión con el backend');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error de conexión con el backend');
     } finally {
       setCargando(false);
     }
@@ -114,6 +118,17 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="proveedor">Proveedor (Opcional)</label>
+          <input
+            id="proveedor"
+            type="text"
+            placeholder="Ej. Diversey, Spartan Chemical, Ecolab..."
+            value={formData.proveedor}
+            onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
+          />
         </div>
 
         <div className="form-group">

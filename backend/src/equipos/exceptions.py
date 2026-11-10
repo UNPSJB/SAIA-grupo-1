@@ -23,6 +23,6 @@ class CadenaMayorOigualACUATRO(BadRequest):
 
 class CATEGORIAInvalida(ValueError):
     def __init__(self, posibles_categorias: List[str]):
-        posibles_categorias = ", ".join(posibles_categorias)
-        message = f"{ErrorCode.CATEGORIAINVALIDA} {posibles_categorias}."
+        categorias_str = ", ".join(posibles_categorias)
+        message = f"{ErrorCode.CATEGORIAINVALIDA} {categorias_str}."
         super().__init__(message)

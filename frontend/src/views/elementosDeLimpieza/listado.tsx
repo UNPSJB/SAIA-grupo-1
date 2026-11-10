@@ -1,54 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
-import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
+import { Badge } from '../../components/ui/badge';
 import '../../styles/formularioAlta.css';
+import { apiFetch } from '../../api/client';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoElementosLimpiezaProps {
   onNuevoClick: () => void;
   onDetalleClick: (id: number) => void;
   onEditarClick: (id: number) => void;
+  filtroVencimientoInicial?: 'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA';
 }
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
+  filtroVencimientoInicial,
 }) => {
   const [elementos, setElementos] = useState<ElementoDeLimpieza[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
-  // Estados para filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
+  const [filtroVencimiento, setFiltroVencimiento] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>(filtroVencimientoInicial || 'TODOS');
 
-  // Estado para diálogo de confirmación
   const [dialogOpen, setDialogOpen] = useState(false);
   const [elementoACambiar, setElementoACambiar] = useState<{ id: number; nombre: string } | null>(null);
 
-  const fetchElementos = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/elementosDeLimpieza/`);
-      if (res.ok) {
-        const data = await res.json();
-        setElementos(data);
-      } else {
-        setElementos([]);
-      }
-    } catch {
-      setElementos([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [dialogToggleOpen, setDialogToggleOpen] = useState(false);
+  const [elementoAToggle, setElementoAToggle] = useState<ElementoDeLimpieza | null>(null);
+
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelado = false;
+    const fetchElementos = async () => {
+      try {
+        const res = await apiFetch(`/elementosDeLimpieza/`);
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setElementos(data);
+        } else if (!cancelado) {
+          setElementos([]);
+        }
+      } catch {
+        if (!cancelado) setElementos([]);
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    };
     fetchElementos();
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
-  // Formatear la fecha que viene en formato ISO desde el backend
   const formatearFecha = (fechaStr?: string | null) => {
     if (!fechaStr) return 'Sin fecha';
     try {
@@ -65,19 +79,22 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     }
   };
 
-  // Chequea si la fecha ya expiró para resaltar la alerta
   type EstadoVencimiento = 'vencido' | 'proximo' | 'al_dia' | 'sin_fecha';
 
   const calcularEstadoVencimiento = (fechaCambioStr?: string | null): EstadoVencimiento => {
     if (!fechaCambioStr) return 'sin_fecha';
 
-    const fechaLimite = new Date(fechaCambioStr);
-    const hoy = new Date();
 
-    const diffTiempo = fechaLimite.getTime() - hoy.getTime();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fLim = new Date(fechaCambioStr);
+    fLim.setHours(0, 0, 0, 0);
+
+
+    const diffTiempo = fLim.getTime() - hoy.getTime();
     const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
 
-    if (diffDias <= 0) {
+    if (diffDias < 0) {
       return 'vencido';
     } else if (diffDias <= 2) {
       return 'proximo';
@@ -98,7 +115,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     setElementoACambiar(null);
 
     try {
-      const res = await fetch(`${API_URL}/elementosDeLimpieza/${id}/cambiar`, {
+      const res = await apiFetch(`/elementosDeLimpieza/${id}/cambiar`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
@@ -111,14 +128,52 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           prev.map((elem) => (elem.id === id ? elementoActualizado : elem))
         );
       } else {
-        alert('No se pudo registrar el cambio.');
+        setErrorDialogMsg('No se pudo registrar el cambio.');
       }
     } catch {
-      alert('Error al conectar con el servidor.');
+      setErrorDialogMsg('Error al conectar con el servidor.');
     }
   };
 
-  // Filtrado reactivo en memoria
+  const abrirConfirmacionToggle = (elem: ElementoDeLimpieza) => {
+    setElementoAToggle(elem);
+    setDialogToggleOpen(true);
+  };
+
+  const ejecutarToggle = async () => {
+    if (!elementoAToggle) return;
+    const accion = elementoAToggle.activo ? 'dar de baja' : 'reactivar';
+    try {
+      const res = await apiFetch(`/elementosDeLimpieza/${elementoAToggle.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre: elementoAToggle.nombre,
+          frecuenciaDeCambio: elementoAToggle.frecuenciaDeCambio ?? null,
+          activo: !elementoAToggle.activo,
+        }),
+      });
+
+      if (res.ok) {
+        const actualizado: ElementoDeLimpieza = await res.json();
+        setElementos((prev) =>
+          prev.map((elem) => (elem.id === elementoAToggle.id ? actualizado : elem))
+        );
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorDialogMsg(err.detail || `No se pudo ${accion} el elemento de limpieza.`);
+      }
+    } catch {
+      setErrorDialogMsg(`Error de conexión al ${accion} el elemento de limpieza.`);
+    } finally {
+      setDialogToggleOpen(false);
+      setElementoAToggle(null);
+    }
+  };
+
   const elementosFiltrados = elementos.filter((elem) => {
     const term = searchTerm.toLowerCase().trim();
     const matchNombre = !term || elem.nombre.toLowerCase().includes(term);
@@ -127,8 +182,54 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
       filtroEstado === 'TODOS' ||
       (filtroEstado === 'ACTIVO' ? elem.activo : !elem.activo);
 
-    return matchNombre && matchEstado;
+    const estadoVenc = calcularEstadoVencimiento(elem.fechaCambio);
+    const matchVencimiento =
+      filtroVencimiento === 'TODOS' ||
+      (filtroVencimiento === 'VENCIDOS' && estadoVenc === 'vencido') ||
+      (filtroVencimiento === 'PROXIMOS' && estadoVenc === 'proximo') ||
+      (filtroVencimiento === 'AL_DIA' && estadoVenc === 'al_dia');
+
+    return matchNombre && matchEstado && matchVencimiento;
   });
+
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (searchTerm.trim()) params.append('busqueda', searchTerm.trim());
+      if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
+
+      const queryString = params.toString();
+      const url = `/elementosDeLimpieza/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'elementos_de_limpieza.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar elementos de limpieza a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (searchTerm.trim()) partes.push(`Búsqueda: "${searchTerm}"`);
+    if (filtroEstado !== 'TODOS') partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
+  const {
+    itemsPaginados: elementosPaginados,
+    paginaActual,
+    setPaginaActual,
+    filasPorPagina,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(elementosFiltrados);
 
   return (
     <div className="modulo-container">
@@ -138,14 +239,24 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Agregar Elemento
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Agregar Elemento
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Barra de Filtros */}
       <div className="filtros-top-bar">
         <input
           type="text"
@@ -163,6 +274,17 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           <option value="TODOS">Todos los estados</option>
           <option value="ACTIVO">Activos</option>
           <option value="INACTIVO">Inactivos</option>
+        </select>
+
+        <select
+          className="select-filtro"
+          value={filtroVencimiento}
+          onChange={(e) => setFiltroVencimiento(e.target.value as 'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA')}
+        >
+          <option value="TODOS">Todos los vencimientos</option>
+          <option value="VENCIDOS">Vencidos</option>
+          <option value="PROXIMOS">Próximos a vencer</option>
+          <option value="AL_DIA">Al día</option>
         </select>
       </div>
 
@@ -192,7 +314,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                 </td>
               </tr>
             ) : (
-              elementosFiltrados.map((item) => (
+              elementosPaginados.map((item) => (
                 <tr key={item.id}>
                   <td>{item.id}</td>
                   <td>{item.nombre}</td>
@@ -205,53 +327,23 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span>{formatearFecha(item.fechaCambio)}</span>
 
-                      {/* VENCIDO */}
                       {calcularEstadoVencimiento(item.fechaCambio) === 'vencido' && (
-                        <span
-                          title="El elemento ha superado la fecha límite"
-                          style={{
-                            backgroundColor: '#fee2e2',
-                            color: '#dc2626',
-                            border: '1px solid #f87171',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                          }}
-                        >
+                        <Badge variant="vencido" title="El elemento ha superado la fecha límite">
                           ● Vencido
-                        </span>
+                        </Badge>
                       )}
 
-                      {/* PRÓXIMO A VENCER */}
                       {calcularEstadoVencimiento(item.fechaCambio) === 'proximo' && (
-                        <span
-                          title="Quedan 2 días o menos para el recambio"
-                          style={{
-                            backgroundColor: '#fef3c7',
-                            color: '#d97706',
-                            border: '1px solid #fcd34d',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                          }}
-                        >
+                        <Badge variant="proximo" title="Quedan 2 días o menos para el recambio">
                           ▲ Próximo a vencer
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </td>
                   <td>
-                    <span className={`badge-status ${item.activo ? 'activo' : 'inactivo'}`}>
+                    <Badge variant={item.activo ? 'activo' : 'inactivo'}>
                       {item.activo ? 'Activo' : 'Inactivo'}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
@@ -281,6 +373,14 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                       >
                         ✎
                       </button>
+                      <button
+                        type="button"
+                        className={`btn-icon ${item.activo ? 'btn-eliminar' : 'btn-reactivar'}`}
+                        title={item.activo ? 'Dar de baja' : 'Reactivar'}
+                        onClick={() => abrirConfirmacionToggle(item)}
+                      >
+                        {item.activo ? '🗑' : '🔄'}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -289,6 +389,27 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="elementos"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={elementosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
 
       <ConfirmAlertDialog
         open={dialogOpen}
@@ -301,6 +422,31 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
           setDialogOpen(false);
           setElementoACambiar(null);
         }}
+      />
+
+      <ConfirmAlertDialog
+        open={dialogToggleOpen}
+        title={elementoAToggle?.activo ? '¿Dar de baja elemento?' : '¿Reactivar elemento?'}
+        description={
+          elementoAToggle?.activo
+            ? `¿Estás seguro de que deseas dar de baja "${elementoAToggle?.nombre}"?`
+            : `¿Estás seguro de que deseas reactivar "${elementoAToggle?.nombre}"?`
+        }
+        confirmText={elementoAToggle?.activo ? 'Confirmar Baja' : 'Confirmar Reactivación'}
+        cancelText="Cancelar"
+        isDestructive={Boolean(elementoAToggle?.activo)}
+        onConfirm={ejecutarToggle}
+        onCancel={() => {
+          setDialogToggleOpen(false);
+          setElementoAToggle(null);
+        }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ''}
+        onClose={() => setErrorDialogMsg(null)}
       />
     </div>
   );

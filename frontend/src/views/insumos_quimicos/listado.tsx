@@ -2,16 +2,32 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoQuimico } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
+import { CsvIcon } from '../../components/icons/CsvIcon';
+import { Paginacion } from '../../components/ui/paginacion';
+import { usePaginacion } from '../../components/ui/usePaginacion';
+import { apiFetch } from '../../api/client';
+import { useAuth } from '../../auth/useAuth';
+import { descargarCSV } from '../../utils/exportarCsv';
 
 interface Props {
   onNuevo: () => void;
   onEditar: (insumo: InsumoQuimico) => void;
   onVerDetalle: (insumo: InsumoQuimico) => void;
+  onVerConsumoHistorico?: (insumo?: InsumoQuimico) => void;
 }
 
-export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onVerDetalle }) => {
+export const ListadoInsumosQuimicos: React.FC<Props> = ({
+  onNuevo,
+  onEditar,
+  onVerDetalle,
+  onVerConsumoHistorico,
+}) => {
+  const { esAdministrador } = useAuth();
   const [insumos, setInsumos] = useState<InsumoQuimico[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
+  const [exportando, setExportando] = useState<boolean>(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [busqueda, setBusqueda] = useState<string>('');
@@ -21,24 +37,34 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
   const [quimicoAConfirmar, setQuimicoAConfirmar] = useState<InsumoQuimico | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState<boolean>(false);
 
-  const cargarDatos = async () => {
-    try {
-      setCargando(true);
-      setError(null);
-      const res = await fetch('http://localhost:8000/api/insumos-quimicos');
-      if (!res.ok) throw new Error('Error al cargar insumos químicos');
-      const data = await res.json();
-      setInsumos(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-    } finally {
-      setCargando(false);
-    }
-  };
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let cancelado = false;
+    const cargarDatos = async () => {
+      try {
+        const res = await apiFetch('/api/insumos-quimicos');
+        if (!cancelado && res.ok) {
+          const data = await res.json();
+          setInsumos(data);
+        } else if (!cancelado) {
+          setError('Error al cargar insumos químicos');
+        }
+      } catch (err) {
+        if (!cancelado) {
+          setError(err instanceof Error ? err.message : 'Error desconocido');
+        }
+      } finally {
+        if (!cancelado) {
+          setCargando(false);
+        }
+      }
+    };
     cargarDatos();
-  }, []);
+    return () => {
+      cancelado = true;
+    };
+  }, [refreshKey]);
 
   const abrirConfirmacion = (insumo: InsumoQuimico) => {
     setQuimicoAConfirmar(insumo);
@@ -48,8 +74,8 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
   const ejecutarToggle = async () => {
     if (!quimicoAConfirmar) return;
     try {
-      await fetch(`http://localhost:8000/api/insumos-quimicos/${quimicoAConfirmar.id}/toggle`, { method: 'PATCH' });
-      cargarDatos();
+      await apiFetch(`/api/insumos-quimicos/${quimicoAConfirmar.id}/toggle`, { method: 'PATCH' });
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error(err);
     } finally {
@@ -58,17 +84,57 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
     }
   };
 
-  const insumosFiltrados = Array.isArray(insumos)
-    ? insumos.filter((item) => {
-        const coincideNombre = item.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ?? false;
-        const coincideTipo = filtroTipo === 'TODOS' || item.tipo === filtroTipo;
-        const coincideEstado =
-          filtroEstado === 'TODOS' ||
-          (filtroEstado === 'ACTIVO' && item.activo) ||
-          (filtroEstado === 'INACTIVO' && !item.activo);
-        return coincideNombre && coincideTipo && coincideEstado;
-      })
-    : [];
+  const insumosFiltrados = insumos.filter((item) => {
+    const cumpleBusqueda = item.nombre.toLowerCase().includes(busqueda.toLowerCase().trim());
+    const cumpleTipo = filtroTipo === 'TODOS' || item.tipo === filtroTipo;
+    const cumpleEstado =
+      filtroEstado === 'TODOS' ||
+      (filtroEstado === 'ACTIVO' && item.activo) ||
+      (filtroEstado === 'INACTIVO' && !item.activo);
+
+    return cumpleBusqueda && cumpleTipo && cumpleEstado;
+  });
+
+  const ejecutarExportacion = async () => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroTipo !== 'TODOS') params.append('tipo', filtroTipo);
+      if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
+
+      const queryString = params.toString();
+      const url = `/api/insumos-quimicos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+
+      await descargarCSV(url, 'insumos_quimicos.csv');
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al exportar insumos químicos a CSV.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroTipo !== 'TODOS') partes.push(`Tipo: ${filtroTipo}`);
+    if (filtroEstado !== 'TODOS') partes.push(`Estado: ${filtroEstado}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
+  const {
+    paginaActual,
+    filasPorPagina,
+    itemsPaginados: insumosPaginados,
+    setPaginaActual,
+    setFilasPorPagina,
+    totalRegistros,
+    totalPaginas,
+    indiceInicio,
+    indiceFin,
+  } = usePaginacion(insumosFiltrados);
 
   return (
     <div className="modulo-container">
@@ -78,9 +144,44 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        <button onClick={onNuevo} className="btn-guardar">
-          + Agregar Insumo Químico
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {esAdministrador && onVerConsumoHistorico && (
+            <button
+              type="button"
+              onClick={() => onVerConsumoHistorico()}
+              className="btn-cancelar"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              title="Ver análisis y gráfico histórico de consumo de químicos"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+              Consumo Histórico
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <CsvIcon /> Exportar CSV
+          </button>
+
+          <button onClick={onNuevo} className="btn-guardar">
+            + Agregar Insumo Químico
+          </button>
+        </div>
       </div>
 
       <div className="filtros-top-bar">
@@ -126,6 +227,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
               <th>Tipo</th>
               <th>Stock Actual</th>
               <th>Unidad de Medida</th>
+              <th>Proveedor</th>
               <th>Estado</th>
               <th className="acciones-col">Acciones</th>
             </tr>
@@ -133,25 +235,26 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           <tbody>
             {cargando ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando insumos químicos...
                 </td>
               </tr>
             ) : insumosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
                   {busqueda || filtroTipo !== 'TODOS' || filtroEstado !== 'TODOS'
                     ? 'No se encontraron insumos químicos que coincidan con los filtros.'
                     : 'No hay insumos químicos registrados.'}
                 </td>
               </tr>
             ) : (
-              insumosFiltrados.map((item) => (
+              insumosPaginados.map((item: InsumoQuimico) => (
                 <tr key={item.id}>
                   <td style={{ fontWeight: 500 }}>{item.nombre}</td>
                   <td>{item.tipo}</td>
                   <td>{item.stock_actual}</td>
                   <td>{item.unidad_medida}</td>
+                  <td style={{ color: 'var(--color-texto-sec)' }}>{item.proveedor || '-'}</td>
                   <td>
                     <span className={`badge-status ${item.activo ? 'activo' : 'inactivo'}`}>
                       {item.activo ? 'Activo' : 'Inactivo'}
@@ -159,6 +262,24 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
+                      {esAdministrador && onVerConsumoHistorico && (
+                        <button
+                          className="btn-icon"
+                          title="Ver consumo histórico de este insumo"
+                          onClick={() => onVerConsumoHistorico && onVerConsumoHistorico(item)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <line x1="18" y1="20" x2="18" y2="10" />
+                            <line x1="12" y1="20" x2="12" y2="4" />
+                            <line x1="6" y1="20" x2="6" y2="14" />
+                          </svg>
+                        </button>
+                      )}
                       <button className="btn-icon btn-ver" title="Ver Detalle" onClick={() => onVerDetalle(item)}>
                         👁
                       </button>
@@ -180,6 +301,27 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({ onNuevo, onEditar, onV
           </tbody>
         </table>
       </div>
+
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        totalRegistros={totalRegistros}
+        indiceInicio={indiceInicio}
+        indiceFin={indiceFin}
+        filasPorPagina={filasPorPagina}
+        onCambiarPagina={setPaginaActual}
+        onCambiarFilasPorPagina={setFilasPorPagina}
+        etiqueta="insumos químicos"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={insumosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
 
       <ConfirmAlertDialog
         open={dialogAbierto}

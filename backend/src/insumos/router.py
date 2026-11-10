@@ -2,8 +2,41 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.insumos import schemas, services
+from typing import Optional
+from src.utils.csv import generar_respuesta_csv
+from src.autenticacion.dependencies import get_usuario_actual
 
 router = APIRouter()
+
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_insumos_csv(
+    busqueda: Optional[str] = None,
+    unidad: Optional[str] = None,
+    vencimiento: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+   
+    datos = services.obtener_insumos_para_csv(
+        db, busqueda=busqueda, unidad=unidad, vencimiento=vencimiento
+    )
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Ingrediente",
+        "lote": "Lote",
+        "stock": "Stock Actual",
+        "cantRecibida": "Cantidad Recibida",
+        "medida": "Unidad de Medida",
+        "fechaRecepcion": "Fecha de Recepción",
+        "fechaVencimiento": "Fecha de Vencimiento",
+        "estadoVencimiento": "Estado de Vencimiento",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="ingredientes.csv",
+    )
 
 @router.post("/", response_model=schemas.Insumo)
 def create_insumo(insumo: schemas.InsumoCreate, db: Session = Depends(get_db)):
