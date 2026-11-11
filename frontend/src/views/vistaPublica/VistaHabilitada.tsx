@@ -4,6 +4,8 @@ import { apiFetch } from '../../api/client';
 import { useVistaPublica } from './contextDeVistaPublica';
 import type { AcercaDeNosotrosConId } from './tipos';
 import ConfiguracionProductosPublicos from './configuracionProductos';
+import { QRCodeCanvas } from 'qrcode.react';
+import { actualizarVistaPublica } from '../configuraciones/vistaPublicaApi';
 
 interface VistaHabilitadaProps{
     qrUrl: string | null;
@@ -130,11 +132,14 @@ const handleCopiarEnlace = () => {
     };
     
 function handleDescargarQR() {
-        if (!qrUrl) return;
+        // si se recargó la página no hay imagen del backend: se usa el QR dibujado en el navegador
+        const canvas = document.getElementById('qr-canvas-activo') as HTMLCanvasElement | null;
+        const href = qrUrl ?? canvas?.toDataURL('image/png');
+        if (!href) return;
 
         // Creamos un elemento <a> temporal en el navegador
         const link = document.createElement('a');
-        link.href = qrUrl;
+        link.href = href;
         link.download = 'codigo-qr-vista-publica.png'; // Nombre con el que se descargará la imagen
         document.body.appendChild(link);
         link.click();
@@ -191,6 +196,15 @@ async function handleDesactivar(){
         });
     } catch (err) {
         console.error("Error al actualizar el estado del gráfico:", err);
+    }
+}
+
+async function handleToggleProductos(nuevoValor: boolean) {
+    actualizarConfig('verProductos', nuevoValor);
+    try {
+        await actualizarVistaPublica({ verProductos: nuevoValor });
+    } catch (err) {
+        console.error("Error al actualizar la visibilidad de productos:", err);
     }
 }
 
@@ -261,9 +275,9 @@ return (
                             className="switch-input"
                             id="switch-productos"
                             checked={config.verProductos} 
-                            onChange={(e) => actualizarConfig('verProductos', e.target.checked)}
+                            onChange={(e) => handleToggleProductos(e.target.checked)}
                         />
-                        <label htmlFor="switch-productos" className="config-switch-label" onClick={() => actualizarConfig('verProductos', !config.verProductos)}>
+                        <label htmlFor="switch-productos" className="config-switch-label" onClick={() => handleToggleProductos(!config.verProductos)}>
                             Mostrar listado de productos
                         </label>
                     </div>
@@ -331,6 +345,8 @@ return (
                     <div className="qr-image-box-original">
                         {qrUrl ? (
                             <img src={qrUrl} alt="QR Habilitado" className="qr-imagen-original" />
+                        ) : urlEnlace ? (
+                            <QRCodeCanvas id="qr-canvas-activo" value={urlEnlace} size={290} level="H" marginSize={4} className="qr-imagen-original" />
                         ) : (
                             <p>No hay QR disponible</p>
                         )}
