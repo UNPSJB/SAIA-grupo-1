@@ -29,7 +29,6 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
   const [proveedorSeleccionadoId, setProveedorSeleccionadoId] = useState<number | "">("");
   const [nombre, setNombre] = useState("");
   const [lote, setLote] = useState("");
-  const [fechaRecepcion] = useState(obtenerFechaLocal());
   const [fechaVencimiento, setFechaVencimiento] = useState(getMinVencimiento());
   const [cantRecibida, setCantRecibida] = useState<number | "">("");
   const [unidadMedida, setUnidadMedida] = useState("");
@@ -107,12 +106,6 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
       return;
     }
 
-    const hoyStr = obtenerFechaLocal();
-    if (fechaRecepcion !== hoyStr) {
-      setErrorMsg("La fecha de recepción debe ser la fecha actual (hoy).");
-      return;
-    }
-
     const minVenc = getMinVencimiento();
     if (!fechaVencimiento || fechaVencimiento < minVenc) {
       setErrorMsg("La fecha de vencimiento es obligatoria y debe ser al menos 7 días posterior a la recepción.");
@@ -126,7 +119,6 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
       proveedor_id: Number(proveedorSeleccionadoId),
       lote: loteLimpio,
       nombre: nombre.trim() || undefined,
-      fechaRecepcion: fechaRecepcion,
       fechaVencimiento: fechaVencimiento,
       cantRecibida: Number(cantRecibida),
     };
@@ -252,19 +244,6 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
             placeholder="Ej: HAR3-2410"
             value={lote}
             onChange={(e) => setLote(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="fechaRecepcion">Fecha de Recepción (Solo hoy) *</label>
-          <input
-            id="fechaRecepcion"
-            name="fechaRecepcion"
-            type="date"
-            value={fechaRecepcion}
-            readOnly
-            style={{ opacity: 0.8, cursor: 'not-allowed' }}
             required
           />
         </div>

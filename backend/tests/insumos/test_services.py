@@ -249,6 +249,24 @@ def test_recibir_lote_insumo_exitoso(session: Session) -> None:
     assert insumo.proveedor_id == prov.id
 
 
+def test_recibir_lote_insumo_sin_fecha_recepcion_toma_fecha_actual(session: Session) -> None:
+    tipo = crear_tipo_insumo(session, TipoInsumoCreate(nombre="Levadura Seca Sin Fecha", unidadMedida="kilogramos"))
+    prov = crear_proveedor(session, ProveedorCreate(nombre="Distribuidora Sin Fecha"))
+    hoy = date.today()
+    req = RecepcionInsumoRequest(
+        tipo_insumo_id=tipo.id,
+        proveedor_id=prov.id,
+        nombre="Levadura Automática",
+        lote="LEV-AUTO-001",
+        fechaVencimiento=hoy + timedelta(days=15),
+        cantRecibida=10.0,
+    )
+    insumo = recibir_lote_insumo(session, req)
+    assert insumo.id is not None
+    assert insumo.fechaRecepcion.date() == hoy
+    assert insumo.stock == 10.0
+
+
 def test_recibir_lote_fecha_recepcion_invalida(session: Session) -> None:
     tipo = crear_tipo_insumo(session, TipoInsumoCreate(nombre="Canela", unidadMedida="gramos"))
     prov = crear_proveedor(session, ProveedorCreate(nombre="Especias SA"))
