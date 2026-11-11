@@ -970,3 +970,323 @@ def obtener_estadisticas_produccion(
         total_cantidad=total_cantidad,
         puntos=puntos,
     )
+
+MESES_ES = {
+    1: "Ene",
+    2: "Feb",
+    3: "Mar",
+    4: "Abr",
+    5: "May",
+    6: "Jun",
+    7: "Jul",
+    8: "Ago",
+    9: "Sep",
+    10: "Oct",
+    11: "Nov",
+    12: "Dic",
+}
+
+def obtener_matriz_calidad_radar(
+    db: Session,
+    sector_id: Optional[int] = None,
+    fecha_referencia: Optional[date] = None,
+) -> schemas.MatrizCalidadRadarResponse:
+    from src.sectores.models import Sector
+    from src.checklist.models import Checklist, ChecklistItem
+    from src.plan_De_limpieza.models import Plan_de_Limpieza
+    from src.incidentes.models import Incidente, EstadoIncidente
+    from src.equipos.models import Equipo
+    from src.plan_de_calibracion.models import Plan_de_Calibracion
+    from src.certificado.models import Certificado
+    from src.controlesAmbientales.models import ControlAmbiental
+
+    hoy = fecha_referencia or date.today()
+    inicio_act = hoy - timedelta(days=30)
+    fin_act = hoy
+    inicio_ant = hoy - timedelta(days=61)
+    fin_ant = hoy - timedelta(days=31)
+
+    sector_obj = db.get(Sector, sector_id) if sector_id else None
+    sector_nombre = sector_obj.nombre if sector_obj else None
+
+    def _evaluar_checklist_periodo(d_ini: date, d_fin: date) -> Tuple[float, float, int]:
+        q = (
+            select(ChecklistItem)
+            .join(Checklist, ChecklistItem.checklist_id == Checklist.id)
+            .outerjoin(Plan_de_Limpieza, ChecklistItem.plan_id == Plan_de_Limpieza.id)
+            .where(Checklist.fecha >= d_ini, Checklist.fecha <= d_fin)
+        )
+        if sector_id is not None:
+            q = q.where(Plan_de_Limpieza.sector_id == sector_id)
+        items = db.execute(q).scalars().all()
+        tot = len(items)
+        if tot == 0:
+            return 100.0, 100.0, 0
+        hechas = sum(1 for it in items if it.estado in (EstadoTareaItem.REALIZADO, EstadoTareaItem.REASIGNADO))
+        no_om = sum(1 for it in items if it.estado != EstadoTareaItem.NO_REALIZADO)
+        pct_hechas = round((hechas / tot) * 100.0, 1)
+        pct_no_om = round((no_om / tot) * 100.0, 1)
+        return pct_hechas, pct_no_om, tot
+
+    limp_act, prev_act, limp_eval_act = _evaluar_checklist_periodo(inicio_act, fin_act)
+    limp_ant, prev_ant, limp_eval_ant = _evaluar_checklist_periodo(inicio_ant, fin_ant)
+
+    def _evaluar_incidentes_periodo(d_ini: date, d_fin: date) -> Tuple[float, int]:
+        dt_ini = datetime.combine(d_ini, datetime.min.time())
+        dt_fin = datetime.combine(d_fin, datetime.max.time())
+        incs = db.execute(
+            select(Incidente).where(Incidente.creado_el >= dt_ini, Incidente.creado_el <= dt_fin)
+        ).scalars().all()
+        tot = len(incs)
+        if tot == 0:
+            return 100.0, 0
+        criticos = 0
+        for inc in incs:
+            if inc.estado != EstadoIncidente.RESUELTO:
+                antiguedad_h = (dt_fin - inc.creado_el).total_seconds() / 3600.0
+                if antiguedad_h > 72 or inc.motivo_reapertura:
+                    criticos += 1
+        pct = round(((tot - criticos) / tot) * 100.0, 1)
+        return pct, tot
+
+    inc_act, inc_eval_act = _evaluar_incidentes_periodo(inicio_act, fin_act)
+    inc_ant, inc_eval_ant = _evaluar_incidentes_periodo(inicio_ant, fin_ant)
+
+    def _evaluar_calibraciones_fecha(ref_dt: date) -> Tuple[float, int]:
+        q = select(Plan_de_Calibracion).join(Equipo, Plan_de_Calibracion.equipo_id == Equipo.id)
+        if sector_id is not None:
+            q = q.where(Equipo.sector_id == sector_id)
+        planes = db.execute(q).scalars().all()
+        tot = len(planes)
+        if tot == 0:
+            return 100.0, 0
+        ref_time = datetime.combine(ref_dt, datetime.min.time())
+        vigentes = sum(1 for p in planes if p.fecha_vencimiento is None or p.fecha_vencimiento >= ref_time)
+        return round((vigentes / tot) * 100.0, 1), tot
+
+    cal_act, cal_eval_act = _evaluar_calibraciones_fecha(fin_act)
+    cal_ant, cal_eval_ant = _evaluar_calibraciones_fecha(fin_ant)
+
+    def _evaluar_ambiental_fecha(ref_dt: date) -> Tuple[float, int]:
+        controles = db.execute(select(ControlAmbiental).where(ControlAmbiental.activo.is_(True))).scalars().all()
+        tot = len(controles)
+        if tot == 0:
+            return 100.0, 0
+        vig = sum(1 for c in controles if c.fecha_vencimiento is None or c.fecha_vencimiento >= ref_dt)
+        return round((vig / tot) * 100.0, 1), tot
+
+    amb_act, amb_eval_act = _evaluar_ambiental_fecha(fin_act)
+    amb_ant, amb_eval_ant = _evaluar_ambiental_fecha(fin_ant)
+
+    def _evaluar_certificados_fecha(ref_dt: date) -> Tuple[float, int]:
+        certs = db.execute(select(Certificado)).scalars().all()
+        tot = len(certs)
+        if tot == 0:
+            return 100.0, 0
+        ref_time = datetime.combine(ref_dt, datetime.min.time())
+        vig = sum(1 for c in certs if c.fechaVencimiento >= ref_time)
+        return round((vig / tot) * 100.0, 1), tot
+
+    cap_act, cap_eval_act = _evaluar_certificados_fecha(fin_act)
+    cap_ant, cap_eval_ant = _evaluar_certificados_fecha(fin_ant)
+
+    dimensiones = [
+        schemas.DimensionRadar(
+            dimension="Higiene y POES",
+            clave="higiene",
+            actual=limp_act,
+            anterior=limp_ant,
+            meta=100.0,
+            evaluados_actual=limp_eval_act,
+            evaluados_anterior=limp_eval_ant,
+            descripcion="Tareas de limpieza y sanitización completadas conforme a POES",
+            unidad="%",
+        ),
+        schemas.DimensionRadar(
+            dimension="Control de Desvíos",
+            clave="desvios",
+            actual=inc_act,
+            anterior=inc_ant,
+            meta=100.0,
+            evaluados_actual=inc_eval_act,
+            evaluados_anterior=inc_eval_ant,
+            descripcion="Incidentes gestionados sin escalamiento crítico de más de 72 horas",
+            unidad="%",
+        ),
+        schemas.DimensionRadar(
+            dimension="Calibración Equipos",
+            clave="calibracion",
+            actual=cal_act,
+            anterior=cal_ant,
+            meta=100.0,
+            evaluados_actual=cal_eval_act,
+            evaluados_anterior=cal_eval_ant,
+            descripcion="Confiabilidad e inspección vigente de los equipos de producción",
+            unidad="%",
+        ),
+        schemas.DimensionRadar(
+            dimension="Control Ambiental",
+            clave="ambiental",
+            actual=amb_act,
+            anterior=amb_ant,
+            meta=100.0,
+            evaluados_actual=amb_eval_act,
+            evaluados_anterior=amb_eval_ant,
+            descripcion="Vigencia de controles de plagas, análisis de agua y tanques",
+            unidad="%",
+        ),
+        schemas.DimensionRadar(
+            dimension="Capacitación / Carnets",
+            clave="capacitacion",
+            actual=cap_act,
+            anterior=cap_ant,
+            meta=100.0,
+            evaluados_actual=cap_eval_act,
+            evaluados_anterior=cap_eval_ant,
+            descripcion="Certificaciones sanitarias y cursos de manipuladores al día",
+            unidad="%",
+        ),
+        schemas.DimensionRadar(
+            dimension="Continuidad Operativa",
+            clave="continuidad",
+            actual=prev_act,
+            anterior=prev_ant,
+            meta=100.0,
+            evaluados_actual=limp_eval_act,
+            evaluados_anterior=limp_eval_ant,
+            descripcion="Tasa de ejecución sin omisiones por falta de insumos o fallas de equipo",
+            unidad="%",
+        ),
+    ]
+
+    total_eval = sum(d.evaluados_actual for d in dimensiones)
+    prom_act = round(sum(d.actual for d in dimensiones) / len(dimensiones), 1)
+    prom_ant = round(sum(d.anterior for d in dimensiones) / len(dimensiones), 1)
+
+    return schemas.MatrizCalidadRadarResponse(
+        sector_id=sector_id,
+        sector_nombre=sector_nombre,
+        periodo_etiqueta=f"Últimos 30 días ({inicio_act.strftime('%d/%m')} - {fin_act.strftime('%d/%m')})",
+        comparativa_etiqueta=f"Período anterior ({inicio_ant.strftime('%d/%m')} - {fin_ant.strftime('%d/%m')})",
+        indice_global_actual=prom_act,
+        indice_global_anterior=prom_ant,
+        dimensiones=dimensiones,
+        tiene_datos=total_eval > 0,
+    )
+
+def obtener_evolucion_mensual_desvios(
+    db: Session,
+    meses: int = 6,
+    sector_id: Optional[int] = None,
+    fecha_referencia: Optional[date] = None,
+) -> schemas.EvolucionMensualDesviosResponse:
+    from src.sectores.models import Sector
+    from src.checklist.models import Checklist, ChecklistItem
+    from src.plan_De_limpieza.models import Plan_de_Limpieza
+    from src.incidentes.models import Incidente, EstadoIncidente
+
+    hoy = fecha_referencia or date.today()
+    meses_validos = max(1, min(meses, 24))
+
+    sector_obj = db.get(Sector, sector_id) if sector_id else None
+    sector_nombre = sector_obj.nombre if sector_obj else None
+
+    fechas_meses = []
+    anio_cursor = hoy.year
+    mes_cursor = hoy.month
+
+    for _ in range(meses_validos):
+        fechas_meses.append((anio_cursor, mes_cursor))
+        mes_cursor -= 1
+        if mes_cursor == 0:
+            mes_cursor = 12
+            anio_cursor -= 1
+
+    fechas_meses.reverse()
+
+    items = []
+    for anio, mes in fechas_meses:
+        d_ini = date(anio, mes, 1)
+        dias_mes = calendar.monthrange(anio, mes)[1]
+        d_fin = min(date(anio, mes, dias_mes), hoy) if (anio == hoy.year and mes == hoy.month) else date(anio, mes, dias_mes)
+        etiqueta = f"{MESES_ES.get(mes, str(mes))} {anio}"
+        clave_mes = f"{anio}-{mes:02d}"
+
+        q_cl = (
+            select(ChecklistItem)
+            .join(Checklist, ChecklistItem.checklist_id == Checklist.id)
+            .outerjoin(Plan_de_Limpieza, ChecklistItem.plan_id == Plan_de_Limpieza.id)
+            .where(Checklist.fecha >= d_ini, Checklist.fecha <= d_fin)
+        )
+        if sector_id is not None:
+            q_cl = q_cl.where(Plan_de_Limpieza.sector_id == sector_id)
+        cl_items = db.execute(q_cl).scalars().all()
+
+        cl_conf = sum(1 for it in cl_items if it.estado in (EstadoTareaItem.REALIZADO, EstadoTareaItem.REASIGNADO))
+        cl_leves = sum(1 for it in cl_items if it.estado == EstadoTareaItem.NO_REALIZADO)
+        cl_crit = sum(1 for it in cl_items if it.estado == EstadoTareaItem.VENCIDO)
+
+        dt_ini = datetime.combine(d_ini, datetime.min.time())
+        dt_fin = datetime.combine(d_fin, datetime.max.time())
+        q_inc = select(Incidente).where(Incidente.creado_el >= dt_ini, Incidente.creado_el <= dt_fin)
+        incs = db.execute(q_inc).scalars().all()
+
+        inc_conf = sum(1 for inc in incs if inc.estado == EstadoIncidente.RESUELTO)
+        inc_leves = 0
+        inc_crit = 0
+        for inc in incs:
+            if inc.estado != EstadoIncidente.RESUELTO:
+                antig_h = (dt_fin - inc.creado_el).total_seconds() / 3600.0
+                if antig_h > 72 or inc.motivo_reapertura:
+                    inc_crit += 1
+                else:
+                    inc_leves += 1
+
+        conformes = cl_conf + inc_conf
+        desvios_leves = cl_leves + inc_leves
+        desvios_criticos = cl_crit + inc_crit
+        total_eventos = conformes + desvios_leves + desvios_criticos
+        pct_conf = round((conformes / total_eventos) * 100.0, 1) if total_eventos > 0 else 0.0
+        pct_desv = round(((desvios_leves + desvios_criticos) / total_eventos) * 100.0, 1) if total_eventos > 0 else 0.0
+
+        items.append(
+            schemas.MesDesvioItem(
+                mes=clave_mes,
+                etiqueta=etiqueta,
+                conformes=conformes,
+                desvios_leves=desvios_leves,
+                desvios_criticos=desvios_criticos,
+                total_eventos=total_eventos,
+                porcentaje_conformidad=pct_conf,
+                porcentaje_desvios=pct_desv,
+            )
+        )
+
+    tot_eventos = sum(i.total_eventos for i in items)
+    tot_conformes = sum(i.conformes for i in items)
+    tot_desvios = sum(i.desvios_leves + i.desvios_criticos for i in items)
+    tasa_conf_prom = round((tot_conformes / tot_eventos) * 100.0, 1) if tot_eventos > 0 else 0.0
+    tasa_desv_prom = round((tot_desvios / tot_eventos) * 100.0, 1) if tot_eventos > 0 else 0.0
+
+    mes_peor = None
+    if tot_desvios > 0:
+        peor_item = max(items, key=lambda x: (x.desvios_leves + x.desvios_criticos, x.porcentaje_desvios))
+        mes_peor = peor_item.etiqueta
+
+    resumen = schemas.ResumenEvolucionDesvios(
+        total_eventos=tot_eventos,
+        total_conformes=tot_conformes,
+        total_desvios=tot_desvios,
+        tasa_conformidad_promedio=tasa_conf_prom,
+        tasa_desvio_promedio=tasa_desv_prom,
+        mes_mayor_desvio=mes_peor,
+    )
+
+    return schemas.EvolucionMensualDesviosResponse(
+        meses_evaluados=meses_validos,
+        sector_id=sector_id,
+        sector_nombre=sector_nombre,
+        items=items,
+        resumen=resumen,
+        tiene_datos=tot_eventos > 0,
+    )
