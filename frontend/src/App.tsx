@@ -691,6 +691,7 @@ const irANotificacion = (notif: NotificacionItem) => {
           onNavegarNotificacion={irANotificacion}
           onIrAIncidentes={() => cambiarModulo('incidentes')}
           onIrAVencimientos={() => cambiarModulo('vencimientos')}
+          onIrAConfiguracion={irAConfiguraciones}
         />
 
         <div style={{ padding: modulo === 'dashboard' ? '14px 24px' : '32px 36px' }}>

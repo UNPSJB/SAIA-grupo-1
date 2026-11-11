@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../auth/useAuth';
-import { MODULOS_DE_CONFIGURACION, puedeVerModulo } from '../auth/permisos';
+import { puedeVerModulo } from '../auth/permisos';
 import {
   Sidebar as SidebarRoot,
   SidebarContent,
@@ -249,13 +249,6 @@ const ICONOS_GRUPO: Record<string, React.ReactNode> = {
       <path d="M14 10h4M14 14h4" />
     </svg>
   ),
-  administracion: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 7h-9M14 17H5" />
-      <circle cx="17" cy="17" r="3" />
-      <circle cx="7" cy="7" r="3" />
-    </svg>
-  ),
   calidad: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
@@ -320,13 +313,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'controlesAmbientales', label: 'Controles Sanitarios', icono: ICONOS_MODULO.controlesAmbientales },
       ],
     },
-    {
-      id: 'administracion',
-      titulo: 'Administración',
-      items: [
-        { id: 'configuraciones', label: 'Configuraciones', icono: ICONOS_MODULO.configuraciones },
-      ],
-    },
   ];
 
   const gruposVisibles = gruposBase
@@ -374,9 +360,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
             <SidebarGroupContent>
               <SidebarMenu>
                 {grupo.items.map((item) => {
-                  const esActivo =
-                    moduloActivo === item.id ||
-                    (item.id === 'configuraciones' && MODULOS_DE_CONFIGURACION.includes(moduloActivo));
+                  const esActivo = moduloActivo === item.id;
                   return (
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton

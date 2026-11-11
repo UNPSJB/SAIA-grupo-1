@@ -91,6 +91,28 @@ def test_deshabilitar_vista_publica(session: Session) -> None:
     assert client.get(f"/identificadorQR/verificar/{qr}").status_code == status.HTTP_400_BAD_REQUEST
 
 
+def test_qr_nuevo_deshabilita_el_anterior(session: Session) -> None:
+    anterior = _qr(session)
+    nuevo = _qr(session)
+    assert client.get("/configuracion/vista-publica").json()["id_alfanumerico"] == nuevo
+    assert client.get(f"/identificadorQR/verificar/{anterior}").status_code == status.HTTP_400_BAD_REQUEST
+
+
+def test_deshabilitar_apaga_todas_las_activas(session: Session) -> None:
+    from src.indentificadorDeQR.models import IndentificadorUnico
+    # datos viejos: varias vistas activas a la vez
+    qrs = [_qr(session) for _ in range(3)]
+    for ident in session.query(IndentificadorUnico).all():
+        ident.estado = True
+    session.commit()
+
+    res = client.put("/configuracion/vista-publica", json={"habilitada": False})
+    assert res.json()["habilitada"] is False
+    assert client.get("/configuracion/vista-publica").json()["habilitada"] is False
+    for qr in qrs:
+        assert client.get(f"/identificadorQR/verificar/{qr}").status_code == status.HTTP_400_BAD_REQUEST
+
+
 def test_no_se_habilita_desde_configuracion(session: Session) -> None:
     _qr(session)
     res = client.put("/configuracion/vista-publica", json={"habilitada": True})

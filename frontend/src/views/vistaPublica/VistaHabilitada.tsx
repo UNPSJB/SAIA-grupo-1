@@ -151,26 +151,9 @@ async function handleDesactivar(){
     setSuccessMsg(null);
 
     try {
-            const res = await apiFetch(`/identificadorQR/${identificadorUnico}/`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-    
-            if(!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                let mensaje = "Error al desactivar la vista publica.";
-                if (typeof errorData.detail === "string") {
-                  mensaje = errorData.detail;
-                } else if (Array.isArray(errorData.detail)) {
-                  mensaje = errorData.detail
-                    .map((err: { msg?: string }) => err.msg || JSON.stringify(err))
-                    .join(", ");
-                }
-                throw new Error(mensaje);
-            }
-    
+            // deshabilita todas las vistas activas (no solo la de este QR)
+            await actualizarVistaPublica({ habilitada: false });
+
             setSuccessMsg("desahabilitado exitosamente.");
             onSuccess?.();
         } catch (err: unknown) {

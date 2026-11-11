@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from src.configuracion import exceptions, schemas
@@ -42,7 +42,8 @@ def actualizar_vista_publica(
     if cambios.verProductos is not None:
         ident.verProductos = cambios.verProductos
     if cambios.habilitada is False:
-        ident.estado = False
+        # se deshabilitan todas, por si quedaron varias activas de antes
+        db.execute(update(IndentificadorUnico).where(IndentificadorUnico.estado.is_(True)).values(estado=False))
 
     db.commit()
     db.refresh(ident)
