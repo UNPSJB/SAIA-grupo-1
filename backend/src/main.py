@@ -42,6 +42,8 @@ from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
 from src.tipoInsumo.router import router as tipo_insumo_router
 from src.proveedores.router import router as proveedores_router
+from src.unidadesMedida.router import router as unidades_medida_router
+from src.unidadesMedida.services import asegurar_unidades_base
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -55,7 +57,8 @@ async def db_creation_lifespan(app: FastAPI):
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
-            asegurar_tipos_base(db)
+            asegurar_unidades_base(db)
+        asegurar_tipos_base(db)
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
@@ -117,3 +120,4 @@ app.include_router(producto_router, dependencies=SOLO_ADMIN)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
 app.include_router(tipo_insumo_router, dependencies=SESION)
 app.include_router(proveedores_router, dependencies=SESION)
+app.include_router(unidades_medida_router, dependencies=SESION)

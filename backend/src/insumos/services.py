@@ -4,15 +4,10 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 from src.insumos.models import Insumo
 from src.insumos import schemas, exceptions
-
-
-# operaciones CRUD para Insumo
-# La baja es logica (activo = False): los insumos dados de baja no se listan ni se pueden leer,
-# pero siguen existiendo para los lotes de produccion que los usaron.
+from src.unidadesMedida.services import resolver_unidad_medida
 
 
 def _validar_nombre_unico(db: Session, nombre: str, excluir_id: Optional[int] = None) -> None:
-    """El nombre no puede repetirse (sin distinguir mayusculas) entre los insumos activos."""
     consulta = select(Insumo.id).where(
         Insumo.activo, func.lower(Insumo.nombre) == nombre.strip().lower()
     )
@@ -57,18 +52,21 @@ def obtener_insumos_para_csv(
     for i in insumos:
         nombre = getattr(i, "nombre", "") or ""
         lote = getattr(i, "lote", "") or ""
-        medida_val = i.medida.value if hasattr(i.medida, "value") else str(i.medida or "")
+        medida_val = str(getattr(i, "medida", "") or "")
+        medida_abrev = str(getattr(i, "unidad_medida_abreviatura", "") or "")
 
-        # Filtro por término de búsqueda (nombre o lote)
         if term and (term not in nombre.lower() and term not in lote.lower()):
             continue
 
-        # Filtro por unidad de medida
         if unidad and unidad != "TODOS":
-            if medida_val.upper() != unidad.upper():
+            filtro_u = unidad.strip().upper()
+            if (
+                medida_val.upper() != filtro_u
+                and medida_abrev.upper() != filtro_u
+                and str(getattr(i, "unidad_medida_id", "")) != unidad.strip()
+            ):
                 continue
 
-        # Calcular estado de vencimiento para filtro y reporte
         f_venc = getattr(i, "fechaVencimiento", None)
         f_rec = getattr(i, "fechaRecepcion", None)
 
@@ -115,7 +113,24 @@ def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> Insumo:
     if not insumo.nombre or insumo.nombre.strip() == "":
         raise exceptions.NombreInsumoVacio()
     _validar_nombre_unico(db, insumo.nombre)
-    _insumo = Insumo(**insumo.model_dump())
+    if insumo.unidad_medida_id is not None or insumo.medida is not None:
+        unidad = resolver_unidad_medida(
+            db,
+            unidad_medida_id=insumo.unidad_medida_id,
+            valor_texto=insumo.medida,
+        )
+        unidad_id = unidad.id
+    elif insumo.tipo_insumo_id is not None:
+        from src.tipoInsumo.models import TipoInsumo
+
+        tipo = db.get(TipoInsumo, insumo.tipo_insumo_id)
+        if not tipo or not tipo.activo:
+            raise exceptions.TipoInsumoRequerido()
+        unidad_id = tipo.unidad_medida_id
+    else:
+        raise exceptions.UnidadMedidaInvalida([])
+    datos = insumo.model_dump(exclude={"medida", "unidad_medida_id"})
+    _insumo = Insumo(**datos, unidad_medida_id=unidad_id)
     db.add(_insumo)
     db.commit()
     db.refresh(_insumo)
@@ -157,7 +172,7 @@ def recibir_lote_insumo(db: Session, datos: schemas.RecepcionInsumoRequest) -> I
         fechaVencimiento=f_venc,
         cantRecibida=float(datos.cantRecibida),
         stock=float(datos.cantRecibida),
-        medida=tipo.unidadMedida,
+        unidad_medida_id=tipo.unidad_medida_id,
         tipo_insumo_id=tipo.id,
         proveedor_id=proveedor.id,
         activo=True,
@@ -204,7 +219,9 @@ def listar_insumos_agrupados_por_tipo(
                 nombre=l.nombre,
                 stock=float(l.stock),
                 cantRecibida=float(l.cantRecibida),
-                medida=str(l.medida.value if hasattr(l.medida, "value") else l.medida),
+                medida=str(l.medida),
+                unidad_medida_id=l.unidad_medida_id,
+                unidad_medida_abreviatura=l.unidad_medida_abreviatura,
                 fechaRecepcion=l.fechaRecepcion,
                 fechaVencimiento=l.fechaVencimiento,
                 proveedor_id=l.proveedor_id,
@@ -236,7 +253,9 @@ def listar_insumos_agrupados_por_tipo(
                 tipo_id=t.id,
                 nombre=t.nombre,
                 descripcion=t.descripcion,
-                unidadMedida=t.unidadMedida.value if hasattr(t.unidadMedida, "value") else str(t.unidadMedida),
+                unidad_medida_id=t.unidad_medida_id,
+                unidadMedida=str(t.unidadMedida),
+                unidad_medida_abreviatura=t.unidad_medida_abreviatura,
                 stock_total=stock_total,
                 tiene_vencidos=tiene_v,
                 tiene_proximos=tiene_p,
@@ -265,6 +284,8 @@ def listar_insumos_para_selector(
     items: List[schemas.InsumoSelectorItem] = []
     for l in lotes_db:
         estado_v, _ = calcular_estado_vencimiento_insumo(l.fechaVencimiento, l.stock)
+        if estado_v == "VENCIDO":
+            continue
         f_venc_date = (
             l.fechaVencimiento.date()
             if isinstance(l.fechaVencimiento, datetime)
@@ -283,7 +304,7 @@ def listar_insumos_para_selector(
                 fechaVencimiento=f_venc_date,
                 fechaVencimientoFormateada=f_formateada,
                 stock=float(l.stock),
-                medida=str(l.medida.value if hasattr(l.medida, "value") else l.medida),
+                medida=str(l.medida),
                 estadoVencimiento=estado_v,
                 proveedor=prov_nom,
                 tipo_insumo_id=l.tipo_insumo_id,
@@ -324,9 +345,7 @@ def obtener_trazabilidad_insumo(
                     producto_nombre=lote_p.producto.nombre if lote_p.producto else "Producto",
                     fecha_produccion=lote_p.fecha,
                     cantidad_usada=float(a.cantidad),
-                    unidad_medida=str(
-                        insumo.medida.value if hasattr(insumo.medida, "value") else insumo.medida
-                    ),
+                    unidad_medida=str(insumo.medida),
                     responsable_nombre=lote_p.nombre_responsable,
                 )
             )
@@ -340,7 +359,10 @@ def obtener_trazabilidad_insumo(
         fechaVencimiento=insumo.fechaVencimiento,
         cantRecibida=float(insumo.cantRecibida),
         stock=float(insumo.stock),
-        medida=insumo.medida,
+        unidad_medida_id=insumo.unidad_medida_id,
+        medida=str(insumo.medida),
+        unidad_medida_nombre=insumo.unidad_medida_nombre,
+        unidad_medida_abreviatura=insumo.unidad_medida_abreviatura,
         tipo_insumo_id=insumo.tipo_insumo_id,
         proveedor_id=insumo.proveedor_id,
         activo=insumo.activo,
@@ -371,10 +393,20 @@ def modificar_insumo(
     db_insumo = leer_insumo(db, insumo_id)
     datos_actualizados = insumo.model_dump(exclude_unset=True)
 
-    campos_no_nulos = ["nombre", "lote", "cantRecibida", "stock", "medida"]
+    campos_no_nulos = ["nombre", "lote", "cantRecibida", "stock", "medida", "unidad_medida_id"]
     for campo in campos_no_nulos:
         if campo in datos_actualizados and datos_actualizados[campo] is None:
             datos_actualizados.pop(campo)
+
+    medida_texto = datos_actualizados.pop("medida", None)
+    unidad_id_val = datos_actualizados.pop("unidad_medida_id", None)
+    if unidad_id_val is not None or medida_texto is not None:
+        unidad = resolver_unidad_medida(
+            db,
+            unidad_medida_id=unidad_id_val,
+            valor_texto=medida_texto,
+        )
+        datos_actualizados["unidad_medida_id"] = unidad.id
 
     if "nombre" in datos_actualizados:
         nombre_val = datos_actualizados["nombre"]

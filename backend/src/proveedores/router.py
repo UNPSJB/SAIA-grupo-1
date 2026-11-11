@@ -140,3 +140,31 @@ async def eliminar_proveedor_endpoint(
         activo=p.activo,
         total_insumos=len(p.insumos) if p.insumos else 0,
     )
+
+
+@router.post(
+    "/{proveedor_id}/restaurar",
+    response_model=schemas.Proveedor,
+    dependencies=[Depends(requiere_admin)],
+)
+@router.patch(
+    "/{proveedor_id}/reactivar",
+    response_model=schemas.Proveedor,
+    dependencies=[Depends(requiere_admin)],
+)
+async def restaurar_proveedor_endpoint(
+    proveedor_id: int,
+    db: Session = Depends(get_db),
+):
+    p = services.restaurar_proveedor(db, proveedor_id)
+    return schemas.Proveedor(
+        id=p.id,
+        nombre=p.nombre,
+        cuit=p.cuit,
+        contacto=p.contacto,
+        telefono=p.telefono,
+        email=p.email,
+        direccion=p.direccion,
+        activo=p.activo,
+        total_insumos=len(p.insumos) if p.insumos else 0,
+    )

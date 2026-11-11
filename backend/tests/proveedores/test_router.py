@@ -69,3 +69,7 @@ def test_router_eliminar_proveedor(session: Session):
 
     res_activos = client.get("/proveedores/?solo_activos=true")
     assert all(p["id"] != p_id for p in res_activos.json())
+
+    res_rest = client.post(f"/proveedores/{p_id}/restaurar")
+    assert res_rest.status_code == status.HTTP_200_OK
+    assert res_rest.json()["activo"] is True

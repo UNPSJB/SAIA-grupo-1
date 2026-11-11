@@ -7,8 +7,10 @@ from src.certificado.models import Certificado
 from src.config import settings
 from src.documentos.models import Documento
 from src.elementosDeLimpieza.models import ElementoDeLimpieza
-from src.insumos_quimicos.constants import UnidadMedidaEnum
+from src.insumos.models import Insumo
 from src.insumos_quimicos.models import InsumoQuimico
+
+DIAS_ALERTA_INSUMO = 7
 from src.notificaciones import exceptions, schemas
 from src.notificaciones.constants import TipoNotificacion
 from src.notificaciones.models import Notificacion
@@ -335,6 +337,39 @@ def revisar_y_generar_vencimientos(
             )
             notificaciones_generadas += nuevas
 
+    insumos = (
+        db.query(Insumo)
+        .filter(
+            Insumo.activo.is_(True),
+            Insumo.stock > 0,
+            Insumo.fechaVencimiento.isnot(None),
+        )
+        .all()
+    )
+    for ins in insumos:
+        if not ins.fechaVencimiento:
+            continue
+        fecha_v = _a_fecha(ins.fechaVencimiento)
+        dias = (fecha_v - fecha_hoy).days
+        if dias <= DIAS_ALERTA_INSUMO:
+            lote_txt = f" (Lote {ins.lote})" if ins.lote else ""
+            mensaje = (
+                f"El insumo '{ins.nombre}'{lote_txt} "
+                f"{_describir_plazo(dias)} ({fecha_v.strftime('%d/%m/%Y')})."
+            )
+            clave_base = f"venc_insumo_{ins.id}_{str_hoy}"
+
+            _, nuevas = crear_notificacion_para_admins(
+                db,
+                titulo="Vencimiento de Insumo",
+                mensaje=mensaje,
+                tipo=TipoNotificacion.VENCIMIENTO_INSUMO,
+                entidad_tipo="insumo",
+                entidad_id=ins.id,
+                clave_base=clave_base,
+            )
+            notificaciones_generadas += nuevas
+
     from src.incidentes.services import listar_incidentes_abiertos
 
     incidentes_abiertos = listar_incidentes_abiertos(db)
@@ -506,10 +541,9 @@ def notificar_tarea_incumplida_revision(
     return notificaciones
 
 
-def UMBRAL_STOCK_BAJO(unidad: UnidadMedidaEnum) -> float:
-    if unidad in (UnidadMedidaEnum.LITROS, UnidadMedidaEnum.KILOGRAMOS, UnidadMedidaEnum.UNIDADES):
-        return 10.0
-    if unidad in (UnidadMedidaEnum.MILILITROS, UnidadMedidaEnum.GRAMOS):
+def UMBRAL_STOCK_BAJO(unidad: str) -> float:
+    clave = (unidad or "").strip().upper()
+    if clave in ("ML", "MILILITROS", "G", "GRAMOS"):
         return 500.0
     return 10.0
 
@@ -520,8 +554,8 @@ def notificar_stock_bajo_quimico_si_corresponde(
     if not getattr(quimico, "activo", True):
         return []
 
-    u_medida = getattr(quimico, "unidad_medida", None)
-    if not isinstance(u_medida, UnidadMedidaEnum):
+    u_medida = str(getattr(quimico, "unidad_medida", "") or "").strip()
+    if not u_medida:
         return []
     umbral = UMBRAL_STOCK_BAJO(u_medida)
     stock_actual = getattr(quimico, "stock_actual", 0.0)
@@ -529,7 +563,7 @@ def notificar_stock_bajo_quimico_si_corresponde(
         str_hoy = date.today().strftime("%Y-%m-%d")
         q_id = getattr(quimico, "id", 0)
         q_nombre = getattr(quimico, "nombre", "")
-        u_val = getattr(u_medida, "value", str(u_medida))
+        u_val = u_medida
         clave_base = f"stock_quimico_{q_id}_{str_hoy}"
         mensaje = (
             f"El producto químico '{q_nombre}' tiene stock bajo "

@@ -17,4 +17,5 @@ class ErrorCode:
     INSUMO_YA_ASOCIADO = "El insumo ya está asociado a este lote."
     STOCK_INSUFICIENTE = "La cantidad utilizada supera el stock disponible del insumo."
     INSUMO_NO_ASOCIADO = "El insumo no está asociado a este lote."
+    INSUMO_VENCIDO = "No se puede utilizar un insumo vencido."
     LOTE_CERRADO = "El lote está cerrado: solo se pueden modificar los lotes del día."

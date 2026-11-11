@@ -33,7 +33,7 @@ def test_catalogo_publico_completo(session: Session) -> None:
     res = client.get(f"/identificadorQR/{qr}/productos")
     assert res.status_code == 200
     # solo el visible y activo, y sin datos internos como la receta
-    assert res.json() == [{"id": visible, "nombre": "Sacramento", "descripcion": "Por unidad", "unidadMedida": "unidades"}]
+    assert res.json() == [{"id": visible, "nombre": "Sacramento", "descripcion": "Por unidad", "unidadMedida": "unidades", "unidad_medida_abreviatura": "UN"}]
     assert oculto not in [p["id"] for p in res.json()]
 
 

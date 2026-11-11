@@ -1,13 +1,13 @@
-from typing import Optional, Any
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from src.producto.models import UnidadMedida
+from typing import Optional, Self
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.producto import exceptions
 
 
 class ProductoBase(BaseModel):
     nombre: str = Field(min_length=1, max_length=50)
     descripcion: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    unidadMedida: Optional[UnidadMedida] = None
+    unidad_medida_id: Optional[int] = None
+    unidadMedida: Optional[str] = None
     id_receta: Optional[int] = None
 
 
@@ -20,18 +20,20 @@ class ProductoCreate(ProductoBase):
             raise exceptions.NombreVacio
         return v_limpio
 
-    @field_validator("unidadMedida", mode="before")
-    @classmethod
-    def validar_unidad_medida_obligatoria(cls, v: Any) -> Any:
-        if v is None or (isinstance(v, str) and not v.strip()):
+    @model_validator(mode="after")
+    def validar_unidad_medida_obligatoria(self) -> Self:
+        if self.unidad_medida_id is None and (
+            self.unidadMedida is None or not str(self.unidadMedida).strip()
+        ):
             raise exceptions.UnidadVacia
-        return v
+        return self
 
 
 class ProductoUpdate(ProductoBase):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
-    unidadMedida: Optional[UnidadMedida] = None
+    unidad_medida_id: Optional[int] = None
+    unidadMedida: Optional[str] = None
     id_receta: Optional[int] = None
 
     @field_validator('nombre')
@@ -46,6 +48,10 @@ class ProductoUpdate(ProductoBase):
 
 class ProductoResponse(ProductoBase):
     id: int = Field(ge=0)
+    unidad_medida_id: int
+    unidadMedida: str
+    unidad_medida_nombre: Optional[str] = None
+    unidad_medida_abreviatura: Optional[str] = None
 
     nombre_receta: Optional[str] = None
     activo: bool
@@ -64,6 +70,7 @@ class ProductoPublico(BaseModel):
     id: int
     nombre: str
     descripcion: Optional[str] = None
-    unidadMedida: UnidadMedida
+    unidadMedida: str
+    unidad_medida_abreviatura: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

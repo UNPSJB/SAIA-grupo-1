@@ -1,45 +1,88 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
-import type { TipoInsumoDetalle } from './tipos';
+import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import type { LoteInsumoHistorico, TipoInsumoDetalle } from './tipos';
 
 interface VerDetalleTipoInsumoProps {
   id: number;
   onVolver: () => void;
   onVerLote?: (loteId: number) => void;
+  onEditarLote?: (loteId: number) => void;
 }
+
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return 'No perecedero';
+  try {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime())
+      ? dateStr
+      : d.toLocaleDateString('es-AR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        });
+  } catch {
+    return dateStr;
+  }
+};
 
 export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
   id,
   onVolver,
   onVerLote,
+  onEditarLote,
 }) => {
   const [detalle, setDetalle] = useState<TipoInsumoDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
+  const [loteAEliminar, setLoteAEliminar] = useState<LoteInsumoHistorico | null>(null);
+  const [dialogEliminarAbierto, setDialogEliminarAbierto] = useState(false);
+
+  const cargarDetalle = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await apiFetch(`/insumos/tipos/${id}/detalle`);
+      if (res.ok) {
+        const data = await res.json();
+        setDetalle(data);
+      } else {
+        setErrorMsg('No se pudo cargar el detalle del tipo de insumo.');
+      }
+    } catch {
+      setErrorMsg('Error de conexión al cargar el detalle.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
-    let cancelado = false;
-    async function cargar() {
-      try {
-        const res = await apiFetch(`/insumos/tipos/${id}/detalle`);
-        if (!cancelado && res.ok) {
-          const data = await res.json();
-          setDetalle(data);
-        } else if (!cancelado) {
-          setErrorMsg('No se pudo cargar el detalle del tipo de insumo.');
-        }
-      } catch {
-        if (!cancelado) setErrorMsg('Error de conexión al cargar el detalle.');
-      } finally {
-        if (!cancelado) setLoading(false);
+    cargarDetalle();
+  }, [cargarDetalle]);
+
+  const abrirConfirmacionEliminarLote = (lote: LoteInsumoHistorico) => {
+    setLoteAEliminar(lote);
+    setDialogEliminarAbierto(true);
+  };
+
+  const ejecutarEliminarLote = async () => {
+    if (!loteAEliminar) return;
+    try {
+      const res = await apiFetch(`/insumos/${loteAEliminar.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await cargarDetalle();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorDialogMsg(err.detail || 'No se pudo dar de baja el lote de insumo.');
       }
+    } catch {
+      setErrorDialogMsg('Error de conexión al dar de baja el lote.');
+    } finally {
+      setDialogEliminarAbierto(false);
+      setLoteAEliminar(null);
     }
-    cargar();
-    return () => {
-      cancelado = true;
-    };
-  }, [id]);
+  };
 
   const renderBadgeEstado = (estado: string) => {
     switch (estado) {
@@ -126,6 +169,8 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
     );
   }
 
+  const lotes = detalle.lotes_historicos || detalle.lotes || [];
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -162,24 +207,24 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
           <p style={{ fontWeight: 600, margin: '4px 0 0', textTransform: 'capitalize' }}>{detalle.unidadMedida}</p>
         </div>
         <div>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Stock Total Activo</span>
+          <p style={{ fontWeight: 600, margin: '4px 0 0' }}>
+            {detalle.stock_total ?? 0} {detalle.unidadMedida}
+          </p>
+        </div>
+        <div>
           <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Estado</span>
           <p style={{ margin: '4px 0 0' }}>
-            <span
-              style={{
-                padding: '2px 8px',
-                borderRadius: '10px',
-                fontSize: '12px',
-                backgroundColor: detalle.activo ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                color: detalle.activo ? '#16a34a' : '#dc2626',
-              }}
-            >
+            <span className={`badge-status ${detalle.activo ? 'activo' : 'inactivo'}`}>
               {detalle.activo ? 'Activo' : 'Inactivo'}
             </span>
           </p>
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Descripción</span>
-          <p style={{ margin: '4px 0 0', color: 'var(--color-texto)' }}>{detalle.descripcion || 'Sin descripción registrada.'}</p>
+          <p style={{ margin: '4px 0 0', color: 'var(--color-texto)' }}>
+            {detalle.descripcion || 'Sin descripción registrada.'}
+          </p>
         </div>
       </div>
 
@@ -197,24 +242,24 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
               <th>Cant. Recibida</th>
               <th>Stock Actual</th>
               <th>Estado</th>
-              {onVerLote && <th className="acciones-col">Acciones</th>}
+              <th className="acciones-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {detalle.lotes_historicos.length === 0 ? (
+            {lotes.length === 0 ? (
               <tr>
-                <td colSpan={onVerLote ? 9 : 8} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '2rem' }}>
                   No se han registrado lotes para este tipo de insumo.
                 </td>
               </tr>
             ) : (
-              detalle.lotes_historicos.map((lote) => (
-                <tr key={lote.id}>
+              lotes.map((lote) => (
+                <tr key={lote.id} style={{ opacity: lote.activo ? 1 : 0.6 }}>
                   <td style={{ fontWeight: 600 }}>{lote.lote}</td>
                   <td>{lote.nombre}</td>
                   <td>{lote.proveedor_nombre || '-'}</td>
-                  <td>{lote.fechaRecepcion}</td>
-                  <td>{lote.fechaVencimiento || 'No perecedero'}</td>
+                  <td>{formatDate(lote.fechaRecepcion)}</td>
+                  <td>{formatDate(lote.fechaVencimiento)}</td>
                   <td>
                     {lote.cantRecibida} {lote.medida}
                   </td>
@@ -222,23 +267,64 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
                     {lote.stock} {lote.medida}
                   </td>
                   <td>{renderBadgeEstado(lote.estadoVencimiento)}</td>
-                  {onVerLote && (
-                    <td className="acciones-col">
-                      <button
-                        className="btn-icon btn-editar"
-                        title="Ver lote y trazabilidad"
-                        onClick={() => onVerLote(lote.id)}
-                      >
-                        👁
-                      </button>
-                    </td>
-                  )}
+                  <td className="acciones-col">
+                    <div className="acciones-btns">
+                      {onVerLote && (
+                        <button
+                          className="btn-icon btn-ver"
+                          title="Ver lote y trazabilidad"
+                          onClick={() => onVerLote(lote.id)}
+                        >
+                          👁
+                        </button>
+                      )}
+                      {lote.activo && onEditarLote && (
+                        <button
+                          className="btn-icon btn-editar"
+                          title="Editar lote"
+                          onClick={() => onEditarLote(lote.id)}
+                        >
+                          ✎
+                        </button>
+                      )}
+                      {lote.activo && (
+                        <button
+                          className="btn-icon btn-eliminar"
+                          title="Dar de baja lote"
+                          onClick={() => abrirConfirmacionEliminarLote(lote)}
+                        >
+                          🗑
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      <ConfirmAlertDialog
+        open={dialogEliminarAbierto}
+        title="¿Dar de baja lote?"
+        description={`¿Estás seguro de que deseas dar de baja el lote "${loteAEliminar?.lote}" de "${loteAEliminar?.nombre}"?`}
+        confirmText="Confirmar Baja"
+        cancelText="Cancelar"
+        isDestructive={true}
+        onConfirm={ejecutarEliminarLote}
+        onCancel={() => {
+          setDialogEliminarAbierto(false);
+          setLoteAEliminar(null);
+        }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ''}
+        onClose={() => setErrorDialogMsg(null)}
+      />
     </div>
   );
 };

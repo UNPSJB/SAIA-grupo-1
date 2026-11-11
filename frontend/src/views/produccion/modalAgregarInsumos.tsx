@@ -43,6 +43,19 @@ const formatFecha = (dateStr?: string | null): string => {
   }
 };
 
+const estaLoteVencido = (insumo?: InsumoDisponible): boolean => {
+  if (!insumo) return false;
+  if (insumo.estadoVencimiento === 'VENCIDO') return true;
+  if (!insumo.fechaVencimiento) return false;
+  const vtoIso = insumo.fechaVencimiento.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(vtoIso)) return false;
+  const ahora = new Date();
+  const hoyIso = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(
+    ahora.getDate()
+  ).padStart(2, '0')}`;
+  return vtoIso < hoyIso;
+};
+
 export const ModalAgregarInsumos: React.FC<ModalAgregarInsumosProps> = ({ lote, onClose, onGuardado }) => {
   const { insumos, cargando, error: errorInsumos, recargar } = useInsumosDisponibles();
   const [tipos, setTipos] = useState<TipoInsumo[]>([]);
@@ -81,8 +94,8 @@ export const ModalAgregarInsumos: React.FC<ModalAgregarInsumosProps> = ({ lote, 
   }, []);
 
   const yaAsociados = new Set(lote.insumos.map((i) => i.insumo.id));
-  const elegibles = insumos.filter((i) => !yaAsociados.has(i.id));
-  const buscar = (id: string): InsumoDisponible | undefined => insumos.find((i) => String(i.id) === id);
+  const elegibles = insumos.filter((i) => !yaAsociados.has(i.id) && !estaLoteVencido(i));
+  const buscar = (id: string): InsumoDisponible | undefined => elegibles.find((i) => String(i.id) === id);
 
   const cambiarFila = (clave: number, cambios: Partial<Fila>) => {
     setFilas((prev) =>
@@ -112,6 +125,8 @@ export const ModalAgregarInsumos: React.FC<ModalAgregarInsumosProps> = ({ lote, 
       const insumo = buscar(fila.insumo_id);
       if (!insumo) {
         errores[fila.clave] = 'Debe seleccionar un lote de insumo.';
+      } else if (estaLoteVencido(insumo)) {
+        errores[fila.clave] = 'No se puede utilizar un ingrediente vencido en un producto.';
       } else if (fila.cantidad === '') {
         errores[fila.clave] = 'Indique la cantidad utilizada.';
       } else if (fila.cantidad <= 0) {
@@ -326,7 +341,7 @@ export const ModalAgregarInsumos: React.FC<ModalAgregarInsumosProps> = ({ lote, 
                         onChange={(e) =>
                           cambiarFila(fila.clave, { cantidad: e.target.value === '' ? '' : Number(e.target.value) })
                         }
-                        disabled={!fila.insumo_id}
+                        disabled={!fila.insumo_id || estaLoteVencido(elegido)}
                         aria-invalid={Boolean(error)}
                       />
                     </div>
@@ -356,6 +371,11 @@ export const ModalAgregarInsumos: React.FC<ModalAgregarInsumosProps> = ({ lote, 
                             Stock disponible: <strong>{elegido.stock} {elegido.medida}</strong>
                           </span>
                           {renderBadge(elegido.estadoVencimiento)}
+                          {estaLoteVencido(elegido) && (
+                            <span style={{ color: '#dc2626', fontWeight: 600 }}>
+                              (Ingrediente vencido: prohibido su uso en producción)
+                            </span>
+                          )}
                         </div>
                       )
                     )}

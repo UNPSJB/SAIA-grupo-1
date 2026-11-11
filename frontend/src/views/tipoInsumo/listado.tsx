@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { TipoInsumo } from './tipos';
 import '../../styles/formularioAlta.css';
-import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
 import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion } from '../../components/ui/paginacion';
@@ -26,19 +26,15 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   const [busqueda, setBusqueda] = useState('');
-  const [soloActivos, setSoloActivos] = useState(true);
-  const [tipoAEliminar, setTipoAEliminar] = useState<TipoInsumo | null>(null);
+  const [filtroEstado, setFiltroEstado] = useState('TODOS');
+  const [tipoAConfirmar, setTipoAConfirmar] = useState<TipoInsumo | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
   const cargarTipos = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (!soloActivos) params.append('solo_activos', 'false');
-      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
-      const query = params.toString() ? `?${params.toString()}` : '';
-      const res = await apiFetch(`/insumos/tipos/${query}`);
+      const res = await apiFetch('/insumos/tipos/?solo_activos=false');
       if (res.ok) {
         const data = await res.json();
         setTipos(data);
@@ -54,42 +50,65 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
 
   useEffect(() => {
     cargarTipos();
-  }, [soloActivos, busqueda]);
+  }, []);
 
   const abrirConfirmacion = (tipo: TipoInsumo) => {
-    setErrorMsg(null);
-    setTipoAEliminar(tipo);
+    setTipoAConfirmar(tipo);
     setDialogAbierto(true);
   };
 
-  const ejecutarEliminar = async () => {
-    if (!tipoAEliminar) return;
+  const ejecutarToggle = async () => {
+    if (!tipoAConfirmar) return;
+    const esActivo = tipoAConfirmar.activo;
+    const accion = esActivo ? 'dar de baja' : 'restaurar';
     try {
-      const res = await apiFetch(`/insumos/tipos/${tipoAEliminar.id}`, { method: 'DELETE' });
+      const url = esActivo
+        ? `/insumos/tipos/${tipoAConfirmar.id}`
+        : `/insumos/tipos/${tipoAConfirmar.id}/restaurar`;
+      const method = esActivo ? 'DELETE' : 'POST';
+      const res = await apiFetch(url, { method });
+
       if (res.ok) {
         setTipos((prev) =>
-          soloActivos
-            ? prev.filter((t) => t.id !== tipoAEliminar.id)
-            : prev.map((t) => (t.id === tipoAEliminar.id ? { ...t, activo: false } : t))
+          prev.map((t) =>
+            t.id === tipoAConfirmar.id ? { ...t, activo: !esActivo } : t
+          )
         );
       } else {
         const err = await res.json().catch(() => ({}));
-        setErrorMsg(err.detail || 'No se pudo eliminar el tipo de insumo.');
+        setErrorDialogMsg(err.detail || `No se pudo ${accion} el tipo de insumo.`);
       }
     } catch {
-      setErrorMsg('Error de conexión al eliminar el tipo de insumo.');
+      setErrorDialogMsg(`Error de conexión al ${accion} el tipo de insumo.`);
     } finally {
       setDialogAbierto(false);
-      setTipoAEliminar(null);
+      setTipoAConfirmar(null);
     }
   };
+
+  const tiposFiltrados = tipos.filter((t) => {
+    const term = busqueda.toLowerCase().trim();
+    const matchBusqueda =
+      !term ||
+      t.nombre.toLowerCase().includes(term) ||
+      (t.descripcion && t.descripcion.toLowerCase().includes(term));
+
+    const matchEstado =
+      filtroEstado === 'TODOS' ||
+      (filtroEstado === 'activo' && t.activo) ||
+      (filtroEstado === 'inactivo' && !t.activo);
+
+    return matchBusqueda && matchEstado;
+  });
 
   const ejecutarExportacion = async () => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
       if (busqueda.trim()) params.append('busqueda', busqueda.trim());
-      if (!soloActivos) params.append('solo_activos', 'false');
+      if (filtroEstado === 'activo') {
+        params.append('solo_activos', 'true');
+      }
 
       const queryString = params.toString();
       const url = `/insumos/tipos/exportar-csv${queryString ? `?${queryString}` : ''}`;
@@ -97,7 +116,7 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
       await descargarCSV(url, 'tipos_insumos.csv');
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al exportar tipos de insumos a CSV.');
+      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar tipos de insumos a CSV.');
     } finally {
       setExportando(false);
     }
@@ -113,7 +132,7 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
     totalPaginas,
     indiceInicio,
     indiceFin,
-  } = usePaginacion(tipos);
+  } = usePaginacion(tiposFiltrados);
 
   return (
     <div className="modulo-container">
@@ -141,8 +160,6 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
         </div>
       </div>
 
-      {errorMsg && <div className="alerta-error">{errorMsg}</div>}
-
       <div className="filtros-top-bar" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
         <input
           type="text"
@@ -152,14 +169,15 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
           className="input-busqueda"
         />
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          <input
-            type="checkbox"
-            checked={soloActivos}
-            onChange={(e) => setSoloActivos(e.target.checked)}
-          />
-          Solo activos
-        </label>
+        <select
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          className="select-filtro"
+        >
+          <option value="TODOS">Todos los estados</option>
+          <option value="activo">Activos</option>
+          <option value="inactivo">Inactivos</option>
+        </select>
       </div>
 
       <div className="tabla-wrapper">
@@ -167,7 +185,7 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
           <thead>
             <tr>
               <th style={{ width: '60px' }}>ID</th>
-              <th>Nombre Genérico</th>
+              <th>Nombre</th>
               <th>Unidad de Medida</th>
               <th>Descripción</th>
               <th>Lotes Registrados</th>
@@ -182,11 +200,11 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
                   Cargando tipos de insumo...
                 </td>
               </tr>
-            ) : tipos.length === 0 ? (
+            ) : tiposFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
-                  {busqueda
-                    ? 'No se encontraron tipos de insumo que coincidan con la búsqueda.'
+                  {busqueda || filtroEstado !== 'TODOS'
+                    ? 'No se encontraron tipos de insumo que coincidan con los filtros.'
                     : 'No hay tipos de insumo registrados.'}
                 </td>
               </tr>
@@ -197,48 +215,35 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
                   <td style={{ fontWeight: 600 }}>{t.nombre}</td>
                   <td style={{ textTransform: 'capitalize' }}>{t.unidadMedida}</td>
                   <td>{t.descripcion || '-'}</td>
-                  <td>{t.cantidad_lotes ?? 0}</td>
+                  <td>{t.cantidad_lotes ?? t.total_lotes ?? 0}</td>
                   <td>
-                    <span
-                      style={{
-                        padding: '3px 8px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        backgroundColor: t.activo ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                        color: t.activo ? '#16a34a' : '#dc2626',
-                      }}
-                    >
+                    <span className={`badge-status ${t.activo ? 'activo' : 'inactivo'}`}>
                       {t.activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
-                      {onVerDetalleClick && (
-                        <button
-                          className="btn-icon btn-editar"
-                          title="Ver detalle e historial de lotes"
-                          onClick={() => onVerDetalleClick(t.id)}
-                        >
-                          👁
-                        </button>
-                      )}
+                      <button
+                        className="btn-icon btn-ver"
+                        title="Ver detalle"
+                        onClick={() => onVerDetalleClick?.(t.id)}
+                      >
+                        👁
+                      </button>
                       <button
                         className="btn-icon btn-editar"
-                        title="Editar tipo de insumo"
+                        title="Editar"
                         onClick={() => onEditarClick?.(t.id)}
                       >
                         ✎
                       </button>
-                      {t.activo && (
-                        <button
-                          className="btn-icon btn-eliminar"
-                          title="Dar de baja tipo de insumo"
-                          onClick={() => abrirConfirmacion(t)}
-                        >
-                          🗑
-                        </button>
-                      )}
+                      <button
+                        className={`btn-icon ${t.activo ? 'btn-eliminar' : 'btn-reactivar'}`}
+                        title={t.activo ? 'Dar de baja' : 'Restaurar'}
+                        onClick={() => abrirConfirmacion(t)}
+                      >
+                        {t.activo ? '🗑' : '🔄'}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -258,18 +263,33 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
           indiceFin={indiceFin}
           onCambiarPagina={setPaginaActual}
           onCambiarFilasPorPagina={setFilasPorPagina}
+          etiqueta="tipos de insumo"
         />
       )}
 
       <ConfirmAlertDialog
         open={dialogAbierto}
-        title="Dar de baja tipo de insumo"
-        description={`¿Estás seguro de que deseas dar de baja el tipo de insumo "${tipoAEliminar?.nombre}"? Nota: No se puede eliminar si ya tiene insumos o lotes asociados.`}
-        confirmText="Dar de baja"
+        title={tipoAConfirmar?.activo ? '¿Dar de baja tipo de insumo?' : '¿Restaurar tipo de insumo?'}
+        description={
+          tipoAConfirmar?.activo
+            ? `¿Estás seguro de que deseas dar de baja el tipo de insumo "${tipoAConfirmar?.nombre}"?`
+            : `¿Estás seguro de que deseas restaurar el tipo de insumo "${tipoAConfirmar?.nombre}"?`
+        }
+        confirmText={tipoAConfirmar?.activo ? 'Confirmar Baja' : 'Confirmar Restauración'}
         cancelText="Cancelar"
-        isDestructive={true}
-        onConfirm={ejecutarEliminar}
-        onCancel={() => setDialogAbierto(false)}
+        isDestructive={Boolean(tipoAConfirmar?.activo)}
+        onConfirm={ejecutarToggle}
+        onCancel={() => {
+          setDialogAbierto(false);
+          setTipoAConfirmar(null);
+        }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ''}
+        onClose={() => setErrorDialogMsg(null)}
       />
 
       <ConfirmExportDialog

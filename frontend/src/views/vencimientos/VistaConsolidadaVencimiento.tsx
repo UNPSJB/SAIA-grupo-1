@@ -7,7 +7,7 @@ import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 
-export type OrigenVencimiento = 'personal' | 'equipo' | 'documento' | 'ambiental';
+export type OrigenVencimiento = 'personal' | 'equipo' | 'documento' | 'ambiental' | 'insumo';
 export type EstadoVencimiento = 'vencido' | 'proximo' | 'vigente';
 
 export interface VencimientoFila {
@@ -45,6 +45,7 @@ const ETIQUETA_ORIGEN: Record<OrigenVencimiento, string> = {
   equipo: 'Calibración / Mantenimiento',
   documento: 'Documentos',
   ambiental: 'Controles Sanitarios',
+  insumo: 'Insumos',
 };
 
 const ETIQUETA_ESTADO: Record<EstadoVencimiento, string> = {
@@ -190,7 +191,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
         <div className="modulo-header" style={{ marginBottom: 0 }}>
           <h1>Vencimientos</h1>
-          <div className="subtitulo">01 · Control consolidado de carnets, calibraciones, documentos y controles sanitarios</div>
+          <div className="subtitulo">01 · Control consolidado de carnets, calibraciones, documentos, controles sanitarios e insumos</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
@@ -239,7 +240,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
         <input
           type="text"
           className="input-busqueda"
-          placeholder="Buscar por persona, equipo, documento o concepto..."
+          placeholder="Buscar por persona, equipo, documento, insumo o concepto..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
         />
@@ -254,6 +255,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
           <option value="equipo">{ETIQUETA_ORIGEN.equipo}</option>
           <option value="documento">{ETIQUETA_ORIGEN.documento}</option>
           <option value="ambiental">{ETIQUETA_ORIGEN.ambiental}</option>
+          <option value="insumo">{ETIQUETA_ORIGEN.insumo}</option>
         </select>
         <select
           className="select-filtro"

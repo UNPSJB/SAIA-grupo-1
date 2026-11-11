@@ -11,6 +11,7 @@ interface ListadoInsumosProps {
   onNuevoClick?: () => void;
   onVerClick?: (insumo: InsumoConId) => void;
   onEditarClick?: (insumo: InsumoConId) => void;
+  onVerTipoClick?: (tipoId: number) => void;
 }
 
 const formatDate = (dateStr?: string | null) => {
@@ -33,6 +34,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
   onNuevoClick,
   onVerClick,
   onEditarClick,
+  onVerTipoClick,
 }) => {
   const [grupos, setGrupos] = useState<InsumoAgrupadoPorTipo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,6 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('TODOS');
-  const [mostrarHistorialAgotados, setMostrarHistorialAgotados] = useState(false);
   const [tiposAbiertos, setTiposAbiertos] = useState<Record<number, boolean>>({});
 
   const [loteADesechar, setLoteADesechar] = useState<LoteInsumoItem | null>(null);
@@ -160,10 +161,12 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
       return (
         <span
           style={{
-            padding: '2px 8px',
-            borderRadius: '12px',
-            fontSize: '11px',
+            padding: '0.15rem 0.45rem',
+            borderRadius: '9999px',
+            fontSize: '0.7rem',
             fontWeight: 500,
+            whiteSpace: 'nowrap',
+            display: 'inline-block',
             backgroundColor: 'rgba(100, 116, 139, 0.15)',
             color: '#64748b',
           }}
@@ -178,10 +181,12 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
         return (
           <span
             style={{
-              padding: '2px 8px',
-              borderRadius: '12px',
-              fontSize: '11px',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '9999px',
+              fontSize: '0.7rem',
               fontWeight: 600,
+              whiteSpace: 'nowrap',
+              display: 'inline-block',
               backgroundColor: 'rgba(239, 68, 68, 0.15)',
               color: '#dc2626',
             }}
@@ -193,10 +198,12 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
         return (
           <span
             style={{
-              padding: '2px 8px',
-              borderRadius: '12px',
-              fontSize: '11px',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '9999px',
+              fontSize: '0.7rem',
               fontWeight: 600,
+              whiteSpace: 'nowrap',
+              display: 'inline-block',
               backgroundColor: 'rgba(234, 179, 8, 0.15)',
               color: '#ca8a04',
             }}
@@ -209,10 +216,12 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
         return (
           <span
             style={{
-              padding: '2px 8px',
-              borderRadius: '12px',
-              fontSize: '11px',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '9999px',
+              fontSize: '0.7rem',
               fontWeight: 600,
+              whiteSpace: 'nowrap',
+              display: 'inline-block',
               backgroundColor: 'rgba(34, 197, 94, 0.15)',
               color: '#16a34a',
             }}
@@ -256,14 +265,14 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
   });
 
   return (
-    <div className="modulo-container">
+    <div className="modulo-container modulo-insumos-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
           <h1>Inventario de Insumos</h1>
-          <div className="subtitulo">Vista agrupada por tipo, control FEFO y semáforo de vencimiento</div>
+          <div className="subtitulo">Listado agrupado por tipo de insumo</div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setDialogExportarAbierto(true)}
@@ -275,20 +284,19 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
 
           {onNuevoClick && (
             <button onClick={onNuevoClick} className="btn-guardar">
-              + Recepción de Insumo
+              + Recepción de Insumos
             </button>
           )}
         </div>
       </div>
 
-      <div className="filtros-top-bar" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="filtros-top-bar">
         <input
           type="text"
-          placeholder="Buscar por tipo, nombre específico, lote o proveedor..."
+          placeholder="Buscar por tipo, nombre, lote o proveedor..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           className="input-busqueda"
-          style={{ minWidth: '320px' }}
         />
 
         <select
@@ -301,125 +309,85 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
           <option value="VENCIDOS">Con lotes vencidos</option>
           <option value="PROXIMOS">Con lotes próximos a vencer</option>
         </select>
-
-        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          <input
-            type="checkbox"
-            checked={mostrarHistorialAgotados}
-            onChange={(e) => setMostrarHistorialAgotados(e.target.checked)}
-          />
-          Mostrar historial de lotes agotados (stock 0)
-        </label>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem' }}>Cargando inventario de insumos...</div>
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando inventario de insumos...</div>
       ) : gruposFiltrados.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem' }}>
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
           No se encontraron insumos que coincidan con los filtros aplicados.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+        <div className="insumos-grupos-lista">
           {gruposFiltrados.map((grupo) => {
             const abierto = tiposAbiertos[grupo.tipo_id] ?? true;
             return (
-              <div
-                key={grupo.tipo_id}
-                style={{
-                  border: '1px solid var(--border, #334155)',
-                  borderRadius: '8px',
-                  backgroundColor: 'var(--code-bg, rgba(255, 255, 255, 0.02))',
-                  overflow: 'hidden',
-                }}
-              >
+              <div key={grupo.tipo_id} className="insumos-grupo-card">
                 <div
                   onClick={() => toggleTipo(grupo.tipo_id)}
+                  className="insumos-grupo-header"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '14px 20px',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
                     borderBottom: abierto ? '1px solid var(--border, #334155)' : 'none',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-muted, #94a3b8)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #94a3b8)' }}>
                       {abierto ? '▼' : '▶'}
                     </span>
-                    <div>
-                      <span style={{ fontSize: '16px', fontWeight: 600 }}>{grupo.nombre}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{grupo.nombre}</span>
                       {grupo.descripcion && (
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginLeft: '10px' }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)', marginLeft: '0.5rem' }}>
                           — {grupo.descripcion}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    {grupo.tiene_vencidos && (
-                      <span
-                        style={{
-                          padding: '3px 10px',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                          color: '#dc2626',
-                        }}
-                      >
-                        ⚠️ Lote Vencido
-                      </span>
-                    )}
-
-                    {grupo.tiene_proximos && (
-                      <span
-                        style={{
-                          padding: '3px 10px',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          backgroundColor: 'rgba(234, 179, 8, 0.15)',
-                          color: '#ca8a04',
-                        }}
-                      >
-                        ⏳ Próximo a Vencer
-                      </span>
-                    )}
-
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Stock Total: </span>
-                      <span style={{ fontSize: '16px', fontWeight: 700 }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #94a3b8)' }}>Stock Total: </span>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>
                         {grupo.stock_total} {grupo.unidadMedida}
                       </span>
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)', marginLeft: '8px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #94a3b8)', marginLeft: '0.45rem' }}>
                         ({grupo.lotes.length} {grupo.lotes.length === 1 ? 'lote activo' : 'lotes activos'})
                       </span>
                     </div>
+                    {onVerTipoClick && (
+                      <button
+                        type="button"
+                        className="btn-icon btn-ver"
+                        title="Ver detalle e historial del tipo de insumo"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onVerTipoClick(grupo.tipo_id);
+                        }}
+                      >
+                        👁
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {abierto && (
-                  <div style={{ padding: '16px' }}>
+                  <div className="insumos-grupo-body">
                     {grupo.lotes.length === 0 ? (
-                      <p style={{ margin: '8px 0', color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
+                      <p style={{ margin: '0.4rem 0', fontSize: '0.85rem', color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
                         No hay lotes con stock disponible en este momento.
                       </p>
                     ) : (
                       <div className="tabla-wrapper">
-                        <table className="tabla-custom">
+                        <table className="tabla-custom tabla-insumos">
                           <thead>
                             <tr>
                               <th>Lote</th>
-                              <th>Nombre Específico</th>
+                              <th>Nombre</th>
                               <th>Proveedor</th>
-                              <th>Fecha Recepción</th>
-                              <th>Fecha Vencimiento</th>
-                              <th>Cant. Recibida</th>
-                              <th>Stock Disponible</th>
+                              <th>Recepción</th>
+                              <th>Vencimiento</th>
+                              <th>Recibido</th>
+                              <th>Stock</th>
                               <th>Estado</th>
                               <th className="acciones-col">Acciones</th>
                             </tr>
@@ -465,20 +433,11 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                                     {lote.estadoVencimiento === 'VENCIDO' && lote.stock > 0 && (
                                       <button
                                         type="button"
-                                        style={{
-                                          padding: '2px 6px',
-                                          borderRadius: '4px',
-                                          border: '1px solid #dc2626',
-                                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                          color: '#dc2626',
-                                          fontSize: '11px',
-                                          cursor: 'pointer',
-                                          fontWeight: 600,
-                                        }}
+                                        className="btn-icon btn-eliminar"
                                         title="Desechar stock restante de lote vencido"
                                         onClick={() => abrirConfirmacionDesechar(lote)}
                                       >
-                                        Desechar
+                                        ✕
                                       </button>
                                     )}
                                   </div>
@@ -490,57 +449,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                       </div>
                     )}
 
-                    {mostrarHistorialAgotados && grupo.lotes_agotados.length > 0 && (
-                      <div style={{ marginTop: '20px', borderTop: '1px dashed var(--border, #334155)', paddingTop: '14px' }}>
-                        <h4 style={{ fontSize: '13px', color: 'var(--text-muted, #94a3b8)', marginBottom: '8px' }}>
-                          Historial de lotes agotados (Stock 0)
-                        </h4>
-                        <div className="tabla-wrapper">
-                          <table className="tabla-custom">
-                            <thead>
-                              <tr>
-                                <th>Lote</th>
-                                <th>Nombre Específico</th>
-                                <th>Proveedor</th>
-                                <th>Fecha Recepción</th>
-                                <th>Fecha Vencimiento</th>
-                                <th>Cant. Recibida</th>
-                                <th>Stock</th>
-                                <th>Estado</th>
-                                <th className="acciones-col">Acciones</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {grupo.lotes_agotados.map((lote) => (
-                                <tr key={lote.id} style={{ opacity: 0.7 }}>
-                                  <td style={{ fontWeight: 500 }}>{lote.lote}</td>
-                                  <td>{lote.nombre}</td>
-                                  <td>{lote.proveedor_nombre || '-'}</td>
-                                  <td>{formatDate(lote.fechaRecepcion.toString())}</td>
-                                  <td>{formatDate(lote.fechaVencimiento?.toString())}</td>
-                                  <td>
-                                    {lote.cantRecibida} {lote.medida}
-                                  </td>
-                                  <td>0 {lote.medida}</td>
-                                  <td>{renderBadge(lote.estadoVencimiento, true)}</td>
-                                  <td className="acciones-col">
-                                    <div className="acciones-btns">
-                                      <button
-                                        className="btn-icon btn-editar"
-                                        title="Ver trazabilidad del lote"
-                                        onClick={() => onVerClick?.(transformarParaAcciones(lote))}
-                                      >
-                                        👁
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
+
                   </div>
                 )}
               </div>
@@ -563,8 +472,8 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
       <ConfirmAlertDialog
         open={dialogDesecharAbierto}
         title="Confirmar Descarte de Lote Vencido"
-        description={`El lote "${loteADesechar?.lote}" de "${loteADesechar?.nombre}" está vencido y cuenta con un stock remanente de ${loteADesechar?.stock} ${loteADesechar?.medida}. ¿Deseas desechar este stock remanente llevando su cantidad a 0 para impedir su uso en producción?`}
-        confirmText="Confirmar y Llevar a 0"
+        description={`El lote "${loteADesechar?.lote}" de "${loteADesechar?.nombre}" está vencido y cuenta con un stock remanente de ${loteADesechar?.stock} ${loteADesechar?.medida}. ¿Deseas desechar este stock remanente llevando su cantidad a 0?`}
+        confirmText="Confirmar"
         cancelText="Cancelar"
         isDestructive={true}
         onConfirm={ejecutarDesechar}

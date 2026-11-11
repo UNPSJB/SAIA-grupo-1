@@ -116,3 +116,24 @@ def test_router_actualizar_tipo_insumo_invalido_falla(session: Session):
 
     res_corto = client.put(f"/insumos/tipos/{tipo_id}", json={"nombre": "G"})
     assert res_corto.status_code in (status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_CONTENT)
+
+
+def test_router_detalle_y_restaurar_tipo_insumo(session: Session):
+    res_crear = client.post("/insumos/tipos/", json={"nombre": "Nuez Pelada"})
+    assert res_crear.status_code == status.HTTP_201_CREATED
+    tipo_id = res_crear.json()["id"]
+
+    res_detalle = client.get(f"/insumos/tipos/{tipo_id}/detalle")
+    assert res_detalle.status_code == status.HTTP_200_OK
+    det = res_detalle.json()
+    assert "lotes_historicos" in det
+    assert "lotes" in det
+    assert det["lotes_historicos"] == []
+
+    res_baja = client.delete(f"/insumos/tipos/{tipo_id}")
+    assert res_baja.status_code == status.HTTP_200_OK
+    assert res_baja.json()["activo"] is False
+
+    res_rest = client.post(f"/insumos/tipos/{tipo_id}/restaurar")
+    assert res_rest.status_code == status.HTTP_200_OK
+    assert res_rest.json()["activo"] is True

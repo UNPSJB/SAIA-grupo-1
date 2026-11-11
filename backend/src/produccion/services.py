@@ -1,10 +1,10 @@
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from src.insumos.models import Insumo
-from src.insumos.services import leer_insumo
+from src.insumos.services import leer_insumo, calcular_estado_vencimiento_insumo
 from src.produccion import exceptions, schemas
 from src.produccion.constants import INTENTOS_CODIGO_LOTE
 from src.produccion.models import InsumoLote, LoteProduccion
@@ -94,18 +94,35 @@ def listar_insumos_disponibles(db: Session, tipo_id: Optional[int] = None) -> Li
     if tipo_id is not None:
         consulta = consulta.where(Insumo.tipo_insumo_id == tipo_id)
     consulta = consulta.order_by(Insumo.fechaVencimiento.asc().nulls_last(), func.lower(Insumo.nombre))
-    return list(db.scalars(consulta).all())
+    insumos = list(db.scalars(consulta).all())
+    disponibles: List[Insumo] = []
+    for i in insumos:
+        estado, _ = calcular_estado_vencimiento_insumo(i.fechaVencimiento, i.stock)
+        if estado == "VENCIDO":
+            continue
+        setattr(i, "estadoVencimiento", estado)
+        disponibles.append(i)
+    return disponibles
 
 
 def asociar_insumos(db: Session, lote_id: int, datos: schemas.AsociarInsumos) -> LoteProduccion:
     """Asocia los insumos al lote y descuenta lo usado del stock. Si alguno falla no se guarda ninguno."""
     lote = _leer_lote_editable(db, lote_id)
     ya_asociados = {i.insumo_id for i in lote.insumos}
+    hoy = date.today()
     try:
         for item in datos.insumos:
             insumo = leer_insumo(db, item.insumo_id)
             if insumo.id in ya_asociados:
                 raise exceptions.InsumoYaAsociado()
+            if insumo.fechaVencimiento:
+                f_venc = (
+                    insumo.fechaVencimiento.date()
+                    if isinstance(insumo.fechaVencimiento, datetime)
+                    else insumo.fechaVencimiento
+                )
+                if f_venc < hoy or (lote.fecha and f_venc < lote.fecha):
+                    raise exceptions.InsumoVencido()
             if item.cantidad > insumo.stock:
                 raise exceptions.StockInsuficiente()
             insumo.stock -= item.cantidad

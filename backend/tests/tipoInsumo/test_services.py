@@ -133,3 +133,45 @@ def test_obtener_tipos_insumos_para_csv(session: Session):
     assert filas[0]["nombre"] == "Canela en Polvo"
     assert filas[0]["descripcion"] == "Especia aromática"
     assert filas[0]["estado"] == "Activo"
+
+
+def test_restaurar_tipo_insumo(session: Session):
+    creado = services.crear_tipo_insumo(session, schemas.TipoInsumoCreate(nombre="Cardamomo"))
+    baja = services.eliminar_tipo_insumo(session, creado.id, baja_logica=True)
+    assert baja.activo is False
+
+    restaurado = services.restaurar_tipo_insumo(session, creado.id)
+    assert restaurado.activo is True
+
+
+def test_obtener_tipo_insumo_detalle_y_proteccion_eliminacion(session: Session):
+    from datetime import datetime, timedelta
+    from src.insumos.models import Insumo
+    from src.unidadesMedida.services import resolver_unidad_medida
+
+    creado = services.crear_tipo_insumo(session, schemas.TipoInsumoCreate(nombre="Harina Integral"))
+    hoy = datetime.now()
+    lote = Insumo(
+        nombre="Harina Integral Orgánica",
+        lote="LOTE-HI-01",
+        fechaRecepcion=hoy,
+        fechaVencimiento=hoy + timedelta(days=30),
+        cantRecibida=25.0,
+        stock=25.0,
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="kilogramos").id,
+        tipo_insumo_id=creado.id,
+        activo=True,
+    )
+    session.add(lote)
+    session.commit()
+
+    detalle = services.obtener_tipo_insumo_detalle(session, creado.id)
+    assert detalle.id == creado.id
+    assert detalle.total_lotes == 1
+    assert detalle.stock_total == 25.0
+    assert len(detalle.lotes) == 1
+    assert len(detalle.lotes_historicos) == 1
+    assert detalle.lotes_historicos[0].lote == "LOTE-HI-01"
+
+    with pytest.raises(exceptions.TipoInsumoEnUso):
+        services.eliminar_tipo_insumo(session, creado.id, baja_logica=True)

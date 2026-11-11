@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 import type { TipoInsumo, TipoInsumoForm } from './tipos';
+import type { UnidadMedidaItem } from '../unidadesMedida/tipos';
 
 interface EditarTipoInsumoProps {
   id: number;
@@ -9,21 +10,13 @@ interface EditarTipoInsumoProps {
   onCancel?: () => void;
 }
 
-const UNIDADES_MEDIDA = [
-  { valor: 'kilogramos', label: 'Kilogramos (kg)' },
-  { valor: 'gramos', label: 'Gramos (g)' },
-  { valor: 'litros', label: 'Litros (L)' },
-  { valor: 'mililitros', label: 'Mililitros (mL)' },
-  { valor: 'unidades', label: 'Unidades (u)' },
-];
-
 export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSuccess, onCancel }) => {
   const [form, setForm] = useState<TipoInsumoForm>({
     nombre: '',
     descripcion: '',
-    unidadMedida: 'kilogramos',
+    unidad_medida_id: '',
   });
-  const [activo, setActivo] = useState(true);
+  const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [cargandoDatos, setCargandoDatos] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -33,15 +26,26 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
     let cancelado = false;
     async function cargar() {
       try {
-        const res = await apiFetch(`/insumos/tipos/${id}`);
-        if (!cancelado && res.ok) {
-          const data: TipoInsumo = await res.json();
+        const [resTipo, resUnidades] = await Promise.all([
+          apiFetch(`/insumos/tipos/${id}`),
+          apiFetch('/unidades-medida/?solo_activos=false'),
+        ]);
+        const listaUnidades: UnidadMedidaItem[] = resUnidades.ok ? await resUnidades.json() : [];
+        if (!cancelado) setUnidades(listaUnidades);
+
+        if (!cancelado && resTipo.ok) {
+          const data: TipoInsumo = await resTipo.json();
+          const unidadCoincidente =
+            data.unidad_medida_id ??
+            listaUnidades.find(
+              (u) => u.nombre.toLowerCase() === (data.unidadMedida || '').toLowerCase()
+            )?.id ??
+            '';
           setForm({
             nombre: data.nombre,
             descripcion: data.descripcion || '',
-            unidadMedida: data.unidadMedida || 'kilogramos',
+            unidad_medida_id: unidadCoincidente,
           });
-          setActivo(data.activo);
         } else if (!cancelado) {
           setErrorMsg('No se pudo cargar la información del tipo de insumo.');
         }
@@ -58,7 +62,11 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
   }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({
+      ...form,
+      [name]: name === 'unidad_medida_id' ? (value ? Number(value) : '') : value,
+    });
   };
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
@@ -75,14 +83,17 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
       setErrorMsg('El nombre debe tener al menos 2 caracteres.');
       return;
     }
+    if (!form.unidad_medida_id) {
+      setErrorMsg('Debe seleccionar una unidad de medida.');
+      return;
+    }
 
     setLoading(true);
     try {
       const payload = {
         nombre: nombreLimpio,
         descripcion: form.descripcion.trim() || null,
-        unidadMedida: form.unidadMedida,
-        activo: activo,
+        unidad_medida_id: Number(form.unidad_medida_id),
       };
 
       const res = await apiFetch(`/insumos/tipos/${id}`, {
@@ -143,19 +154,22 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
         </div>
 
         <div className="form-group">
-          <label htmlFor="unidadMedida">Unidad de Medida *</label>
+          <label htmlFor="unidad_medida_id">Unidad de Medida *</label>
           <select
-            id="unidadMedida"
-            name="unidadMedida"
-            value={form.unidadMedida}
+            id="unidad_medida_id"
+            name="unidad_medida_id"
+            value={form.unidad_medida_id}
             onChange={handleChange}
             required
           >
-            {UNIDADES_MEDIDA.map((u) => (
-              <option key={u.valor} value={u.valor}>
-                {u.label}
-              </option>
-            ))}
+            <option value="" disabled>Seleccione una unidad...</option>
+            {unidades
+              .filter((u) => u.activo || u.id === Number(form.unidad_medida_id))
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre} ({u.abreviatura})
+                </option>
+              ))}
           </select>
         </div>
 
@@ -168,17 +182,6 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
             onChange={handleChange}
             rows={3}
           />
-        </div>
-
-        <div className="form-group">
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={activo}
-              onChange={(e) => setActivo(e.target.checked)}
-            />
-            Tipo de Insumo Activo
-          </label>
         </div>
 
         <div className="form-acciones">

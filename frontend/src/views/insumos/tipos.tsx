@@ -5,7 +5,10 @@ export interface Insumo {
   fechaVencimiento?: string | null;
   cantRecibida: number;
   stock: number;
+  unidad_medida_id?: number | null;
   medida: string;
+  unidad_medida_nombre?: string | null;
+  unidad_medida_abreviatura?: string | null;
   tipo_insumo_id?: number | null;
   tipo_insumo_nombre?: string | null;
   proveedor_id?: number | null;
@@ -50,7 +53,9 @@ export interface InsumoAgrupadoPorTipo {
   tipo_id: number;
   nombre: string;
   descripcion?: string | null;
+  unidad_medida_id?: number | null;
   unidadMedida: string;
+  unidad_medida_abreviatura?: string | null;
   stock_total: number;
   tiene_vencidos: boolean;
   tiene_proximos: boolean;

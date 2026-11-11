@@ -122,6 +122,15 @@ def eliminar_proveedor(db: Session, proveedor_id: int, baja_logica: bool = True)
     return proveedor
 
 
+def restaurar_proveedor(db: Session, proveedor_id: int) -> models.Proveedor:
+    proveedor = obtener_proveedor(db, proveedor_id)
+    validar_nombre_unico(db, proveedor.nombre, excluir_id=proveedor_id)
+    proveedor.activo = True
+    db.commit()
+    db.refresh(proveedor)
+    return proveedor
+
+
 def obtener_proveedores_para_csv(
     db: Session, busqueda: Optional[str] = None, solo_activos: bool = False
 ) -> List[Dict[str, Any]]:

@@ -1,7 +1,6 @@
 from datetime import date, datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from src.insumos.models import UnidadMedida
 from src.produccion import exceptions
 
 
@@ -11,7 +10,7 @@ class Producto(BaseModel):
     id: int
     nombre: str
     # todos los lotes del producto se miden en esta unidad
-    unidadMedida: UnidadMedida
+    unidadMedida: str
     activo: bool
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,7 +68,7 @@ class InsumoResumen(BaseModel):
     id: int
     nombre: str
     lote: str
-    medida: UnidadMedida
+    medida: str
     model_config = ConfigDict(from_attributes=True)
 
 

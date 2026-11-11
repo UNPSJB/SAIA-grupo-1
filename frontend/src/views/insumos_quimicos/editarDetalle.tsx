@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import type { InsumoQuimico, TipoQuimico, UnidadMedida } from './tipos';
-import { OPCIONES_TIPO, OPCIONES_UNIDAD } from './tipos';
+import React, { useEffect, useState } from 'react';
+import type { InsumoQuimico, TipoQuimico } from './tipos';
+import { OPCIONES_TIPO } from './tipos';
+import type { UnidadMedidaItem } from '../unidadesMedida/tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -11,19 +12,48 @@ interface Props {
 }
 
 export const EditarDetalle: React.FC<Props> = ({ insumo, onVolver, onActualizado }) => {
+  const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [formData, setFormData] = useState<{
     nombre: string;
     tipo: TipoQuimico;
-    unidad_medida: UnidadMedida;
+    unidad_medida_id: number | '';
     stock_actual: string;
     proveedor: string;
   }>({
     nombre: insumo.nombre,
     tipo: insumo.tipo,
-    unidad_medida: insumo.unidad_medida,
+    unidad_medida_id: insumo.unidad_medida_id ?? '',
     stock_actual: String(insumo.stock_actual),
     proveedor: insumo.proveedor || '',
   });
+
+  useEffect(() => {
+    let cancelado = false;
+    async function cargarUnidades() {
+      try {
+        const res = await apiFetch('/unidades-medida/?solo_activos=false');
+        if (!cancelado && res.ok) {
+          const data: UnidadMedidaItem[] = await res.json();
+          setUnidades(data);
+          setFormData((prev) => {
+            if (prev.unidad_medida_id !== '') return prev;
+            const coincidencia = data.find(
+              (u) =>
+                u.abreviatura.toUpperCase() === (insumo.unidad_medida || '').toUpperCase() ||
+                u.nombre.toLowerCase() === (insumo.unidad_medida || '').toLowerCase()
+            );
+            return coincidencia ? { ...prev, unidad_medida_id: coincidencia.id } : prev;
+          });
+        }
+      } catch {
+        if (!cancelado) setUnidades([]);
+      }
+    }
+    cargarUnidades();
+    return () => {
+      cancelado = true;
+    };
+  }, [insumo.unidad_medida]);
 
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -34,6 +64,11 @@ export const EditarDetalle: React.FC<Props> = ({ insumo, onVolver, onActualizado
 
     if (!formData.nombre.trim()) {
       setError('El nombre no puede estar vacío.');
+      return;
+    }
+
+    if (!formData.unidad_medida_id) {
+      setError('Debe seleccionar una unidad de medida.');
       return;
     }
 
@@ -51,7 +86,7 @@ export const EditarDetalle: React.FC<Props> = ({ insumo, onVolver, onActualizado
         body: JSON.stringify({
           nombre: formData.nombre.trim(),
           tipo: formData.tipo,
-          unidad_medida: formData.unidad_medida,
+          unidad_medida_id: Number(formData.unidad_medida_id),
           stock_actual: valorStock,
           proveedor: formData.proveedor.trim() || null,
           activo: insumo.activo,
@@ -107,17 +142,21 @@ export const EditarDetalle: React.FC<Props> = ({ insumo, onVolver, onActualizado
         </div>
 
         <div className="form-group">
-          <label htmlFor="unidad_medida">Unidad de Medida</label>
+          <label htmlFor="unidad_medida_id">Unidad de Medida</label>
           <select
-            id="unidad_medida"
-            value={formData.unidad_medida}
-            onChange={(e) => setFormData({ ...formData, unidad_medida: e.target.value as UnidadMedida })}
+            id="unidad_medida_id"
+            value={formData.unidad_medida_id}
+            onChange={(e) => setFormData({ ...formData, unidad_medida_id: e.target.value ? Number(e.target.value) : '' })}
+            required
           >
-            {OPCIONES_UNIDAD.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
+            <option value="" disabled>Seleccione una unidad</option>
+            {unidades
+              .filter((opt) => opt.activo || opt.id === Number(formData.unidad_medida_id))
+              .map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.nombre} ({opt.abreviatura})
+                </option>
+              ))}
           </select>
         </div>
 

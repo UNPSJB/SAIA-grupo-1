@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 from src.tipoInsumo import exceptions, models, schemas
+from src.unidadesMedida.services import resolver_unidad_medida
 
 
 def normalizar_nombre(nombre: str) -> str:
@@ -40,13 +41,36 @@ def calcular_estado_vencimiento(fecha_vencimiento: Optional[datetime | date], st
     return "VIGENTE"
 
 
+def serializar_tipo_insumo(
+    tipo: models.TipoInsumo, total_lotes: int = 0, stock_total: float = 0.0
+) -> schemas.TipoInsumo:
+    return schemas.TipoInsumo(
+        id=tipo.id,
+        nombre=tipo.nombre,
+        descripcion=tipo.descripcion,
+        unidad_medida_id=tipo.unidad_medida_id,
+        unidadMedida=tipo.unidadMedida,
+        unidad_medida_nombre=tipo.unidad_medida_nombre,
+        unidad_medida_abreviatura=tipo.unidad_medida_abreviatura,
+        activo=tipo.activo,
+        total_lotes=total_lotes,
+        cantidad_lotes=total_lotes,
+        stock_total=stock_total,
+    )
+
+
 def crear_tipo_insumo(db: Session, datos: schemas.TipoInsumoCreate) -> models.TipoInsumo:
     nombre_normalizado = normalizar_nombre(datos.nombre)
     validar_nombre_unico(db, nombre_normalizado)
+    unidad = resolver_unidad_medida(
+        db,
+        unidad_medida_id=datos.unidad_medida_id,
+        valor_texto=datos.unidadMedida or ("kilogramos" if datos.unidad_medida_id is None else None),
+    )
     tipo = models.TipoInsumo(
         nombre=nombre_normalizado,
         descripcion=datos.descripcion,
-        unidadMedida=datos.unidadMedida,
+        unidad_medida_id=unidad.id,
         activo=True,
     )
     db.add(tipo)
@@ -76,17 +100,7 @@ def listar_tipos_insumos(
         ).first()
         total_lotes = totales[0] if totales else 0
         stock_total = float(totales[1]) if totales else 0.0
-        resultado.append(
-            schemas.TipoInsumo(
-                id=t.id,
-                nombre=t.nombre,
-                descripcion=t.descripcion,
-                unidadMedida=t.unidadMedida,
-                activo=t.activo,
-                total_lotes=total_lotes,
-                stock_total=stock_total,
-            )
-        )
+        resultado.append(serializar_tipo_insumo(t, total_lotes=total_lotes, stock_total=stock_total))
     return resultado
 
 
@@ -121,7 +135,7 @@ def obtener_tipo_insumo_detalle(db: Session, tipo_id: int) -> schemas.TipoInsumo
                 nombre=l.nombre,
                 stock=float(l.stock),
                 cantRecibida=float(l.cantRecibida),
-                medida=str(l.medida.value if hasattr(l.medida, "value") else l.medida),
+                medida=str(l.medida),
                 fechaRecepcion=l.fechaRecepcion,
                 fechaVencimiento=l.fechaVencimiento,
                 proveedor_id=l.proveedor_id,
@@ -134,11 +148,16 @@ def obtener_tipo_insumo_detalle(db: Session, tipo_id: int) -> schemas.TipoInsumo
         id=tipo.id,
         nombre=tipo.nombre,
         descripcion=tipo.descripcion,
+        unidad_medida_id=tipo.unidad_medida_id,
         unidadMedida=tipo.unidadMedida,
+        unidad_medida_nombre=tipo.unidad_medida_nombre,
+        unidad_medida_abreviatura=tipo.unidad_medida_abreviatura,
         activo=tipo.activo,
         total_lotes=len(lotes_historicos),
+        cantidad_lotes=len(lotes_historicos),
         stock_total=stock_total,
         lotes=lotes_historicos,
+        lotes_historicos=lotes_historicos,
     )
 
 
@@ -153,8 +172,16 @@ def actualizar_tipo_insumo(
         tipo.nombre = nombre_normalizado
     if "descripcion" in datos_dict:
         tipo.descripcion = datos_dict["descripcion"]
-    if "unidadMedida" in datos_dict and datos_dict["unidadMedida"] is not None:
-        tipo.unidadMedida = datos_dict["unidadMedida"]
+    if (
+        datos_dict.get("unidad_medida_id") is not None
+        or datos_dict.get("unidadMedida") is not None
+    ):
+        unidad = resolver_unidad_medida(
+            db,
+            unidad_medida_id=datos_dict.get("unidad_medida_id"),
+            valor_texto=datos_dict.get("unidadMedida"),
+        )
+        tipo.unidad_medida_id = unidad.id
     if "activo" in datos_dict and datos_dict["activo"] is not None:
         tipo.activo = datos_dict["activo"]
     db.commit()
@@ -180,6 +207,15 @@ def eliminar_tipo_insumo(db: Session, tipo_id: int, baja_logica: bool = True) ->
     return tipo
 
 
+def restaurar_tipo_insumo(db: Session, tipo_id: int) -> models.TipoInsumo:
+    tipo = obtener_tipo_insumo(db, tipo_id)
+    validar_nombre_unico(db, tipo.nombre, excluir_id=tipo_id)
+    tipo.activo = True
+    db.commit()
+    db.refresh(tipo)
+    return tipo
+
+
 def obtener_tipos_insumos_para_csv(
     db: Session, busqueda: Optional[str] = None, solo_activos: bool = False
 ) -> List[Dict[str, Any]]:
@@ -189,7 +225,7 @@ def obtener_tipos_insumos_para_csv(
             "id": t.id,
             "nombre": t.nombre,
             "descripcion": t.descripcion or "-",
-            "unidadMedida": t.unidadMedida.value if hasattr(t.unidadMedida, "value") else str(t.unidadMedida),
+            "unidadMedida": t.unidadMedida,
             "stockTotal": t.stock_total,
             "totalLotes": t.total_lotes,
             "estado": "Activo" if t.activo else "Inactivo",

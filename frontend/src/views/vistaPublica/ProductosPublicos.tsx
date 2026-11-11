@@ -5,14 +5,6 @@ import { apiFetch } from '../../api/client';
 import { useVistaPublica } from './contextDeVistaPublica';
 import type { ProductoPublico } from '../producto/tipos';
 
-const UNIDADES: Record<string, string> = {
-  kilogramos: 'Kilogramos',
-  gramos: 'Gramos',
-  litros: 'Litros',
-  mililitros: 'Mililitros',
-  unidades: 'Unidades',
-};
-
 // Catálogo que ve cualquiera que abre el QR: solo los productos que el administrador eligió mostrar
 export const ProductosPublicos: React.FC = () => {
   const { identificadorId } = useParams<{ identificadorId: string }>();
@@ -78,8 +70,9 @@ export const ProductosPublicos: React.FC = () => {
                   {p.descripcion}
                 </p>
               )}
-              <span className="shadcn-badge shadcn-badge-secondary">
-                {UNIDADES[p.unidadMedida] ?? p.unidadMedida}
+              <span className="shadcn-badge shadcn-badge-secondary" style={{ textTransform: 'capitalize' }}>
+                {p.unidadMedida}
+                {p.unidad_medida_abreviatura ? ` (${p.unidad_medida_abreviatura})` : ''}
               </span>
             </div>
           ))}

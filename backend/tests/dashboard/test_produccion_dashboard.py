@@ -4,9 +4,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from src.dashboard import services
-from src.insumos.models import UnidadMedida
 from src.produccion.models import LoteProduccion
 from src.producto.models import Producto
+from src.unidadesMedida.services import resolver_unidad_medida
 from tests.database import app, session
 
 client = TestClient(app)
@@ -26,7 +26,11 @@ def test_produccion_dashboard_vacio(session: Session) -> None:
         assert p.lotes == 0
 
 def test_produccion_dashboard_diario_con_datos(session: Session) -> None:
-    prod = Producto(nombre="Pan Lactal Test", unidadMedida=UnidadMedida.UNIDADES, activo=True)
+    prod = Producto(
+        nombre="Pan Lactal Test",
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="unidades").id,
+        activo=True,
+    )
     session.add(prod)
     session.commit()
     session.refresh(prod)
@@ -81,7 +85,11 @@ def test_produccion_dashboard_diario_con_datos(session: Session) -> None:
     assert p_27.lotes == 0
 
 def test_produccion_dashboard_semanal_con_datos(session: Session) -> None:
-    prod = Producto(nombre="Medialunas Semanal Test", unidadMedida=UnidadMedida.UNIDADES, activo=True)
+    prod = Producto(
+        nombre="Medialunas Semanal Test",
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="unidades").id,
+        activo=True,
+    )
     session.add(prod)
     session.commit()
     session.refresh(prod)
@@ -134,7 +142,11 @@ def test_produccion_dashboard_semanal_con_datos(session: Session) -> None:
     assert p_sem5.lotes == 1
 
 def test_produccion_dashboard_mensual_este_anio(session: Session) -> None:
-    prod = Producto(nombre="Torta Mensual Test", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True)
+    prod = Producto(
+        nombre="Torta Mensual Test",
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="kilogramos").id,
+        activo=True,
+    )
     session.add(prod)
     session.commit()
     session.refresh(prod)
@@ -195,8 +207,9 @@ def test_produccion_dashboard_mensual_este_anio(session: Session) -> None:
     assert resultado.puntos[-1].nombre == "10/2026"
 
 def test_produccion_dashboard_filtro_producto(session: Session) -> None:
-    p1 = Producto(nombre="Prod A", unidadMedida=UnidadMedida.UNIDADES, activo=True)
-    p2 = Producto(nombre="Prod B", unidadMedida=UnidadMedida.UNIDADES, activo=True)
+    u_un = resolver_unidad_medida(session, valor_texto="unidades").id
+    p1 = Producto(nombre="Prod A", unidad_medida_id=u_un, activo=True)
+    p2 = Producto(nombre="Prod B", unidad_medida_id=u_un, activo=True)
     session.add_all([p1, p2])
     session.commit()
     session.refresh(p1)

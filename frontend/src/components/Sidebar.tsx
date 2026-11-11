@@ -21,6 +21,7 @@ export type Modulo =
   | 'dashboard'
   | 'insumos'
   | 'tipoInsumo'
+  | 'unidadesMedida'
   | 'proveedores'
   | 'equipos'
   | 'sectores'
@@ -143,6 +144,15 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 6h16M4 12h16M4 18h12" />
       <circle cx="18" cy="18" r="2" />
+    </svg>
+  ),
+  unidadesMedida: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" />
+      <path d="m14.5 12.5 2-2" />
+      <path d="m11.5 9.5 2-2" />
+      <path d="m8.5 6.5 2-2" />
+      <path d="m17.5 15.5 2-2" />
     </svg>
   ),
   proveedores: (
@@ -298,6 +308,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'planDeCalibracion', label: 'Plan de Calibración', icono: ICONOS_MODULO.planDeCalibracion },
         { id: 'sectores', label: 'Sectores', icono: ICONOS_MODULO.sectores },
         { id: 'tipoInsumo', label: 'Tipos de Insumo', icono: ICONOS_MODULO.tipoInsumo },
+        { id: 'unidadesMedida', label: 'Unidades de Medida', icono: ICONOS_MODULO.unidadesMedida },
         { id: 'proveedores', label: 'Proveedores', icono: ICONOS_MODULO.proveedores },
         { id: 'insumos', label: 'Ingredientes', icono: ICONOS_MODULO.insumos },
         { id: 'productos', label: 'Productos Elaborados', icono: ICONOS_MODULO.productos },

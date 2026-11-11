@@ -1,14 +1,14 @@
 from datetime import date, datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from src.insumos.models import UnidadMedida
 from src.tipoInsumo import exceptions
 
 
 class TipoInsumoBase(BaseModel):
     nombre: str = Field(..., max_length=100)
     descripcion: Optional[str] = Field(default=None, max_length=255)
-    unidadMedida: UnidadMedida = Field(default=UnidadMedida.KILOGRAMOS)
+    unidad_medida_id: Optional[int] = None
+    unidadMedida: Optional[str] = None
 
     @field_validator("nombre")
     @classmethod
@@ -36,7 +36,8 @@ class TipoInsumoCreate(TipoInsumoBase):
 class TipoInsumoUpdate(BaseModel):
     nombre: Optional[str] = Field(default=None, max_length=100)
     descripcion: Optional[str] = Field(default=None, max_length=255)
-    unidadMedida: Optional[UnidadMedida] = None
+    unidad_medida_id: Optional[int] = None
+    unidadMedida: Optional[str] = None
     activo: Optional[bool] = None
 
     @field_validator("nombre")
@@ -79,8 +80,13 @@ class LoteInsumoHistorico(BaseModel):
 
 class TipoInsumo(TipoInsumoBase):
     id: int
+    unidad_medida_id: int
+    unidadMedida: str
+    unidad_medida_nombre: Optional[str] = None
+    unidad_medida_abreviatura: Optional[str] = None
     activo: bool = True
     total_lotes: int = 0
+    cantidad_lotes: int = 0
     stock_total: float = 0.0
 
     model_config = ConfigDict(from_attributes=True)
@@ -88,3 +94,4 @@ class TipoInsumo(TipoInsumoBase):
 
 class TipoInsumoDetalle(TipoInsumo):
     lotes: List[LoteInsumoHistorico] = []
+    lotes_historicos: List[LoteInsumoHistorico] = []

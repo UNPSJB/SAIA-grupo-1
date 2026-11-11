@@ -18,11 +18,14 @@ from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate, Capacidades
 from src.autenticacion.services import asegurar_usuarios_dev, hashear_contrasenia
 
-from src.insumos.models import UnidadMedida, Insumo
+from src.insumos.models import Insumo
+from src.unidadesMedida.models import UnidadMedida as UnidadMedidaModel
+from src.unidadesMedida.schemas import UnidadMedidaCreate
+from src.unidadesMedida.services import asegurar_unidades_base, crear_unidad_medida
 from src.insumos_quimicos.models import InsumoQuimico
 from src.insumos_quimicos.services import InsumoQuimicoService
 from src.insumos_quimicos.schemas import InsumoQuimicoCreate
-from src.insumos_quimicos.constants import TipoQuimicoEnum, UnidadMedidaEnum as UnidadQuimico
+from src.insumos_quimicos.constants import TipoQuimicoEnum
 
 from src.equipos.services import crear_equipo
 from src.equipos.schemas import EquipoCreate
@@ -91,107 +94,107 @@ from src.proveedores.schemas import ProveedorCreate
 from src.proveedores.services import crear_proveedor
 
 INSUMOS = [
-    ("Harina 000", "HAR3-2409", 12, 150, 450.0, 320.0, UnidadMedida.KILOGRAMOS),
-    ("Harina 000 Cañuelas", "HAR3-2411", 5, 4, 150.0, 45.0, UnidadMedida.KILOGRAMOS),
-    ("Harina 000 Chacabuco", "HAR3-2408", 20, -3, 100.0, 15.0, UnidadMedida.KILOGRAMOS),
-    ("Harina 000 Morixe", "HAR3-2407", 35, 10, 200.0, 0.0, UnidadMedida.KILOGRAMOS),
-    ("Harina 0000", "HAR4-2409", 12, 140, 300.0, 210.0, UnidadMedida.KILOGRAMOS),
-    ("Harina 0000 Pureza", "HAR4-2411", 4, 3, 120.0, 28.0, UnidadMedida.KILOGRAMOS),
-    ("Harina Integral Fina", "HIN-2409", 10, 180, 120.0, 85.0, UnidadMedida.KILOGRAMOS),
-    ("Harina Integral Gruesa", "HIG-2408", 25, -2, 50.0, 10.0, UnidadMedida.KILOGRAMOS),
-    ("Harina de Centeno", "HCE-2407", 40, 5, 40.0, 0.0, UnidadMedida.KILOGRAMOS),
-    ("Manteca", "MAN-2409", 6, -2, 80.0, 45.0, UnidadMedida.KILOGRAMOS),
-    ("Manteca La Serenísima Clásica", "MAN-2411", 3, 40, 100.0, 75.0, UnidadMedida.KILOGRAMOS),
-    ("Manteca Sancor Extra", "MAN-2410", 8, 4, 50.0, 12.0, UnidadMedida.KILOGRAMOS),
-    ("Manteca Milkaut Repostera", "MAN-2408", 25, 2, 60.0, 0.0, UnidadMedida.KILOGRAMOS),
-    ("Azucar Comun", "AZC-2408", 30, 365, 200.0, 145.0, UnidadMedida.KILOGRAMOS),
-    ("Azucar Comun Ledesma Lote B", "AZC-2411", 5, 5, 120.0, 22.0, UnidadMedida.KILOGRAMOS),
-    ("Azucar Rubio Mascabo", "AZR-2409", 15, -4, 40.0, 8.0, UnidadMedida.KILOGRAMOS),
-    ("Azucar Impalpable", "AZI-2408", 30, 300, 50.0, 32.0, UnidadMedida.KILOGRAMOS),
-    ("Azucar Comun Lote Cero", "AZC-2407", 60, 200, 150.0, 0.0, UnidadMedida.KILOGRAMOS),
-    ("Huevos", "HUE-2409", 4, 18, 720.0, 480.0, UnidadMedida.UNIDADES),
-    ("Huevos Medianos San Antonio", "HUE-2411", 2, 4, 360.0, 90.0, UnidadMedida.UNIDADES),
-    ("Huevos Especiales Pasados", "HUE-2408", 18, -1, 180.0, 20.0, UnidadMedida.UNIDADES),
-    ("Huevos Maple Historico", "HUE-2407", 35, 10, 360.0, 0.0, UnidadMedida.UNIDADES),
-    ("Leche Entera", "LEC-2409", 8, 4, 120.0, 68.0, UnidadMedida.LITROS),
-    ("Leche Entera Larga Vida", "LEC-2411", 2, 75, 160.0, 140.0, UnidadMedida.LITROS),
-    ("Leche Descremada", "LEC-2408", 14, -2, 50.0, 8.0, UnidadMedida.LITROS),
-    ("Leche Entera Agotada", "LEC-2407", 25, 2, 100.0, 0.0, UnidadMedida.LITROS),
-    ("Crema de Leche", "CRE-2409", 14, -3, 30.0, 12.0, UnidadMedida.LITROS),
-    ("Crema de Leche Pastelera", "CRE-2411", 2, 22, 45.0, 38.0, UnidadMedida.LITROS),
-    ("Crema de Leche Doble", "CRE-2410", 6, 3, 20.0, 6.0, UnidadMedida.LITROS),
-    ("Crema de Leche Cero", "CRE-2408", 22, 1, 30.0, 0.0, UnidadMedida.LITROS),
-    ("Queso Crema", "QCR-2409", 7, 5, 40.0, 18.0, UnidadMedida.KILOGRAMOS),
-    ("Queso de Maquina", "QMA-2410", 5, 8, 25.0, 7.5, UnidadMedida.KILOGRAMOS),
-    ("Ricota Fresca Magra", "RIC-2410", 8, 20, 20.0, 16.0, UnidadMedida.KILOGRAMOS),
-    ("Queso Barra Tybo", "QTY-2411", 2, 45, 60.0, 52.0, UnidadMedida.KILOGRAMOS),
-    ("Queso Sardo Rallado", "QSA-2408", 22, -2, 15.0, 3.5, UnidadMedida.KILOGRAMOS),
-    ("Queso de Maquina Historico", "QMA-2407", 35, 2, 30.0, 0.0, UnidadMedida.KILOGRAMOS),
-    ("Levadura Fresca", "LEV-2409", 6, 3, 20.0, 9.5, UnidadMedida.KILOGRAMOS),
-    ("Levadura Prensada Calsa", "LEV-2411", 2, 16, 35.0, 30.0, UnidadMedida.KILOGRAMOS),
-    ("Levadura Seca Instantanea", "LSI-2409", 15, 300, 25.0, 18.0, UnidadMedida.KILOGRAMOS),
-    ("Levadura Fresca Lote Anterior", "LEV-2408", 20, -2, 15.0, 3.0, UnidadMedida.KILOGRAMOS),
-    ("Levadura Agotada", "LEV-2407", 30, 2, 20.0, 0.0, UnidadMedida.KILOGRAMOS),
-    ("Sal Fina", "SAL-2407", 60, 365, 50.0, 42.0, UnidadMedida.KILOGRAMOS),
-    ("Sal Entrefina Parrillera", "SAL-2409", 15, 365, 30.0, 25.0, UnidadMedida.KILOGRAMOS),
-    ("Dulce de Leche Repostero", "DDL-2409", 10, 90, 80.0, 55.0, UnidadMedida.KILOGRAMOS),
-    ("Dulce de Leche Repostero Vacalin", "DDL-2411", 4, 6, 50.0, 15.0, UnidadMedida.KILOGRAMOS),
-    ("Dulce de Leche Familiar", "DDL-2408", 35, -4, 25.0, 4.0, UnidadMedida.KILOGRAMOS),
-    ("Dulce de Leche Lote Cero", "DDL-2407", 50, 20, 40.0, 0.0, UnidadMedida.KILOGRAMOS),
-    ("Chocolate Cobertura Semiamargo", "CHO-2408", 20, 180, 40.0, 26.0, UnidadMedida.KILOGRAMOS),
-    ("Gotas de Chocolate Blanco", "CHB-2408", 22, 190, 25.0, 17.0, UnidadMedida.KILOGRAMOS),
-    ("Cacao Amargo en Polvo", "CAC-2408", 25, 270, 20.0, 14.5, UnidadMedida.KILOGRAMOS),
-    ("Chocolate Cobertura con Leche", "CHL-2410", 10, 5, 30.0, 7.0, UnidadMedida.KILOGRAMOS),
-    ("Chocolate Blanco Barra", "CHB-2407", 40, -3, 20.0, 3.5, UnidadMedida.KILOGRAMOS),
-    ("Chocolate Cobertura Cero", "CHO-2407", 55, 60, 35.0, 0.0, UnidadMedida.KILOGRAMOS),
-    ("Aceite de Girasol", "ACE-2408", 25, 200, 60.0, 38.0, UnidadMedida.LITROS),
-    ("Aceite de Girasol Alto Oleico", "ACE-2411", 5, 4, 30.0, 6.0, UnidadMedida.LITROS),
-    ("Esencia de Vainilla", "VAI-2407", 45, 300, 4000.0, 2600.0, UnidadMedida.MILILITROS),
-    ("Esencia de Vainilla Repostera", "VAI-2411", 4, 6, 1000.0, 250.0, UnidadMedida.MILILITROS),
-    ("Polvo de Hornear", "PHO-2408", 20, 240, 8000.0, 5800.0, UnidadMedida.GRAMOS),
-    ("Polvo Leudante Especial", "PHO-2411", 5, 5, 2000.0, 400.0, UnidadMedida.GRAMOS),
-    ("Canela Molida", "CAN-2407", 40, 280, 6000.0, 4100.0, UnidadMedida.GRAMOS),
-    ("Membrillo", "MEM-2409", 8, 120, 50.0, 36.0, UnidadMedida.KILOGRAMOS),
-    ("Dulce de Membrillo en Pan", "MEM-2411", 3, 5, 30.0, 7.0, UnidadMedida.KILOGRAMOS),
-    ("Jamon Cocido", "JAM-2410", 10, -1, 15.0, 5.0, UnidadMedida.KILOGRAMOS),
-    ("Jamon Cocido Primera Calidad", "JAM-2411", 2, 20, 25.0, 20.0, UnidadMedida.KILOGRAMOS),
-    ("Jamon Cocido Feteado", "JAM-2410B", 6, 3, 10.0, 2.5, UnidadMedida.KILOGRAMOS),
-    ("Jamon Cocido Lote Terminado", "JAM-2408", 25, 2, 15.0, 0.0, UnidadMedida.KILOGRAMOS),
-    ("Nueces Mariposa", "NUE-2408", 20, 150, 15.0, 6.5, UnidadMedida.KILOGRAMOS),
-    ("Almendras Peladas", "ALM-2408", 25, 160, 12.0, 7.0, UnidadMedida.KILOGRAMOS),
-    ("Pasas de Uva", "PAS-2408", 18, 180, 20.0, 12.0, UnidadMedida.KILOGRAMOS),
-    ("Coco Rallado", "COC-2408", 22, 160, 15.0, 9.5, UnidadMedida.KILOGRAMOS),
-    ("Almidon de Maiz", "ALM-2407", 40, 330, 40.0, 28.0, UnidadMedida.KILOGRAMOS),
-    ("Almidon de Maiz Especial", "ALM-2411", 4, 6, 20.0, 5.0, UnidadMedida.KILOGRAMOS),
-    ("Avena Arrollada Fina", "AVE-2409", 14, 210, 35.0, 24.0, UnidadMedida.KILOGRAMOS),
-    ("Mermelada de Frutilla", "MER-2409", 9, 120, 30.0, 19.0, UnidadMedida.KILOGRAMOS),
-    ("Miel Pura", "MIE-2407", 35, 365, 25.0, 18.0, UnidadMedida.KILOGRAMOS),
-    ("Semillas de Sesamo", "SES-2408", 20, 240, 20.0, 15.0, UnidadMedida.KILOGRAMOS),
-    ("Semillas de Lino", "LIN-2408", 20, 240, 20.0, 14.0, UnidadMedida.KILOGRAMOS),
+    ("Harina 000", "HAR3-2409", 12, 150, 450.0, 320.0, "kilogramos"),
+    ("Harina 000 Cañuelas", "HAR3-2411", 5, 4, 150.0, 45.0, "kilogramos"),
+    ("Harina 000 Chacabuco", "HAR3-2408", 20, -3, 100.0, 15.0, "kilogramos"),
+    ("Harina 000 Morixe", "HAR3-2407", 35, 10, 200.0, 0.0, "kilogramos"),
+    ("Harina 0000", "HAR4-2409", 12, 140, 300.0, 210.0, "kilogramos"),
+    ("Harina 0000 Pureza", "HAR4-2411", 4, 3, 120.0, 28.0, "kilogramos"),
+    ("Harina Integral Fina", "HIN-2409", 10, 180, 120.0, 85.0, "kilogramos"),
+    ("Harina Integral Gruesa", "HIG-2408", 25, -2, 50.0, 10.0, "kilogramos"),
+    ("Harina de Centeno", "HCE-2407", 40, 5, 40.0, 0.0, "kilogramos"),
+    ("Manteca", "MAN-2409", 6, -2, 80.0, 45.0, "kilogramos"),
+    ("Manteca La Serenísima Clásica", "MAN-2411", 3, 40, 100.0, 75.0, "kilogramos"),
+    ("Manteca Sancor Extra", "MAN-2410", 8, 4, 50.0, 12.0, "kilogramos"),
+    ("Manteca Milkaut Repostera", "MAN-2408", 25, 2, 60.0, 0.0, "kilogramos"),
+    ("Azucar Comun", "AZC-2408", 30, 365, 200.0, 145.0, "kilogramos"),
+    ("Azucar Comun Ledesma Lote B", "AZC-2411", 5, 5, 120.0, 22.0, "kilogramos"),
+    ("Azucar Rubio Mascabo", "AZR-2409", 15, -4, 40.0, 8.0, "kilogramos"),
+    ("Azucar Impalpable", "AZI-2408", 30, 300, 50.0, 32.0, "kilogramos"),
+    ("Azucar Comun Lote Cero", "AZC-2407", 60, 200, 150.0, 0.0, "kilogramos"),
+    ("Huevos", "HUE-2409", 4, 18, 720.0, 480.0, "unidades"),
+    ("Huevos Medianos San Antonio", "HUE-2411", 2, 4, 360.0, 90.0, "unidades"),
+    ("Huevos Especiales Pasados", "HUE-2408", 18, -1, 180.0, 20.0, "unidades"),
+    ("Huevos Maple Historico", "HUE-2407", 35, 10, 360.0, 0.0, "unidades"),
+    ("Leche Entera", "LEC-2409", 8, 4, 120.0, 68.0, "litros"),
+    ("Leche Entera Larga Vida", "LEC-2411", 2, 75, 160.0, 140.0, "litros"),
+    ("Leche Descremada", "LEC-2408", 14, -2, 50.0, 8.0, "litros"),
+    ("Leche Entera Agotada", "LEC-2407", 25, 2, 100.0, 0.0, "litros"),
+    ("Crema de Leche", "CRE-2409", 14, -3, 30.0, 12.0, "litros"),
+    ("Crema de Leche Pastelera", "CRE-2411", 2, 22, 45.0, 38.0, "litros"),
+    ("Crema de Leche Doble", "CRE-2410", 6, 3, 20.0, 6.0, "litros"),
+    ("Crema de Leche Cero", "CRE-2408", 22, 1, 30.0, 0.0, "litros"),
+    ("Queso Crema", "QCR-2409", 7, 5, 40.0, 18.0, "kilogramos"),
+    ("Queso de Maquina", "QMA-2410", 5, 8, 25.0, 7.5, "kilogramos"),
+    ("Ricota Fresca Magra", "RIC-2410", 8, 20, 20.0, 16.0, "kilogramos"),
+    ("Queso Barra Tybo", "QTY-2411", 2, 45, 60.0, 52.0, "kilogramos"),
+    ("Queso Sardo Rallado", "QSA-2408", 22, -2, 15.0, 3.5, "kilogramos"),
+    ("Queso de Maquina Historico", "QMA-2407", 35, 2, 30.0, 0.0, "kilogramos"),
+    ("Levadura Fresca", "LEV-2409", 6, 3, 20.0, 9.5, "kilogramos"),
+    ("Levadura Prensada Calsa", "LEV-2411", 2, 16, 35.0, 30.0, "kilogramos"),
+    ("Levadura Seca Instantanea", "LSI-2409", 15, 300, 25.0, 18.0, "kilogramos"),
+    ("Levadura Fresca Lote Anterior", "LEV-2408", 20, -2, 15.0, 3.0, "kilogramos"),
+    ("Levadura Agotada", "LEV-2407", 30, 2, 20.0, 0.0, "kilogramos"),
+    ("Sal Fina", "SAL-2407", 60, 365, 50.0, 42.0, "kilogramos"),
+    ("Sal Entrefina Parrillera", "SAL-2409", 15, 365, 30.0, 25.0, "kilogramos"),
+    ("Dulce de Leche Repostero", "DDL-2409", 10, 90, 80.0, 55.0, "kilogramos"),
+    ("Dulce de Leche Repostero Vacalin", "DDL-2411", 4, 6, 50.0, 15.0, "kilogramos"),
+    ("Dulce de Leche Familiar", "DDL-2408", 35, -4, 25.0, 4.0, "kilogramos"),
+    ("Dulce de Leche Lote Cero", "DDL-2407", 50, 20, 40.0, 0.0, "kilogramos"),
+    ("Chocolate Cobertura Semiamargo", "CHO-2408", 20, 180, 40.0, 26.0, "kilogramos"),
+    ("Gotas de Chocolate Blanco", "CHB-2408", 22, 190, 25.0, 17.0, "kilogramos"),
+    ("Cacao Amargo en Polvo", "CAC-2408", 25, 270, 20.0, 14.5, "kilogramos"),
+    ("Chocolate Cobertura con Leche", "CHL-2410", 10, 5, 30.0, 7.0, "kilogramos"),
+    ("Chocolate Blanco Barra", "CHB-2407", 40, -3, 20.0, 3.5, "kilogramos"),
+    ("Chocolate Cobertura Cero", "CHO-2407", 55, 60, 35.0, 0.0, "kilogramos"),
+    ("Aceite de Girasol", "ACE-2408", 25, 200, 60.0, 38.0, "litros"),
+    ("Aceite de Girasol Alto Oleico", "ACE-2411", 5, 4, 30.0, 6.0, "litros"),
+    ("Esencia de Vainilla", "VAI-2407", 45, 300, 4000.0, 2600.0, "mililitros"),
+    ("Esencia de Vainilla Repostera", "VAI-2411", 4, 6, 1000.0, 250.0, "mililitros"),
+    ("Polvo de Hornear", "PHO-2408", 20, 240, 8000.0, 5800.0, "gramos"),
+    ("Polvo Leudante Especial", "PHO-2411", 5, 5, 2000.0, 400.0, "gramos"),
+    ("Canela Molida", "CAN-2407", 40, 280, 6000.0, 4100.0, "gramos"),
+    ("Membrillo", "MEM-2409", 8, 120, 50.0, 36.0, "kilogramos"),
+    ("Dulce de Membrillo en Pan", "MEM-2411", 3, 5, 30.0, 7.0, "kilogramos"),
+    ("Jamon Cocido", "JAM-2410", 10, -1, 15.0, 5.0, "kilogramos"),
+    ("Jamon Cocido Primera Calidad", "JAM-2411", 2, 20, 25.0, 20.0, "kilogramos"),
+    ("Jamon Cocido Feteado", "JAM-2410B", 6, 3, 10.0, 2.5, "kilogramos"),
+    ("Jamon Cocido Lote Terminado", "JAM-2408", 25, 2, 15.0, 0.0, "kilogramos"),
+    ("Nueces Mariposa", "NUE-2408", 20, 150, 15.0, 6.5, "kilogramos"),
+    ("Almendras Peladas", "ALM-2408", 25, 160, 12.0, 7.0, "kilogramos"),
+    ("Pasas de Uva", "PAS-2408", 18, 180, 20.0, 12.0, "kilogramos"),
+    ("Coco Rallado", "COC-2408", 22, 160, 15.0, 9.5, "kilogramos"),
+    ("Almidon de Maiz", "ALM-2407", 40, 330, 40.0, 28.0, "kilogramos"),
+    ("Almidon de Maiz Especial", "ALM-2411", 4, 6, 20.0, 5.0, "kilogramos"),
+    ("Avena Arrollada Fina", "AVE-2409", 14, 210, 35.0, 24.0, "kilogramos"),
+    ("Mermelada de Frutilla", "MER-2409", 9, 120, 30.0, 19.0, "kilogramos"),
+    ("Miel Pura", "MIE-2407", 35, 365, 25.0, 18.0, "kilogramos"),
+    ("Semillas de Sesamo", "SES-2408", 20, 240, 20.0, 15.0, "kilogramos"),
+    ("Semillas de Lino", "LIN-2408", 20, 240, 20.0, 14.0, "kilogramos"),
 ]
 
 INSUMOS_QUIMICOS = [
-    ("Lavandina Concentrada 55g", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 120.0, "Clorox Profesional"),
-    ("Detergente Neutro Espumante", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 80.0, "Spartan Chemical"),
-    ("Amonio Cuaternario 5ta Generacion", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.LITROS, 60.0, "Ecolab"),
-    ("Desengrasante Alcalino Pesado", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.LITROS, 50.0, "Diversey"),
-    ("Sanitizante Clorado Liquido", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.LITROS, 45.0, "Ecolab"),
-    ("Detergente Desengrasante de Cocina", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.LITROS, 40.0, "JohnsonDiversey"),
-    ("Alcohol Isopropilico 70 Spray", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.MILILITROS, 8000.0, "Química del Sur"),
-    ("Limpiavidrios Antiestatico", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 5000.0, "Spartan Chemical"),
-    ("Jabon Antibacterial Clorhexidina", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 6000.0, "Diversey"),
-    ("Desinfectante Concentrado Peracetico", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.MILILITROS, 3500.0, "Ecolab"),
-    ("Lustramuebles y Acero Inoxidable", TipoQuimicoEnum.OTRO, UnidadQuimico.MILILITROS, 3000.0, "Spartan Chemical"),
-    ("Soda Caustica en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 60.0, "Química Industrial"),
-    ("Detergente en Polvo Enzimatico", TipoQuimicoEnum.DETERGENTE, UnidadQuimico.KILOGRAMOS, 50.0, "Spartan Chemical"),
-    ("Hipoclorito de Calcio Granulado", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.KILOGRAMOS, 35.0, "Clorox Profesional"),
-    ("Desincrustante Acido en Escamas", TipoQuimicoEnum.DESENGRASANTE, UnidadQuimico.KILOGRAMOS, 25.0, "Ecolab"),
-    ("Pastillas Efervescentes Cloradas", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.GRAMOS, 2500.0, "Química del Sur"),
-    ("Polvo Abrasivo Sanitizante", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.GRAMOS, 4000.0, "Diversey"),
-    ("Sal Regeneradora para Ablandador", TipoQuimicoEnum.OTRO, UnidadQuimico.GRAMOS, 8000.0, "Química Industrial"),
-    ("Toallitas Desinfectantes con Alcohol", TipoQuimicoEnum.DESINFECTANTE, UnidadQuimico.UNIDADES, 90.0, "Química del Sur"),
-    ("Pastillas Sanitizantes de Cisterna", TipoQuimicoEnum.SANITIZANTE, UnidadQuimico.UNIDADES, 75.0, "Ecolab"),
-    ("Bloque Desincrustante Quimico", TipoQuimicoEnum.OTRO, UnidadQuimico.UNIDADES, 36.0, "Spartan Chemical"),
+    ("Lavandina Concentrada 55g", TipoQuimicoEnum.DESINFECTANTE, "L", 120.0, "Clorox Profesional"),
+    ("Detergente Neutro Espumante", TipoQuimicoEnum.DETERGENTE, "L", 80.0, "Spartan Chemical"),
+    ("Amonio Cuaternario 5ta Generacion", TipoQuimicoEnum.DESINFECTANTE, "L", 60.0, "Ecolab"),
+    ("Desengrasante Alcalino Pesado", TipoQuimicoEnum.DESENGRASANTE, "L", 50.0, "Diversey"),
+    ("Sanitizante Clorado Liquido", TipoQuimicoEnum.SANITIZANTE, "L", 45.0, "Ecolab"),
+    ("Detergente Desengrasante de Cocina", TipoQuimicoEnum.DETERGENTE, "L", 40.0, "JohnsonDiversey"),
+    ("Alcohol Isopropilico 70 Spray", TipoQuimicoEnum.DESINFECTANTE, "ML", 8000.0, "Química del Sur"),
+    ("Limpiavidrios Antiestatico", TipoQuimicoEnum.OTRO, "ML", 5000.0, "Spartan Chemical"),
+    ("Jabon Antibacterial Clorhexidina", TipoQuimicoEnum.OTRO, "ML", 6000.0, "Diversey"),
+    ("Desinfectante Concentrado Peracetico", TipoQuimicoEnum.SANITIZANTE, "ML", 3500.0, "Ecolab"),
+    ("Lustramuebles y Acero Inoxidable", TipoQuimicoEnum.OTRO, "ML", 3000.0, "Spartan Chemical"),
+    ("Soda Caustica en Escamas", TipoQuimicoEnum.DESENGRASANTE, "KG", 60.0, "Química Industrial"),
+    ("Detergente en Polvo Enzimatico", TipoQuimicoEnum.DETERGENTE, "KG", 50.0, "Spartan Chemical"),
+    ("Hipoclorito de Calcio Granulado", TipoQuimicoEnum.DESINFECTANTE, "KG", 35.0, "Clorox Profesional"),
+    ("Desincrustante Acido en Escamas", TipoQuimicoEnum.DESENGRASANTE, "KG", 25.0, "Ecolab"),
+    ("Pastillas Efervescentes Cloradas", TipoQuimicoEnum.DESINFECTANTE, "G", 2500.0, "Química del Sur"),
+    ("Polvo Abrasivo Sanitizante", TipoQuimicoEnum.SANITIZANTE, "G", 4000.0, "Diversey"),
+    ("Sal Regeneradora para Ablandador", TipoQuimicoEnum.OTRO, "G", 8000.0, "Química Industrial"),
+    ("Toallitas Desinfectantes con Alcohol", TipoQuimicoEnum.DESINFECTANTE, "UN", 90.0, "Química del Sur"),
+    ("Pastillas Sanitizantes de Cisterna", TipoQuimicoEnum.SANITIZANTE, "UN", 75.0, "Ecolab"),
+    ("Bloque Desincrustante Quimico", TipoQuimicoEnum.OTRO, "UN", 36.0, "Spartan Chemical"),
 ]
 
 def generar_pdf_valido(titulo: str, subtitulo: str = "") -> bytes:
@@ -241,6 +244,14 @@ def main() -> None:
     hoy = datetime.now()
 
     asegurar_usuarios_dev(db)
+    asegurar_unidades_base(db)
+    crear_unidad_medida(db, UnidadMedidaCreate(nombre="Toneladas", abreviatura="TN"))
+    u_oz = crear_unidad_medida(db, UnidadMedidaCreate(nombre="Onzas", abreviatura="OZ"))
+    u_oz_model = db.get(UnidadMedidaModel, u_oz.id)
+    if u_oz_model:
+        u_oz_model.activo = False
+        db.commit()
+    unidades_map = {u.nombre.lower(): u.id for u in db.query(UnidadMedidaModel).all()}
     asegurar_tipos_base(db)
 
     admin_user = db.query(Personal).filter(Personal.usuario == "admin").first()
@@ -281,37 +292,37 @@ def main() -> None:
         db.commit()
 
     tipos_insumos_seed = [
-        ("Harina", "Harinas de trigo y cereales varios", UnidadMedida.KILOGRAMOS),
-        ("Esencia de Vainilla", "Aromatizante y saborizante para pastelería y repostería", UnidadMedida.MILILITROS),
-        ("Polvo para Hornear", "Leudante químico para masas dulces y batidos", UnidadMedida.GRAMOS),
-        ("Sal", "Sal fina y entrefina de uso alimenticio", UnidadMedida.KILOGRAMOS),
-        ("Levadura", "Levadura biológica fresca y seca para panificación", UnidadMedida.KILOGRAMOS),
-        ("Manteca", "Materia grasa vacuna para hojaldres y masas", UnidadMedida.KILOGRAMOS),
-        ("Azúcar", "Azúcar blanco común y rubio", UnidadMedida.KILOGRAMOS),
-        ("Huevos", "Huevos frescos de gallina seleccionados", UnidadMedida.UNIDADES),
-        ("Leche", "Leche entera fluida y en polvo", UnidadMedida.LITROS),
-        ("Crema de Leche", "Crema de leche pasteurizada para repostería", UnidadMedida.LITROS),
-        ("Chocolate", "Chocolate cobertura semiamargo y con leche", UnidadMedida.KILOGRAMOS),
-        ("Dulce de Leche", "Dulce de leche repostero y tradicional", UnidadMedida.KILOGRAMOS),
-        ("Queso", "Quesos duros y semiduros para panificados", UnidadMedida.KILOGRAMOS),
-        ("Aceite", "Aceites vegetales comestibles", UnidadMedida.LITROS),
-        ("Canela", "Canela molida aromática", UnidadMedida.GRAMOS),
-        ("Membrillo", "Dulce de membrillo en pan", UnidadMedida.KILOGRAMOS),
-        ("Fiambres", "Fiambres y embutidos cocidos", UnidadMedida.KILOGRAMOS),
-        ("Frutos Secos", "Nueces y almendras seleccionadas", UnidadMedida.KILOGRAMOS),
-        ("Frutas Deshidratadas", "Pasas y desecados", UnidadMedida.KILOGRAMOS),
-        ("Coco Rallado", "Coco rallado desecado", UnidadMedida.KILOGRAMOS),
-        ("Almidón de Maíz", "Espesante y base para panificados sin TACC o chipá", UnidadMedida.KILOGRAMOS),
-        ("Avena", "Avena arrollada fina para cereales y panificación", UnidadMedida.KILOGRAMOS),
-        ("Mermelada", "Mermeladas de fruta", UnidadMedida.KILOGRAMOS),
-        ("Miel", "Miel pura de abeja", UnidadMedida.KILOGRAMOS),
-        ("Semillas", "Semillas varias para terminación y panes especiales", UnidadMedida.KILOGRAMOS),
-        ("Colorantes y Esencias Especiales", "Colorantes alimentarios y saborizantes concentrados", UnidadMedida.MILILITROS),
+        ("Harina", "Harinas de trigo y cereales varios", "kilogramos"),
+        ("Esencia de Vainilla", "Aromatizante y saborizante para pastelería y repostería", "mililitros"),
+        ("Polvo para Hornear", "Leudante químico para masas dulces y batidos", "gramos"),
+        ("Sal", "Sal fina y entrefina de uso alimenticio", "kilogramos"),
+        ("Levadura", "Levadura biológica fresca y seca para panificación", "kilogramos"),
+        ("Manteca", "Materia grasa vacuna para hojaldres y masas", "kilogramos"),
+        ("Azúcar", "Azúcar blanco común y rubio", "kilogramos"),
+        ("Huevos", "Huevos frescos de gallina seleccionados", "unidades"),
+        ("Leche", "Leche entera fluida y en polvo", "litros"),
+        ("Crema de Leche", "Crema de leche pasteurizada para repostería", "litros"),
+        ("Chocolate", "Chocolate cobertura semiamargo y con leche", "kilogramos"),
+        ("Dulce de Leche", "Dulce de leche repostero y tradicional", "kilogramos"),
+        ("Queso", "Quesos duros y semiduros para panificados", "kilogramos"),
+        ("Aceite", "Aceites vegetales comestibles", "litros"),
+        ("Canela", "Canela molida aromática", "gramos"),
+        ("Membrillo", "Dulce de membrillo en pan", "kilogramos"),
+        ("Fiambres", "Fiambres y embutidos cocidos", "kilogramos"),
+        ("Frutos Secos", "Nueces y almendras seleccionadas", "kilogramos"),
+        ("Frutas Deshidratadas", "Pasas y desecados", "kilogramos"),
+        ("Coco Rallado", "Coco rallado desecado", "kilogramos"),
+        ("Almidón de Maíz", "Espesante y base para panificados sin TACC o chipá", "kilogramos"),
+        ("Avena", "Avena arrollada fina para cereales y panificación", "kilogramos"),
+        ("Mermelada", "Mermeladas de fruta", "kilogramos"),
+        ("Miel", "Miel pura de abeja", "kilogramos"),
+        ("Semillas", "Semillas varias para terminación y panes especiales", "kilogramos"),
+        ("Colorantes y Esencias Especiales", "Colorantes alimentarios y saborizantes concentrados", "mililitros"),
     ]
     for nom_t, desc_t, um_t in tipos_insumos_seed:
-        crear_tipo_insumo(db, TipoInsumoCreate(nombre=nom_t, descripcion=desc_t, unidadMedida=um_t))
+        crear_tipo_insumo(db, TipoInsumoCreate(nombre=nom_t, descripcion=desc_t, unidad_medida_id=unidades_map[um_t]))
 
-    tipo_inactivo = crear_tipo_insumo(db, TipoInsumoCreate(nombre="Aditivos Discontinuados", descripcion="Línea de aditivos y mejoradores discontinuada", unidadMedida=UnidadMedida.KILOGRAMOS))
+    tipo_inactivo = crear_tipo_insumo(db, TipoInsumoCreate(nombre="Aditivos Discontinuados", descripcion="Línea de aditivos y mejoradores discontinuada", unidad_medida_id=unidades_map["kilogramos"]))
     tipo_inactivo.activo = False
     db.commit()
 
@@ -409,7 +420,7 @@ def main() -> None:
             fechaVencimiento=hoy + timedelta(days=dias_venc) if dias_venc is not None else None,
             cantRecibida=cant,
             stock=stock,
-            medida=medida,
+            unidad_medida_id=unidades_map[medida],
             tipo_insumo_id=t_id,
             proveedor_id=p_id,
         ))
@@ -1111,16 +1122,16 @@ def main() -> None:
         ))
     db.commit()
 
-    p_pan = Producto(nombre="Pan de Campo", descripcion="Pan rústico de masa madre 500g", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True, visible_publico=True, id_receta=doc_pan_receta.id)
-    p_medialunas = Producto(nombre="Medialunas de Manteca", descripcion="Docena de medialunas dulces hojaldradas", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True, id_receta=doc_receta.id)
-    p_baguette = Producto(nombre="Baguette Tradicional", descripcion="Baguette artesanal crujiente 250g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True)
-    p_torta = Producto(nombre="Torta de Chocolate", descripcion="Torta artesanal húmeda con cobertura semiamarga", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True, visible_publico=True)
-    p_lactal = Producto(nombre="Pan Lactal Blanco", descripcion="Pan de molde enriquecido con leche 450g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True)
-    p_salvado = Producto(nombre="Pan de Salvado y Semillas", descripcion="Pan integral con mix de semillas 450g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True)
-    p_facturas = Producto(nombre="Facturas Surtidas", descripcion="Variedad de medialunas, vigilantes y cañoncitos", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=True)
-    p_budin = Producto(nombre="Budin de Limon y Glaseado", descripcion="Budín esponjoso con glaseado de limón 350g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=False)
-    p_chipa = Producto(nombre="Chipa Tradicional", descripcion="Chipa de queso y almidón de mandioca", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True, visible_publico=True)
-    p_ciabatta = Producto(nombre="Ciabatta Rústica", descripcion="Pan italiano de alta hidratación 300g", unidadMedida=UnidadMedida.UNIDADES, activo=True, visible_publico=False)
+    p_pan = Producto(nombre="Pan de Campo", descripcion="Pan rústico de masa madre 500g", unidad_medida_id=unidades_map["kilogramos"], activo=True, visible_publico=True, id_receta=doc_pan_receta.id)
+    p_medialunas = Producto(nombre="Medialunas de Manteca", descripcion="Docena de medialunas dulces hojaldradas", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True, id_receta=doc_receta.id)
+    p_baguette = Producto(nombre="Baguette Tradicional", descripcion="Baguette artesanal crujiente 250g", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True)
+    p_torta = Producto(nombre="Torta de Chocolate", descripcion="Torta artesanal húmeda con cobertura semiamarga", unidad_medida_id=unidades_map["kilogramos"], activo=True, visible_publico=True)
+    p_lactal = Producto(nombre="Pan Lactal Blanco", descripcion="Pan de molde enriquecido con leche 450g", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True)
+    p_salvado = Producto(nombre="Pan de Salvado y Semillas", descripcion="Pan integral con mix de semillas 450g", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True)
+    p_facturas = Producto(nombre="Facturas Surtidas", descripcion="Variedad de medialunas, vigilantes y cañoncitos", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True)
+    p_budin = Producto(nombre="Budin de Limon y Glaseado", descripcion="Budín esponjoso con glaseado de limón 350g", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=False)
+    p_chipa = Producto(nombre="Chipa Tradicional", descripcion="Chipa de queso y almidón de mandioca", unidad_medida_id=unidades_map["kilogramos"], activo=True, visible_publico=True)
+    p_ciabatta = Producto(nombre="Ciabatta Rústica", descripcion="Pan italiano de alta hidratación 300g", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=False)
 
     db.add_all([p_pan, p_medialunas, p_baguette, p_torta, p_lactal, p_salvado, p_facturas, p_budin, p_chipa, p_ciabatta])
     db.commit()

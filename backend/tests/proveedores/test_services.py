@@ -2,7 +2,8 @@ import pytest
 from sqlalchemy.orm import Session
 from tests.database import session
 from src.proveedores import exceptions, schemas, services
-from src.insumos.models import Insumo, UnidadMedida
+from src.insumos.models import Insumo
+from src.unidadesMedida.services import resolver_unidad_medida
 from datetime import datetime
 
 
@@ -94,7 +95,7 @@ def test_eliminar_proveedor_con_insumos_asociados_falla(session: Session):
         fechaVencimiento=datetime.now(),
         cantRecibida=100.0,
         stock=100.0,
-        medida=UnidadMedida.UNIDADES,
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="unidades").id,
         proveedor_id=prov.id,
         activo=True,
     )

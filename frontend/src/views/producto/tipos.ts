@@ -7,19 +7,22 @@ export interface DocumentoReceta {
 export interface Producto {
   nombre: string;
   descripcion?: string;
+  unidad_medida_id?: number | null;
   unidadMedida: string;
+  unidad_medida_nombre?: string | null;
+  unidad_medida_abreviatura?: string | null;
   id_receta?: number | null;
   nombre_receta?: string | null;
   activo: boolean;
-  visible_publico?: boolean; // opcional: los formularios de alta/edicion no lo manejan
+  visible_publico?: boolean;
 }
 
-// lo que devuelve el catalogo de la vista publica (sin receta ni datos internos)
 export interface ProductoPublico {
   id: number;
   nombre: string;
   descripcion?: string | null;
   unidadMedida: string;
+  unidad_medida_abreviatura?: string | null;
 }
 
 export interface ProductoConId extends Producto {

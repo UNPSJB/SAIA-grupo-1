@@ -2,7 +2,6 @@ from datetime import date, datetime, timedelta
 from typing import List, Optional, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.insumos import exceptions
-from src.insumos.models import UnidadMedida
 
 
 class InsumoBase(BaseModel):
@@ -12,20 +11,32 @@ class InsumoBase(BaseModel):
     fechaVencimiento: Optional[datetime] = None
     cantRecibida: float
     stock: float
-    medida: UnidadMedida
+    unidad_medida_id: Optional[int] = None
+    medida: Optional[str] = None
     tipo_insumo_id: Optional[int] = None
     proveedor_id: Optional[int] = None
 
     @field_validator("medida", mode="before")
     @classmethod
-    def is_valid_medida_insumo(cls, v: str | UnidadMedida) -> UnidadMedida:
-        if isinstance(v, UnidadMedida):
-            return v
+    def is_valid_medida_insumo(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
         if isinstance(v, str):
-            val_upper = v.upper()
-            if val_upper in UnidadMedida.__members__:
-                return UnidadMedida[val_upper]
-        raise exceptions.UnidadMedidaInvalida(list(UnidadMedida))
+            limpio = v.strip()
+            if not limpio:
+                raise ValueError("La unidad de medida no puede estar vacía.")
+            return limpio
+        raise ValueError("La unidad de medida indicada es inválida.")
+
+    @model_validator(mode="after")
+    def validar_unidad_presente(self) -> Self:
+        if (
+            self.unidad_medida_id is None
+            and self.medida is None
+            and self.tipo_insumo_id is None
+        ):
+            raise ValueError("La unidad de medida es obligatoria.")
+        return self
 
 
 class InsumoCreate(InsumoBase):
@@ -113,22 +124,22 @@ class InsumoUpdate(BaseModel):
     fechaVencimiento: Optional[datetime] = None
     cantRecibida: Optional[float] = None
     stock: Optional[float] = None
-    medida: Optional[UnidadMedida] = None
+    unidad_medida_id: Optional[int] = None
+    medida: Optional[str] = None
     tipo_insumo_id: Optional[int] = None
     proveedor_id: Optional[int] = None
 
     @field_validator("medida", mode="before")
     @classmethod
-    def is_valid_medida_insumo(cls, v: Optional[str | UnidadMedida]) -> Optional[UnidadMedida]:
+    def is_valid_medida_insumo(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return None
-        if isinstance(v, UnidadMedida):
-            return v
         if isinstance(v, str):
-            val_upper = v.upper()
-            if val_upper in UnidadMedida.__members__:
-                return UnidadMedida[val_upper]
-        raise exceptions.UnidadMedidaInvalida(list(UnidadMedida))
+            limpio = v.strip()
+            if not limpio:
+                raise ValueError("La unidad de medida no puede estar vacía.")
+            return limpio
+        raise ValueError("La unidad de medida indicada es inválida.")
 
     @field_validator("cantRecibida")
     @classmethod
@@ -165,6 +176,10 @@ class InsumoUpdateStock(BaseModel):
 
 class Insumo(InsumoBase):
     id: int
+    unidad_medida_id: int
+    medida: str
+    unidad_medida_nombre: Optional[str] = None
+    unidad_medida_abreviatura: Optional[str] = None
     activo: bool = True
     proveedor_nombre: Optional[str] = None
     tipo_insumo_nombre: Optional[str] = None
@@ -194,6 +209,8 @@ class InsumoLoteItem(BaseModel):
     stock: float
     cantRecibida: float
     medida: str
+    unidad_medida_id: Optional[int] = None
+    unidad_medida_abreviatura: Optional[str] = None
     fechaRecepcion: datetime | date
     fechaVencimiento: Optional[datetime | date] = None
     proveedor_id: Optional[int] = None
@@ -209,7 +226,9 @@ class InsumoAgrupadoPorTipo(BaseModel):
     tipo_id: int
     nombre: str
     descripcion: Optional[str] = None
+    unidad_medida_id: Optional[int] = None
     unidadMedida: str
+    unidad_medida_abreviatura: Optional[str] = None
     stock_total: float
     tiene_vencidos: bool = False
     tiene_proximos: bool = False

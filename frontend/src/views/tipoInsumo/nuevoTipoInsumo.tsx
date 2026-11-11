@@ -1,33 +1,57 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 import type { TipoInsumoForm } from './tipos';
+import type { UnidadMedidaItem } from '../unidadesMedida/tipos';
 
 interface NuevoTipoInsumoProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-const UNIDADES_MEDIDA = [
-  { valor: 'kilogramos', label: 'Kilogramos (kg)' },
-  { valor: 'gramos', label: 'Gramos (g)' },
-  { valor: 'litros', label: 'Litros (L)' },
-  { valor: 'mililitros', label: 'Mililitros (mL)' },
-  { valor: 'unidades', label: 'Unidades (u)' },
-];
-
 export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onCancel }) => {
   const [form, setForm] = useState<TipoInsumoForm>({
     nombre: '',
     descripcion: '',
-    unidadMedida: 'kilogramos',
+    unidad_medida_id: '',
   });
+  const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelado = false;
+    async function cargarUnidades() {
+      try {
+        const res = await apiFetch('/unidades-medida/?solo_activos=true');
+        if (!cancelado && res.ok) {
+          const data: UnidadMedidaItem[] = await res.json();
+          setUnidades(data);
+          if (data.length > 0) {
+            const predet =
+              data.find((u) => u.nombre.toLowerCase() === 'kilogramos') ?? data[0];
+            setForm((prev) =>
+              prev.unidad_medida_id === '' ? { ...prev, unidad_medida_id: predet.id } : prev
+            );
+          }
+        }
+      } catch {
+        if (!cancelado) setUnidades([]);
+      }
+    }
+    cargarUnidades();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({
+      ...form,
+      [name]: name === 'unidad_medida_id' ? (value ? Number(value) : '') : value,
+    });
   };
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
@@ -45,12 +69,17 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
       return;
     }
 
+    if (!form.unidad_medida_id) {
+      setErrorMsg('Debe seleccionar una unidad de medida.');
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
         nombre: nombreLimpio,
         descripcion: form.descripcion.trim() || null,
-        unidadMedida: form.unidadMedida,
+        unidad_medida_id: Number(form.unidad_medida_id),
       };
 
       const res = await apiFetch('/insumos/tipos/', {
@@ -71,7 +100,7 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
       }
 
       setSuccessMsg('Tipo de insumo registrado exitosamente.');
-      setForm({ nombre: '', descripcion: '', unidadMedida: 'kilogramos' });
+      setForm((prev) => ({ nombre: '', descripcion: '', unidad_medida_id: prev.unidad_medida_id }));
       onSuccess?.();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Error al registrar el tipo de insumo.');
@@ -105,17 +134,18 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
         </div>
 
         <div className="form-group">
-          <label htmlFor="unidadMedida">Unidad de Medida *</label>
+          <label htmlFor="unidad_medida_id">Unidad de Medida *</label>
           <select
-            id="unidadMedida"
-            name="unidadMedida"
-            value={form.unidadMedida}
+            id="unidad_medida_id"
+            name="unidad_medida_id"
+            value={form.unidad_medida_id}
             onChange={handleChange}
             required
           >
-            {UNIDADES_MEDIDA.map((u) => (
-              <option key={u.valor} value={u.valor}>
-                {u.label}
+            <option value="" disabled>Seleccione una unidad...</option>
+            {unidades.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nombre} ({u.abreviatura})
               </option>
             ))}
           </select>

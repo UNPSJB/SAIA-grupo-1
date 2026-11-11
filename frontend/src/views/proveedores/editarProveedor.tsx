@@ -18,7 +18,6 @@ export const EditarProveedor: React.FC<EditarProveedorProps> = ({ id, onSuccess,
     email: '',
     direccion: '',
   });
-  const [activo, setActivo] = useState(true);
   const [loading, setLoading] = useState(false);
   const [cargandoDatos, setCargandoDatos] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -39,7 +38,6 @@ export const EditarProveedor: React.FC<EditarProveedorProps> = ({ id, onSuccess,
             email: data.email || '',
             direccion: data.direccion || '',
           });
-          setActivo(data.activo);
         } else if (!cancelado) {
           setErrorMsg('No se pudo cargar la información del proveedor.');
         }
@@ -83,7 +81,6 @@ export const EditarProveedor: React.FC<EditarProveedorProps> = ({ id, onSuccess,
         telefono: form.telefono.trim() || null,
         email: form.email.trim() || null,
         direccion: form.direccion.trim() || null,
-        activo: activo,
       };
 
       const res = await apiFetch(`/proveedores/${id}`, {
@@ -196,17 +193,6 @@ export const EditarProveedor: React.FC<EditarProveedorProps> = ({ id, onSuccess,
             value={form.direccion}
             onChange={handleChange}
           />
-        </div>
-
-        <div className="form-group">
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={activo}
-              onChange={(e) => setActivo(e.target.checked)}
-            />
-            Proveedor Activo
-          </label>
         </div>
 
         <div className="form-acciones">

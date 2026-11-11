@@ -56,13 +56,7 @@ async def listar_tipos_insumos_endpoint(
 )
 async def obtener_tipo_insumo_endpoint(tipo_id: int, db: Session = Depends(get_db)):
     tipo = services.obtener_tipo_insumo(db, tipo_id)
-    return schemas.TipoInsumo(
-        id=tipo.id,
-        nombre=tipo.nombre,
-        descripcion=tipo.descripcion,
-        unidadMedida=tipo.unidadMedida,
-        activo=tipo.activo,
-    )
+    return services.serializar_tipo_insumo(tipo)
 
 
 @router.get(
@@ -84,13 +78,7 @@ async def crear_tipo_insumo_endpoint(
     datos: schemas.TipoInsumoCreate, db: Session = Depends(get_db)
 ):
     tipo = services.crear_tipo_insumo(db, datos)
-    return schemas.TipoInsumo(
-        id=tipo.id,
-        nombre=tipo.nombre,
-        descripcion=tipo.descripcion,
-        unidadMedida=tipo.unidadMedida,
-        activo=tipo.activo,
-    )
+    return services.serializar_tipo_insumo(tipo)
 
 
 @router.put(
@@ -104,13 +92,7 @@ async def actualizar_tipo_insumo_endpoint(
     db: Session = Depends(get_db),
 ):
     tipo = services.actualizar_tipo_insumo(db, tipo_id, datos)
-    return schemas.TipoInsumo(
-        id=tipo.id,
-        nombre=tipo.nombre,
-        descripcion=tipo.descripcion,
-        unidadMedida=tipo.unidadMedida,
-        activo=tipo.activo,
-    )
+    return services.serializar_tipo_insumo(tipo)
 
 
 @router.delete(
@@ -124,10 +106,22 @@ async def eliminar_tipo_insumo_endpoint(
     db: Session = Depends(get_db),
 ):
     tipo = services.eliminar_tipo_insumo(db, tipo_id, baja_logica=not fisico)
-    return schemas.TipoInsumo(
-        id=tipo.id,
-        nombre=tipo.nombre,
-        descripcion=tipo.descripcion,
-        unidadMedida=tipo.unidadMedida,
-        activo=tipo.activo,
-    )
+    return services.serializar_tipo_insumo(tipo)
+
+
+@router.post(
+    "/{tipo_id}/restaurar",
+    response_model=schemas.TipoInsumo,
+    dependencies=[Depends(requiere_admin)],
+)
+@router.patch(
+    "/{tipo_id}/reactivar",
+    response_model=schemas.TipoInsumo,
+    dependencies=[Depends(requiere_admin)],
+)
+async def restaurar_tipo_insumo_endpoint(
+    tipo_id: int,
+    db: Session = Depends(get_db),
+):
+    tipo = services.restaurar_tipo_insumo(db, tipo_id)
+    return services.serializar_tipo_insumo(tipo)

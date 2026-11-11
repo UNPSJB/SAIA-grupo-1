@@ -7,6 +7,7 @@ interface VerInsumoProps {
   insumo: InsumoConId;
   onEditarClick?: (insumo: InsumoConId) => void;
   onVolver?: () => void;
+  textoVolver?: string;
 }
 
 const formatDate = (dateStr?: string | null) => {
@@ -25,7 +26,7 @@ const formatDate = (dateStr?: string | null) => {
   }
 };
 
-export default function VerInsumo({ insumo, onEditarClick, onVolver }: VerInsumoProps) {
+export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver }: VerInsumoProps) {
   const [trazabilidad, setTrazabilidad] = useState<InsumoDetalleTrazabilidad | null>(null);
   const [cargando, setCargando] = useState(true);
 
@@ -152,7 +153,7 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver }: VerInsumo
             </button>
           )}
           <button type="button" className="btn-cancelar" onClick={onVolver}>
-            Volver
+            {textoVolver || 'Volver'}
           </button>
         </div>
       </div>

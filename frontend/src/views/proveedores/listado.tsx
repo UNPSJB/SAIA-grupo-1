@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Proveedor } from './tipos';
 import '../../styles/formularioAlta.css';
-import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
+import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
 import { CsvIcon } from '../../components/icons/CsvIcon';
 import { Paginacion } from '../../components/ui/paginacion';
@@ -24,19 +24,15 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   const [busqueda, setBusqueda] = useState('');
-  const [soloActivos, setSoloActivos] = useState(true);
-  const [proveedorAEliminar, setProveedorAEliminar] = useState<Proveedor | null>(null);
+  const [filtroEstado, setFiltroEstado] = useState('TODOS');
+  const [proveedorAConfirmar, setProveedorAConfirmar] = useState<Proveedor | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
   const cargarProveedores = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (!soloActivos) params.append('solo_activos', 'false');
-      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
-      const query = params.toString() ? `?${params.toString()}` : '';
-      const res = await apiFetch(`/proveedores/${query}`);
+      const res = await apiFetch('/proveedores/?solo_activos=false');
       if (res.ok) {
         const data = await res.json();
         setProveedores(data);
@@ -52,42 +48,67 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
 
   useEffect(() => {
     cargarProveedores();
-  }, [soloActivos, busqueda]);
+  }, []);
 
   const abrirConfirmacion = (prov: Proveedor) => {
-    setErrorMsg(null);
-    setProveedorAEliminar(prov);
+    setProveedorAConfirmar(prov);
     setDialogAbierto(true);
   };
 
-  const ejecutarEliminar = async () => {
-    if (!proveedorAEliminar) return;
+  const ejecutarToggle = async () => {
+    if (!proveedorAConfirmar) return;
+    const esActivo = proveedorAConfirmar.activo;
+    const accion = esActivo ? 'dar de baja' : 'restaurar';
     try {
-      const res = await apiFetch(`/proveedores/${proveedorAEliminar.id}`, { method: 'DELETE' });
+      const url = esActivo
+        ? `/proveedores/${proveedorAConfirmar.id}`
+        : `/proveedores/${proveedorAConfirmar.id}/restaurar`;
+      const method = esActivo ? 'DELETE' : 'POST';
+      const res = await apiFetch(url, { method });
+
       if (res.ok) {
         setProveedores((prev) =>
-          soloActivos
-            ? prev.filter((p) => p.id !== proveedorAEliminar.id)
-            : prev.map((p) => (p.id === proveedorAEliminar.id ? { ...p, activo: false } : p))
+          prev.map((p) =>
+            p.id === proveedorAConfirmar.id ? { ...p, activo: !esActivo } : p
+          )
         );
       } else {
         const err = await res.json().catch(() => ({}));
-        setErrorMsg(err.detail || 'No se pudo eliminar el proveedor.');
+        setErrorDialogMsg(err.detail || `No se pudo ${accion} el proveedor.`);
       }
     } catch {
-      setErrorMsg('Error de conexión al eliminar el proveedor.');
+      setErrorDialogMsg(`Error de conexión al ${accion} el proveedor.`);
     } finally {
       setDialogAbierto(false);
-      setProveedorAEliminar(null);
+      setProveedorAConfirmar(null);
     }
   };
+
+  const proveedoresFiltrados = proveedores.filter((p) => {
+    const term = busqueda.toLowerCase().trim();
+    const matchBusqueda =
+      !term ||
+      p.nombre.toLowerCase().includes(term) ||
+      (p.cuit && p.cuit.toLowerCase().includes(term)) ||
+      (p.contacto && p.contacto.toLowerCase().includes(term)) ||
+      (p.email && p.email.toLowerCase().includes(term));
+
+    const matchEstado =
+      filtroEstado === 'TODOS' ||
+      (filtroEstado === 'activo' && p.activo) ||
+      (filtroEstado === 'inactivo' && !p.activo);
+
+    return matchBusqueda && matchEstado;
+  });
 
   const ejecutarExportacion = async () => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
       if (busqueda.trim()) params.append('busqueda', busqueda.trim());
-      if (!soloActivos) params.append('solo_activos', 'false');
+      if (filtroEstado === 'activo') {
+        params.append('solo_activos', 'true');
+      }
 
       const queryString = params.toString();
       const url = `/proveedores/exportar-csv${queryString ? `?${queryString}` : ''}`;
@@ -95,7 +116,7 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
       await descargarCSV(url, 'proveedores.csv');
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al exportar proveedores a CSV.');
+      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar proveedores a CSV.');
     } finally {
       setExportando(false);
     }
@@ -111,7 +132,7 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
     totalPaginas,
     indiceInicio,
     indiceFin,
-  } = usePaginacion(proveedores);
+  } = usePaginacion(proveedoresFiltrados);
 
   return (
     <div className="modulo-container">
@@ -139,8 +160,6 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
         </div>
       </div>
 
-      {errorMsg && <div className="alerta-error">{errorMsg}</div>}
-
       <div className="filtros-top-bar" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
         <input
           type="text"
@@ -150,14 +169,15 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
           className="input-busqueda"
         />
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          <input
-            type="checkbox"
-            checked={soloActivos}
-            onChange={(e) => setSoloActivos(e.target.checked)}
-          />
-          Solo activos
-        </label>
+        <select
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          className="select-filtro"
+        >
+          <option value="TODOS">Todos los estados</option>
+          <option value="activo">Activos</option>
+          <option value="inactivo">Inactivos</option>
+        </select>
       </div>
 
       <div className="tabla-wrapper">
@@ -181,10 +201,10 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
                   Cargando proveedores...
                 </td>
               </tr>
-            ) : proveedores.length === 0 ? (
+            ) : proveedoresFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                  {busqueda
+                  {busqueda || filtroEstado !== 'TODOS'
                     ? 'No se encontraron proveedores que coincidan con la búsqueda.'
                     : 'No hay proveedores registrados.'}
                 </td>
@@ -199,16 +219,7 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
                   <td>{p.telefono || '-'}</td>
                   <td>{p.email || '-'}</td>
                   <td>
-                    <span
-                      style={{
-                        padding: '3px 8px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        backgroundColor: p.activo ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                        color: p.activo ? '#16a34a' : '#dc2626',
-                      }}
-                    >
+                    <span className={`badge-status ${p.activo ? 'activo' : 'inactivo'}`}>
                       {p.activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
@@ -216,20 +227,18 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
                     <div className="acciones-btns">
                       <button
                         className="btn-icon btn-editar"
-                        title="Editar proveedor"
+                        title="Editar"
                         onClick={() => onEditarClick?.(p.id)}
                       >
                         ✎
                       </button>
-                      {p.activo && (
-                        <button
-                          className="btn-icon btn-eliminar"
-                          title="Dar de baja proveedor"
-                          onClick={() => abrirConfirmacion(p)}
-                        >
-                          🗑
-                        </button>
-                      )}
+                      <button
+                        className={`btn-icon ${p.activo ? 'btn-eliminar' : 'btn-reactivar'}`}
+                        title={p.activo ? 'Dar de baja' : 'Restaurar'}
+                        onClick={() => abrirConfirmacion(p)}
+                      >
+                        {p.activo ? '🗑' : '🔄'}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -249,18 +258,33 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
           indiceFin={indiceFin}
           onCambiarPagina={setPaginaActual}
           onCambiarFilasPorPagina={setFilasPorPagina}
+          etiqueta="proveedores"
         />
       )}
 
       <ConfirmAlertDialog
         open={dialogAbierto}
-        title="Dar de baja proveedor"
-        description={`¿Estás seguro de que deseas dar de baja al proveedor "${proveedorAEliminar?.nombre}"? Esta acción puede deshacerse editando el estado del proveedor.`}
-        confirmText="Dar de baja"
+        title={proveedorAConfirmar?.activo ? '¿Dar de baja proveedor?' : '¿Restaurar proveedor?'}
+        description={
+          proveedorAConfirmar?.activo
+            ? `¿Estás seguro de que deseas dar de baja al proveedor "${proveedorAConfirmar?.nombre}"?`
+            : `¿Estás seguro de que deseas restaurar al proveedor "${proveedorAConfirmar?.nombre}"?`
+        }
+        confirmText={proveedorAConfirmar?.activo ? 'Confirmar Baja' : 'Confirmar Restauración'}
         cancelText="Cancelar"
-        isDestructive={true}
-        onConfirm={ejecutarEliminar}
-        onCancel={() => setDialogAbierto(false)}
+        isDestructive={Boolean(proveedorAConfirmar?.activo)}
+        onConfirm={ejecutarToggle}
+        onCancel={() => {
+          setDialogAbierto(false);
+          setProveedorAConfirmar(null);
+        }}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorDialogMsg)}
+        title="No se pudo completar la acción"
+        description={errorDialogMsg || ''}
+        onClose={() => setErrorDialogMsg(null)}
       />
 
       <ConfirmExportDialog
