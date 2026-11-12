@@ -5,8 +5,9 @@ import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 
 interface ListadoPlanesProps {
   onNuevoClick?: () => void;
@@ -68,24 +69,30 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
     return coincideBusqueda && coincideFrecuencia && coincideTareas;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
 
-      // Construcción dinámica de la URL con los filtros activos
       const params = new URLSearchParams();
       if (busqueda.trim()) params.append('busqueda', busqueda.trim());
       if (filtroFrecuencia !== 'TODOS') params.append('frecuencia', filtroFrecuencia);
       if (filtroTareas !== 'TODOS') params.append('tareas', filtroTareas);
 
       const queryString = params.toString();
-      const url = `/plan_De_limpieza/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, "planes_de_limpieza.csv");
+      if (formato === 'pdf') {
+        await descargarPDF(`/plan_De_limpieza/exportar-pdf${query}`, 'planes_de_limpieza.pdf');
+      } else {
+        await descargarCSV(`/plan_De_limpieza/exportar-csv${query}`, 'planes_de_limpieza.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (error) {
       alert(
-        error instanceof Error ? error.message : "Error al exportar los planes de limpieza a CSV."
+        error instanceof Error
+          ? error.message
+          : `Error al exportar los planes de limpieza a ${formato.toUpperCase()}.`
       );
     } finally {
       setExportando(false);
@@ -127,7 +134,7 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
             className="btn-cancelar"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (

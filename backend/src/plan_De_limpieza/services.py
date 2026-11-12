@@ -9,7 +9,7 @@ from src.plan_De_limpieza import schemas, exceptions
 from src.equipos.services import obtener_equipo
 from src.sectores.services import obtener_sector
 
-def obtener_planes_para_csv(
+def obtener_planes_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     frecuencia: Optional[str] = None,
@@ -43,6 +43,11 @@ def obtener_planes_para_csv(
         frecuencias_unicas = list(set(lista_frecuencias))
         frecuencia_str = ", ".join(frecuencias_unicas) if frecuencias_unicas else "Sin frecuencia"
 
+        nombres_tareas = ", ".join(
+            str(getattr(t, "nombre", "")).strip()
+            for t in tareas if getattr(t, "nombre", None)
+        ) or "Sin tareas asignadas"
+
         nombre_plan = getattr(p, "nombre", f"Plan #{p.id}") or ""
 
         # --- APLICACIÓN DE FILTROS ---
@@ -72,7 +77,7 @@ def obtener_planes_para_csv(
             "alcance": alcance,
             "frecuencia": frecuencia_str,
             "cant_tareas": cant_tareas,
-            "descripcion": getattr(p, "descripcion", "") or "",
+            "tareas": nombres_tareas,
         })
         
     return filas
