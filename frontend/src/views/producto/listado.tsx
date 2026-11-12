@@ -8,6 +8,7 @@ import { Paginacion} from "../../components/ui/paginacion";
 import { usePaginacion } from "../../components/ui/usePaginacion"; 
 import { apiFetch } from "../../api/client";
 import { descargarCSV } from "../../utils/exportarCsv"; 
+import { InformacionNutricionalModal } from "./InformacionNutricionalModal"; 
 
 interface ListadoProductosProps {
   onNuevoClick?: () => void;
@@ -31,6 +32,7 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
   const [productoAConfirmar, setProductoAConfirmar] = useState<ProductoConId | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
+  const [productoNutricion, setProductoNutricion] = useState<ProductoConId | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -256,6 +258,16 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                         ✎
                       </button>
                       <button
+                        className="btn-icon"
+                        title="Información nutricional"
+                        onClick={() => setProductoNutricion(i)}
+                        style={{ color: "#38bdf8" }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                          nutrition
+                        </span>
+                      </button>
+                      <button
                         className={`btn-icon ${i.activo ? "btn-eliminar" : "btn-reactivar"}`}
                         title={i.activo ? "Dar de baja" : "Restaurar"}
                         onClick={() => abrirConfirmacion(i)}
@@ -316,6 +328,14 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
         description={errorDialogMsg || ""}
         onClose={() => setErrorDialogMsg(null)}
       />
+
+      {productoNutricion && (
+        <InformacionNutricionalModal
+          productoId={productoNutricion.id}
+          nombreProducto={productoNutricion.nombre}
+          onClose={() => setProductoNutricion(null)}
+        />
+      )}
     </div>
   );
 };

@@ -47,6 +47,8 @@ from src.tareas.models import Frecuencia, Tarea
 from src.checklist.services import generar_checklist, completar_tarea
 from src.checklist.schemas import ChecklistGenerar, CompletarTareaSchema, InsumoUtilizadoPlaceholder
 from src.checklist.models import Checklist, ChecklistItem, EstadoTareaItem, ChecklistItemHistorial, ReasignacionPendiente
+from src.recetas.models import Receta, VersionReceta, RecetaDetalle
+from src.nutricion.services import migrar_columnas_nutricionales, asegurar_parametros_defecto, calcular_informacion_nutricional
 
 from src.documentos.models import Documento, VersionDocumento
 from src.documentos.services import crear_documento, subir_nueva_version, STORAGE_DIR as STORAGE_DOCUMENTOS
@@ -120,6 +122,7 @@ INSUMOS = [
     ("Miel Pura", "MIE-2407", 35, 365, 25.0, 18.0, UnidadMedida.KILOGRAMOS),
     ("Semillas de Sesamo", "SES-2408", 20, 240, 20.0, 15.0, UnidadMedida.KILOGRAMOS),
     ("Semillas de Lino", "LIN-2408", 20, 240, 20.0, 14.0, UnidadMedida.KILOGRAMOS),
+    ("Agua Potable", "AGU-2401", 1, None, 10000.0, 8500.0, UnidadMedida.LITROS),
 ]
 
 INSUMOS_QUIMICOS = [
@@ -223,6 +226,26 @@ def main() -> None:
             stock=stock,
             medida=medida,
         ))
+    db.commit()
+
+    datos_nutricionales = {
+        "Harina 000": {"energia_kcal": 350.0, "energia_kj": 1464.4, "carbohidratos": 72.0, "azucares_totales": 1.5, "azucares_anadidos": 0.0, "proteinas": 10.0, "grasas_totales": 1.2, "grasas_saturadas": 0.3, "grasas_trans": 0.0, "fibra_alimentaria": 3.5, "sodio_mg": 5.0},
+        "Harina 0000": {"energia_kcal": 353.0, "energia_kj": 1476.9, "carbohidratos": 73.5, "azucares_totales": 1.2, "azucares_anadidos": 0.0, "proteinas": 9.5, "grasas_totales": 1.0, "grasas_saturadas": 0.2, "grasas_trans": 0.0, "fibra_alimentaria": 2.8, "sodio_mg": 4.0},
+        "Harina Integral Fina": {"energia_kcal": 340.0, "energia_kj": 1422.6, "carbohidratos": 68.0, "azucares_totales": 2.0, "azucares_anadidos": 0.0, "proteinas": 12.0, "grasas_totales": 2.2, "grasas_saturadas": 0.4, "grasas_trans": 0.0, "fibra_alimentaria": 10.5, "sodio_mg": 6.0},
+        "Levadura Fresca": {"energia_kcal": 105.0, "energia_kj": 439.3, "carbohidratos": 11.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 8.5, "grasas_totales": 1.5, "grasas_saturadas": 0.3, "grasas_trans": 0.0, "fibra_alimentaria": 6.0, "sodio_mg": 30.0},
+        "Levadura Seca Instantanea": {"energia_kcal": 325.0, "energia_kj": 1359.8, "carbohidratos": 40.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 40.0, "grasas_totales": 5.0, "grasas_saturadas": 1.0, "grasas_trans": 0.0, "fibra_alimentaria": 20.0, "sodio_mg": 50.0},
+        "Sal Fina": {"energia_kcal": 0.0, "energia_kj": 0.0, "carbohidratos": 0.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 0.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 38850.0},
+        "Aceite de Girasol": {"energia_kcal": 900.0, "energia_kj": 3765.6, "carbohidratos": 0.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 0.0, "grasas_totales": 100.0, "grasas_saturadas": 11.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 0.0},
+        "Manteca": {"energia_kcal": 740.0, "energia_kj": 3096.2, "carbohidratos": 0.5, "azucares_totales": 0.5, "azucares_anadidos": 0.0, "proteinas": 0.8, "grasas_totales": 82.0, "grasas_saturadas": 52.0, "grasas_trans": 2.5, "fibra_alimentaria": 0.0, "sodio_mg": 15.0},
+        "Azucar Comun": {"energia_kcal": 400.0, "energia_kj": 1673.6, "carbohidratos": 100.0, "azucares_totales": 100.0, "azucares_anadidos": 100.0, "proteinas": 0.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 1.0},
+        "Huevos": {"energia_kcal": 143.0, "energia_kj": 598.3, "carbohidratos": 0.8, "azucares_totales": 0.8, "azucares_anadidos": 0.0, "proteinas": 12.6, "grasas_totales": 9.5, "grasas_saturadas": 3.1, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 142.0},
+        "Leche Entera": {"energia_kcal": 61.0, "energia_kj": 255.2, "carbohidratos": 4.7, "azucares_totales": 4.7, "azucares_anadidos": 0.0, "proteinas": 3.1, "grasas_totales": 3.2, "grasas_saturadas": 1.9, "grasas_trans": 0.1, "fibra_alimentaria": 0.0, "sodio_mg": 48.0},
+        "Agua Potable": {"energia_kcal": 0.0, "energia_kj": 0.0, "carbohidratos": 0.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 0.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 2.0},
+    }
+    for insumo_obj in db.query(Insumo).all():
+        if insumo_obj.nombre in datos_nutricionales:
+            for c, v in datos_nutricionales[insumo_obj.nombre].items():
+                setattr(insumo_obj, c, v)
     db.commit()
 
     for item in INSUMOS_QUIMICOS:
@@ -936,6 +959,91 @@ def main() -> None:
     db.commit()
 
     insumos_map = {i.nombre: i for i in db.query(Insumo).all()}
+
+    asegurar_parametros_defecto(db)
+
+    receta_pan = Receta(
+        nombre="Pan de Campo",
+        rendimiento_final=1400.0,
+        activo=True,
+    )
+    db.add(receta_pan)
+    db.flush()
+
+    version_pan = VersionReceta(
+        receta_id=receta_pan.id,
+        version=1,
+        rendimiento_final=1400.0,
+        archivado=False,
+        es_vigente=True,
+        creado_por_legajo=juan.legajo,
+        creado_por_usuario="Juan Perez",
+    )
+    db.add(version_pan)
+    db.flush()
+
+    detalles_pan = [
+        RecetaDetalle(
+            nombre="Pesado y tamizado de Harina 000",
+            version_receta_id=version_pan.id,
+            ingrediente_id=insumos_map["Harina 000"].id,
+            cantidad=1000.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Pesar harina de trigo 000 y tamizar.",
+        ),
+        RecetaDetalle(
+            nombre="Incorporacion de Agua potable",
+            version_receta_id=version_pan.id,
+            ingrediente_id=insumos_map["Agua Potable"].id,
+            cantidad=600.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Incorporar agua a temperatura ambiente.",
+        ),
+        RecetaDetalle(
+            nombre="Disolucion de Levadura fresca",
+            version_receta_id=version_pan.id,
+            ingrediente_id=insumos_map["Levadura Fresca"].id,
+            cantidad=30.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Disolver la levadura fresca en parte del agua.",
+        ),
+        RecetaDetalle(
+            nombre="Agregado de Sal fina",
+            version_receta_id=version_pan.id,
+            ingrediente_id=insumos_map["Sal Fina"].id,
+            cantidad=20.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Incorporar la sal hacia el final del amasado.",
+        ),
+        RecetaDetalle(
+            nombre="Incorporacion de Aceite de girasol",
+            version_receta_id=version_pan.id,
+            ingrediente_id=insumos_map["Aceite de Girasol"].id,
+            cantidad=20.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Agregar el aceite para mejorar elasticidad y conservacion.",
+        ),
+    ]
+    db.add_all(detalles_pan)
+    db.commit()
+
+    p_pan.receta_id = receta_pan.id
+    p_pan.tamano_porcion_g = 50.0
+    p_pan.porciones_por_envase = 28.0
+    p_pan.descripcion_porcion = "1 rebanada (50g)"
+    db.commit()
+
+    calcular_informacion_nutricional(db, p_pan.id, usuario_actual="Juan Perez")
 
     lotes_cronograma = []
 

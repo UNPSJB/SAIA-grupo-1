@@ -4,6 +4,7 @@ import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 import { Badge } from "../../components/ui/badge";
 import { DetalleDocumento } from "../documentos/verDetalle";
+import { InformacionNutricionalModal } from "./InformacionNutricionalModal";
 
 interface DetalleProductoProps {
   onCancel?: () => void;
@@ -16,6 +17,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({ onCancel, prod
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recetaIdInterno, setRecetaIdInterno] = useState<number | null>(null);
+  const [modalNutricionAbierto, setModalNutricionAbierto] = useState(false);
 
   useEffect(() => {
     if (productoId) {
@@ -121,13 +123,9 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({ onCancel, prod
                   }}
                   title="Ver detalle completo de la receta"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
+                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                    description
+                  </span>
                   Ver Detalle de Receta &rarr;
                 </button>
               )}
@@ -154,6 +152,54 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({ onCancel, prod
             </div>
           </div>
 
+          <div
+            style={{
+              margin: "1.5rem 0",
+              padding: "1.25rem",
+              backgroundColor: "#1e293b",
+              borderRadius: "8px",
+              border: "1px solid #334155",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "1rem",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "1rem" }}>
+                <span className="material-symbols-outlined" style={{ color: "#38bdf8", fontSize: "22px" }}>
+                  nutrition
+                </span>
+                <span>Información Nutricional y Cálculo Automático</span>
+              </div>
+              <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
+                Calcula los valores por 100g, por porción y % VD a partir de la receta y datos de ingredientes.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="btn-primario"
+              onClick={() => setModalNutricionAbierto(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 16px",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+                backgroundColor: "#0284c7",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                calculate
+              </span>
+              Ver / Calcular Nutrición
+            </button>
+          </div>
+
           <div className="form-acciones">
             <button type="button" className="btn-cancelar" onClick={onCancel}>
               Volver
@@ -162,6 +208,14 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({ onCancel, prod
         </form>
       ) : (
         <div style={{ textAlign: "center", padding: "2rem" }}>El producto no existe.</div>
+      )}
+
+      {modalNutricionAbierto && producto && (
+        <InformacionNutricionalModal
+          productoId={producto.id}
+          nombreProducto={producto.nombre}
+          onClose={() => setModalNutricionAbierto(false)}
+        />
       )}
     </div>
   );
