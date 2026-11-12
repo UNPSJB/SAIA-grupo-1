@@ -17,7 +17,7 @@ from src.documentos.models import Documento, VersionDocumento
 STORAGE_DIR = Path(__file__).resolve().parent / "archivos"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-def obtener_vencimientos_documentos_para_csv(
+def obtener_vencimientos_documentos_para_exportar(
     db: Session,
     tipo: Optional[str] = None,
     busqueda: Optional[str] = None,
@@ -81,7 +81,7 @@ def obtener_vencimientos_documentos_para_csv(
 
     return resultado
 
-def obtener_documentos_para_csv(
+def obtener_documentos_para_exportar(
     db: Session,
     tipo: Optional[str] = None,
     busqueda: Optional[str] = None

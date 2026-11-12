@@ -14,8 +14,36 @@ from src.documentos import exceptions, schemas, services
 
 from src.autenticacion.dependencies import requiere_admin, get_usuario_actual
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/documentos", tags=["Documentos Versionados"])
+
+@router.get("/vencimientos/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_vencimientos_documentos_pdf(
+    tipo: Optional[str] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    filtro_estado: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_vencimientos_documentos_para_exportar(
+        db, tipo=tipo, busqueda=busqueda, filtro_estado=filtro_estado
+    )
+
+    columnas = {
+        "urgencia": "Urgencia",
+        "fecha_vencimiento": "Vencimiento",
+        "titulo": "Documento",
+        "tipo": "Tipo",
+        "version": "Versión",
+        "archivo": "Archivo"
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Vencimientos de Documentos",
+        nombre_archivo="vencimientos_documentos.pdf"
+    )
 
 @router.get("/vencimientos/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_vencimientos_documentos_csv(
@@ -24,7 +52,7 @@ def exportar_vencimientos_documentos_csv(
     filtro_estado: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    datos = services.obtener_vencimientos_documentos_para_csv(
+    datos = services.obtener_vencimientos_documentos_para_exportar(
         db, tipo=tipo, busqueda=busqueda, filtro_estado=filtro_estado
     )
 
@@ -43,13 +71,41 @@ def exportar_vencimientos_documentos_csv(
         nombre_archivo="vencimientos_documentos.csv"
     )
 
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_documentos_pdf(
+    tipo: Optional[str] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_documentos_para_exportar(db, tipo=tipo, busqueda=busqueda)
+
+    columnas = {
+        "id": "ID",
+        "titulo": "Título",
+        "tipo": "Tipo de Documento",
+        "descripcion": "Descripción",
+        "version_vigente": "Versión Vigente",
+        "fecha_vigencia": "Fecha de Vigencia",
+        "tamanio": "Tamaño de Archivo",
+        "usuario": "Usuario Creador",
+        "total_versiones": "Total de Versiones",
+        "creado_el": "Fecha de Creación"
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Documentos Versionados",
+        nombre_archivo="documentos_versionados.pdf"
+    )
+
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_documentos_csv(
     tipo: Optional[str] = Query(None),
     busqueda: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    datos = services.obtener_documentos_para_csv(db, tipo=tipo, busqueda=busqueda)
+    datos = services.obtener_documentos_para_exportar(db, tipo=tipo, busqueda=busqueda)
 
     columnas = {
         "id": "ID",

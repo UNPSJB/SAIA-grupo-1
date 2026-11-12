@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { DocumentoListItem, TipoDocumento } from './tipos';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
@@ -179,7 +180,7 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
       });
   }, [documentosConPlazo, filtroTipo, filtroEstado, busqueda]);
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -189,13 +190,21 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
       if (filtroEstado !== "TODOS") params.append("filtro_estado", filtroEstado);
 
       const queryString = params.toString();
-      // LLAMADA AL ENDPOINT EXCLUSIVO DE VENCIMIENTOS
-      const url = `/documentos/vencimientos/exportar-csv${queryString ? `?${queryString}` : ""}`;
+      const query = queryString ? `?${queryString}` : "";
 
-      await descargarCSV(url, "vencimientos_documentos.csv");
+      if (formato === "pdf") {
+        await descargarPDF(`/documentos/vencimientos/exportar-pdf${query}`, "vencimientos_documentos.pdf");
+      } else {
+        await descargarCSV(`/documentos/vencimientos/exportar-csv${query}`, "vencimientos_documentos.csv");
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al exportar vencimientos a CSV.");
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar vencimientos a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -265,7 +274,7 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
         </div>
       </div>

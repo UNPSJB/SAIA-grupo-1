@@ -4,10 +4,11 @@ import { ModalHistorialVersiones } from "./modalHistorial";
 import { DetalleDocumento } from "./verDetalle";
 import { Paginacion } from "../../components/ui/paginacion";
 import { usePaginacion } from "../../components/ui/usePaginacion";
-import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
-import { CsvIcon } from "../../components/icons/CsvIcon";
+import { ConfirmExportDialog, type FormatoExportacion } from "../../components/ui/confirmExportDialog";
+import { ExportIcon } from "../../components/icons/ExportIcon";
 import { apiFetch } from "../../api/client";
 import { descargarCSV } from "../../utils/exportarCsv";
+import { descargarPDF } from "../../utils/exportarPdf";
 import { useAuth } from "../../auth/useAuth";
 import "../../styles/formularioAlta.css";
 import "./documentos.css";
@@ -114,7 +115,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
     return matchTipo && matchBusqueda;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -123,12 +124,21 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
       if (filtroTipo !== "TODOS") params.append("tipo", filtroTipo);
 
       const queryString = params.toString();
-      const url = `/documentos/exportar-csv${queryString ? `?${queryString}` : ""}`;
+      const query = queryString ? `?${queryString}` : "";
 
-      await descargarCSV(url, "documentos_versionados.csv");
+      if (formato === "pdf") {
+        await descargarPDF(`/documentos/exportar-pdf${query}`, "documentos_versionados.pdf");
+      } else {
+        await descargarCSV(`/documentos/exportar-csv${query}`, "documentos_versionados.csv");
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al exportar la lista de documentos a CSV.");
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar la lista de documentos a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -179,7 +189,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
             className="btn-cancelar"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {esAdministrador && onNuevoClick && (
