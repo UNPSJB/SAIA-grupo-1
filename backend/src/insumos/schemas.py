@@ -32,19 +32,24 @@ class InsumoBase(BaseModel):
 
 
 class InsumoCreate(InsumoBase):
-    @field_validator("fechaRecepcion")
+    @field_validator("fechaRecepcion") # (o el nombre del campo que uses)
     @classmethod
-    def validar_fecha_recepcion(cls, v: datetime) -> datetime:
-        if v > datetime.now():
-            raise exceptions.FechaRecepcionInvalida()
-        return v
+    def validar_fecha_recepcion(cls, v: Optional[datetime]) -> Optional[datetime]:
+      if v is not None:
+        # 👇 Normalizamos haciendo la fecha naive si trae zona horaria
+        v_naive = v.replace(tzinfo=None) if v.tzinfo else v
+        
+        if v_naive > datetime.now():
+            raise exceptions.FechaRecepcionInvalida() # O la excepción que corresponda
+      return v
 
     @field_validator("fechaVencimiento")
     @classmethod
     def validar_fecha_vencimiento(cls, v: Optional[datetime]) -> Optional[datetime]:
         if v is not None:
+            v_naive = v.replace(tzinfo=None) if v.tzinfo else v
             manana = (datetime.now() + timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
-            if v < manana:
+            if v_naive < manana:
                 raise exceptions.FechaVencimientoInvalida()
         return v
 
