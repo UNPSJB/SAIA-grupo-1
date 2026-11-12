@@ -5,8 +5,41 @@ from src.database import get_db
 from src.vencimientos import schemas, services
 from src.autenticacion.dependencies import get_usuario_actual
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/vencimientos", tags=["Vencimientos"])
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_vencimientos_pdf(
+    origen: Optional[schemas.OrigenVencimiento] = Query(default=None),
+    estado: Optional[schemas.EstadoVencimiento] = Query(default=None),
+    q: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_vencimientos_consolidados_para_csv(
+        db=db,
+        origen=origen,
+        estado=estado,
+        q=q,
+    )
+
+    columnas = {
+        "id": "ID",
+        "estado": "Estado de Urgencia",
+        "origen": "Tipo de Vencimiento",
+        "concepto": "Qué Vence",
+        "responsable": "Responsable / Entidad",
+        "fecha": "Fecha de Vencimiento",
+        "plazo": "Plazo Descriptivo",
+        "dias_restantes": "Días Restantes",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Vencimientos Consolidados",
+        nombre_archivo="vencimientos_consolidados.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_vencimientos_csv(

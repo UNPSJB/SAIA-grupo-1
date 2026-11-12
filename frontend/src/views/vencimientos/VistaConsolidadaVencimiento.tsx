@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
@@ -144,7 +145,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
     [filasVisibles]
   );
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -154,12 +155,21 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
       if (busqueda.trim()) params.append('q', busqueda.trim());
 
       const queryString = params.toString();
-      const url = `/vencimientos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'vencimientos_consolidados.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/vencimientos/exportar-pdf${query}`, 'vencimientos_consolidados.pdf');
+      } else {
+        await descargarCSV(`/vencimientos/exportar-csv${query}`, 'vencimientos_consolidados.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al exportar los vencimientos consolidados a CSV.');
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar los vencimientos consolidados a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -224,7 +234,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
         </div>
       </div>
