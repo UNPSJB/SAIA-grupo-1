@@ -40,6 +40,7 @@ from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
+from src.recetas.router import router as recetas_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -112,3 +113,4 @@ app.include_router(AcercaDeNostrosRouter)
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SOLO_ADMIN)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
+app.include_router(recetas_router)

@@ -24,6 +24,6 @@ class Personal(ModeloBase):
     contrasenia_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     tareas:Mapped[List["src.tareas.models.Tarea"]] = relationship("src.tareas.models.Tarea", back_populates="personal")
 
-
+    recetas_detalles: Mapped[List["src.recetas.models.RecetaDetalle"]] = relationship("src.recetas.models.RecetaDetalle", back_populates="operario")
 
     certificados: Mapped[list["Certificado"]] = relationship(back_populates="persona", cascade="all, delete-orphan") #Si se borra la persona se borran sus certificados

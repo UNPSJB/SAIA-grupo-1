@@ -39,7 +39,9 @@ export type Modulo =
   | 'productos'
   | 'produccion'
   | 'vistaPublica'
-  | 'controlesAmbientales';
+  | 'controlesAmbientales'
+  | 'receta'
+  | 'checklistRecetas';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -213,6 +215,20 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
     </svg>
   ),
+  receta: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+      <path d="M8 7h8M8 11h8M8 15h5" />
+    </svg>
+  ),
+  checklistRecetas: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="16" height="18" x="4" y="4" rx="2" />
+      <path d="M9 2h6v3H9z" />
+      <path d="m9 12 2 2 4-4" />
+      <path d="M9 17h6" />
+    </svg>
+  ),
 };
 
 const ICONOS_GRUPO: Record<string, React.ReactNode> = {
@@ -282,6 +298,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'planDeCalibracion', label: 'Plan de Calibración', icono: ICONOS_MODULO.planDeCalibracion },
         { id: 'sectores', label: 'Sectores', icono: ICONOS_MODULO.sectores },
         { id: 'insumos', label: 'Ingredientes', icono: ICONOS_MODULO.insumos },
+        { id: 'receta', label: 'Receta', icono: ICONOS_MODULO.receta },
         { id: 'productos', label: 'Productos Elaborados', icono: ICONOS_MODULO.productos },
       ],
     },
@@ -300,6 +317,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'produccion', label: 'Producción', icono: ICONOS_MODULO.produccion },
         { id: 'documentos', label: 'Documentos', icono: ICONOS_MODULO.documentos },
         { id: 'tipoDocumento', label: 'Tipo Documento', icono: ICONOS_MODULO.tipoDocumento },
+        { id: 'checklistRecetas', label: 'Checklist de Recetas', icono: ICONOS_MODULO.checklistRecetas},
         {
           id: 'incidentes',
           label: esAdministrador ? 'Incidentes' : 'Reportar Incidente',

@@ -94,7 +94,14 @@ import NuevoControlAmbiental from './views/controlesAmbientales/nuevoControl';
 import { DetalleControlAmbiental } from './views/controlesAmbientales/verDetalle';
 import { EditarControlAmbiental } from './views/controlesAmbientales/editarDetalle';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales';
+import NuevaReceta from './views/receta/crearNuevaReceta';
+import { ListadoRecetas } from './views/receta/listadoDeRecetas';
+import EditarReceta from './views/receta/editarReceta';
+import { VerReceta } from './views/receta/VerReceta';
+import { ListadoChecklistsReceta } from './views/receta/listadoDeEtapasChecklist';
+import { DetalleChecklistReceta } from './views/receta/VerEtapaChecklist';
+
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales'| 'receta'|'checklistRecetas';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -111,6 +118,7 @@ type VistaMotivos = 'listado' | 'alta' | 'detalle';
 type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
 type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar' | 'receta';
 type VistaControlesAmbientales = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaRecetas = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -180,6 +188,11 @@ function Aplicacion() {
   const [loteSeleccionado, setLoteSeleccionado] = useState<number | null>(null);
   const [loteParaAsociar, setLoteParaAsociar] = useState<LoteProduccion | null>(null);
 
+  const [vistaRecetas, setVistaRecetas] = useState<VistaRecetas>('listado');
+  const [recetaSeleccionada, setRecetaSeleccionada] = useState<number | null>(null);
+  const [vistaChecklistReceta, setVistaChecklistReceta] = useState<'listado' | 'detalle'>('listado');
+  const [checklistRecetaSeleccionado, setChecklistRecetaSeleccionado] = useState<number | null>(null);
+
   const verLote = (loteId: number) => {
     setLoteSeleccionado(loteId);
     setVistaProduccion('detalle');
@@ -214,6 +227,8 @@ function Aplicacion() {
     setVistaInsumosQuimicos('listado');
     setVistaElementos('listado');
     setVistaPlanLimp('listado');
+    setVistaRecetas('listado');
+    setRecetaSeleccionada(null);
     setVistaChecklist('listado');
     setVistaMotivos('listado');
     setMotivoSeleccionado(null);
@@ -229,6 +244,7 @@ function Aplicacion() {
     setRecetaDesdeProducto(null);
     setVistaControlesAmbientales('listado');
     setControlAmbientalSeleccionado(null);
+    setVistaChecklistReceta('listado');
     if (limpiarFiltros) {
       setFiltroCertificadosInicial('TODOS');
       setFiltroCalibracionInicial('TODOS');
@@ -1101,7 +1117,20 @@ const irANotificacion = (notif: NotificacionItem) => {
               onVolver={() => setVistaChecklist('listado')}
             />
           )
-        ) : modulo === 'planDeCalibracion' ? (
+        ): modulo === 'checklistRecetas' ? (
+          vistaChecklistReceta === 'listado' ? (
+            <ListadoChecklistsReceta
+              onDetalleClick={(id) => {
+                setChecklistRecetaSeleccionado(id);
+                setVistaChecklistReceta('detalle');
+              }}
+            />
+          ) : (
+            <DetalleChecklistReceta
+              checklistId={checklistRecetaSeleccionado}
+              onVolver={() => setVistaChecklistReceta('listado')}
+            />
+          ) ) : modulo === 'planDeCalibracion' ? (
           vistaPlanCalibracion === 'listado' ? (
             <ListadoPlanesCalibracion
               key={`calibracion-${filtroCalibracionInicial}`}
@@ -1262,7 +1291,36 @@ const irANotificacion = (notif: NotificacionItem) => {
               onVolver={origenVencimientos ? volverAVencimientos : () => setVistaControlesAmbientales('listado')}
             />
           )
-        ): null}
+        ) : modulo === 'receta' ? (
+          vistaRecetas === 'listado' ? (
+            <ListadoRecetas
+              onNuevoClick={() => setVistaRecetas('alta')}
+              onDetalleClick={(id) => {
+                setRecetaSeleccionada(id);
+                setVistaRecetas('detalle');
+              }}
+              onEditarClick={(id) => {
+                setRecetaSeleccionada(id);
+                setVistaRecetas('editar');
+              }}
+            />
+          ) : vistaRecetas === 'alta' ? (
+            <NuevaReceta
+              onSuccess={() => setVistaRecetas('listado')}
+              onCancel={() => setVistaRecetas('listado')}
+            />
+          ) : vistaRecetas === 'editar' ? (
+            <EditarReceta
+              recetaID={recetaSeleccionada}
+              onSuccess={() => setVistaRecetas('listado')}
+              onCancel={() => setVistaRecetas('listado')}
+            />
+          ) : vistaRecetas === 'detalle' ? (
+            <VerReceta
+              onCancel={() => setVistaRecetas('listado')}
+              recetaID={recetaSeleccionada}
+            />
+          ):null) : null}
         </div>
       </SidebarInset>
     </SidebarProvider>
