@@ -18,7 +18,7 @@ async def exportar_tipos_certificados_pdf(
     db: Session = Depends(get_db)
 ):
   """Exporta la lista de tipos de certificados a PDF aplicando búsqueda y orden activo."""
-  datos = services.obtener_tipos_certificados_para_csv(
+  datos = services.obtener_tipos_certificados_para_exportar(
       db, busqueda=busqueda, ordenar_por=ordenar_por
   )
 
@@ -41,7 +41,7 @@ async def exportar_tipos_certificados_csv(
     db: Session = Depends(get_db)
 ):
   """Exporta la lista de tipos de certificados a CSV aplicando búsqueda y orden activo."""
-  datos = services.obtener_tipos_certificados_para_csv(
+  datos = services.obtener_tipos_certificados_para_exportar(
       db, busqueda=busqueda, ordenar_por=ordenar_por
   )
 

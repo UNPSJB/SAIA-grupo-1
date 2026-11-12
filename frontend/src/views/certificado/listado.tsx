@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import {
   Dialog,
   DialogContent,
@@ -176,7 +177,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
     );
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -185,12 +186,21 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
       if (filtroEstado !== 'TODOS') params.append('filtro_estado', filtroEstado);
 
       const queryString = params.toString();
-      const url = `/certificados/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'vencimientos_certificados.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/certificados/exportar-pdf${query}`, 'vencimientos_certificados.pdf');
+      } else {
+        await descargarCSV(`/certificados/exportar-csv${query}`, 'vencimientos_certificados.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al exportar los certificados a CSV.');
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar los certificados a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -268,7 +278,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
         </div>
       </div>

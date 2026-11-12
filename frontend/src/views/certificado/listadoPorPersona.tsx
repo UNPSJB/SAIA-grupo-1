@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Badge } from '../../components/ui/badge';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 
 interface ListadoCertificadosPorPersonaProps {
   legajoPersona: number;
@@ -174,7 +175,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
     return !term || c.tipo.toLowerCase().includes(term);
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -185,12 +186,26 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
       }
 
       const queryString = params.toString();
-      const url = `/certificados/exportar-csv?${queryString}`;
 
-      await descargarCSV(url, `certificados_legajo_${legajoPersona}.csv`);
+      if (formato === 'pdf') {
+        await descargarPDF(
+          `/certificados/exportar-pdf?${queryString}`,
+          `certificados_legajo_${legajoPersona}.pdf`
+        );
+      } else {
+        await descargarCSV(
+          `/certificados/exportar-csv?${queryString}`,
+          `certificados_legajo_${legajoPersona}.csv`
+        );
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al exportar los certificados a CSV.');
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar los certificados a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -237,7 +252,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (

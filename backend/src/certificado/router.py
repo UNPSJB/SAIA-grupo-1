@@ -8,10 +8,50 @@ from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.certificado import schemas, services
 from src.database import get_db
 from src.utils.csv import generar_respuesta_csv 
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/certificados", tags=["certificados"])
 
 archivos_router = APIRouter(prefix="/certificados/archivos", tags=["certificados"])
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+async def exportar_certificados_pdf(
+    legajo_persona: Optional[int] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    filtro_estado: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_certificados_para_exportar(
+        db, legajo_persona=legajo_persona, busqueda=busqueda, filtro_estado=filtro_estado
+    )
+
+    columnas = {
+        "id": "ID",
+        "legajo_persona": "Legajo",
+        "nombre_persona": "Personal",
+        "tipo": "Tipo de Certificado",
+        "fecha_vencimiento": "Fecha de Vencimiento",
+        "estado_vencimiento": "Estado",
+        "tiene_archivo": "Archivo Adjunto"
+    }
+
+    titulo = (
+        f"Certificados de Personal - Legajo #{legajo_persona}"
+        if legajo_persona
+        else "Vencimientos de Certificados del Personal"
+    )
+    nombre_archivo = (
+        f"certificados_legajo_{legajo_persona}.pdf"
+        if legajo_persona
+        else "vencimientos_certificados.pdf"
+    )
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte=titulo,
+        nombre_archivo=nombre_archivo
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 async def exportar_certificados_csv(
@@ -20,7 +60,7 @@ async def exportar_certificados_csv(
     filtro_estado: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    datos = services.obtener_certificados_para_csv(
+    datos = services.obtener_certificados_para_exportar(
         db, legajo_persona=legajo_persona, busqueda=busqueda, filtro_estado=filtro_estado
     )
 

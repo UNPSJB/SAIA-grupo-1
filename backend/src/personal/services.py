@@ -7,7 +7,7 @@ import unicodedata
 from src.autenticacion.services import hashear_contrasenia
 from typing import Optional, Dict, Any, List
 
-def obtener_personal_para_csv(
+def obtener_personal_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     capacidad: Optional[str] = None,

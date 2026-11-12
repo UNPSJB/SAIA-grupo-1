@@ -16,7 +16,7 @@ def exportar_personal_pdf(
     estado: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    datos = services.obtener_personal_para_csv(
+    datos = services.obtener_personal_para_exportar(
         db, busqueda=busqueda, capacidad=capacidad, estado=estado
     )
 
@@ -45,7 +45,7 @@ def exportar_personal_csv(
     db: Session = Depends(get_db)
 ):
     
-    datos = services.obtener_personal_para_csv(
+    datos = services.obtener_personal_para_exportar(
         db, busqueda=busqueda, capacidad=capacidad, estado=estado
     )
 

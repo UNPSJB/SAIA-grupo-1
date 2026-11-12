@@ -27,7 +27,7 @@ TIPO_CONTROL_MAP = {
     "LIMPIEZA_TANQUE": "Limpieza de Tanque",
 }
 
-def obtener_vencimientos_consolidados_para_csv(
+def obtener_vencimientos_consolidados_para_exportar(
     db: Session,
     origen: Optional[OrigenVencimiento] = None,
     estado: Optional[EstadoVencimiento] = None,

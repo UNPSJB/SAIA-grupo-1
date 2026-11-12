@@ -16,7 +16,7 @@ def exportar_vencimientos_pdf(
     q: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    datos = services.obtener_vencimientos_consolidados_para_csv(
+    datos = services.obtener_vencimientos_consolidados_para_exportar(
         db=db,
         origen=origen,
         estado=estado,
@@ -49,7 +49,7 @@ def exportar_vencimientos_csv(
     db: Session = Depends(get_db),
 ):
    
-    datos = services.obtener_vencimientos_consolidados_para_csv(
+    datos = services.obtener_vencimientos_consolidados_para_exportar(
         db=db,
         origen=origen,
         estado=estado,
