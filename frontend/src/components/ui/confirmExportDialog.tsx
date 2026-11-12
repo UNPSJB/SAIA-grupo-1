@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CsvIcon } from '../icons/CsvIcon';
+import { PdfIcon } from '../icons/PdfIcon';
+
+export type FormatoExportacion = 'csv' | 'pdf';
 
 interface ConfirmExportDialogProps {
   open: boolean;
   totalRegistros: number;
   filtrosAplicados?: string;
   loading?: boolean;
-  onConfirm: () => void;
+  onConfirm: (formato: FormatoExportacion) => void;
   onCancel: () => void;
 }
 
@@ -18,7 +21,11 @@ export const ConfirmExportDialog: React.FC<ConfirmExportDialogProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const [formato, setFormato] = useState<FormatoExportacion>('csv');
+
   if (!open) return null;
+
+  const esPdf = formato === 'pdf';
 
   return (
     <div
@@ -41,55 +48,116 @@ export const ConfirmExportDialog: React.FC<ConfirmExportDialogProps> = ({
         style={{
           backgroundColor: '#fff',
           borderRadius: '8px',
-          padding: '1.5rem',
-          maxWidth: '450px',
+          padding: '1.25rem',
+          maxWidth: '420px',
           width: '90%',
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-          <CsvIcon style={{ fontSize: '28px', color: '#2b6cb0' }} />
-          <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1a202c' }}>
-            Confirmar Exportación a CSV
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
+          <CsvIcon style={{ fontSize: '24px', color: 'var(--color-primario, #2b6cb0)' }} />
+          <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1a202c' }}>
+            Confirmar Exportación de Datos
           </h3>
         </div>
 
-        <div style={{ fontSize: '0.95rem', color: '#4a5568', lineHeight: '1.5' }}>
-          <p style={{ margin: '0 0 0.8rem 0' }}>
-            Estás a punto de generar y descargar un archivo CSV con la información filtrada.
+        <div style={{ fontSize: '0.9rem', color: '#4a5568', lineHeight: '1.4' }}>
+          <p style={{ margin: '0 0 0.6rem 0' }}>
+            Seleccioná el formato de descarga:
           </p>
+
+          {/* Opciones con color azul unificado */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '8px',
+              marginBottom: '0.85rem',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setFormato('csv')}
+              disabled={loading}
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                borderRadius: '6px',
+                border: `1px solid ${!esPdf ? '#3182ce' : '#cbd5e1'}`,
+                backgroundColor: !esPdf ? '#ebf8ff' : '#ffffff',
+                color: !esPdf ? '#2b6cb0' : '#64748b',
+                cursor: 'pointer',
+                fontWeight: !esPdf ? 600 : 400,
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <CsvIcon/> CSV
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFormato('pdf')}
+              disabled={loading}
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                borderRadius: '6px',
+                border: `1px solid ${esPdf ? '#3182ce' : '#cbd5e1'}`,
+                backgroundColor: esPdf ? '#ebf8ff' : '#ffffff',
+                color: esPdf ? '#2b6cb0' : '#64748b',
+                cursor: 'pointer',
+                fontWeight: esPdf ? 600 : 400,
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <PdfIcon/> PDF
+            </button>
+          </div>
 
           <div
             style={{
               backgroundColor: '#f7fafc',
               borderLeft: '4px solid #3182ce',
-              padding: '0.75rem',
+              padding: '0.6rem 0.75rem',
               borderRadius: '4px',
-              marginBottom: '1rem',
+              marginBottom: '0.85rem',
             }}
           >
-            <div style={{ fontWeight: 600, color: '#2d3748' }}>
+            <div style={{ fontWeight: 600, color: '#2d3748', fontSize: '0.85rem' }}>
               📊 Total a exportar: <span style={{ color: '#2b6cb0' }}>{totalRegistros} registro(s)</span>
             </div>
-            <div style={{ fontSize: '0.85rem', color: '#718096', marginTop: '4px' }}>
-              ℹ️ Se incluirán <strong>todas las páginas</strong> resultantes del filtro actual (<em>{filtrosAplicados}</em>).
+            <div style={{ fontSize: '0.8rem', color: '#718096', marginTop: '2px' }}>
+              ℹ️ Se incluirán <strong>todas las páginas</strong> resultantes (<em>{filtrosAplicados}</em>).
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1rem' }}>
           <button type="button" onClick={onCancel} disabled={loading} className="btn-cancelar">
             Cancelar
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={() => onConfirm(formato)}
             disabled={loading || totalRegistros === 0}
             className="btn-guardar"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
           >
-            <CsvIcon />
-            {loading ? 'Exportando...' : 'Descargar CSV'}
+            {esPdf? <PdfIcon/> : <CsvIcon/>}
+            {loading ? 'Exportando...' : `Descargar ${esPdf ? 'PDF' : 'CSV'}`}
           </button>
         </div>
       </div>

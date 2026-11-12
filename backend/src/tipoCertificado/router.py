@@ -9,6 +9,32 @@ from src.utils.csv import generar_respuesta_csv
 
 router = APIRouter(prefix="/certificados/tipos", tags=["tipos_certificados"])
 
+# src/tipoCertificado/router.py
+from src.utils.pdf import generar_respuesta_pdf
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+async def exportar_tipos_certificados_pdf(
+    busqueda: Optional[str] = None,
+    ordenar_por: Optional[str] = "id",
+    db: Session = Depends(get_db)
+):
+  """Exporta la lista de tipos de certificados a PDF aplicando búsqueda y orden activo."""
+  datos = services.obtener_tipos_certificados_para_csv(
+      db, busqueda=busqueda, ordenar_por=ordenar_por
+  )
+
+  columnas = {
+      "id": "ID",
+      "nombre": "Nombre del Tipo de Certificado",
+  }
+
+  return generar_respuesta_pdf(
+      datos=datos,
+      columnas=columnas,
+      titulo_reporte="Listado de Tipos de Certificados",
+      nombre_archivo="tipos_de_certificados.pdf",
+  )
+
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 async def exportar_tipos_certificados_csv(
     busqueda: Optional[str] = None,

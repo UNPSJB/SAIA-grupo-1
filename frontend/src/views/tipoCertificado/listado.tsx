@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import type { TipoCertificado } from './tipos';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 
 interface ListadoTiposCertificadosProps {
   onNuevoClick: () => void;
@@ -99,7 +100,7 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
       return a.id - b.id;
     });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -108,12 +109,21 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
       if (ordenarPor) params.append('ordenar_por', ordenarPor);
 
       const queryString = params.toString();
-      const url = `/certificados/tipos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'tipos_de_certificados.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/certificados/tipos/exportar-pdf${query}`, 'tipos_de_certificados.pdf');
+      } else {
+        await descargarCSV(`/certificados/tipos/exportar-csv${query}`, 'tipos_de_certificados.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al exportar los tipos de certificados a CSV.');
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar los tipos de certificados a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -138,6 +148,8 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
     indiceFin,
   } = usePaginacion(tiposFiltradosYOrdenados);
 
+  const sinRegistros = tiposFiltradosYOrdenados.length === 0;
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
@@ -150,10 +162,18 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
           <button
             type="button"
             onClick={() => setDialogExportarAbierto(true)}
+            disabled={loading || sinRegistros}
+            title={sinRegistros ? 'No hay registros para exportar' : 'Exportar listado'}
             className="btn-cancelar"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              opacity: loading || sinRegistros ? 0.6 : 1,
+              cursor: loading || sinRegistros ? 'not-allowed' : 'pointer',
+            }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon size={18} /> Exportar
           </button>
 
           {onNuevoClick && (
