@@ -7,7 +7,22 @@ import { usePersonalActivo } from "../tareas/usePersonalActivo";
 interface InsumoOption {
   id: number;
   nombre: string;
+  medida?: string;
+  unidad_medida?: string;
+  unidad_medida_nombre?: string | null;
+  unidad_medida_abreviatura?: string | null;
 }
+
+const obtenerUnidadDeInsumo = (insumo?: InsumoOption): string => {
+  if (!insumo) return "";
+  return (
+    insumo.unidad_medida_abreviatura ||
+    insumo.medida ||
+    insumo.unidad_medida ||
+    insumo.unidad_medida_nombre ||
+    ""
+  );
+};
 
 const DETALLE_INICIAL: RecetaDetalleConId = {
   id: 0,
@@ -91,6 +106,18 @@ export default function EditarDetalleReceta({
         es_aditivo: checked,
         clase_funcional: checked ? prev.clase_funcional : null,
         numero_ins: checked ? prev.numero_ins : null,
+      }));
+      return;
+    }
+
+    // Autocompletar unidad_medida cuando cambia el ingrediente seleccionado
+    if (name === "ingrediente_id") {
+      const insumoElegido = insumos.find((i) => i.id === Number(value));
+      const unidadAutocompletada = obtenerUnidadDeInsumo(insumoElegido);
+      setDetalle((prev) => ({
+        ...prev,
+        ingrediente_id: Number(value),
+        unidad_medida: unidadAutocompletada || prev.unidad_medida,
       }));
       return;
     }
@@ -232,11 +259,14 @@ export default function EditarDetalleReceta({
             <option value="" disabled>
               Seleccione un insumo
             </option>
-            {insumos.map((ins) => (
-              <option key={ins.id} value={ins.id}>
-                {ins.nombre}
-              </option>
-            ))}
+            {insumos.map((ins) => {
+              const unidad = obtenerUnidadDeInsumo(ins);
+              return (
+                <option key={ins.id} value={ins.id}>
+                  {ins.nombre} {unidad ? `(${unidad})` : ""}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -260,6 +290,7 @@ export default function EditarDetalleReceta({
             id="unidad_medida"
             name="unidad_medida"
             type="text"
+            placeholder="Se autocompleta al elegir insumo"
             value={detalle.unidad_medida}
             onChange={handleChange}
             required

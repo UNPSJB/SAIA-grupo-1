@@ -3,11 +3,26 @@ import type { ClaseFuncional, RecetaDetalleConId, RecetaDetalleForm } from "./ti
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 import { usePersonalActivo } from "../tareas/usePersonalActivo";
+
 interface InsumoOption {
   id: number;
   nombre: string;
+  medida?: string;
   unidad_medida?: string;
+  unidad_medida_nombre?: string | null;
+  unidad_medida_abreviatura?: string | null;
 }
+
+const obtenerUnidadDeInsumo = (insumo?: InsumoOption): string => {
+  if (!insumo) return "";
+  return (
+    insumo.unidad_medida_abreviatura ||
+    insumo.medida ||
+    insumo.unidad_medida ||
+    insumo.unidad_medida_nombre ||
+    ""
+  );
+};
 
 const DETALLE_INICIAL: RecetaDetalleForm = {
   ingrediente_id: "",
@@ -74,6 +89,18 @@ export default function NuevoDetalleReceta({
         es_aditivo: checked,
         clase_funcional: checked ? prev.clase_funcional : "",
         numero_ins: checked ? prev.numero_ins : "",
+      }));
+      return;
+    }
+
+    // Autocompletar unidad_medida al elegir el ingrediente
+    if (name === "ingrediente_id") {
+      const insumoElegido = insumos.find((i) => i.id === Number(value));
+      const unidadAutocompletada = obtenerUnidadDeInsumo(insumoElegido);
+      setDetalle((prev) => ({
+        ...prev,
+        ingrediente_id: value ? Number(value) : "",
+        unidad_medida: unidadAutocompletada || prev.unidad_medida,
       }));
       return;
     }
@@ -146,7 +173,7 @@ export default function NuevoDetalleReceta({
     const insumoSeleccionado = insumos.find((i) => i.id === Number(detalle.ingrediente_id));
 
     onAgregarLocal?.({
-      id: Date.now(), // ID temporal para la key de la tabla en React antes de guardar la receta
+      id: Date.now(),
       version_receta_id: 0,
       nombre: detalle.nombre.trim(),
       ingrediente_id: Number(detalle.ingrediente_id),
@@ -205,11 +232,14 @@ export default function NuevoDetalleReceta({
             <option value="" disabled>
               Seleccione un insumo
             </option>
-            {insumos.map((ins) => (
-              <option key={ins.id} value={ins.id}>
-                {ins.nombre}
-              </option>
-            ))}
+            {insumos.map((ins) => {
+              const unidad = obtenerUnidadDeInsumo(ins);
+              return (
+                <option key={ins.id} value={ins.id}>
+                  {ins.nombre} {unidad ? `(${unidad})` : ""}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -234,7 +264,7 @@ export default function NuevoDetalleReceta({
             id="unidad_medida"
             name="unidad_medida"
             type="text"
-            placeholder="Ej: kg, g, ml, l"
+            placeholder="Se autocompleta al elegir insumo (ej: kg, g, ml, l)"
             value={detalle.unidad_medida}
             onChange={handleChange}
             required
