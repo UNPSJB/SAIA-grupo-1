@@ -3,16 +3,12 @@ from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
-from src.insumos.migraciones import actualizar_tabla_insumos
-from src.produccion.migraciones import actualizar_tablas_produccion
-from src.indentificadorDeQR.migraciones import actualizar_tabla_identificador_qr
-from src.checklist.migraciones import actualizar_tablas_checklist
 from src.models import ModeloBase
 
 from src.config import settings
 from src.logger import setup_logging
 
-from src.insumos.router import router as insumos_router
+from src.insumos.router import router as insumos_router, operador_router as insumos_operador_router
 from src.equipos.router import router as equipos_router
 from src.personal.router import router as personal_router
 from src.elementosDeLimpieza.router import router as elementoDeLimpieza_router
@@ -44,6 +40,10 @@ from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
+from src.tipoInsumo.router import router as tipo_insumo_router
+from src.proveedores.router import router as proveedores_router
+from src.unidadesMedida.router import router as unidades_medida_router
+from src.unidadesMedida.services import asegurar_unidades_base
 from src.recetas.router import router as recetas_router
 
 ENV = settings.ENV.upper()
@@ -54,18 +54,12 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
-    # las bases que ya existian no reciben los cambios de columnas de create_all
-    actualizar_tabla_insumos(engine)
-    actualizar_tablas_produccion(engine)
-    actualizar_tabla_identificador_qr(engine)
-    actualizar_tablas_checklist(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
-            asegurar_tipos_base(db)
-            from src.dashboard.inicializacion import asegurar_datos_dashboard
-            asegurar_datos_dashboard(db)
+            asegurar_unidades_base(db)
+        asegurar_tipos_base(db)
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
@@ -92,6 +86,7 @@ SOLO_ADMIN = [Depends(requiere_admin)]
 SESION = [Depends(get_usuario_actual)]
 
 app.include_router(insumos_router, prefix="/insumos", tags=["Insumos"], dependencies=SOLO_ADMIN)
+app.include_router(insumos_operador_router, dependencies=SESION)
 app.include_router(equipos_router, prefix="/equipos", tags=["Equipos"], dependencies=SOLO_ADMIN)
 app.include_router(personal_router, prefix="/personal", tags=["Personal"], dependencies=SOLO_ADMIN)
 app.include_router(elementoDeLimpieza_router, dependencies=SOLO_ADMIN)
@@ -124,4 +119,7 @@ app.include_router(AcercaDeNostrosRouter)
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SOLO_ADMIN)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
+app.include_router(tipo_insumo_router, dependencies=SESION)
+app.include_router(proveedores_router, dependencies=SESION)
+app.include_router(unidades_medida_router, dependencies=SESION)
 app.include_router(recetas_router)

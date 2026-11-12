@@ -44,7 +44,7 @@ def exportar_vencimientos_csv(
 def listar_vencimientos(
     origen: Optional[schemas.OrigenVencimiento] = Query(
         default=None,
-        description="Filtrar por origen/tipo de vencimiento: personal, equipo o documento",
+        description="Filtrar por origen/tipo de vencimiento: personal, equipo, documento, ambiental o insumo",
     ),
     estado: Optional[schemas.EstadoVencimiento] = Query(
         default=None,
@@ -52,7 +52,7 @@ def listar_vencimientos(
     ),
     q: Optional[str] = Query(
         default=None,
-        description="Búsqueda por concepto, persona, equipo o documento",
+        description="Búsqueda por concepto, persona, equipo, documento o insumo",
     ),
     db: Session = Depends(get_db),
 ):

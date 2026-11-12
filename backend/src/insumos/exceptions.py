@@ -6,29 +6,61 @@ from src.exceptions import NotFound, BadRequest
 class InsumoNoEncontrado(NotFound):
     DETAIL = ErrorCode.INSUMO_NO_ENCONTRADO
 
+
 class UnidadMedidaInvalida(ValueError):
     def __init__(self, posibles_unidades: List[str]):
         unidades_str = ", ".join(posibles_unidades)
         message = f"{ErrorCode.UNIDAD_MEDIDA_INVALIDA} {unidades_str}."
         super().__init__(message)
-        
+
+
 class NombreInsumoVacio(BadRequest):
     DETAIL = ErrorCode.NOMBRE_VACIO
+
 
 class FechaRecepcionInvalida(BadRequest):
     DETAIL = ErrorCode.FECHA_RECEPCION_INVALIDA
 
+
 class FechaVencimientoInvalida(BadRequest):
     DETAIL = ErrorCode.FECHA_VENCIMIENTO_INVALIDA
+
 
 class CantidadRecibidaInvalida(BadRequest):
     DETAIL = ErrorCode.CANTIDAD_RECIBIDA_INVALIDA
 
+
 class StockInvalido(BadRequest):
     DETAIL = ErrorCode.STOCK_INVALIDO
+
 
 class StockMayorCantidad(BadRequest):
     DETAIL = ErrorCode.STOCK_MAYOR_CANTIDAD
 
+
 class NombreInsumoDuplicado(BadRequest):
     DETAIL = ErrorCode.NOMBRE_DUPLICADO
+
+
+class TipoInsumoRequerido(BadRequest):
+    DETAIL = ErrorCode.TIPO_INSUMO_REQUERIDO
+
+
+class ProveedorRequerido(BadRequest):
+    DETAIL = ErrorCode.PROVEEDOR_REQUERIDO
+
+
+class LoteVacio(BadRequest):
+    DETAIL = ErrorCode.LOTE_VACIO
+
+
+class FechaRecepcionSoloHoy(BadRequest):
+    DETAIL = ErrorCode.FECHA_RECEPCION_SOLO_HOY
+
+
+class FechaVencimientoPosterior(BadRequest):
+    DETAIL = ErrorCode.FECHA_VENCIMIENTO_POSTERIOR
+
+
+class InsumoNoVencido(BadRequest):
+    DETAIL = ErrorCode.INSUMO_NO_VENCIDO

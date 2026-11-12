@@ -1,14 +1,16 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from src.insumos.exceptions import InsumoNoEncontrado
-from src.insumos.models import Insumo, UnidadMedida
-from src.insumos.services import eliminar_insumo
+from src.insumos.models import Insumo
+from src.insumos.schemas import InsumoCreate
+from src.insumos.services import crear_insumo, eliminar_insumo
 from src.produccion import exceptions, schemas, services
 from src.produccion.models import InsumoLote, LoteProduccion
 from src.producto.models import Producto
+from src.unidadesMedida.services import resolver_unidad_medida
 from tests.database import session  # noqa: F401  (session es una fixture)
 
 LEGAJO = 1  # Juan Perez, el del seed de tests
@@ -21,10 +23,12 @@ PAN, TARTA, DADO_DE_BAJA = 1, 2, 3
 @pytest.fixture(autouse=True)
 def productos(session: Session) -> None:
     """Productos como los da de alta el ABM de productos; el lote solo los referencia."""
+    u_kg = resolver_unidad_medida(session, valor_texto="kilogramos").id
+    u_un = resolver_unidad_medida(session, valor_texto="unidades").id
     session.add_all([
-        Producto(id=PAN, nombre="Pan lactal", unidadMedida=UnidadMedida.KILOGRAMOS),
-        Producto(id=TARTA, nombre="Tarta", unidadMedida=UnidadMedida.UNIDADES),
-        Producto(id=DADO_DE_BAJA, nombre="Budín", unidadMedida=UnidadMedida.UNIDADES, activo=False),
+        Producto(id=PAN, nombre="Pan lactal", unidad_medida_id=u_kg),
+        Producto(id=TARTA, nombre="Tarta", unidad_medida_id=u_un),
+        Producto(id=DADO_DE_BAJA, nombre="Budín", unidad_medida_id=u_un, activo=False),
     ])
     session.commit()
 
@@ -51,7 +55,7 @@ def test_registrar_lote(session: Session) -> None:
     assert lote.fecha == date.today()
     assert lote.cantidad == 120.5
     # la unidad del lote es la del producto
-    assert lote.producto.unidadMedida == UnidadMedida.KILOGRAMOS
+    assert lote.producto.unidadMedida == "kilogramos"
     assert lote.responsable_legajo == LEGAJO
     assert lote.nombre_responsable == "Juan Perez"
     # registrar un lote no crea productos
@@ -279,6 +283,46 @@ def test_no_se_puede_usar_mas_que_el_stock(session: Session) -> None:
     with pytest.raises(exceptions.StockInsuficiente):
         services.asociar_insumos(session, lote.id, _insumos((ACEITE, 35.01)))
     assert _stock(session, ACEITE) == 35
+
+
+def test_no_se_puede_usar_un_insumo_vencido_en_un_producto(session: Session) -> None:
+    hoy = datetime.now()
+    insumo_vencido = Insumo(
+        nombre="Harina Vencida",
+        lote="HAR-VENC-01",
+        fechaRecepcion=hoy - timedelta(days=20),
+        fechaVencimiento=hoy - timedelta(days=1),
+        cantRecibida=50.0,
+        stock=50.0,
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="kilogramos").id,
+        activo=True,
+    )
+    session.add(insumo_vencido)
+    session.commit()
+    session.refresh(insumo_vencido)
+    lote = services.registrar_lote(session, LEGAJO, _datos())
+    with pytest.raises(exceptions.InsumoVencido):
+        services.asociar_insumos(session, lote.id, _insumos((insumo_vencido.id, 5.0)))
+    assert _stock(session, insumo_vencido.id) == 50.0
+
+
+def test_insumo_vencido_no_aparece_en_disponibles(session: Session) -> None:
+    hoy = datetime.now()
+    insumo_vencido = Insumo(
+        nombre="Levadura Vencida Oculta",
+        lote="LEV-VENC-OCULTA",
+        fechaRecepcion=hoy - timedelta(days=20),
+        fechaVencimiento=hoy - timedelta(days=1),
+        cantRecibida=25.0,
+        stock=25.0,
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="gramos").id,
+        activo=True,
+    )
+    session.add(insumo_vencido)
+    session.commit()
+    session.refresh(insumo_vencido)
+    ids_disponibles = [i.id for i in services.listar_insumos_disponibles(session)]
+    assert insumo_vencido.id not in ids_disponibles
 
 
 @pytest.mark.parametrize(

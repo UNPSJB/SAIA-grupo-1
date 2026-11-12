@@ -1,21 +1,15 @@
 import React, { useEffect, useState } from "react";
 import type { ProductoConId, DocumentoReceta } from "./tipos";
+import type { UnidadMedidaItem } from "../unidadesMedida/tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
-
-const UNIDADES_MEDIDA = [
-  { value: "kilogramos", label: "kilogramos" },
-  { value: "gramos", label: "gramos" },
-  { value: "litros", label: "litros" },
-  { value: "mililitros", label: "mililitros" },
-  { value: "unidades", label: "unidades" },
-];
 
 const PRODUCTO_INICIAL: ProductoConId = {
   id: 0,
   nombre: "",
   descripcion: "",
+  unidad_medida_id: null,
   unidadMedida: "",
   id_receta: null,
   activo: true,
@@ -30,6 +24,7 @@ interface EditarProductoProps {
 export default function EditarProducto({ productoId, onSuccess, onCancel }: EditarProductoProps) {
   const [producto, setProducto] = useState<ProductoConId>(PRODUCTO_INICIAL);
   const [recetas, setRecetas] = useState<DocumentoReceta[]>([]);
+  const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -37,18 +32,24 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
 
   useEffect(() => {
     let cancelado = false;
-    async function cargarRecetas() {
+    async function cargarCatalogos() {
       try {
-        const res = await apiFetch("/documentos/?tipo=Receta");
-        if (res.ok) {
-          const data = await res.json();
-          if (!cancelado) setRecetas(data);
+        const [resRecetas, resUnidades] = await Promise.all([
+          apiFetch("/documentos/?tipo=Receta"),
+          apiFetch("/unidades-medida/?solo_activos=false"),
+        ]);
+        if (!cancelado) {
+          setRecetas(resRecetas.ok ? await resRecetas.json() : []);
+          setUnidades(resUnidades.ok ? await resUnidades.json() : []);
         }
       } catch {
-        if (!cancelado) setRecetas([]);
+        if (!cancelado) {
+          setRecetas([]);
+          setUnidades([]);
+        }
       }
     }
-    cargarRecetas();
+    cargarCatalogos();
     return () => {
       cancelado = true;
     };
@@ -75,7 +76,12 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
     const { name, value } = e.target;
     setProducto({
       ...producto,
-      [name]: name === "id_receta" ? (value ? Number(value) : null) : value,
+      [name]:
+        name === "id_receta" || name === "unidad_medida_id"
+          ? value
+            ? Number(value)
+            : null
+          : value,
     });
   }
 
@@ -89,7 +95,7 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
       return;
     }
 
-    if (!producto.unidadMedida) {
+    if (!producto.unidad_medida_id) {
       setErrorMsg("Debe seleccionar una unidad de medida.");
       return;
     }
@@ -97,7 +103,7 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
     const payload = {
       nombre: producto.nombre.trim(),
       descripcion: producto.descripcion?.trim() || null,
-      unidadMedida: producto.unidadMedida,
+      unidad_medida_id: Number(producto.unidad_medida_id),
       id_receta: producto.id_receta ? Number(producto.id_receta) : null,
     };
 
@@ -157,22 +163,24 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
         </div>
 
         <div className="form-group">
-          <label htmlFor="unidadMedida">
+          <label htmlFor="unidad_medida_id">
             Unidad de Medida <span style={{ color: "var(--color-error-texto)" }}>*</span>
           </label>
           <select
-            id="unidadMedida"
-            name="unidadMedida"
-            value={producto.unidadMedida}
+            id="unidad_medida_id"
+            name="unidad_medida_id"
+            value={producto.unidad_medida_id ?? ""}
             onChange={handleChange}
             required
           >
             <option value="" disabled>Seleccione una unidad</option>
-            {UNIDADES_MEDIDA.map((u) => (
-              <option key={u.value} value={u.value}>
-                {u.label}
-              </option>
-            ))}
+            {unidades
+              .filter((u) => u.activo || u.id === producto.unidad_medida_id)
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre} ({u.abreviatura})
+                </option>
+              ))}
           </select>
         </div>
 

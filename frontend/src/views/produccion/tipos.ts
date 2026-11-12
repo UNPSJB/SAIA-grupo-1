@@ -21,6 +21,8 @@ export interface InsumoResumen {
 export interface InsumoDisponible extends InsumoResumen {
   stock: number;
   fechaVencimiento: string | null;
+  tipo_insumo_id?: number | null;
+  estadoVencimiento?: string | null;
 }
 
 /** Cuánto se usó de un insumo en el lote, en la unidad del insumo */

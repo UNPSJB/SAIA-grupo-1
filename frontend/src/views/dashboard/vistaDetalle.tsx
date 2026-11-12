@@ -17,7 +17,7 @@ const CONFIGURACION_VISTA: Record<
 > = {
   vencimientos: {
     titulo: 'Estadísticas Detalladas de Vencimientos',
-    subtitulo: 'Análisis cronológico y proyección de vencimientos de personal, equipos y documentos',
+    subtitulo: 'Análisis cronológico y proyección de vencimientos de personal, equipos, documentos e insumos',
     descripcion:
       'Esta vista contendrá reportes avanzados, proyecciones cronológicas, alertas por criticidad y tasas de renovación.',
   },

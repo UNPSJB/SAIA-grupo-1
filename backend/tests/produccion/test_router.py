@@ -1,12 +1,13 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Dict
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from src.insumos.models import UnidadMedida
+from src.insumos.models import Insumo
 from src.personal.models import Personal
 from src.producto.models import Producto
+from src.unidadesMedida.services import resolver_unidad_medida
 from tests.autenticacion.conftest import autenticacion_real, headers, usuarios  # noqa: F401  (son fixtures)
 from tests.database import app, session  # noqa: F401  (session es una fixture)
 
@@ -19,10 +20,12 @@ PAN, TARTA, DADO_DE_BAJA = 1, 2, 3
 @pytest.fixture(autouse=True)
 def productos(session: Session) -> None:
     """Productos como los da de alta el ABM de productos; el lote solo los referencia."""
+    u_kg = resolver_unidad_medida(session, valor_texto="kilogramos").id
+    u_un = resolver_unidad_medida(session, valor_texto="unidades").id
     session.add_all([
-        Producto(id=PAN, nombre="Pan lactal", unidadMedida=UnidadMedida.KILOGRAMOS),
-        Producto(id=TARTA, nombre="Tarta", unidadMedida=UnidadMedida.UNIDADES),
-        Producto(id=DADO_DE_BAJA, nombre="Budín", unidadMedida=UnidadMedida.UNIDADES, activo=False),
+        Producto(id=PAN, nombre="Pan lactal", unidad_medida_id=u_kg),
+        Producto(id=TARTA, nombre="Tarta", unidad_medida_id=u_un),
+        Producto(id=DADO_DE_BAJA, nombre="Budín", unidad_medida_id=u_un, activo=False),
     ])
     session.commit()
 
@@ -204,6 +207,29 @@ def test_no_se_puede_asociar_dos_veces_el_mismo_insumo(session: Session) -> None
 
 def test_asociar_a_un_lote_inexistente(session: Session) -> None:
     assert client.post("/lotes/999/insumos", json=_insumos((HARINA, 1))).status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_no_se_puede_asociar_un_insumo_vencido_endpoint(session: Session) -> None:
+    hoy = datetime.now()
+    insumo_vencido = Insumo(
+        nombre="Levadura Vencida",
+        lote="LEV-VENC-01",
+        fechaRecepcion=hoy - timedelta(days=15),
+        fechaVencimiento=hoy - timedelta(days=1),
+        cantRecibida=10.0,
+        stock=10.0,
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="kilogramos").id,
+        activo=True,
+    )
+    session.add(insumo_vencido)
+    session.commit()
+    session.refresh(insumo_vencido)
+    lote_id = _crear_lote()
+    respuesta = client.post(f"/lotes/{lote_id}/insumos", json=_insumos((insumo_vencido.id, 2)))
+    assert respuesta.status_code == status.HTTP_400_BAD_REQUEST
+    assert respuesta.json()["detail"] == "No se puede utilizar un insumo vencido."
+    disponibles_ids = [i["id"] for i in client.get("/lotes/insumos-disponibles").json()]
+    assert insumo_vencido.id not in disponibles_ids
 
 
 def test_quitar_insumo(session: Session) -> None:

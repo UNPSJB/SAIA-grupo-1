@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { InsumoConId } from "./tipos";
+import type { UnidadMedidaItem } from "../unidadesMedida/tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from '../../api/client';
-
-const UNIDADES = ["kilogramos", "gramos", "litros", "mililitros", "unidades"];
 
 const obtenerFechaLocal = (fecha: Date = new Date()): string => {
   const anio = fecha.getFullYear();
@@ -46,21 +45,54 @@ interface EditarInsumoProps {
 }
 
 export default function EditarInsumo({ insumo, onSuccess, onCancel }: EditarInsumoProps) {
+  const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [formData, setFormData] = useState({
     nombre: insumo.nombre,
     lote: insumo.lote,
     fechaVencimiento: toInputDate(insumo.fechaVencimiento),
     cantRecibida: insumo.cantRecibida as number | "",
     stock: insumo.stock as number | "",
-    medida: insumo.medida,
+    unidad_medida_id: (insumo.unidad_medida_id ?? "") as number | "",
   });
+
+  useEffect(() => {
+    let cancelado = false;
+    async function cargarUnidades() {
+      try {
+        const res = await apiFetch("/unidades-medida/?solo_activos=false");
+        if (!cancelado && res.ok) {
+          const data: UnidadMedidaItem[] = await res.json();
+          setUnidades(data);
+          setFormData((prev) => {
+            if (prev.unidad_medida_id !== "") return prev;
+            const coincidencia = data.find(
+              (u) =>
+                u.nombre.toLowerCase() === (insumo.medida || "").toLowerCase() ||
+                u.abreviatura.toLowerCase() === (insumo.medida || "").toLowerCase()
+            );
+            return coincidencia ? { ...prev, unidad_medida_id: coincidencia.id } : prev;
+          });
+        }
+      } catch {
+        if (!cancelado) setUnidades([]);
+      }
+    }
+    cargarUnidades();
+    return () => {
+      cancelado = true;
+    };
+  }, [insumo.medida]);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: name === "unidad_medida_id" ? (value ? Number(value) : "") : value,
+    });
   }
 
   function handleNumberChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -73,7 +105,6 @@ export default function EditarInsumo({ insumo, onSuccess, onCancel }: EditarInsu
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    // Validaciones en cliente
     if (!formData.nombre.trim()) {
       setErrorMsg("El nombre del insumo no puede estar vacío.");
       return;
@@ -118,7 +149,7 @@ export default function EditarInsumo({ insumo, onSuccess, onCancel }: EditarInsu
       fechaVencimiento: formData.fechaVencimiento || null,
       cantRecibida: cantNum,
       stock: stockNum,
-      medida: formData.medida,
+      unidad_medida_id: formData.unidad_medida_id ? Number(formData.unidad_medida_id) : null,
     };
 
     try {
@@ -244,14 +275,22 @@ export default function EditarInsumo({ insumo, onSuccess, onCancel }: EditarInsu
         </div>
 
         <div className="form-group">
-          <label htmlFor="medida">Unidad de Medida</label>
-          <select id="medida" name="medida" value={formData.medida} onChange={handleChange} required>
+          <label htmlFor="unidad_medida_id">Unidad de Medida</label>
+          <select
+            id="unidad_medida_id"
+            name="unidad_medida_id"
+            value={formData.unidad_medida_id}
+            onChange={handleChange}
+            required
+          >
             <option value="" disabled>Seleccione una unidad</option>
-            {UNIDADES.map((unidad) => (
-              <option key={unidad} value={unidad}>
-                {unidad}
-              </option>
-            ))}
+            {unidades
+              .filter((u) => u.activo || u.id === Number(formData.unidad_medida_id))
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre} ({u.abreviatura})
+                </option>
+              ))}
           </select>
         </div>
 

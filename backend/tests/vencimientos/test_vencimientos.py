@@ -9,9 +9,13 @@ from src.certificado.models import Certificado
 from src.tipoCertificado.models import TipoCertificado
 from src.documentos.models import Documento, VersionDocumento
 from src.equipos.models import Categoria, Equipo, Estado
+from src.insumos.models import Insumo
 from src.personal.models import Personal
 from src.plan_de_calibracion.models import Plan_de_Calibracion
+from src.proveedores.models import Proveedor
 from src.sectores.models import Sector
+from src.tipoInsumo.models import TipoInsumo
+from src.unidadesMedida.services import resolver_unidad_medida
 from src.vencimientos.schemas import EstadoVencimiento, OrigenVencimiento
 from tests.autenticacion.conftest import autenticacion_real, headers, usuarios
 from tests.database import app, session
@@ -281,3 +285,97 @@ def test_filtros_origen_estado_y_busqueda(session: Session, usuarios: Dict[str, 
     assert res_venc.status_code == status.HTTP_200_OK
     for it in res_venc.json():
         assert it["estado"] == "vencido"
+
+
+def test_consolidacion_insumos(session: Session, usuarios: Dict[str, Personal]):
+    admin = usuarios["administrador"]
+    hoy = date.today()
+    unidad_kg = resolver_unidad_medida(session, valor_texto="KG")
+
+    tipo_ins = TipoInsumo(
+        nombre="Azúcar Refinada Test",
+        unidad_medida_id=unidad_kg.id,
+        activo=True,
+    )
+    prov = Proveedor(
+        nombre="Ingenio Norte",
+        activo=True,
+    )
+    session.add_all([tipo_ins, prov])
+    session.flush()
+
+    ins_vencido = Insumo(
+        nombre="Azúcar Especial",
+        lote="LOT-AZ-01",
+        fechaRecepcion=datetime.combine(hoy - timedelta(days=30), datetime.min.time()),
+        fechaVencimiento=datetime.combine(hoy - timedelta(days=3), datetime.min.time()),
+        cantRecibida=50.0,
+        stock=10.0,
+        unidad_medida_id=unidad_kg.id,
+        tipo_insumo_id=tipo_ins.id,
+        proveedor_id=prov.id,
+        activo=True,
+    )
+    ins_proximo = Insumo(
+        nombre="Azúcar Blanca",
+        lote="LOT-AZ-02",
+        fechaRecepcion=datetime.combine(hoy - timedelta(days=10), datetime.min.time()),
+        fechaVencimiento=datetime.combine(hoy + timedelta(days=4), datetime.min.time()),
+        cantRecibida=40.0,
+        stock=15.0,
+        unidad_medida_id=unidad_kg.id,
+        tipo_insumo_id=tipo_ins.id,
+        proveedor_id=prov.id,
+        activo=True,
+    )
+    ins_agotado = Insumo(
+        nombre="Azúcar Agotada",
+        lote="LOT-AZ-03",
+        fechaRecepcion=datetime.combine(hoy - timedelta(days=20), datetime.min.time()),
+        fechaVencimiento=datetime.combine(hoy - timedelta(days=1), datetime.min.time()),
+        cantRecibida=20.0,
+        stock=0.0,
+        unidad_medida_id=unidad_kg.id,
+        tipo_insumo_id=tipo_ins.id,
+        activo=True,
+    )
+    ins_inactivo = Insumo(
+        nombre="Azúcar Baja",
+        lote="LOT-AZ-04",
+        fechaRecepcion=datetime.combine(hoy - timedelta(days=20), datetime.min.time()),
+        fechaVencimiento=datetime.combine(hoy + timedelta(days=2), datetime.min.time()),
+        cantRecibida=20.0,
+        stock=8.0,
+        unidad_medida_id=unidad_kg.id,
+        tipo_insumo_id=tipo_ins.id,
+        activo=False,
+    )
+    session.add_all([ins_vencido, ins_proximo, ins_agotado, ins_inactivo])
+    session.commit()
+
+    res = client.get("/vencimientos/?origen=insumo", headers=headers(admin))
+    assert res.status_code == status.HTTP_200_OK
+    items = res.json()
+    assert len(items) >= 2
+    assert all(it["origen"] == OrigenVencimiento.INSUMO.value for it in items)
+
+    ids = {it["id"] for it in items}
+    assert f"insumo-{ins_vencido.id}" in ids
+    assert f"insumo-{ins_proximo.id}" in ids
+    assert f"insumo-{ins_agotado.id}" not in ids
+    assert f"insumo-{ins_inactivo.id}" not in ids
+
+    item_v = next(it for it in items if it["id"] == f"insumo-{ins_vencido.id}")
+    assert item_v["estado"] == EstadoVencimiento.VENCIDO.value
+    assert "LOT-AZ-01" in item_v["concepto"]
+    assert "Azúcar Refinada Test" in item_v["responsable"]
+    assert "Ingenio Norte" in item_v["responsable"]
+    assert item_v["referencia_id"] == ins_vencido.id
+
+    item_p = next(it for it in items if it["id"] == f"insumo-{ins_proximo.id}")
+    assert item_p["estado"] == EstadoVencimiento.PROXIMO.value
+
+    res_csv = client.get("/vencimientos/exportar-csv?origen=insumo", headers=headers(admin))
+    assert res_csv.status_code == status.HTTP_200_OK
+    assert "Insumos" in res_csv.text
+    assert "LOT-AZ-01" in res_csv.text

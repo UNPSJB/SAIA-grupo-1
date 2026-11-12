@@ -13,10 +13,10 @@ from src.personal.services import crear_personal
 from src.personal.schemas import PersonalCreate, Capacidades
 from src.insumos.services import crear_insumo
 from src.insumos.schemas import InsumoCreate
-from src.insumos.models import UnidadMedida
+from src.unidadesMedida.services import asegurar_unidades_base
 from src.insumos_quimicos.services import InsumoQuimicoService
 from src.insumos_quimicos.schemas import InsumoQuimicoCreate
-from src.insumos_quimicos.constants import TipoQuimicoEnum, UnidadMedidaEnum as UnidadQuimico
+from src.insumos_quimicos.constants import TipoQuimicoEnum
 from src.equipos.services import crear_equipo
 from src.equipos.schemas import EquipoCreate
 from src.equipos.models import Categoria, Estado
@@ -58,6 +58,7 @@ def session() -> Generator[Session, None, None]:
     db = TestingSessionLocal()
 
     db.execute(text("PRAGMA foreign_keys = ON"))
+    asegurar_unidades_base(db)
 
     persona_1 = crear_personal(
         db,
@@ -93,7 +94,7 @@ def session() -> Generator[Session, None, None]:
             fechaVencimiento=vencimiento_valido,
             cantRecibida=100.0,
             stock=80.0,
-            medida=UnidadMedida.KILOGRAMOS,
+            medida="kilogramos",
         ),
     )
     insumo_2 = crear_insumo(
@@ -105,7 +106,7 @@ def session() -> Generator[Session, None, None]:
             fechaVencimiento=vencimiento_valido,
             cantRecibida=50.0,
             stock=35.0,
-            medida=UnidadMedida.LITROS,
+            medida="litros",
         ),
     )
     insumo_3 = crear_insumo(
@@ -117,7 +118,7 @@ def session() -> Generator[Session, None, None]:
             fechaVencimiento=vencimiento_valido,
             cantRecibida=2000.0,
             stock=1500.0,
-            medida=UnidadMedida.GRAMOS,
+            medida="gramos",
         ),
     )
 
@@ -126,7 +127,7 @@ def session() -> Generator[Session, None, None]:
         InsumoQuimicoCreate(
             nombre="Lavandina",
             tipo=TipoQuimicoEnum.DESINFECTANTE,
-            unidad_medida=UnidadQuimico.LITROS,
+            unidad_medida="L",
             stock_actual=80.0,
         ),
     )
@@ -135,7 +136,7 @@ def session() -> Generator[Session, None, None]:
         InsumoQuimicoCreate(
             nombre="Detergente desengrasante",
             tipo=TipoQuimicoEnum.DESENGRASANTE,
-            unidad_medida=UnidadQuimico.LITROS,
+            unidad_medida="L",
             stock_actual=35.0,
         ),
     )
@@ -144,7 +145,7 @@ def session() -> Generator[Session, None, None]:
         InsumoQuimicoCreate(
             nombre="Alcohol 70%",
             tipo=TipoQuimicoEnum.DESINFECTANTE,
-            unidad_medida=UnidadQuimico.LITROS,
+            unidad_medida="L",
             stock_actual=50.0,
         ),
     )
@@ -153,7 +154,7 @@ def session() -> Generator[Session, None, None]:
         InsumoQuimicoCreate(
             nombre="Bobina papel",
             tipo=TipoQuimicoEnum.SANITIZANTE,
-            unidad_medida=UnidadQuimico.UNIDADES,
+            unidad_medida="UN",
             stock_actual=100.0,
         ),
     )

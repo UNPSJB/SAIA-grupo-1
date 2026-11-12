@@ -20,6 +20,9 @@ import { useAlertasSistema } from '../hooks/useAlertasSistema';
 export type Modulo =
   | 'dashboard'
   | 'insumos'
+  | 'tipoInsumo'
+  | 'unidadesMedida'
+  | 'proveedores'
   | 'equipos'
   | 'sectores'
   | 'personas'
@@ -137,6 +140,29 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       <polyline points="3.29 7 12 12 20.71 7" />
       <line x1="12" x2="12" y1="22" y2="12" />
+    </svg>
+  ),
+  tipoInsumo: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h16M4 12h16M4 18h12" />
+      <circle cx="18" cy="18" r="2" />
+    </svg>
+  ),
+  unidadesMedida: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" />
+      <path d="m14.5 12.5 2-2" />
+      <path d="m11.5 9.5 2-2" />
+      <path d="m8.5 6.5 2-2" />
+      <path d="m17.5 15.5 2-2" />
+    </svg>
+  ),
+  proveedores: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="15" height="13" />
+      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
     </svg>
   ),
   productos: (
@@ -297,6 +323,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'equipos', label: 'Equipos', icono: ICONOS_MODULO.equipos },
         { id: 'planDeCalibracion', label: 'Plan de Calibración', icono: ICONOS_MODULO.planDeCalibracion },
         { id: 'sectores', label: 'Sectores', icono: ICONOS_MODULO.sectores },
+        { id: 'tipoInsumo', label: 'Tipos de Insumo', icono: ICONOS_MODULO.tipoInsumo },
+        { id: 'unidadesMedida', label: 'Unidades de Medida', icono: ICONOS_MODULO.unidadesMedida },
+        { id: 'proveedores', label: 'Proveedores', icono: ICONOS_MODULO.proveedores },
         { id: 'insumos', label: 'Ingredientes', icono: ICONOS_MODULO.insumos },
         { id: 'receta', label: 'Receta', icono: ICONOS_MODULO.receta },
         { id: 'productos', label: 'Productos Elaborados', icono: ICONOS_MODULO.productos },

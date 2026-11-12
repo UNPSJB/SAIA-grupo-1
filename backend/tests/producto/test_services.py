@@ -1,7 +1,6 @@
 import pytest
 from sqlalchemy.orm import Session
 from src.documentos.models import Documento
-from src.insumos.models import UnidadMedida
 from src.producto import exceptions
 from src.producto.models import Producto
 from src.producto.schemas import ProductoCreate, ProductoUpdate
@@ -24,7 +23,7 @@ def test_listar_productos(session: Session) -> None:
   dto = ProductoCreate(
       nombre="Pan de Molde",
       descripcion="Pan de lactal",
-      unidadMedida=UnidadMedida.KILOGRAMOS,
+      unidadMedida="kilogramos",
   )
   prod = crear_producto(session, dto)
 
@@ -37,7 +36,7 @@ def test_baja_y_restauracion_producto(session: Session) -> None:
   dto = ProductoCreate(
       nombre="Masa Hoja",
       descripcion="Para empanadas",
-      unidadMedida=UnidadMedida.KILOGRAMOS,
+      unidadMedida="kilogramos",
   )
   prod = crear_producto(session, dto)
   assert prod.activo is True
@@ -76,7 +75,7 @@ def test_crear_producto_con_receta_valida(session: Session) -> None:
   dto = ProductoCreate(
       nombre="Pan Francés Test",
       descripcion="Barra clásica",
-      unidadMedida=UnidadMedida.KILOGRAMOS,
+      unidadMedida="kilogramos",
       id_receta=receta.id,
   )
   nuevo = crear_producto(session, dto)
@@ -101,7 +100,7 @@ def test_crear_producto_con_receta_invalida(session: Session) -> None:
   dto = ProductoCreate(
       nombre="Producto Fallido",
       descripcion="Prueba error receta",
-      unidadMedida=UnidadMedida.UNIDADES,
+      unidadMedida="unidades",
       id_receta=doc.id,
   )
 
@@ -113,7 +112,7 @@ def test_validar_nombre_duplicado(session: Session) -> None:
   dto1 = ProductoCreate(
       nombre="Galletas de Agua",
       descripcion="Caja por 100g",
-      unidadMedida=UnidadMedida.GRAMOS,
+      unidadMedida="gramos",
   )
   crear_producto(session, dto1)
 
@@ -121,7 +120,7 @@ def test_validar_nombre_duplicado(session: Session) -> None:
   dto2 = ProductoCreate(
       nombre="  GALLETAS  de   agua ",
       descripcion="Otra caja",
-      unidadMedida=UnidadMedida.GRAMOS,
+      unidadMedida="gramos",
   )
   with pytest.raises(exceptions.NombreProductoDuplicado):
     crear_producto(session, dto2)
@@ -130,7 +129,7 @@ def test_validar_nombre_duplicado(session: Session) -> None:
 # ---------------------------------------------------------------- visibilidad en la vista publica
 
 def _producto(session: Session, nombre: str) -> Producto:
-  return crear_producto(session, ProductoCreate(nombre=nombre, unidadMedida=UnidadMedida.UNIDADES))
+  return crear_producto(session, ProductoCreate(nombre=nombre, unidadMedida="unidades"))
 
 
 def test_producto_nuevo_no_es_visible_en_la_vista_publica(session: Session) -> None:
@@ -201,7 +200,7 @@ def test_editar_producto_exitoso(session: Session) -> None:
   session.commit()
   session.refresh(receta)
 
-  prod = crear_producto(session, ProductoCreate(nombre="Croissant", unidadMedida=UnidadMedida.UNIDADES))
+  prod = crear_producto(session, ProductoCreate(nombre="Croissant", unidadMedida="unidades"))
   editado = editar_producto(
       session,
       prod.id,
@@ -214,8 +213,8 @@ def test_editar_producto_exitoso(session: Session) -> None:
 
 
 def test_editar_producto_duplicado(session: Session) -> None:
-  prod1 = crear_producto(session, ProductoCreate(nombre="Medialuna Manteca", unidadMedida=UnidadMedida.UNIDADES))
-  prod2 = crear_producto(session, ProductoCreate(nombre="Medialuna Grasa", unidadMedida=UnidadMedida.UNIDADES))
+  prod1 = crear_producto(session, ProductoCreate(nombre="Medialuna Manteca", unidadMedida="unidades"))
+  prod2 = crear_producto(session, ProductoCreate(nombre="Medialuna Grasa", unidadMedida="unidades"))
   with pytest.raises(exceptions.NombreProductoDuplicado):
     editar_producto(session, prod2.id, ProductoUpdate(nombre="Medialuna Manteca"))
 
@@ -227,9 +226,9 @@ def test_editar_producto_inexistente(session: Session) -> None:
 
 def test_crear_y_editar_producto_receta_inexistente(session: Session) -> None:
   with pytest.raises(exceptions.RecetaNoEncontrada):
-    crear_producto(session, ProductoCreate(nombre="Prod Con Receta Falsa", unidadMedida=UnidadMedida.UNIDADES, id_receta=99999))
+    crear_producto(session, ProductoCreate(nombre="Prod Con Receta Falsa", unidadMedida="unidades", id_receta=99999))
 
-  prod = crear_producto(session, ProductoCreate(nombre="Prod Sin Receta", unidadMedida=UnidadMedida.UNIDADES))
+  prod = crear_producto(session, ProductoCreate(nombre="Prod Sin Receta", unidadMedida="unidades"))
   with pytest.raises(exceptions.RecetaNoEncontrada):
     editar_producto(session, prod.id, ProductoUpdate(id_receta=99999))
 
@@ -240,8 +239,8 @@ def test_obtener_productos_para_csv(session: Session) -> None:
   session.commit()
   session.refresh(receta)
 
-  p1 = crear_producto(session, ProductoCreate(nombre="Baguette Tradicional", descripcion="Pan crocante", unidadMedida=UnidadMedida.UNIDADES, id_receta=receta.id))
-  p2 = crear_producto(session, ProductoCreate(nombre="Flauta Simple", descripcion="Pan blanco", unidadMedida=UnidadMedida.UNIDADES))
+  p1 = crear_producto(session, ProductoCreate(nombre="Baguette Tradicional", descripcion="Pan crocante", unidadMedida="unidades", id_receta=receta.id))
+  p2 = crear_producto(session, ProductoCreate(nombre="Flauta Simple", descripcion="Pan blanco", unidadMedida="unidades"))
   eliminar_producto(session, p2.id)
 
   todos = obtener_productos_para_csv(session)

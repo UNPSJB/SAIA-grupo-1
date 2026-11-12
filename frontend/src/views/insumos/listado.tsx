@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import type { InsumoConId } from "./tipos";
+import type { InsumoAgrupadoPorTipo, LoteInsumoItem, InsumoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
 import { CsvIcon } from '../../components/icons/CsvIcon';
-import { Paginacion } from '../../components/ui/paginacion';
-import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
 
@@ -13,10 +11,11 @@ interface ListadoInsumosProps {
   onNuevoClick?: () => void;
   onVerClick?: (insumo: InsumoConId) => void;
   onEditarClick?: (insumo: InsumoConId) => void;
+  onVerTipoClick?: (tipoId: number) => void;
 }
 
 const formatDate = (dateStr?: string | null) => {
-  if (!dateStr) return "No aplica";
+  if (!dateStr) return "No perecedero";
   try {
     const d = new Date(dateStr);
     return isNaN(d.getTime())
@@ -31,40 +30,74 @@ const formatDate = (dateStr?: string | null) => {
   }
 };
 
-const estadoVencimiento = (fechaVencimiento?: string | null) => {
-  if (!fechaVencimiento) return 'SIN_VENCIMIENTO';
-  const fecha = new Date(fechaVencimiento);
-  const hoy = new Date();
-  const diffMs = fecha.getTime() - hoy.getTime();
-  const dias = diffMs / (1000 * 60 * 60 * 24);
-  if (dias < 0) return 'VENCIDO';
-  if (dias <= 15) return 'POR_VENCER';
-  return 'VIGENTE';
-};
-
 export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
   onNuevoClick,
   onVerClick,
   onEditarClick,
+  onVerTipoClick,
 }) => {
-  const [insumos, setInsumos] = useState<InsumoConId[]>([]);
+  const [grupos, setGrupos] = useState<InsumoAgrupadoPorTipo[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   const [busqueda, setBusqueda] = useState('');
-  const [filtroUnidad, setFiltroUnidad] = useState('TODOS');
-  const [filtroVencimiento, setFiltroVencimiento] = useState('TODOS');
+  const [filtroEstado, setFiltroEstado] = useState('TODOS');
+  const [tiposAbiertos, setTiposAbiertos] = useState<Record<number, boolean>>({});
+
+  const [loteADesechar, setLoteADesechar] = useState<LoteInsumoItem | null>(null);
+  const [dialogDesecharAbierto, setDialogDesecharAbierto] = useState(false);
 
   const [idAEliminar, setIdAEliminar] = useState<number | null>(null);
   const [nombreAEliminar, setNombreAEliminar] = useState<string>('');
-  const [dialogAbierto, setDialogAbierto] = useState(false);
+  const [dialogEliminarAbierto, setDialogEliminarAbierto] = useState(false);
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
 
-  const abrirConfirmacion = (i: InsumoConId) => {
-    setIdAEliminar(i.id);
-    setNombreAEliminar(i.nombre);
-    setDialogAbierto(true);
+  const cargarInsumosAgrupados = async () => {
+    try {
+      setLoading(true);
+      let res = await apiFetch('/insumos/agrupados');
+      if (res.status === 403 || res.status === 404) {
+        res = await apiFetch('/insumos-operador/agrupados');
+      }
+      if (res.ok) {
+        const data: InsumoAgrupadoPorTipo[] = await res.json();
+        setGrupos(data);
+
+        setTiposAbiertos((prev) => {
+          const inicial: Record<number, boolean> = { ...prev };
+          data.forEach((g) => {
+            if (inicial[g.tipo_id] === undefined) {
+              inicial[g.tipo_id] = true;
+            }
+          });
+          return inicial;
+        });
+      } else {
+        setGrupos([]);
+      }
+    } catch {
+      setGrupos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarInsumosAgrupados();
+  }, []);
+
+  const toggleTipo = (tipoId: number) => {
+    setTiposAbiertos((prev) => ({
+      ...prev,
+      [tipoId]: !prev[tipoId],
+    }));
+  };
+
+  const abrirConfirmacionEliminar = (lote: LoteInsumoItem) => {
+    setIdAEliminar(lote.id);
+    setNombreAEliminar(`${lote.nombre} (Lote ${lote.lote})`);
+    setDialogEliminarAbierto(true);
   };
 
   const ejecutarEliminar = async () => {
@@ -72,106 +105,174 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     try {
       const res = await apiFetch(`/insumos/${idAEliminar}`, { method: 'DELETE' });
       if (res.ok) {
-        setInsumos((prev) => prev.filter((i) => i.id !== idAEliminar));
+        await cargarInsumosAgrupados();
       } else {
         const err = await res.json().catch(() => ({}));
-        setErrorDialogMsg(err.detail || 'No se pudo eliminar el ingrediente.');
+        setErrorDialogMsg(err.detail || 'No se pudo dar de baja el insumo.');
       }
     } catch {
-      setErrorDialogMsg('Error de conexión al eliminar el ingrediente.');
+      setErrorDialogMsg('Error de conexión al eliminar el insumo.');
     } finally {
-      setDialogAbierto(false);
+      setDialogEliminarAbierto(false);
       setIdAEliminar(null);
     }
   };
 
-  useEffect(() => {
-    let ignore = false;
-    async function load() {
-      try {
-        const res = await apiFetch(`/insumos/`);
-        if (res.ok) {
-          const data = await res.json();
-          if (!ignore) setInsumos(data);
-        } else {
-          if (!ignore) setInsumos([]);
-        }
-      } catch {
-        if (!ignore) setInsumos([]);
-      } finally {
-        if (!ignore) setLoading(false);
+  const abrirConfirmacionDesechar = (lote: LoteInsumoItem) => {
+    setLoteADesechar(lote);
+    setDialogDesecharAbierto(true);
+  };
+
+  const ejecutarDesechar = async () => {
+    if (!loteADesechar) return;
+    try {
+      let res = await apiFetch(`/insumos/${loteADesechar.id}/desechar`, { method: 'POST' });
+      if (res.status === 403 || res.status === 404) {
+        res = await apiFetch(`/insumos-operador/${loteADesechar.id}/desechar`, { method: 'POST' });
       }
+      if (res.ok) {
+        await cargarInsumosAgrupados();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorDialogMsg(err.detail || 'No se pudo desechar el lote de insumo.');
+      }
+    } catch {
+      setErrorDialogMsg('Error de conexión al desechar el insumo.');
+    } finally {
+      setDialogDesecharAbierto(false);
+      setLoteADesechar(null);
     }
-    load();
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-
-
-  const insumosFiltrados = insumos.filter((i) => {
-    const term = busqueda.toLowerCase().trim();
-    const coincideBusqueda =
-      !term ||
-      (i.nombre?.toLowerCase().includes(term) ?? false) ||
-      (i.lote?.toLowerCase().includes(term) ?? false);
-    const coincideUnidad = filtroUnidad === 'TODOS' || i.medida?.toUpperCase() === filtroUnidad;
-    const coincideVencimiento =
-      filtroVencimiento === 'TODOS' || estadoVencimiento(i.fechaVencimiento) === filtroVencimiento;
-    return coincideBusqueda && coincideUnidad && coincideVencimiento;
-  });
+  };
 
   const ejecutarExportacion = async () => {
     try {
       setExportando(true);
-      const params = new URLSearchParams();
-
-      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
-      if (filtroUnidad !== 'TODOS') params.append('unidad', filtroUnidad);
-      if (filtroVencimiento !== 'TODOS') params.append('vencimiento', filtroVencimiento);
-
-      const queryString = params.toString();
-      const url = `/insumos/exportar-csv${queryString ? `?${queryString}` : ''}`;
-
-      await descargarCSV(url, 'ingredientes.csv');
+      await descargarCSV('/insumos/exportar-csv', 'inventario_insumos.csv');
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar ingredientes a CSV.');
+      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar inventario a CSV.');
     } finally {
       setExportando(false);
     }
   };
 
-  const obtenerResumenFiltros = () => {
-    const partes: string[] = [];
-    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
-    if (filtroUnidad !== 'TODOS') partes.push(`Unidad: ${filtroUnidad}`);
-    if (filtroVencimiento !== 'TODOS') partes.push(`Vencimiento: ${filtroVencimiento}`);
-    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  const renderBadge = (estado: string, esAgotado: boolean = false) => {
+    if (esAgotado) {
+      return (
+        <span
+          style={{
+            padding: '0.15rem 0.45rem',
+            borderRadius: '9999px',
+            fontSize: '0.7rem',
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            display: 'inline-block',
+            backgroundColor: 'rgba(100, 116, 139, 0.15)',
+            color: '#64748b',
+          }}
+        >
+          Agotado
+        </span>
+      );
+    }
+
+    switch (estado) {
+      case 'VENCIDO':
+        return (
+          <span
+            style={{
+              padding: '0.15rem 0.45rem',
+              borderRadius: '9999px',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              display: 'inline-block',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              color: '#dc2626',
+            }}
+          >
+            Vencido
+          </span>
+        );
+      case 'PROXIMO_A_VENCER':
+        return (
+          <span
+            style={{
+              padding: '0.15rem 0.45rem',
+              borderRadius: '9999px',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              display: 'inline-block',
+              backgroundColor: 'rgba(234, 179, 8, 0.15)',
+              color: '#ca8a04',
+            }}
+          >
+            Próximo a Vencer
+          </span>
+        );
+      case 'VIGENTE':
+      default:
+        return (
+          <span
+            style={{
+              padding: '0.15rem 0.45rem',
+              borderRadius: '9999px',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              display: 'inline-block',
+              backgroundColor: 'rgba(34, 197, 94, 0.15)',
+              color: '#16a34a',
+            }}
+          >
+            Vigente
+          </span>
+        );
+    }
   };
 
-  const {
-    itemsPaginados: insumosPaginados,
-    paginaActual,
-    setPaginaActual,
-    filasPorPagina,
-    setFilasPorPagina,
-    totalRegistros,
-    totalPaginas,
-    indiceInicio,
-    indiceFin,
-  } = usePaginacion(insumosFiltrados);
+  const transformarParaAcciones = (lote: LoteInsumoItem): InsumoConId => ({
+    id: lote.id,
+    nombre: lote.nombre,
+    lote: lote.lote,
+    fechaRecepcion: lote.fechaRecepcion.toString(),
+    fechaVencimiento: lote.fechaVencimiento ? lote.fechaVencimiento.toString() : null,
+    cantRecibida: lote.cantRecibida,
+    stock: lote.stock,
+    medida: lote.medida,
+    proveedor_nombre: lote.proveedor_nombre,
+    estadoVencimiento: lote.estadoVencimiento,
+    activo: lote.activo,
+  });
+
+  const gruposFiltrados = grupos.filter((g) => {
+    const matchBusqueda =
+      !busqueda.trim() ||
+      g.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      g.lotes.some(
+        (l) =>
+          l.lote.toLowerCase().includes(busqueda.toLowerCase()) ||
+          l.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+          (l.proveedor_nombre && l.proveedor_nombre.toLowerCase().includes(busqueda.toLowerCase()))
+      );
+
+    if (!matchBusqueda) return false;
+
+    if (filtroEstado === 'VENCIDOS') return g.tiene_vencidos;
+    if (filtroEstado === 'PROXIMOS') return g.tiene_proximos;
+    return true;
+  });
 
   return (
-    <div className="modulo-container">
+    <div className="modulo-container modulo-insumos-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Lista de Ingredientes</h1>
-          <div className="subtitulo">01 · Listado</div>
+          <h1>Inventario de Insumos</h1>
+          <div className="subtitulo">Listado agrupado por tipo de insumo</div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setDialogExportarAbierto(true)}
@@ -183,7 +284,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
 
           {onNuevoClick && (
             <button onClick={onNuevoClick} className="btn-guardar">
-              + Agregar Ingrediente
+              + Recepción de Insumos
             </button>
           )}
         </div>
@@ -192,149 +293,207 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
       <div className="filtros-top-bar">
         <input
           type="text"
-          placeholder="Buscar ingrediente por nombre o lote..."
+          placeholder="Buscar por tipo, nombre, lote o proveedor..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           className="input-busqueda"
         />
 
         <select
-          value={filtroUnidad}
-          onChange={(e) => setFiltroUnidad(e.target.value)}
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
           className="select-filtro"
+          style={{ width: 'auto' }}
         >
-          <option value="TODOS">Todas las unidades</option>
-          <option value="KILOGRAMOS">Kilogramos</option>
-          <option value="GRAMOS">Gramos</option>
-          <option value="LITROS">Litros</option>
-          <option value="MILILITROS">Mililitros</option>
-          <option value="UNIDADES">Unidades</option>
-        </select>
-
-        <select
-          value={filtroVencimiento}
-          onChange={(e) => setFiltroVencimiento(e.target.value)}
-          className="select-filtro"
-        >
-          <option value="TODOS">Todos los vencimientos</option>
-          <option value="VIGENTE">Vigentes</option>
-          <option value="POR_VENCER">Por vencer (15 días)</option>
-          <option value="VENCIDO">Vencidos</option>
-          <option value="SIN_VENCIMIENTO">Sin vencimiento</option>
+          <option value="TODOS">Todos los estados</option>
+          <option value="VENCIDOS">Con lotes vencidos</option>
+          <option value="PROXIMOS">Con lotes próximos a vencer</option>
         </select>
       </div>
 
-      <div className="tabla-wrapper">
-        <table className="tabla-custom">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Lote</th>
-              <th>Stock</th>
-              <th>Recibido</th>
-              <th>Unidad</th>
-              <th>Recepción</th>
-              <th>Vencimiento</th>
-              <th className="acciones-col">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                  Cargando ingredientes...
-                </td>
-              </tr>
-            ) : insumosFiltrados.length === 0 ? (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
-                  {busqueda || filtroUnidad !== 'TODOS' || filtroVencimiento !== 'TODOS'
-                    ? 'No se encontraron ingredientes que coincidan con los filtros.'
-                    : 'No hay ingredientes registrados.'}
-                </td>
-              </tr>
-            ) : (
-              insumosPaginados.map((i) => (
-                <tr key={i.id}>
-                  <td style={{ fontWeight: 500 }}>{i.nombre}</td>
-                  <td>{i.lote}</td>
-                  <td>{i.stock}</td>
-                  <td>{i.cantRecibida}</td>
-                  <td>{i.medida}</td>
-                  <td>{formatDate(i.fechaRecepcion)}</td>
-                  <td>{formatDate(i.fechaVencimiento)}</td>
-                  <td className="acciones-col">
-                    <div className="acciones-btns">
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando inventario de insumos...</div>
+      ) : gruposFiltrados.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          No se encontraron insumos que coincidan con los filtros aplicados.
+        </div>
+      ) : (
+        <div className="insumos-grupos-lista">
+          {gruposFiltrados.map((grupo) => {
+            const abierto = tiposAbiertos[grupo.tipo_id] ?? true;
+            return (
+              <div key={grupo.tipo_id} className="insumos-grupo-card">
+                <div
+                  onClick={() => toggleTipo(grupo.tipo_id)}
+                  className="insumos-grupo-header"
+                  style={{
+                    borderBottom: abierto ? '1px solid var(--border, #334155)' : 'none',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #94a3b8)' }}>
+                      {abierto ? '▼' : '▶'}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{grupo.nombre}</span>
+                      {grupo.descripcion && (
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)', marginLeft: '0.5rem' }}>
+                          — {grupo.descripcion}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #94a3b8)' }}>Stock Total: </span>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>
+                        {grupo.stock_total} {grupo.unidadMedida}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #94a3b8)', marginLeft: '0.45rem' }}>
+                        ({grupo.lotes.length} {grupo.lotes.length === 1 ? 'lote activo' : 'lotes activos'})
+                      </span>
+                    </div>
+                    {onVerTipoClick && (
                       <button
+                        type="button"
                         className="btn-icon btn-ver"
-                        title="Ver detalles"
-                        onClick={() => onVerClick?.(i)}
+                        title="Ver detalle e historial del tipo de insumo"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onVerTipoClick(grupo.tipo_id);
+                        }}
                       >
                         👁
                       </button>
-                      <button
-                        className="btn-icon btn-editar"
-                        title="Editar"
-                        onClick={() => onEditarClick?.(i)}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        className="btn-icon btn-eliminar"
-                        title="Eliminar"
-                        onClick={() => abrirConfirmacion(i)}
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                    )}
+                  </div>
+                </div>
 
-      <Paginacion
-        paginaActual={paginaActual}
-        totalPaginas={totalPaginas}
-        totalRegistros={totalRegistros}
-        indiceInicio={indiceInicio}
-        indiceFin={indiceFin}
-        filasPorPagina={filasPorPagina}
-        onCambiarPagina={setPaginaActual}
-        onCambiarFilasPorPagina={setFilasPorPagina}
-        etiqueta="ingredientes"
+                {abierto && (
+                  <div className="insumos-grupo-body">
+                    {grupo.lotes.length === 0 ? (
+                      <p style={{ margin: '0.4rem 0', fontSize: '0.85rem', color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
+                        No hay lotes con stock disponible en este momento.
+                      </p>
+                    ) : (
+                      <div className="tabla-wrapper">
+                        <table className="tabla-custom tabla-insumos">
+                          <thead>
+                            <tr>
+                              <th>Lote</th>
+                              <th>Nombre</th>
+                              <th>Proveedor</th>
+                              <th>Recepción</th>
+                              <th>Vencimiento</th>
+                              <th>Recibido</th>
+                              <th>Stock</th>
+                              <th>Estado</th>
+                              <th className="acciones-col">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {grupo.lotes.map((lote) => (
+                              <tr key={lote.id}>
+                                <td style={{ fontWeight: 600 }}>{lote.lote}</td>
+                                <td>{lote.nombre}</td>
+                                <td>{lote.proveedor_nombre || '-'}</td>
+                                <td>{formatDate(lote.fechaRecepcion.toString())}</td>
+                                <td>{formatDate(lote.fechaVencimiento?.toString())}</td>
+                                <td>
+                                  {lote.cantRecibida} {lote.medida}
+                                </td>
+                                <td style={{ fontWeight: 600 }}>
+                                  {lote.stock} {lote.medida}
+                                </td>
+                                <td>{renderBadge(lote.estadoVencimiento)}</td>
+                                <td className="acciones-col">
+                                  <div className="acciones-btns">
+                                    <button
+                                      className="btn-icon btn-editar"
+                                      title="Ver trazabilidad del lote"
+                                      onClick={() => onVerClick?.(transformarParaAcciones(lote))}
+                                    >
+                                      👁
+                                    </button>
+                                    <button
+                                      className="btn-icon btn-editar"
+                                      title="Editar lote"
+                                      onClick={() => onEditarClick?.(transformarParaAcciones(lote))}
+                                    >
+                                      ✎
+                                    </button>
+                                    <button
+                                      className="btn-icon btn-eliminar"
+                                      title="Dar de baja lote"
+                                      onClick={() => abrirConfirmacionEliminar(lote)}
+                                    >
+                                      🗑
+                                    </button>
+                                    {lote.estadoVencimiento === 'VENCIDO' && lote.stock > 0 && (
+                                      <button
+                                        type="button"
+                                        className="btn-icon btn-eliminar"
+                                        title="Desechar stock restante de lote vencido"
+                                        onClick={() => abrirConfirmacionDesechar(lote)}
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <ConfirmAlertDialog
+        open={dialogEliminarAbierto}
+        title="Dar de baja insumo"
+        description={`¿Estás seguro de que deseas dar de baja el ingrediente "${nombreAEliminar}"? Los lotes de producción mantendrán su trazabilidad histórica.`}
+        confirmText="Dar de baja"
+        cancelText="Cancelar"
+        isDestructive={true}
+        onConfirm={ejecutarEliminar}
+        onCancel={() => setDialogEliminarAbierto(false)}
+      />
+
+      <ConfirmAlertDialog
+        open={dialogDesecharAbierto}
+        title="Confirmar Descarte de Lote Vencido"
+        description={`El lote "${loteADesechar?.lote}" de "${loteADesechar?.nombre}" está vencido y cuenta con un stock remanente de ${loteADesechar?.stock} ${loteADesechar?.medida}. ¿Deseas desechar este stock remanente llevando su cantidad a 0?`}
+        confirmText="Confirmar"
+        cancelText="Cancelar"
+        isDestructive={true}
+        onConfirm={ejecutarDesechar}
+        onCancel={() => setDialogDesecharAbierto(false)}
+      />
+
+      <ErrorAlertDialog
+        open={errorDialogMsg !== null}
+        title="Error"
+        description={errorDialogMsg ?? ''}
+        onClose={() => setErrorDialogMsg(null)}
       />
 
       <ConfirmExportDialog
         open={dialogExportarAbierto}
-        totalRegistros={insumosFiltrados.length}
-        filtrosAplicados={obtenerResumenFiltros()}
+        totalRegistros={grupos.length}
+        filtrosAplicados={busqueda.trim() ? `Búsqueda: "${busqueda}"` : undefined}
         loading={exportando}
         onConfirm={ejecutarExportacion}
         onCancel={() => setDialogExportarAbierto(false)}
-      />
-
-      <ConfirmAlertDialog
-        open={dialogAbierto}
-        title="¿Eliminar ingrediente?"
-        description={`¿Seguro que desea eliminar "${nombreAEliminar}"? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        isDestructive={true}
-        onConfirm={ejecutarEliminar}
-        onCancel={() => {
-          setDialogAbierto(false);
-          setIdAEliminar(null);
-        }}
-      />
-
-      <ErrorAlertDialog
-        open={Boolean(errorDialogMsg)}
-        title="No se pudo completar la acción"
-        description={errorDialogMsg || ''}
-        onClose={() => setErrorDialogMsg(null)}
       />
     </div>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { apiFetch } from './api/client';
 import NuevoInsumo from './views/insumos/nuevoInsumo';
 import { ListadoInsumos } from './views/insumos/listado';
 import VerInsumo from './views/insumos/verInsumo';
@@ -94,6 +95,18 @@ import NuevoControlAmbiental from './views/controlesAmbientales/nuevoControl';
 import { DetalleControlAmbiental } from './views/controlesAmbientales/verDetalle';
 import { EditarControlAmbiental } from './views/controlesAmbientales/editarDetalle';
 
+import { ListadoTiposInsumos } from './views/tipoInsumo/listado';
+import { NuevoTipoInsumo } from './views/tipoInsumo/nuevoTipoInsumo';
+import { EditarTipoInsumo } from './views/tipoInsumo/editarTipoInsumo';
+import { VerDetalleTipoInsumo } from './views/tipoInsumo/verDetalle';
+
+import { ListadoProveedores } from './views/proveedores/listado';
+import { NuevoProveedor } from './views/proveedores/nuevoProveedor';
+import { EditarProveedor } from './views/proveedores/editarProveedor';
+import { ListadoUnidadesMedida } from './views/unidadesMedida/listado';
+import { NuevoUnidadMedida } from './views/unidadesMedida/nuevoUnidadMedida';
+import { EditarUnidadMedida } from './views/unidadesMedida/editarUnidadMedida';
+
 import NuevaReceta from './views/receta/crearNuevaReceta';
 import { ListadoRecetas } from './views/receta/listadoDeRecetas';
 import EditarReceta from './views/receta/editarReceta';
@@ -101,10 +114,14 @@ import { VerReceta } from './views/receta/VerReceta';
 import { ListadoChecklistsReceta } from './views/receta/listadoDeEtapasChecklist';
 import { DetalleChecklistReceta } from './views/receta/VerEtapaChecklist';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales'| 'receta'|'checklistRecetas';
+type Modulo = 'dashboard' | 'insumos' | 'tipoInsumo' | 'unidadesMedida' | 'proveedores' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales'| 'receta'|'checklistRecetas';
+type VistaTipoInsumo = 'listado' | 'alta' | 'editar' | 'detalle';
+type VistaUnidadesMedida = 'listado' | 'alta' | 'editar';
+type VistaProveedores = 'listado' | 'alta' | 'editar';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
-type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
+type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar' | 'verTipo';
+type OrigenDetalleInsumo = 'listado' | 'tipoInsumo_detalle' | 'insumos_verTipo' | 'vencimientos';
 type VistaPersonas = 'listado' | 'alta' | 'detalle' | 'editar' | 'certificados' | 'nuevo_certificado' | 'editar_certificado' | 'detalle_certificado';
 type VistaInsumosQuimicos = 'listado' | 'alta' | 'detalle' | 'editar' | 'consumo_historico';
 type VistaElementos = 'listado' | 'alta' | 'detalle' | 'editar' | 'eliminar';
@@ -135,6 +152,16 @@ function Aplicacion() {
   
   const [vistaInsumos, setVistaInsumos] = useState<VistaInsumos>('listado');
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<InsumoConId | null>(null);
+  const [origenDetalleInsumo, setOrigenDetalleInsumo] = useState<OrigenDetalleInsumo>('listado');
+
+  const [vistaTipoInsumo, setVistaTipoInsumo] = useState<VistaTipoInsumo>('listado');
+  const [tipoInsumoSeleccionado, setTipoInsumoSeleccionado] = useState<number | null>(null);
+
+  const [vistaProveedores, setVistaProveedores] = useState<VistaProveedores>('listado');
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState<number | null>(null);
+
+  const [vistaUnidadesMedida, setVistaUnidadesMedida] = useState<VistaUnidadesMedida>('listado');
+  const [unidadMedidaSeleccionada, setUnidadMedidaSeleccionada] = useState<number | null>(null);
 
   
   const [vistaPersonas, setVistaPersonas] = useState<VistaPersonas>('listado');
@@ -180,7 +207,7 @@ function Aplicacion() {
   const [filtroCalibracionInicial, setFiltroCalibracionInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
   const [filtroElementosInicial, setFiltroElementosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
   const [filtroDocumentosVencInicial, setFiltroDocumentosVencInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
-  const [filtroConsolidadoOrigen, setFiltroConsolidadoOrigen] = useState<'' | 'personal' | 'equipo' | 'documento' | 'ambiental'>('');
+  const [filtroConsolidadoOrigen, setFiltroConsolidadoOrigen] = useState<'' | 'personal' | 'equipo' | 'documento' | 'ambiental' | 'insumo'>('');
   const [filtroConsolidadoEstado, setFiltroConsolidadoEstado] = useState<'' | 'vencido' | 'proximo' | 'vigente'>('');
   const [desdeDashboard, setDesdeDashboard] = useState(false);
 
@@ -223,6 +250,8 @@ function Aplicacion() {
     setVistaEquipos('listado');
     setVistaSectores('listado');
     setVistaInsumos('listado');
+    setInsumoSeleccionado(null);
+    setOrigenDetalleInsumo('listado');
     setVistaPersonas('listado');
     setVistaInsumosQuimicos('listado');
     setVistaElementos('listado');
@@ -240,6 +269,12 @@ function Aplicacion() {
     setVistaTipoCertificado('listado');
     setVistaTipoDocumento('listado');
     setTipoDocumentoSeleccionado(null);
+    setVistaTipoInsumo('listado');
+    setTipoInsumoSeleccionado(null);
+    setVistaProveedores('listado');
+    setProveedorSeleccionado(null);
+    setVistaUnidadesMedida('listado');
+    setUnidadMedidaSeleccionada(null);
     setVistaProductos('listado');
     setRecetaDesdeProducto(null);
     setVistaControlesAmbientales('listado');
@@ -259,6 +294,24 @@ function Aplicacion() {
     cambiarModulo('dashboard', true, false);
   };
 
+  const fetchInsumoPorId = async (insumoId: number): Promise<InsumoConId | null> => {
+    const res = await apiFetch(`/insumos/${insumoId}`);
+    if (res.ok) {
+      return await res.json();
+    }
+    const resOperador = await apiFetch(`/insumos-operador/${insumoId}/trazabilidad`);
+    if (resOperador.ok) {
+      const dataOperador = await resOperador.json();
+      return dataOperador.insumo ?? null;
+    }
+    const resTraz = await apiFetch(`/insumos/${insumoId}/trazabilidad`);
+    if (resTraz.ok) {
+      const dataTraz = await resTraz.json();
+      return dataTraz.insumo ?? null;
+    }
+    return null;
+  };
+
   const volverAVencimientos = () => {
     const tabDestino = origenVencimientos || 'consolidado';
     setOrigenVencimientos(null);
@@ -266,6 +319,9 @@ function Aplicacion() {
     setVistaPlanCalibracion('listado');
     setVistaDocumentos('listado');
     setVistaControlesAmbientales('listado');
+    setVistaInsumos('listado');
+    setInsumoSeleccionado(null);
+    setOrigenDetalleInsumo('listado');
     setVistaVencimientos(tabDestino);
     setModulo('vencimientos');
   };
@@ -278,7 +334,7 @@ interface RegistroVencimientoRef {
   responsable?: string;
 }
 
-  const irAlRegistroDeVencimiento = (v: RegistroVencimientoRef) => {
+  const irAlRegistroDeVencimiento = async (v: RegistroVencimientoRef) => {
     const origen = v.origen || v.tipo;
     const refId = v.referenciaId ?? v.referencia_id ?? null;
     setOrigenVencimientos('consolidado');
@@ -300,6 +356,20 @@ interface RegistroVencimientoRef {
       setModulo('controlesAmbientales');
       setControlAmbientalSeleccionado(refId);
       setVistaControlesAmbientales('detalle');
+    } else if (origen === 'insumo') {
+      if (refId) {
+        try {
+          const insumoData = await fetchInsumoPorId(refId);
+          if (insumoData) {
+            setOrigenDetalleInsumo('vencimientos');
+            irAVerInsumo(insumoData);
+            setModulo('insumos');
+            return;
+          }
+        } catch {}
+      }
+      volverAListadoInsumos();
+      setModulo('insumos');
     }
   };
 
@@ -315,7 +385,53 @@ interface RegistroVencimientoRef {
 
   const volverAListadoInsumos = () => {
     setInsumoSeleccionado(null);
+    setOrigenDetalleInsumo('listado');
     setVistaInsumos('listado');
+  };
+
+  const volverDesdeInsumo = () => {
+    const origen = origenDetalleInsumo;
+    setInsumoSeleccionado(null);
+    setOrigenDetalleInsumo('listado');
+    if (origen === 'vencimientos') {
+      volverAVencimientos();
+    } else if (origen === 'tipoInsumo_detalle') {
+      setVistaInsumos('listado');
+      setVistaTipoInsumo('detalle');
+      setModulo('tipoInsumo');
+    } else if (origen === 'insumos_verTipo') {
+      setVistaInsumos('verTipo');
+    } else {
+      setVistaInsumos('listado');
+    }
+  };
+
+  const abrirLoteDesdeTipo = async (
+    loteId: number,
+    accion: 'ver' | 'editar',
+    origen: OrigenDetalleInsumo
+  ) => {
+    try {
+      let insumoData: InsumoConId | null = null;
+      if (accion === 'ver') {
+        insumoData = await fetchInsumoPorId(loteId);
+      } else {
+        const res = await apiFetch(`/insumos/${loteId}`);
+        if (res.ok) {
+          insumoData = await res.json();
+        }
+      }
+      if (!insumoData) return;
+      setOrigenDetalleInsumo(origen);
+      if (accion === 'ver') {
+        irAVerInsumo(insumoData);
+      } else {
+        irAEditarInsumo(insumoData);
+      }
+      if (origen === 'tipoInsumo_detalle') {
+        setModulo('insumos');
+      }
+    } catch {}
   };
 
   const volverAListadoQuimicos = () => {
@@ -406,6 +522,8 @@ interface RegistroVencimientoRef {
                 <span className="dashboard-breadcrumb-actual">Detalle de Documento</span>
               ) : modulo === 'planDeCalibracion' ? (
                 <span className="dashboard-breadcrumb-actual">Detalle de Calibración</span>
+              ) : modulo === 'insumos' ? (
+                <span className="dashboard-breadcrumb-actual">Detalle de Insumo</span>
               ) : (
                 <span className="dashboard-breadcrumb-actual">Detalle</span>
               )}
@@ -566,7 +684,7 @@ interface RegistroVencimientoRef {
     );
   };
 
-const irANotificacion = (notif: NotificacionItem) => {
+const irANotificacion = async (notif: NotificacionItem) => {
     const { entidad_tipo, entidad_id, tipo } = notif;
 
     if (entidad_tipo === 'personal' && entidad_id && esAdministrador) {
@@ -604,6 +722,22 @@ const irANotificacion = (notif: NotificacionItem) => {
     if (entidad_tipo === 'insumo_quimico' && esAdministrador) {
       setModulo('insumos_quimicos');
       setVistaInsumosQuimicos('listado');
+      return;
+    }
+
+    if (entidad_tipo === 'insumo') {
+      if (entidad_id) {
+        try {
+          const insumoData = await fetchInsumoPorId(entidad_id);
+          if (insumoData) {
+            setOrigenDetalleInsumo('listado');
+            irAVerInsumo(insumoData);
+            setModulo('insumos');
+            return;
+          }
+        } catch {}
+      }
+      cambiarModulo('insumos');
       return;
     }
 
@@ -653,7 +787,16 @@ const irANotificacion = (notif: NotificacionItem) => {
           onIrAVencimientos={() => cambiarModulo('vencimientos')}
         />
 
-        <div style={{ padding: modulo === 'dashboard' ? '14px 24px' : '32px 36px' }}>
+        <div
+          style={{
+            padding:
+              modulo === 'dashboard'
+                ? '14px 24px'
+                : modulo === 'insumos'
+                ? '1rem 1.25rem'
+                : '32px 36px',
+          }}
+        >
         {renderBreadcrumb()}
         {modulo === 'dashboard' ? (
           <PanelDashboard
@@ -683,7 +826,7 @@ const irANotificacion = (notif: NotificacionItem) => {
                   );
                 } else {
                   setVistaVencimientos('consolidado');
-                  setFiltroConsolidadoOrigen(subvista === 'equipo' || subvista === 'personal' || subvista === 'documento' || subvista === 'ambiental' ? subvista : '');
+                  setFiltroConsolidadoOrigen(subvista === 'equipo' || subvista === 'personal' || subvista === 'documento' || subvista === 'ambiental' || subvista === 'insumo' ? subvista : '');
                   setFiltroConsolidadoEstado(filtroEstado === 'vencido' || filtroEstado === 'proximo' || filtroEstado === 'vigente' ? filtroEstado : '');
                 }
               } else if (mod === 'planDeCalibracion') {
@@ -767,26 +910,124 @@ const irANotificacion = (notif: NotificacionItem) => {
         ) : modulo === 'insumos' ? (
           vistaInsumos === 'listado' ? (
             <ListadoInsumos
-              onNuevoClick={() => setVistaInsumos('alta')}
-              onVerClick={irAVerInsumo}
-              onEditarClick={irAEditarInsumo}
+              onNuevoClick={() => {
+                setOrigenDetalleInsumo('listado');
+                setVistaInsumos('alta');
+              }}
+              onVerClick={(insumo) => {
+                setOrigenDetalleInsumo('listado');
+                irAVerInsumo(insumo);
+              }}
+              onEditarClick={(insumo) => {
+                setOrigenDetalleInsumo('listado');
+                irAEditarInsumo(insumo);
+              }}
+              onVerTipoClick={(tipoId) => {
+                setTipoInsumoSeleccionado(tipoId);
+                setVistaInsumos('verTipo');
+              }}
             />
           ) : vistaInsumos === 'alta' ? (
             <NuevoInsumo
               onSuccess={volverAListadoInsumos}
               onCancel={volverAListadoInsumos}
             />
+          ) : vistaInsumos === 'verTipo' && tipoInsumoSeleccionado !== null ? (
+            <VerDetalleTipoInsumo
+              id={tipoInsumoSeleccionado}
+              onVolver={() => {
+                setTipoInsumoSeleccionado(null);
+                setVistaInsumos('listado');
+              }}
+              onVerLote={(loteId) => abrirLoteDesdeTipo(loteId, 'ver', 'insumos_verTipo')}
+              onEditarLote={(loteId) => abrirLoteDesdeTipo(loteId, 'editar', 'insumos_verTipo')}
+            />
           ) : vistaInsumos === 'ver' && insumoSeleccionado ? (
             <VerInsumo
               insumo={insumoSeleccionado}
               onEditarClick={irAEditarInsumo}
-              onVolver={volverAListadoInsumos}
+              onVolver={volverDesdeInsumo}
+              textoVolver={origenDetalleInsumo === 'vencimientos' || origenVencimientos ? '← Volver a Vencimientos' : 'Volver'}
             />
           ) : insumoSeleccionado ? (
             <EditarInsumo
               insumo={insumoSeleccionado}
-              onSuccess={volverAListadoInsumos}
-              onCancel={volverAListadoInsumos}
+              onSuccess={volverDesdeInsumo}
+              onCancel={volverDesdeInsumo}
+            />
+          ) : null
+        ) : modulo === 'tipoInsumo' ? (
+          vistaTipoInsumo === 'listado' ? (
+            <ListadoTiposInsumos
+              onNuevoClick={() => setVistaTipoInsumo('alta')}
+              onEditarClick={(id) => {
+                setTipoInsumoSeleccionado(id);
+                setVistaTipoInsumo('editar');
+              }}
+              onVerDetalleClick={(id) => {
+                setTipoInsumoSeleccionado(id);
+                setVistaTipoInsumo('detalle');
+              }}
+            />
+          ) : vistaTipoInsumo === 'alta' ? (
+            <NuevoTipoInsumo
+              onSuccess={() => setVistaTipoInsumo('listado')}
+              onCancel={() => setVistaTipoInsumo('listado')}
+            />
+          ) : vistaTipoInsumo === 'editar' && tipoInsumoSeleccionado !== null ? (
+            <EditarTipoInsumo
+              id={tipoInsumoSeleccionado}
+              onSuccess={() => setVistaTipoInsumo('listado')}
+              onCancel={() => setVistaTipoInsumo('listado')}
+            />
+          ) : vistaTipoInsumo === 'detalle' && tipoInsumoSeleccionado !== null ? (
+            <VerDetalleTipoInsumo
+              id={tipoInsumoSeleccionado}
+              onVolver={() => setVistaTipoInsumo('listado')}
+              onVerLote={(loteId) => abrirLoteDesdeTipo(loteId, 'ver', 'tipoInsumo_detalle')}
+              onEditarLote={(loteId) => abrirLoteDesdeTipo(loteId, 'editar', 'tipoInsumo_detalle')}
+            />
+          ) : null
+        ) : modulo === 'proveedores' ? (
+          vistaProveedores === 'listado' ? (
+            <ListadoProveedores
+              onNuevoClick={() => setVistaProveedores('alta')}
+              onEditarClick={(id) => {
+                setProveedorSeleccionado(id);
+                setVistaProveedores('editar');
+              }}
+            />
+          ) : vistaProveedores === 'alta' ? (
+            <NuevoProveedor
+              onSuccess={() => setVistaProveedores('listado')}
+              onCancel={() => setVistaProveedores('listado')}
+            />
+          ) : vistaProveedores === 'editar' && proveedorSeleccionado !== null ? (
+            <EditarProveedor
+              id={proveedorSeleccionado}
+              onSuccess={() => setVistaProveedores('listado')}
+              onCancel={() => setVistaProveedores('listado')}
+            />
+          ) : null
+        ) : modulo === 'unidadesMedida' ? (
+          vistaUnidadesMedida === 'listado' ? (
+            <ListadoUnidadesMedida
+              onNuevoClick={() => setVistaUnidadesMedida('alta')}
+              onEditarClick={(id) => {
+                setUnidadMedidaSeleccionada(id);
+                setVistaUnidadesMedida('editar');
+              }}
+            />
+          ) : vistaUnidadesMedida === 'alta' ? (
+            <NuevoUnidadMedida
+              onSuccess={() => setVistaUnidadesMedida('listado')}
+              onCancel={() => setVistaUnidadesMedida('listado')}
+            />
+          ) : vistaUnidadesMedida === 'editar' && unidadMedidaSeleccionada !== null ? (
+            <EditarUnidadMedida
+              id={unidadMedidaSeleccionada}
+              onSuccess={() => setVistaUnidadesMedida('listado')}
+              onCancel={() => setVistaUnidadesMedida('listado')}
             />
           ) : null
         ) : modulo === 'equipos' ? (

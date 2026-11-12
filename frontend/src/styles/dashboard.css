@@ -775,6 +775,11 @@
   color: #f59e0b;
 }
 
+.badge-icono-origen.insumo {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
 .dashboard-item-urgente-info {
   flex: 1;
   min-width: 0;
