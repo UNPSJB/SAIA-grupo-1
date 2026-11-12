@@ -15,18 +15,12 @@ import "./documentos.css";
 
 const formatearFecha = (dateStr?: string | null) => {
   if (!dateStr) return "-";
-  try {
-    const d = new Date(dateStr);
-    return isNaN(d.getTime())
-      ? dateStr
-      : d.toLocaleDateString("es-AR", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        });
-  } catch {
-    return dateStr;
+  const limpia = dateStr.trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(limpia)) {
+    const [anio, mes, dia] = limpia.split("-");
+    return `${dia}/${mes}/${anio}`;
   }
+  return dateStr;
 };
 
 const getTipoLabel = (tipo?: TipoDocumento | null) => tipo || "-";

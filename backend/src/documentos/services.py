@@ -28,11 +28,9 @@ def obtener_vencimientos_documentos_para_exportar(
     resultado = []
 
     for doc in documentos:
-        # 1. Obtener versión vigente o actual
-        ver_vigente = doc.version_actual
+        v = doc.version_vigente or (doc.versiones[0] if doc.versiones else None)
 
-        # 2. Extraer fecha de vencimiento desde la versión vigente
-        fecha_venc_raw = getattr(ver_vigente, "fecha_vencimiento", None) if ver_vigente else None
+        fecha_venc_raw = getattr(v, "fecha_vencimiento", None) if v else None
         
         fecha_venc_date = None
         if isinstance(fecha_venc_raw, datetime):
@@ -40,35 +38,32 @@ def obtener_vencimientos_documentos_para_exportar(
         elif isinstance(fecha_venc_raw, date):
             fecha_venc_date = fecha_venc_raw
 
-        # 3. Calcular urgencia/estado de vencimiento
         if not fecha_venc_date:
             estado_clave = "AL_DIA"
             urgencia_texto = "Al día"
             fecha_venc_str = "Sin vencimiento"
         else:
-            fecha_venc_str = fecha_venc_date.strftime("%Y-%m-%d")
+            fecha_venc_str = fecha_venc_date.strftime("%d/%m/%Y")
             diff_dias = (fecha_venc_date - hoy).days
             if diff_dias < 0:
                 estado_clave = "VENCIDOS"
                 urgencia_texto = f"Vencido ({abs(diff_dias)} d)"
             elif diff_dias < 15:
                 estado_clave = "PROXIMOS"
-                urgencia_texto = f"Vence en {diff_dias} días"
+                urgencia_texto = f"Vence en {diff_dias} {'día' if diff_dias == 1 else 'días'}"
             else:
                 estado_clave = "AL_DIA"
                 urgencia_texto = "Al día"
 
-        # 4. Filtro por estado
         if filtro_estado and filtro_estado != "TODOS" and estado_clave != filtro_estado:
             continue
 
-        # 5. Obtener datos de la versión y el archivo adjunto
-        if ver_vigente:
-            num_version = f"v{ver_vigente.version} Vigente" if doc.version_vigente else f"v{ver_vigente.version}"
-            nombre_archivo = getattr(ver_vigente, "archivo_nombre_original", "—")
+        if doc.version_vigente:
+            num_version = f"v{doc.version_vigente.version} Vigente"
+            nombre_archivo = getattr(doc.version_vigente, "archivo_nombre_original", "—")
         else:
             num_version = "Sin versión vigente"
-            nombre_archivo = "—"
+            nombre_archivo = getattr(v, "archivo_nombre_original", "—") if v else "—"
 
         resultado.append({
             "urgencia": urgencia_texto,
@@ -81,6 +76,7 @@ def obtener_vencimientos_documentos_para_exportar(
 
     return resultado
 
+
 def obtener_documentos_para_exportar(
     db: Session,
     tipo: Optional[str] = None,
@@ -90,20 +86,24 @@ def obtener_documentos_para_exportar(
     filas = []
 
     for d in docs:
-        v = d.version_actual  # Obtenemos la versión activa/vigente
+        v = d.version_vigente or (d.versiones[0] if d.versiones else None)
 
         # 1. Tipo de documento
         tipo_str = str(getattr(d, "tipo", "") or "")
 
-        # 2. Formateo seguro de fechas
+        # 2. Formateo en DD/MM/YYYY
         f_vigencia = getattr(v, "fecha_vigencia", None) if v else None
-        str_vigencia = f_vigencia.strftime("%Y-%m-%d") if hasattr(f_vigencia, "strftime") and f_vigencia else "Sin fecha"
+        str_vigencia = f_vigencia.strftime("%d/%m/%Y") if hasattr(f_vigencia, "strftime") and f_vigencia else "Sin fecha"
 
         f_creacion = getattr(d, "creado_el", None)
-        str_creacion = f_creacion.strftime("%Y-%m-%d %H:%M") if hasattr(f_creacion, "strftime") and f_creacion else "—"
+        str_creacion = f_creacion.strftime("%d/%m/%Y %H:%M") if hasattr(f_creacion, "strftime") and f_creacion else "—"
 
-        # 3. Datos de la versión y usuario
-        num_version = f"v{v.version}" if v else "Sin versión"
+        # 3. Versión vigente real
+        if d.version_vigente:
+            num_version = f"v{d.version_vigente.version}"
+        else:
+            num_version = "Sin versión vigente"
+
         str_tamanio = v.tamanio_formateado if v else "—"
         str_usuario = v.usuario if v else "—"
         total_vers = len(set(ver.version for ver in d.versiones)) if hasattr(d, "versiones") and d.versiones else 1

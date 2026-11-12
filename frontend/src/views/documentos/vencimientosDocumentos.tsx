@@ -23,19 +23,13 @@ interface VencimientosDocumentosProps {
 const getTipoLabel = (tipo?: TipoDocumento | null): string => tipo || "";
 
 const formatearFecha = (dateStr?: string | null) => {
-  if (!dateStr) return '—';
-  try {
-    const d = new Date(dateStr);
-    return isNaN(d.getTime())
-      ? dateStr
-      : d.toLocaleDateString('es-AR', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        });
-  } catch {
-    return dateStr;
+  if (!dateStr) return "-";
+  const limpia = dateStr.trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(limpia)) {
+    const [anio, mes, dia] = limpia.split("-");
+    return `${dia}/${mes}/${anio}`;
   }
+  return dateStr;
 };
 
 export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
@@ -104,18 +98,24 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
-    const fechaV = new Date(fechaStr);
-    if (isNaN(fechaV.getTime())) {
-      // Fallback si la cadena tiene formato YYYY-MM-DD
-      const partes = fechaStr.slice(0, 10).split('-').map(Number);
-      if (partes.length === 3) {
-        fechaV.setFullYear(partes[0], partes[1] - 1, partes[2]);
-      }
+    let fechaV: Date;
+    const limpia = fechaStr.trim().slice(0, 10);
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(limpia)) {
+      const [anio, mes, dia] = limpia.split('-').map(Number);
+      fechaV = new Date(anio, mes - 1, dia);
+    } else {
+      fechaV = new Date(fechaStr);
     }
+
+    if (isNaN(fechaV.getTime())) {
+      return { estado: 'al_dia', diffDias: 999999 };
+    }
+
     fechaV.setHours(0, 0, 0, 0);
 
     const diffMs = fechaV.getTime() - hoy.getTime();
-    const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDias < 0) {
       return { estado: 'vencido', diffDias };
