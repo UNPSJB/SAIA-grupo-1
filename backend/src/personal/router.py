@@ -4,9 +4,38 @@ from typing import List, Optional
 from src.database import get_db
 from . import schemas, services
 from src.autenticacion.dependencies import get_usuario_actual
-from src.utils.csv import generar_respuesta_csv 
+from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter()
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_personal_pdf(
+    busqueda: Optional[str] = None,
+    capacidad: Optional[str] = None,
+    estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_personal_para_csv(
+        db, busqueda=busqueda, capacidad=capacidad, estado=estado
+    )
+
+    columnas = {
+        "legajo": "Legajo",
+        "documento": "DNI / Documento",
+        "nombre_completo": "Nombre Completo",
+        "usuario": "Usuario",
+        "email": "Correo Electrónico",
+        "capacidad": "Capacidad",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Personal",
+        nombre_archivo="personal.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_personal_csv(

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import type { Persona } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
-import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
-import { CsvIcon } from "../../components/icons/CsvIcon";
+import { ConfirmExportDialog, type FormatoExportacion } from "../../components/ui/confirmExportDialog";
+import { ExportIcon } from "../../components/icons/ExportIcon";
 import { Paginacion } from "../../components/ui/paginacion";
 import { usePaginacion } from "../../components/ui/usePaginacion";
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 
 export interface ListadoPersonasProps {
   onNuevoClick: () => void;
@@ -118,7 +119,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
     return matchBusqueda && matchCapacidad && matchEstado;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -128,12 +129,21 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
       if (filtroEstado !== "TODOS") params.append("estado", filtroEstado);
 
       const queryString = params.toString();
-      const url = `/personal/exportar-csv${queryString ? `?${queryString}` : ""}`;
+      const query = queryString ? `?${queryString}` : "";
 
-      await descargarCSV(url, "personal.csv");
+      if (formato === "pdf") {
+        await descargarPDF(`/personal/exportar-pdf${query}`, "personal.pdf");
+      } else {
+        await descargarCSV(`/personal/exportar-csv${query}`, "personal.csv");
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorDialogMsg(err instanceof Error ? err.message : "Error al exportar la lista de personal a CSV.");
+      setErrorDialogMsg(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar la lista de personal a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -174,7 +184,7 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
             className="btn-cancelar"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           <button onClick={onNuevoClick} className="btn-guardar">
