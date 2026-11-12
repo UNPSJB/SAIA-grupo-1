@@ -11,7 +11,7 @@ from .exceptions import (
     InsumoQuimicoDuplicateNameException,
 )
 
-def obtener_para_csv(
+def obtener_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     tipo: Optional[str] = None,

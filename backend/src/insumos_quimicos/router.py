@@ -11,11 +11,40 @@ from .schemas import (
     ConsumoHistoricoResponse,
     AgrupacionTiempo,
 )
-from .services import InsumoQuimicoService, obtener_historico_consumo, obtener_para_csv
+from .services import InsumoQuimicoService, obtener_historico_consumo, obtener_para_exportar
 from .exceptions import InsumoQuimicoException, RangoFechasInvalidoException
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/api/insumos-quimicos", tags=["Insumos Químicos"])
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_pdf(
+    busqueda: Optional[str] = None,
+    tipo: Optional[str] = None,
+    estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    
+    datos = obtener_para_exportar(
+        db, busqueda=busqueda, tipo=tipo, estado=estado
+    )
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Insumo",
+        "tipo": "Tipo de Insumo",
+        "stock_actual": "Stock Actual",
+        "unidad_medida": "Unidad de Medida",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Insumos Químicos",
+        nombre_archivo="insumos_quimicos.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_csv(
@@ -27,7 +56,7 @@ def exportar_csv(
     """
     Exporta la lista de insumos químicos a formato CSV respetando los filtros activos.
     """
-    datos = obtener_para_csv(
+    datos = obtener_para_exportar(
         db, busqueda=busqueda, tipo=tipo, estado=estado
     )
 
