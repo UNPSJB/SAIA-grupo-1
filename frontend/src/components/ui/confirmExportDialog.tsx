@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CsvIcon } from '../icons/CsvIcon';
 import { PdfIcon } from '../icons/PdfIcon';
+import { ExportIcon } from '../icons/ExportIcon';
 
 export type FormatoExportacion = 'csv' | 'pdf';
 
@@ -36,7 +37,7 @@ export const ConfirmExportDialog: React.FC<ConfirmExportDialogProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -46,27 +47,29 @@ export const ConfirmExportDialog: React.FC<ConfirmExportDialogProps> = ({
       <div
         className="modal-content"
         style={{
-          backgroundColor: '#fff',
+          backgroundColor: 'var(--color-superficie, #ffffff)',
+          color: 'var(--color-texto, #1a202c)',
+          border: '1px solid var(--color-borde, #e2e8f0)',
           borderRadius: '8px',
           padding: '1.25rem',
           maxWidth: '420px',
           width: '90%',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
-          <CsvIcon style={{ fontSize: '24px', color: 'var(--color-primario, #2b6cb0)' }} />
-          <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1a202c' }}>
+          <ExportIcon size={22} style={{ color: 'var(--color-primario-texto, #2b6cb0)' }} />
+          <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-texto, #1a202c)' }}>
             Confirmar Exportación de Datos
           </h3>
         </div>
 
-        <div style={{ fontSize: '0.9rem', color: '#4a5568', lineHeight: '1.4' }}>
+        <div style={{ fontSize: '0.9rem', color: 'var(--color-texto-sec, #4a5568)', lineHeight: '1.4' }}>
           <p style={{ margin: '0 0 0.6rem 0' }}>
             Seleccioná el formato de descarga:
           </p>
 
-          {/* Opciones con color azul unificado */}
+          {/* Opciones adaptables a tema claro / oscuro */}
           <div
             style={{
               display: 'flex',
@@ -82,9 +85,13 @@ export const ConfirmExportDialog: React.FC<ConfirmExportDialogProps> = ({
                 flex: 1,
                 padding: '6px 10px',
                 borderRadius: '6px',
-                border: `1px solid ${!esPdf ? '#3182ce' : '#cbd5e1'}`,
-                backgroundColor: !esPdf ? '#ebf8ff' : '#ffffff',
-                color: !esPdf ? '#2b6cb0' : '#64748b',
+                border: `1px solid ${!esPdf ? 'var(--color-primario, #3182ce)' : 'var(--color-borde, #cbd5e1)'}`,
+                backgroundColor: !esPdf
+                  ? 'var(--color-suave, rgba(49, 130, 206, 0.14))'
+                  : 'var(--color-fondo, transparent)',
+                color: !esPdf
+                  ? 'var(--color-primario-texto, #2b6cb0)'
+                  : 'var(--color-texto-sec, #64748b)',
                 cursor: 'pointer',
                 fontWeight: !esPdf ? 600 : 400,
                 fontSize: '0.85rem',
@@ -106,9 +113,13 @@ export const ConfirmExportDialog: React.FC<ConfirmExportDialogProps> = ({
                 flex: 1,
                 padding: '6px 10px',
                 borderRadius: '6px',
-                border: `1px solid ${esPdf ? '#3182ce' : '#cbd5e1'}`,
-                backgroundColor: esPdf ? '#ebf8ff' : '#ffffff',
-                color: esPdf ? '#2b6cb0' : '#64748b',
+                border: `1px solid ${esPdf ? 'var(--color-primario, #3182ce)' : 'var(--color-borde, #cbd5e1)'}`,
+                backgroundColor: esPdf
+                  ? 'var(--color-suave, rgba(49, 130, 206, 0.14))'
+                  : 'var(--color-fondo, transparent)',
+                color: esPdf
+                  ? 'var(--color-primario-texto, #2b6cb0)'
+                  : 'var(--color-texto-sec, #64748b)',
                 cursor: 'pointer',
                 fontWeight: esPdf ? 600 : 400,
                 fontSize: '0.85rem',
@@ -123,19 +134,24 @@ export const ConfirmExportDialog: React.FC<ConfirmExportDialogProps> = ({
             </button>
           </div>
 
+          {/* Caja de resumen */}
           <div
             style={{
-              backgroundColor: '#f7fafc',
-              borderLeft: '4px solid #3182ce',
+              backgroundColor: 'var(--color-fondo, #f7fafc)',
+              border: '1px solid var(--color-borde, #e2e8f0)',
+              borderLeft: '4px solid var(--color-primario, #3182ce)',
               padding: '0.6rem 0.75rem',
               borderRadius: '4px',
               marginBottom: '0.85rem',
             }}
           >
-            <div style={{ fontWeight: 600, color: '#2d3748', fontSize: '0.85rem' }}>
-              📊 Total a exportar: <span style={{ color: '#2b6cb0' }}>{totalRegistros} registro(s)</span>
+            <div style={{ fontWeight: 600, color: 'var(--color-texto, #2d3748)', fontSize: '0.85rem' }}>
+              📊 Total a exportar:{' '}
+              <span style={{ color: 'var(--color-primario-texto, #2b6cb0)' }}>
+                {totalRegistros} registro(s)
+              </span>
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#718096', marginTop: '2px' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-texto-sec, #718096)', marginTop: '2px' }}>
               ℹ️ Se incluirán <strong>todas las páginas</strong> resultantes (<em>{filtrosAplicados}</em>).
             </div>
           </div>
@@ -156,7 +172,7 @@ export const ConfirmExportDialog: React.FC<ConfirmExportDialogProps> = ({
               gap: '6px',
             }}
           >
-            {esPdf? <PdfIcon/> : <CsvIcon/>}
+            {esPdf ? <PdfIcon/> : <CsvIcon/>}
             {loading ? 'Exportando...' : `Descargar ${esPdf ? 'PDF' : 'CSV'}`}
           </button>
         </div>
