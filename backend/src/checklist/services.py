@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 TABLA_CHECKLIST = "checklists"
 TABLA_CHECKLIST_ITEM = "checklist_items"
 
-def obtener_checklists_para_csv(
+def obtener_checklists_para_exportar(
     db: Session,
     fecha: Optional[date] = None,
     fecha_desde: Optional[date] = None,

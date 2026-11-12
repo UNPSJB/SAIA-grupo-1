@@ -14,9 +14,44 @@ from src.database import get_db
 from src.exceptions import PermissionDenied
 from src.personal.models import Personal
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/checklist", tags=["Checklist"])
 
+@router.get("/exportar-pdf", dependencies=[Depends(requiere_admin)])
+async def exportar_checklists_pdf_endpoint(
+    fecha: Optional[date] = Query(None),
+    fecha_desde: Optional[date] = Query(None),
+    fecha_hasta: Optional[date] = Query(None),
+    estado: Optional[str] = Query(None),
+    responsable_legajo: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_checklists_para_exportar(
+        db,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        estado=estado,
+        responsable_legajo=responsable_legajo,
+    )
+
+    columnas = {
+        "id": "ID Checklist",
+        "fecha": "Fecha",
+        "estado": "Estado",
+        "cumplimiento": "Cumplimiento (%)",
+        "responsable_legajo": "Legajo Responsable",
+        "responsable": "Nombre Responsable",
+        "cantidad_tareas": "Cantidad Tareas",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Historial de Checklists",
+        nombre_archivo="historial_checklists.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(requiere_admin)])
 async def exportar_checklists_csv_endpoint(
@@ -27,7 +62,7 @@ async def exportar_checklists_csv_endpoint(
     responsable_legajo: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
-    datos = services.obtener_checklists_para_csv(
+    datos = services.obtener_checklists_para_exportar(
         db,
         fecha=fecha,
         fecha_desde=fecha_desde,
