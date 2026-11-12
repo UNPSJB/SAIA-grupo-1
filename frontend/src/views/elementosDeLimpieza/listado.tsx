@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import type { ElementoDeLimpieza } from './tipos';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { Badge } from '../../components/ui/badge';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
-import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoElementosLimpiezaProps {
   onNuevoClick: () => void;
@@ -192,7 +193,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
     return matchNombre && matchEstado && matchVencimiento;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -201,12 +202,21 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
       if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
 
       const queryString = params.toString();
-      const url = `/elementosDeLimpieza/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'elementos_de_limpieza.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/elementosDeLimpieza/exportar-pdf${query}`, 'elementos_de_limpieza.pdf');
+      } else {
+        await descargarCSV(`/elementosDeLimpieza/exportar-csv${query}`, 'elementos_de_limpieza.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar elementos de limpieza a CSV.');
+      setErrorDialogMsg(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar elementos de limpieza a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -246,7 +256,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (

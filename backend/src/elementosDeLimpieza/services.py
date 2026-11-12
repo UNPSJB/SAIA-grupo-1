@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
  
 #CRUD de Elementos de Limpieza
 
-def obtener_elementos_para_csv(
+def obtener_elementos_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     estado: Optional[str] = None
