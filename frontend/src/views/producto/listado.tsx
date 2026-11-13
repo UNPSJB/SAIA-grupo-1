@@ -258,13 +258,12 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                         ✎
                       </button>
                       <button
-                        className="btn-icon"
+                        className="btn-icon btn-nutricion"
                         title="Información nutricional"
                         onClick={() => setProductoNutricion(i)}
-                        style={{ color: "#38bdf8" }}
                       >
                         <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                          nutrition
+                          monitoring
                         </span>
                       </button>
                       <button

@@ -206,7 +206,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '28px', color: '#38bdf8' }}>
-              nutrition
+              monitoring
             </span>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>

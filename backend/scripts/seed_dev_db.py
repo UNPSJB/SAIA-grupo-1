@@ -241,6 +241,14 @@ def main() -> None:
         "Huevos": {"energia_kcal": 143.0, "energia_kj": 598.3, "carbohidratos": 0.8, "azucares_totales": 0.8, "azucares_anadidos": 0.0, "proteinas": 12.6, "grasas_totales": 9.5, "grasas_saturadas": 3.1, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 142.0},
         "Leche Entera": {"energia_kcal": 61.0, "energia_kj": 255.2, "carbohidratos": 4.7, "azucares_totales": 4.7, "azucares_anadidos": 0.0, "proteinas": 3.1, "grasas_totales": 3.2, "grasas_saturadas": 1.9, "grasas_trans": 0.1, "fibra_alimentaria": 0.0, "sodio_mg": 48.0},
         "Agua Potable": {"energia_kcal": 0.0, "energia_kj": 0.0, "carbohidratos": 0.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 0.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 2.0},
+        "Azucar Impalpable": {"energia_kcal": 398.0, "energia_kj": 1665.2, "carbohidratos": 99.5, "azucares_totales": 99.5, "azucares_anadidos": 99.5, "proteinas": 0.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 1.0},
+        "Chocolate Cobertura Semiamargo": {"energia_kcal": 530.0, "energia_kj": 2217.5, "carbohidratos": 54.0, "azucares_totales": 46.0, "azucares_anadidos": 45.0, "proteinas": 5.5, "grasas_totales": 32.0, "grasas_saturadas": 19.0, "grasas_trans": 0.0, "fibra_alimentaria": 7.0, "sodio_mg": 20.0},
+        "Dulce de Leche Repostero": {"energia_kcal": 315.0, "energia_kj": 1318.0, "carbohidratos": 56.0, "azucares_totales": 50.0, "azucares_anadidos": 45.0, "proteinas": 6.5, "grasas_totales": 7.0, "grasas_saturadas": 4.5, "grasas_trans": 0.2, "fibra_alimentaria": 0.0, "sodio_mg": 130.0},
+        "Cacao Amargo en Polvo": {"energia_kcal": 228.0, "energia_kj": 954.0, "carbohidratos": 14.0, "azucares_totales": 1.0, "azucares_anadidos": 0.0, "proteinas": 19.6, "grasas_totales": 13.7, "grasas_saturadas": 8.1, "grasas_trans": 0.0, "fibra_alimentaria": 33.2, "sodio_mg": 21.0},
+        "Semillas de Sesamo": {"energia_kcal": 573.0, "energia_kj": 2397.4, "carbohidratos": 12.0, "azucares_totales": 0.3, "azucares_anadidos": 0.0, "proteinas": 17.7, "grasas_totales": 49.7, "grasas_saturadas": 7.0, "grasas_trans": 0.0, "fibra_alimentaria": 11.8, "sodio_mg": 11.0},
+        "Semillas de Lino": {"energia_kcal": 534.0, "energia_kj": 2234.3, "carbohidratos": 1.6, "azucares_totales": 1.5, "azucares_anadidos": 0.0, "proteinas": 18.3, "grasas_totales": 42.2, "grasas_saturadas": 3.7, "grasas_trans": 0.0, "fibra_alimentaria": 27.3, "sodio_mg": 30.0},
+        "Polvo de Hornear": {"energia_kcal": 53.0, "energia_kj": 221.8, "carbohidratos": 27.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 0.1, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.2, "sodio_mg": 10600.0},
+        "Esencia de Vainilla": {"energia_kcal": 288.0, "energia_kj": 1205.0, "carbohidratos": 12.6, "azucares_totales": 12.6, "azucares_anadidos": 0.0, "proteinas": 0.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 9.0},
     }
     for insumo_obj in db.query(Insumo).all():
         if insumo_obj.nombre in datos_nutricionales:
@@ -1044,6 +1052,511 @@ def main() -> None:
     db.commit()
 
     calcular_informacion_nutricional(db, p_pan.id, usuario_actual="Juan Perez")
+
+    receta_medialunas = Receta(
+        nombre="Medialunas de Manteca",
+        rendimiento_final=1100.0,
+        activo=True,
+    )
+    db.add(receta_medialunas)
+    db.flush()
+
+    version_medialunas = VersionReceta(
+        receta_id=receta_medialunas.id,
+        version=1,
+        rendimiento_final=1100.0,
+        archivado=False,
+        es_vigente=True,
+        creado_por_legajo=marcos.legajo,
+        creado_por_usuario="Marcos Diaz",
+    )
+    db.add(version_medialunas)
+    db.flush()
+
+    detalles_medialunas = [
+        RecetaDetalle(
+            nombre="Tamizado de Harina 0000",
+            version_receta_id=version_medialunas.id,
+            ingrediente_id=insumos_map["Harina 0000"].id,
+            cantidad=500.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Tamizar harina 0000 para hojaldre liviano.",
+        ),
+        RecetaDetalle(
+            nombre="Empaste con Manteca de primera calidad",
+            version_receta_id=version_medialunas.id,
+            ingrediente_id=insumos_map["Manteca"].id,
+            cantidad=250.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Preparar el empaste de manteca para las vueltas de hojaldre.",
+        ),
+        RecetaDetalle(
+            nombre="Amasijo con Leche Entera",
+            version_receta_id=version_medialunas.id,
+            ingrediente_id=insumos_map["Leche Entera"].id,
+            cantidad=200.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Incorporar leche tibia al amasijo.",
+        ),
+        RecetaDetalle(
+            nombre="Endulzado con Azucar Comun",
+            version_receta_id=version_medialunas.id,
+            ingrediente_id=insumos_map["Azucar Comun"].id,
+            cantidad=100.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Disolver azucar con los liquidos.",
+        ),
+        RecetaDetalle(
+            nombre="Huevos frescos",
+            version_receta_id=version_medialunas.id,
+            ingrediente_id=insumos_map["Huevos"].id,
+            cantidad=60.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Agregar huevo entero pasteurizado.",
+        ),
+        RecetaDetalle(
+            nombre="Fermentacion con Levadura Fresca",
+            version_receta_id=version_medialunas.id,
+            ingrediente_id=insumos_map["Levadura Fresca"].id,
+            cantidad=25.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Disolver e incorporar levadura fresca.",
+        ),
+        RecetaDetalle(
+            nombre="Realce de sabor con Sal Fina",
+            version_receta_id=version_medialunas.id,
+            ingrediente_id=insumos_map["Sal Fina"].id,
+            cantidad=10.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Agregar sal para equilibrar dulzor.",
+        ),
+        RecetaDetalle(
+            nombre="Aromatizado con Esencia de Vainilla",
+            version_receta_id=version_medialunas.id,
+            ingrediente_id=insumos_map["Esencia de Vainilla"].id,
+            cantidad=10.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Perfumar la masa con esencia de vainilla natural.",
+        ),
+    ]
+    db.add_all(detalles_medialunas)
+    db.commit()
+
+    p_medialunas.receta_id = receta_medialunas.id
+    p_medialunas.tamano_porcion_g = 50.0
+    p_medialunas.porciones_por_envase = 22.0
+    p_medialunas.descripcion_porcion = "1 medialuna (50g)"
+    db.commit()
+
+    calcular_informacion_nutricional(db, p_medialunas.id, usuario_actual="Marcos Diaz")
+
+    receta_baguette = Receta(
+        nombre="Baguette Tradicional",
+        rendimiento_final=750.0,
+        activo=True,
+    )
+    db.add(receta_baguette)
+    db.flush()
+
+    version_baguette = VersionReceta(
+        receta_id=receta_baguette.id,
+        version=1,
+        rendimiento_final=750.0,
+        archivado=False,
+        es_vigente=True,
+        creado_por_legajo=carlos.legajo,
+        creado_por_usuario="Carlos Ruiz",
+    )
+    db.add(version_baguette)
+    db.flush()
+
+    detalles_baguette = [
+        RecetaDetalle(
+            nombre="Harina 000 de fuerza",
+            version_receta_id=version_baguette.id,
+            ingrediente_id=insumos_map["Harina 000"].id,
+            cantidad=500.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=carlos.legajo,
+            descripcion_pasos="Cargar harina 000 en la batea.",
+        ),
+        RecetaDetalle(
+            nombre="Agua potable fria",
+            version_receta_id=version_baguette.id,
+            ingrediente_id=insumos_map["Agua Potable"].id,
+            cantidad=330.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=carlos.legajo,
+            descripcion_pasos="Autolisis inicial con agua fria.",
+        ),
+        RecetaDetalle(
+            nombre="Levadura fresca",
+            version_receta_id=version_baguette.id,
+            ingrediente_id=insumos_map["Levadura Fresca"].id,
+            cantidad=15.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=carlos.legajo,
+            descripcion_pasos="Agregar levadura y amasar.",
+        ),
+        RecetaDetalle(
+            nombre="Sal fina",
+            version_receta_id=version_baguette.id,
+            ingrediente_id=insumos_map["Sal Fina"].id,
+            cantidad=10.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=carlos.legajo,
+            descripcion_pasos="Incorporar sal al finalizar el amasado.",
+        ),
+    ]
+    db.add_all(detalles_baguette)
+    db.commit()
+
+    p_baguette.receta_id = receta_baguette.id
+    p_baguette.tamano_porcion_g = 50.0
+    p_baguette.porciones_por_envase = 15.0
+    p_baguette.descripcion_porcion = "1 trozo (50g)"
+    db.commit()
+
+    calcular_informacion_nutricional(db, p_baguette.id, usuario_actual="Carlos Ruiz")
+
+    receta_lactal = Receta(
+        nombre="Pan Lactal Blanco",
+        rendimiento_final=900.0,
+        activo=True,
+    )
+    db.add(receta_lactal)
+    db.flush()
+
+    version_lactal = VersionReceta(
+        receta_id=receta_lactal.id,
+        version=1,
+        rendimiento_final=900.0,
+        archivado=False,
+        es_vigente=True,
+        creado_por_legajo=juan.legajo,
+        creado_por_usuario="Juan Perez",
+    )
+    db.add(version_lactal)
+    db.flush()
+
+    detalles_lactal = [
+        RecetaDetalle(
+            nombre="Harina de trigo 000",
+            version_receta_id=version_lactal.id,
+            ingrediente_id=insumos_map["Harina 000"].id,
+            cantidad=600.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Cargar harina en amasadora.",
+        ),
+        RecetaDetalle(
+            nombre="Leche entera fluida",
+            version_receta_id=version_lactal.id,
+            ingrediente_id=insumos_map["Leche Entera"].id,
+            cantidad=350.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Hidratar con leche entera para miga suave.",
+        ),
+        RecetaDetalle(
+            nombre="Manteca blanda",
+            version_receta_id=version_lactal.id,
+            ingrediente_id=insumos_map["Manteca"].id,
+            cantidad=40.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Incorporar manteca pomada al amasijo.",
+        ),
+        RecetaDetalle(
+            nombre="Azucar comun",
+            version_receta_id=version_lactal.id,
+            ingrediente_id=insumos_map["Azucar Comun"].id,
+            cantidad=25.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Agregar azucar para corteza dorada y fermentacion.",
+        ),
+        RecetaDetalle(
+            nombre="Levadura fresca",
+            version_receta_id=version_lactal.id,
+            ingrediente_id=insumos_map["Levadura Fresca"].id,
+            cantidad=25.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Incorporar levadura fresca prensada.",
+        ),
+        RecetaDetalle(
+            nombre="Sal fina",
+            version_receta_id=version_lactal.id,
+            ingrediente_id=insumos_map["Sal Fina"].id,
+            cantidad=12.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Agregar sal al final del amasado.",
+        ),
+    ]
+    db.add_all(detalles_lactal)
+    db.commit()
+
+    p_lactal.receta_id = receta_lactal.id
+    p_lactal.tamano_porcion_g = 50.0
+    p_lactal.porciones_por_envase = 18.0
+    p_lactal.descripcion_porcion = "2 rebanadas (50g)"
+    db.commit()
+
+    calcular_informacion_nutricional(db, p_lactal.id, usuario_actual="Juan Perez")
+
+    receta_salvado = Receta(
+        nombre="Pan de Salvado y Semillas",
+        rendimiento_final=950.0,
+        activo=True,
+    )
+    db.add(receta_salvado)
+    db.flush()
+
+    version_salvado = VersionReceta(
+        receta_id=receta_salvado.id,
+        version=1,
+        rendimiento_final=950.0,
+        archivado=False,
+        es_vigente=True,
+        creado_por_legajo=juan.legajo,
+        creado_por_usuario="Juan Perez",
+    )
+    db.add(version_salvado)
+    db.flush()
+
+    detalles_salvado = [
+        RecetaDetalle(
+            nombre="Harina Integral Fina rica en fibra",
+            version_receta_id=version_salvado.id,
+            ingrediente_id=insumos_map["Harina Integral Fina"].id,
+            cantidad=400.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Cargar harina integral para aporte de fibra.",
+        ),
+        RecetaDetalle(
+            nombre="Harina 000 para soporte estructural",
+            version_receta_id=version_salvado.id,
+            ingrediente_id=insumos_map["Harina 000"].id,
+            cantidad=200.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Mezclar con harina blanca para red de gluten.",
+        ),
+        RecetaDetalle(
+            nombre="Agua potable",
+            version_receta_id=version_salvado.id,
+            ingrediente_id=insumos_map["Agua Potable"].id,
+            cantidad=380.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Hidratar masa integral.",
+        ),
+        RecetaDetalle(
+            nombre="Semillas de Sesamo",
+            version_receta_id=version_salvado.id,
+            ingrediente_id=insumos_map["Semillas de Sesamo"].id,
+            cantidad=30.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Incorporar semillas de sesamo blanco tostado.",
+        ),
+        RecetaDetalle(
+            nombre="Semillas de Lino",
+            version_receta_id=version_salvado.id,
+            ingrediente_id=insumos_map["Semillas de Lino"].id,
+            cantidad=30.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Incorporar semillas de lino marron.",
+        ),
+        RecetaDetalle(
+            nombre="Aceite de girasol",
+            version_receta_id=version_salvado.id,
+            ingrediente_id=insumos_map["Aceite de Girasol"].id,
+            cantidad=25.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Agregar aceite vegetal para terneza.",
+        ),
+        RecetaDetalle(
+            nombre="Levadura fresca",
+            version_receta_id=version_salvado.id,
+            ingrediente_id=insumos_map["Levadura Fresca"].id,
+            cantidad=20.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Disolver e integrar levadura fresca.",
+        ),
+        RecetaDetalle(
+            nombre="Sal fina",
+            version_receta_id=version_salvado.id,
+            ingrediente_id=insumos_map["Sal Fina"].id,
+            cantidad=10.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=juan.legajo,
+            descripcion_pasos="Agregar sal al final del amasado.",
+        ),
+    ]
+    db.add_all(detalles_salvado)
+    db.commit()
+
+    p_salvado.receta_id = receta_salvado.id
+    p_salvado.tamano_porcion_g = 50.0
+    p_salvado.porciones_por_envase = 19.0
+    p_salvado.descripcion_porcion = "2 rebanadas (50g)"
+    db.commit()
+
+    calcular_informacion_nutricional(db, p_salvado.id, usuario_actual="Juan Perez")
+
+    receta_torta = Receta(
+        nombre="Torta de Chocolate",
+        rendimiento_final=1400.0,
+        activo=True,
+    )
+    db.add(receta_torta)
+    db.flush()
+
+    version_torta = VersionReceta(
+        receta_id=receta_torta.id,
+        version=1,
+        rendimiento_final=1400.0,
+        archivado=False,
+        es_vigente=True,
+        creado_por_legajo=marcos.legajo,
+        creado_por_usuario="Marcos Diaz",
+    )
+    db.add(version_torta)
+    db.flush()
+
+    detalles_torta = [
+        RecetaDetalle(
+            nombre="Harina 0000 de reposteria",
+            version_receta_id=version_torta.id,
+            ingrediente_id=insumos_map["Harina 0000"].id,
+            cantidad=350.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Tamizar harina pastelera 0000.",
+        ),
+        RecetaDetalle(
+            nombre="Azucar comun para batido",
+            version_receta_id=version_torta.id,
+            ingrediente_id=insumos_map["Azucar Comun"].id,
+            cantidad=300.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Batir con manteca hasta cremar.",
+        ),
+        RecetaDetalle(
+            nombre="Chocolate Cobertura Semiamargo",
+            version_receta_id=version_torta.id,
+            ingrediente_id=insumos_map["Chocolate Cobertura Semiamargo"].id,
+            cantidad=200.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Fundir a baño maria e integrar a la mezcla.",
+        ),
+        RecetaDetalle(
+            nombre="Manteca pomada",
+            version_receta_id=version_torta.id,
+            ingrediente_id=insumos_map["Manteca"].id,
+            cantidad=180.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Cremar junto al azucar comun.",
+        ),
+        RecetaDetalle(
+            nombre="Huevos enteros",
+            version_receta_id=version_torta.id,
+            ingrediente_id=insumos_map["Huevos"].id,
+            cantidad=180.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Incorporar de a uno batiendo enérgicamente.",
+        ),
+        RecetaDetalle(
+            nombre="Leche entera",
+            version_receta_id=version_torta.id,
+            ingrediente_id=insumos_map["Leche Entera"].id,
+            cantidad=150.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Alternar leche con secos en el batido.",
+        ),
+        RecetaDetalle(
+            nombre="Cacao amargo en polvo",
+            version_receta_id=version_torta.id,
+            ingrediente_id=insumos_map["Cacao Amargo en Polvo"].id,
+            cantidad=50.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Tamizar junto a la harina para intenso sabor chocolate.",
+        ),
+        RecetaDetalle(
+            nombre="Polvo de hornear leudante",
+            version_receta_id=version_torta.id,
+            ingrediente_id=insumos_map["Polvo de Hornear"].id,
+            cantidad=15.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            operario_legajo=marcos.legajo,
+            descripcion_pasos="Tamizar con la harina para esponjosidad.",
+        ),
+    ]
+    db.add_all(detalles_torta)
+    db.commit()
+
+    p_torta.receta_id = receta_torta.id
+    p_torta.tamano_porcion_g = 60.0
+    p_torta.porciones_por_envase = 23.0
+    p_torta.descripcion_porcion = "1 porcion (60g)"
+    db.commit()
+
+    calcular_informacion_nutricional(db, p_torta.id, usuario_actual="Marcos Diaz")
 
     lotes_cronograma = []
 

@@ -169,7 +169,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({ onCancel, prod
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "1rem" }}>
                 <span className="material-symbols-outlined" style={{ color: "#38bdf8", fontSize: "22px" }}>
-                  nutrition
+                  monitoring
                 </span>
                 <span>Información Nutricional y Cálculo Automático</span>
               </div>
@@ -194,7 +194,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({ onCancel, prod
               }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                calculate
+                monitoring
               </span>
               Ver / Calcular Nutrición
             </button>
