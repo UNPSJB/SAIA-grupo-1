@@ -23,6 +23,8 @@ def crear_IdentificadorUnico(db:Session,ident:schemas.IdentificadorQRCreate,urld
     # el listado de productos arranca desactivado
     if datos.get("verProductos") is None:
         datos["verProductos"] = False
+    # solo puede haber una vista pública habilitada: el QR nuevo reemplaza a los anteriores
+    db.execute(update(IndentificadorUnico).where(IndentificadorUnico.estado.is_(True)).values(estado=False))
     _ident=IndentificadorUnico(**datos)
     db.add(_ident)
     db.commit()

@@ -161,6 +161,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
   const [errorStats, setErrorStats] = useState<string | null>(null);
 
   const [incidentesLista, setIncidentesLista] = useState<Incidente[]>([]);
+  const [incidentesTotales, setIncidentesTotales] = useState<Incidente[]>([]);
   const [cargandoIncidentes, setCargandoIncidentes] = useState(false);
   const [errorIncidentes, setErrorIncidentes] = useState<string | null>(null);
 
@@ -240,6 +241,22 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
   useEffect(() => {
     void cargarIncidentes();
   }, [cargarIncidentes]);
+
+  const cargarIncidentesTotales = useCallback(async () => {
+    try {
+      const res = await apiFetch('/incidentes/');
+      if (res.ok) {
+        const data: Incidente[] = await res.json();
+        setIncidentesTotales(data);
+      }
+    } catch {
+      setIncidentesTotales([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void cargarIncidentesTotales();
+  }, [cargarIncidentesTotales]);
 
   const aplicarAtajo = (dias: number) => {
     const fin = new Date();
@@ -482,12 +499,28 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
     const masFrecuente = items.length > 0 && items[0].cantidad > 0 ? items[0] : null;
     const categoriasConIncidentes = items.filter((i) => i.cantidad > 0).length;
 
+    let diasDesdeUltimo: number | null = null;
+    if (incidentesTotales && incidentesTotales.length > 0) {
+      const timestamps = incidentesTotales
+        .map((inc) => new Date(inc.creado_el).getTime())
+        .filter((ts) => !isNaN(ts));
+      if (timestamps.length > 0) {
+        const fechaUltimo = new Date(Math.max(...timestamps));
+        fechaUltimo.setHours(0, 0, 0, 0);
+        const hoySinHora = new Date();
+        hoySinHora.setHours(0, 0, 0, 0);
+        const diff = Math.round((hoySinHora.getTime() - fechaUltimo.getTime()) / (1000 * 60 * 60 * 24));
+        diasDesdeUltimo = Math.max(0, diff);
+      }
+    }
+
     return {
       total,
       masFrecuente,
       categoriasConIncidentes,
+      diasDesdeUltimo,
     };
-  }, [estadisticas]);
+  }, [estadisticas, incidentesTotales]);
 
   const incidentesFiltrados = useMemo(() => {
     const term = busquedaIncidente.toLowerCase().trim();
@@ -776,13 +809,17 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
         <Card>
           <CardContent style={{ padding: '16px' }}>
             <span style={{ fontSize: '12px', color: 'var(--color-texto-sec)', fontWeight: 500 }}>
-              Filtro Activo
+              Días desde el último incidente
             </span>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: categoriaSeleccionada ? (COLORES_TIPO[categoriaSeleccionada] || 'var(--text-h)') : 'var(--text-h)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {categoriaSeleccionada ? (ETIQUETAS_TIPO[categoriaSeleccionada] || categoriaSeleccionada) : 'Todas las categorías'}
+            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-h)', marginTop: '4px' }}>
+              {kpis.diasDesdeUltimo !== null ? kpis.diasDesdeUltimo : '—'}
             </div>
             <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', marginTop: '4px' }}>
-              {categoriaSeleccionada ? `${incidentesLista.length} incidentes filtrados` : 'clic en una barra para filtrar'}
+              {kpis.diasDesdeUltimo !== null
+                ? kpis.diasDesdeUltimo === 1
+                  ? 'día sin incidentes'
+                  : 'días sin incidentes'
+                : 'sin incidentes registrados'}
             </div>
           </CardContent>
         </Card>

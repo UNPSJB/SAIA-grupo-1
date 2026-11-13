@@ -19,7 +19,6 @@ def test_cumplimiento_detallado_endpoint_valido(session: Session) -> None:
     assert "tendencia_temporal" in data
     assert "desglose_por_sector" in data
     assert "desglose_por_equipo" in data
-    assert "desglose_por_turno" in data
     assert "items_detalle" in data
     assert "total_tareas" in data["kpis"]
     assert "porcentaje_general" in data["kpis"]
@@ -32,11 +31,10 @@ def test_cumplimiento_detallado_fecha_invalida(session: Session) -> None:
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "posterior" in response.json()["detail"].lower()
 
-def test_cumplimiento_detallado_filtro_turno_y_sector(session: Session) -> None:
-    response = client.get("/dashboard/cumplimiento-detallado?turno=MAÑANA&sector_id=1")
+def test_cumplimiento_detallado_filtro_sector(session: Session) -> None:
+    response = client.get("/dashboard/cumplimiento-detallado?sector_id=1")
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert data["turno"] == "MAÑANA"
     assert data["sector_id"] == 1
 
 def test_cumplimiento_detallado_servicio_excepcion_fecha(session: Session) -> None:

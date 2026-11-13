@@ -1,0 +1,96 @@
+.configuraciones {
+  max-width: 1100px;
+}
+
+.config-panel-seccion {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.config-panel-encabezado {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.config-panel-titulo {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  color: var(--color-texto);
+}
+
+.config-panel-encabezado .config-panel-titulo {
+  margin-bottom: 0;
+}
+
+.config-panel-encabezado + * {
+  margin-top: 1rem;
+}
+
+.config-panel-grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+}
+
+.config-panel-tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  background: var(--color-superficie-elevada);
+  color: var(--color-texto);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.config-panel-tarjeta:hover,
+.config-panel-tarjeta:focus-visible {
+  border-color: var(--color-primario);
+  box-shadow: 0 2px 8px var(--color-sombra);
+  outline: none;
+}
+
+.config-panel-tarjeta-titulo {
+  font-weight: 600;
+}
+
+.config-panel-tarjeta-desc {
+  font-size: 0.85rem;
+  color: var(--color-texto-sec);
+}
+
+.config-panel-estado {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.config-panel-estado.es-habilitada {
+  background: var(--color-exito-bg);
+  color: var(--color-exito-texto);
+  border-color: var(--color-exito);
+}
+
+.config-panel-estado.es-deshabilitada {
+  background: var(--color-suave);
+  color: var(--color-texto-sec);
+  border-color: var(--color-borde);
+}
+
+.config-panel-texto {
+  color: var(--color-texto-sec);
+  margin: 0 0 0.75rem;
+}
+
+.config-panel-acciones {
+  margin-top: 1rem;
+}

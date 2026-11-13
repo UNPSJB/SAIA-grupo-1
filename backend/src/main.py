@@ -40,6 +40,7 @@ from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
+from src.configuracion.router import router as configuracion_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -105,8 +106,12 @@ app.include_router(notificaciones_router, dependencies=SESION)
 app.include_router(informes_router, dependencies=SOLO_ADMIN)
 app.include_router(motivo_router, prefix="/checklist/motivos")
 app.include_router(motivo_router, prefix="/motivos")
-app.include_router(qrCode_router)
+# --- Configuración (solo admin) ---
+# generar el QR habilita la vista pública: solo admin
+app.include_router(qrCode_router, dependencies=SOLO_ADMIN)
+# mezcla endpoints públicos (los que usa el QR) y de admin: cada endpoint define su permiso
 app.include_router(IdentificadorQR)
+app.include_router(configuracion_router, dependencies=SOLO_ADMIN)
 app.include_router(AcercaDeNostrosRouter)
 # registrar un lote lo define el endpoint (solo operadores); consultar alcanza con estar logueado
 app.include_router(lotes_router, dependencies=SESION)
