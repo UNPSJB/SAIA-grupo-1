@@ -40,6 +40,8 @@ from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
+from src.rotulado_frontal.router import router as rotulado_frontal_router
+from src.rotulado_frontal.services import asegurar_datos_iniciales as asegurar_parametros_rotulado
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -49,6 +51,9 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    # parametros normativos del rotulado frontal: datos que el sistema necesita en todos los entornos
+    with SessionLocal() as db:
+        asegurar_parametros_rotulado(db)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
@@ -112,3 +117,5 @@ app.include_router(AcercaDeNostrosRouter)
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SOLO_ADMIN)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
+# cada endpoint exige admin, salvo GET /modulo que alcanza con estar logueado (el front lo usa para mostrar u ocultar)
+app.include_router(rotulado_frontal_router, prefix="/rotulado-frontal", tags=["Rotulado frontal"], dependencies=SESION)
