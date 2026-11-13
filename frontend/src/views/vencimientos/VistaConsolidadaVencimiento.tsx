@@ -1,4 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
 import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
@@ -125,14 +135,58 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
     };
   }, [filtro]);
 
+  const [rangoAgingSeleccionado, setRangoAgingSeleccionado] = useState<string | null>(null);
+
+  const perteneceARango = (dias: number, rango: string): boolean => {
+    if (rango === 'vencidos') return dias < 0;
+    if (rango === 'menos7') return dias >= 0 && dias <= 7;
+    if (rango === 'de8a15') return dias >= 8 && dias <= 15;
+    if (rango === 'de16a30') return dias >= 16 && dias <= 30;
+    if (rango === 'mas30') return dias > 30;
+    return true;
+  };
+
   const filasVisibles = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
     return filas.filter(
       (f) =>
         (!filtro || f.origen === filtro) &&
         (!filtroEstado || f.estado === filtroEstado) &&
-        (!termino || `${f.concepto} ${f.responsable}`.toLowerCase().includes(termino))
+        (!termino || `${f.concepto} ${f.responsable}`.toLowerCase().includes(termino)) &&
+        (!rangoAgingSeleccionado || perteneceARango(f.diasRestantes, rangoAgingSeleccionado))
     );
+  }, [filas, filtro, filtroEstado, busqueda, rangoAgingSeleccionado]);
+
+  const datosAging = useMemo(() => {
+    const base = filas.filter(
+      (f) =>
+        (!filtro || f.origen === filtro) &&
+        (!filtroEstado || f.estado === filtroEstado) &&
+        (!busqueda.trim() || `${f.concepto} ${f.responsable}`.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    );
+
+    let vencidos = 0;
+    let menos7 = 0;
+    let de8a15 = 0;
+    let de16a30 = 0;
+    let mas30 = 0;
+
+    for (const f of base) {
+      const d = f.diasRestantes;
+      if (d < 0) vencidos++;
+      else if (d <= 7) menos7++;
+      else if (d <= 15) de8a15++;
+      else if (d <= 30) de16a30++;
+      else mas30++;
+    }
+
+    return [
+      { clave: 'vencidos', rango: 'Vencidos', cantidad: vencidos, color: '#ef4444' },
+      { clave: 'menos7', rango: '< 7 días', cantidad: menos7, color: '#f97316' },
+      { clave: 'de8a15', rango: '8 a 15 días', cantidad: de8a15, color: '#f59e0b' },
+      { clave: 'de16a30', rango: '16 a 30 días', cantidad: de16a30, color: '#3b82f6' },
+      { clave: 'mas30', rango: '> 30 días', cantidad: mas30, color: '#10b981' },
+    ];
   }, [filas, filtro, filtroEstado, busqueda]);
 
   const resumen = useMemo(
@@ -233,6 +287,81 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
         <span className="venc-chip venc-chip--vencido">● {resumen.vencidos} vencidos</span>
         <span className="venc-chip venc-chip--proximo">▲ {resumen.proximos} próximos</span>
         <span className="venc-chip venc-chip--vigente">✓ {resumen.vigentes} vigentes</span>
+      </div>
+
+      <div
+        style={{
+          background: 'var(--color-superficie-elevada, #1e293b)',
+          border: '1px solid var(--color-borde, #334155)',
+          borderRadius: '10px',
+          padding: '16px',
+          marginBottom: '1.25rem',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--color-primario, #3b82f6)' }}>
+              timer
+            </span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-h)' }}>
+                Aging de Vencimientos (Criterio FEFO/FIFO)
+              </h3>
+              <span style={{ fontSize: '0.74rem', color: 'var(--color-texto-sec)' }}>
+                Distribución de criticidad temporal por rangos de vida útil restante. Clic en una barra para filtrar.
+              </span>
+            </div>
+          </div>
+          {rangoAgingSeleccionado && (
+            <button
+              type="button"
+              className="btn-secundario"
+              style={{ padding: '3px 10px', fontSize: '11px' }}
+              onClick={() => setRangoAgingSeleccionado(null)}
+            >
+              Restablecer filtro de rango
+            </button>
+          )}
+        </div>
+
+        <div style={{ width: '100%', height: 200 }}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <BarChart data={datosAging} margin={{ top: 10, right: 16, left: -10, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-borde, #334155)" vertical={false} />
+              <XAxis dataKey="rango" stroke="var(--color-texto-sec, #94a3b8)" fontSize={12} tickLine={false} />
+              <YAxis allowDecimals={false} stroke="var(--color-texto-sec, #94a3b8)" fontSize={12} tickLine={false} width={36} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                  borderColor: 'var(--color-borde, #334155)',
+                  borderRadius: '8px',
+                  color: 'var(--color-texto, #f8fafc)',
+                }}
+                formatter={(val: any) => [`${val} registros`, 'Cantidad']}
+              />
+              <Bar
+                dataKey="cantidad"
+                radius={[4, 4, 0, 0]}
+                cursor="pointer"
+                onClick={(entry: any) => {
+                  if (entry && entry.clave) {
+                    setRangoAgingSeleccionado((prev) => (prev === entry.clave ? null : entry.clave));
+                  }
+                }}
+              >
+                {datosAging.map((entry) => (
+                  <Cell
+                    key={`cell-aging-${entry.clave}`}
+                    fill={entry.color}
+                    opacity={rangoAgingSeleccionado && rangoAgingSeleccionado !== entry.clave ? 0.35 : 1}
+                    stroke={rangoAgingSeleccionado === entry.clave ? '#ffffff' : 'none'}
+                    strokeWidth={2}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="filtros-top-bar">

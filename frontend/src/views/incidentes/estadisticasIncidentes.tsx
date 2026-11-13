@@ -6,6 +6,15 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Legend,
+  Line,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -145,6 +154,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
   const [busquedaIncidente, setBusquedaIncidente] = useState<string>('');
   const [agrupacionTemporal, setAgrupacionTemporal] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [tipoGraficoEvolucion, setTipoGraficoEvolucion] = useState<'lineas' | 'barras'>('lineas');
+  const [tipoVisualizacionCategoria, setTipoVisualizacionCategoria] = useState<'barras' | 'radar' | 'pareto'>('barras');
 
   const [estadisticas, setEstadisticas] = useState<EstadisticaIncidentesPorTipo | null>(null);
   const [cargandoStats, setCargandoStats] = useState(true);
@@ -270,6 +280,23 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
     }));
   }, [estadisticas]);
 
+  const datosPareto = useMemo(() => {
+    const validos = datosGrafico.filter((it) => it.cantidad > 0);
+    const ordenados = [...validos].sort((a, b) => b.cantidad - a.cantidad);
+    const total = ordenados.reduce((acc, it) => acc + it.cantidad, 0);
+    let acumulado = 0;
+    return ordenados.map((item) => {
+      acumulado += item.cantidad;
+      const pctAcumulado = total > 0 ? Math.round((acumulado / total) * 1000) / 10 : 0;
+      return {
+        ...item,
+        acumulado,
+        pctAcumulado,
+        esCausaVital: (acumulado - item.cantidad) / total < 0.8 || pctAcumulado <= 80,
+      };
+    });
+  }, [datosGrafico]);
+
   const datosEvolucionTemporal = useMemo(() => {
     let fechaInicio: Date;
     let fechaFin: Date;
@@ -311,27 +338,37 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
       fechaInicio = minFecha2000;
     }
 
+    const esCerrado = (inc: Incidente) => inc.estado === 'resuelto' || inc.estado === 'cerrado' || inc.estado === 'descartado';
+
     if (agrupacionTemporal === 'dia') {
-      const conteos = new Map<string, number>();
+      const conteosReportados = new Map<string, number>();
+      const conteosResueltos = new Map<string, number>();
       for (const inc of incidentesLista) {
         if (inc.creado_el && inc.creado_el.length >= 10) {
           const k = inc.creado_el.slice(0, 10);
-          conteos.set(k, (conteos.get(k) || 0) + 1);
+          conteosReportados.set(k, (conteosReportados.get(k) || 0) + 1);
+          if (esCerrado(inc)) {
+            conteosResueltos.set(k, (conteosResueltos.get(k) || 0) + 1);
+          }
         }
       }
 
-      const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; cantidad: number }[] = [];
+      const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; cantidad: number; reportados: number; resueltos: number }[] = [];
       const cur = new Date(fechaInicio);
       while (cur <= fechaFin) {
         const anio = cur.getFullYear();
         const mes = String(cur.getMonth() + 1).padStart(2, '0');
         const dia = String(cur.getDate()).padStart(2, '0');
         const clave = `${anio}-${mes}-${dia}`;
+        const rep = conteosReportados.get(clave) || 0;
+        const res = conteosResueltos.get(clave) || 0;
         puntos.push({
           clave,
           etiqueta: `${dia}/${mes}`,
           etiquetaCompleta: `${dia}/${mes}/${anio}`,
-          cantidad: conteos.get(clave) || 0,
+          cantidad: rep,
+          reportados: rep,
+          resueltos: res,
         });
         cur.setDate(cur.getDate() + 1);
       }
@@ -347,19 +384,23 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
         return r;
       };
 
-      const conteos = new Map<string, number>();
+      const conteosReportados = new Map<string, number>();
+      const conteosResueltos = new Map<string, number>();
       for (const inc of incidentesLista) {
         if (inc.creado_el) {
           const d = new Date(inc.creado_el);
           if (!isNaN(d.getTime())) {
             const sem = obtenerInicioSemana(d);
             const k = `${sem.getFullYear()}-${String(sem.getMonth() + 1).padStart(2, '0')}-${String(sem.getDate()).padStart(2, '0')}`;
-            conteos.set(k, (conteos.get(k) || 0) + 1);
+            conteosReportados.set(k, (conteosReportados.get(k) || 0) + 1);
+            if (esCerrado(inc)) {
+              conteosResueltos.set(k, (conteosResueltos.get(k) || 0) + 1);
+            }
           }
         }
       }
 
-      const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; cantidad: number }[] = [];
+      const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; cantidad: number; reportados: number; resueltos: number }[] = [];
       const cur = obtenerInicioSemana(fechaInicio);
       const finSem = new Date(fechaFin);
 
@@ -376,11 +417,16 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
         const mesF = String(finS.getMonth() + 1).padStart(2, '0');
         const anioF = finS.getFullYear();
 
+        const rep = conteosReportados.get(clave) || 0;
+        const res = conteosResueltos.get(clave) || 0;
+
         puntos.push({
           clave,
           etiqueta: `Sem ${dia}/${mes}`,
           etiquetaCompleta: `Semana del ${dia}/${mes} al ${diaF}/${mesF}/${anioF}`,
-          cantidad: conteos.get(clave) || 0,
+          cantidad: rep,
+          reportados: rep,
+          resueltos: res,
         });
 
         cur.setDate(cur.getDate() + 7);
@@ -391,15 +437,19 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
     const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const mesesLargos = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-    const conteos = new Map<string, number>();
+    const conteosReportados = new Map<string, number>();
+    const conteosResueltos = new Map<string, number>();
     for (const inc of incidentesLista) {
       if (inc.creado_el && inc.creado_el.length >= 7) {
         const k = inc.creado_el.slice(0, 7);
-        conteos.set(k, (conteos.get(k) || 0) + 1);
+        conteosReportados.set(k, (conteosReportados.get(k) || 0) + 1);
+        if (esCerrado(inc)) {
+          conteosResueltos.set(k, (conteosResueltos.get(k) || 0) + 1);
+        }
       }
     }
 
-    const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; cantidad: number }[] = [];
+    const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; cantidad: number; reportados: number; resueltos: number }[] = [];
     let curAnio = fechaInicio.getFullYear();
     let curMes = fechaInicio.getMonth();
     const finAnio = fechaFin.getFullYear();
@@ -407,11 +457,15 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
 
     while (curAnio < finAnio || (curAnio === finAnio && curMes <= finMes)) {
       const clave = `${curAnio}-${String(curMes + 1).padStart(2, '0')}`;
+      const rep = conteosReportados.get(clave) || 0;
+      const res = conteosResueltos.get(clave) || 0;
       puntos.push({
         clave,
         etiqueta: `${mesesCortos[curMes]} ${String(curAnio).slice(-2)}`,
         etiquetaCompleta: `${mesesLargos[curMes]} de ${curAnio}`,
-        cantidad: conteos.get(clave) || 0,
+        cantidad: rep,
+        reportados: rep,
+        resueltos: res,
       });
       curMes++;
       if (curMes > 11) {
@@ -881,21 +935,25 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
               <span>No se registraron incidentes para la serie temporal seleccionada.</span>
             </div>
           ) : (
-            <div style={{ width: '100%', height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
+            <div style={{ width: '100%', height: 380 }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 {tipoGraficoEvolucion === 'lineas' ? (
-                  <AreaChart data={datosEvolucionTemporal} margin={{ top: 12, right: 16, left: -10, bottom: 20 }}>
+                  <AreaChart data={datosEvolucionTemporal} margin={{ top: 16, right: 24, left: -6, bottom: 25 }}>
                     <defs>
-                      <linearGradient id="gradEvolucionIncidentes" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={categoriaSeleccionada ? (COLORES_TIPO[categoriaSeleccionada] || colores.primario) : colores.primario} stopOpacity={0.4} />
-                        <stop offset="95%" stopColor={categoriaSeleccionada ? (COLORES_TIPO[categoriaSeleccionada] || colores.primario) : colores.primario} stopOpacity={0.0} />
+                      <linearGradient id="gradReportados" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0.0} />
+                      </linearGradient>
+                      <linearGradient id="gradResueltos" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                     <XAxis
                       dataKey="etiqueta"
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       tickLine={false}
                       interval={datosEvolucionTemporal.length > 15 ? 'preserveStartEnd' : 0}
                       angle={datosEvolucionTemporal.length > 8 ? -20 : 0}
@@ -905,9 +963,9 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                     <YAxis
                       allowDecimals={false}
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       tickLine={false}
-                      width={36}
+                      width={42}
                     />
                     <Tooltip
                       contentStyle={{
@@ -916,30 +974,43 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                         borderRadius: '8px',
                         color: 'var(--color-texto)',
                       }}
-                      formatter={(valor: any) => [
-                        `${valor} ${valor === 1 ? 'incidente' : 'incidentes'}`,
-                        categoriaSeleccionada ? (ETIQUETAS_TIPO[categoriaSeleccionada] || categoriaSeleccionada) : 'Incidentes',
+                      formatter={(valor: any, nombre: any) => [
+                        `${valor} ${Number(valor) === 1 ? 'incidente' : 'incidentes'}`,
+                        nombre,
                       ]}
                       labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
                     />
+                    <Legend verticalAlign="top" align="right" height={30} wrapperStyle={{ fontSize: '12px' }} />
                     <Area
                       type="monotone"
-                      dataKey="cantidad"
-                      stroke={categoriaSeleccionada ? (COLORES_TIPO[categoriaSeleccionada] || colores.primario) : colores.primario}
+                      dataKey="reportados"
+                      name="Reportados"
+                      stroke="#ef4444"
                       strokeWidth={2.5}
                       fillOpacity={1}
-                      fill="url(#gradEvolucionIncidentes)"
-                      dot={{ r: 3.5, fill: categoriaSeleccionada ? (COLORES_TIPO[categoriaSeleccionada] || colores.primario) : colores.primario, strokeWidth: 2, stroke: 'var(--color-superficie)' }}
-                      activeDot={{ r: 6, stroke: categoriaSeleccionada ? (COLORES_TIPO[categoriaSeleccionada] || colores.primario) : colores.primario, strokeWidth: 2, fill: 'var(--color-superficie)' }}
+                      fill="url(#gradReportados)"
+                      dot={{ r: 3.5, fill: '#ef4444', strokeWidth: 2, stroke: 'var(--color-superficie)' }}
+                      activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: 'var(--color-superficie)' }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="resueltos"
+                      name="Resueltos / Cerrados"
+                      stroke="#10b981"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#gradResueltos)"
+                      dot={{ r: 3.5, fill: '#10b981', strokeWidth: 2, stroke: 'var(--color-superficie)' }}
+                      activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: 'var(--color-superficie)' }}
                     />
                   </AreaChart>
                 ) : (
-                  <BarChart data={datosEvolucionTemporal} margin={{ top: 12, right: 16, left: -10, bottom: 20 }}>
+                  <BarChart data={datosEvolucionTemporal} margin={{ top: 16, right: 24, left: -6, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                     <XAxis
                       dataKey="etiqueta"
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       tickLine={false}
                       interval={datosEvolucionTemporal.length > 15 ? 'preserveStartEnd' : 0}
                       angle={datosEvolucionTemporal.length > 8 ? -20 : 0}
@@ -949,9 +1020,9 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                     <YAxis
                       allowDecimals={false}
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       tickLine={false}
-                      width={36}
+                      width={42}
                     />
                     <Tooltip
                       contentStyle={{
@@ -960,16 +1031,24 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                         borderRadius: '8px',
                         color: 'var(--color-texto)',
                       }}
-                      formatter={(valor: any) => [
-                        `${valor} ${valor === 1 ? 'incidente' : 'incidentes'}`,
-                        categoriaSeleccionada ? (ETIQUETAS_TIPO[categoriaSeleccionada] || categoriaSeleccionada) : 'Incidentes',
+                      formatter={(valor: any, nombre: any) => [
+                        `${valor} ${Number(valor) === 1 ? 'incidente' : 'incidentes'}`,
+                        nombre,
                       ]}
                       labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
                     />
+                    <Legend verticalAlign="top" align="right" height={30} wrapperStyle={{ fontSize: '12px' }} />
                     <Bar
-                      dataKey="cantidad"
-                      fill={categoriaSeleccionada ? (COLORES_TIPO[categoriaSeleccionada] || colores.primario) : colores.primario}
-                      radius={[5, 5, 0, 0]}
+                      dataKey="reportados"
+                      name="Reportados"
+                      fill="#ef4444"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="resueltos"
+                      name="Resueltos / Cerrados"
+                      fill="#10b981"
+                      radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
                 )}
@@ -979,20 +1058,63 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
         </CardContent>
       </Card>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
-          gap: '16px',
-          marginBottom: '1.5rem',
-        }}
-      >
-        <Card>
-          <CardHeader>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <div>
-                <CardTitle style={{ fontSize: '1rem' }}>Distribución de Incidentes por Categoría</CardTitle>
-                <CardDescription>Frecuencia de ocurrencia clasificada por tipología</CardDescription>
+      <Card style={{ marginBottom: '1.5rem', width: '100%' }}>
+        <CardHeader>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <CardTitle style={{ fontSize: '1rem' }}>Distribución de Incidentes por Categoría</CardTitle>
+              <CardDescription>Frecuencia de ocurrencia clasificada por tipología</CardDescription>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'inline-flex', borderRadius: '6px', border: '1px solid var(--border)', padding: '2px', background: 'var(--code-bg)' }}>
+                <button
+                  type="button"
+                  style={{
+                    padding: '3px 10px',
+                    fontSize: '0.75rem',
+                    borderRadius: '4px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: tipoVisualizacionCategoria === 'barras' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                    color: tipoVisualizacionCategoria === 'barras' ? '#ffffff' : 'var(--text-sec)',
+                    fontWeight: tipoVisualizacionCategoria === 'barras' ? 600 : 400,
+                  }}
+                  onClick={() => setTipoVisualizacionCategoria('barras')}
+                >
+                  Barras
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    padding: '3px 10px',
+                    fontSize: '0.75rem',
+                    borderRadius: '4px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: tipoVisualizacionCategoria === 'radar' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                    color: tipoVisualizacionCategoria === 'radar' ? '#ffffff' : 'var(--text-sec)',
+                    fontWeight: tipoVisualizacionCategoria === 'radar' ? 600 : 400,
+                  }}
+                  onClick={() => setTipoVisualizacionCategoria('radar')}
+                >
+                  Red de Araña
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    padding: '3px 10px',
+                    fontSize: '0.75rem',
+                    borderRadius: '4px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: tipoVisualizacionCategoria === 'pareto' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                    color: tipoVisualizacionCategoria === 'pareto' ? '#ffffff' : 'var(--text-sec)',
+                    fontWeight: tipoVisualizacionCategoria === 'pareto' ? 600 : 400,
+                  }}
+                  onClick={() => setTipoVisualizacionCategoria('pareto')}
+                >
+                  Pareto (80/20)
+                </button>
               </div>
               {categoriaSeleccionada && (
                 <button
@@ -1005,119 +1127,255 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                 </button>
               )}
             </div>
-          </CardHeader>
-          <CardContent>
-            {cargandoStats ? (
-              <div style={{ minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)' }}>
-                Cargando gráfico...
-              </div>
-            ) : kpis.total === 0 ? (
-              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
-                <strong style={{ display: 'block', color: 'var(--text-h)', marginBottom: '4px' }}>Sin incidentes registrados</strong>
-                <span>No se registraron incidentes en el período seleccionado.</span>
-              </div>
-            ) : (
-              <div style={{ width: '100%', height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={datosGrafico} margin={{ top: 12, right: 16, left: -10, bottom: 25 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                    <XAxis
-                      dataKey="nombreCorto"
-                      stroke={colores.textoSec}
-                      fontSize={11}
-                      tickLine={false}
-                      interval={0}
-                      angle={-20}
-                      textAnchor="end"
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      stroke={colores.textoSec}
-                      fontSize={11}
-                      tickLine={false}
-                      width={35}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--color-superficie-elevada)',
-                        borderColor: 'var(--color-borde)',
-                        color: 'var(--color-texto)',
-                        borderRadius: '8px',
-                      }}
-                      formatter={(val, _, item) => [
-                        `${val} ${val === 1 ? 'incidente' : 'incidentes'} (${item.payload.porcentaje}%)`,
-                        item.payload.nombre,
-                      ]}
-                    />
-                    <Bar
-                      dataKey="cantidad"
-                      radius={[6, 6, 0, 0]}
-                      cursor="pointer"
-                      onClick={(entry: any) => {
-                        if (entry && entry.tipo) {
-                          setCategoriaSeleccionada((prev) => (prev === entry.tipo ? null : entry.tipo));
-                        }
-                      }}
-                    >
-                      {datosGrafico.map((entry) => (
-                        <Cell
-                          key={`cell-${entry.tipo}`}
-                          fill={entry.color}
-                          opacity={categoriaSeleccionada && categoriaSeleccionada !== entry.tipo ? 0.35 : 1}
-                          stroke={categoriaSeleccionada === entry.tipo ? 'var(--color-texto)' : 'none'}
-                          strokeWidth={2}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ fontSize: '1rem' }}>Resumen por Categoría</CardTitle>
-            <CardDescription>Desglose porcentual y selector rápido de filtrado</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {datosGrafico.map((item) => {
-                const esActiva = categoriaSeleccionada === item.tipo;
-                return (
-                  <div
-                    key={item.tipo}
-                    onClick={() => setCategoriaSeleccionada((prev) => (prev === item.tipo ? null : item.tipo))}
-                    style={{
-                      padding: '7px 10px',
-                      borderRadius: '8px',
-                      border: `1px solid ${esActiva ? item.color : 'var(--color-borde)'}`,
-                      backgroundColor: esActiva ? 'var(--color-suave)' : 'transparent',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                    title="Clic para filtrar incidentes por esta categoría"
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: item.color, display: 'inline-block' }} />
-                        <span style={{ fontSize: '12.5px', fontWeight: esActiva ? 700 : 500, color: 'var(--color-texto)' }}>{item.nombre}</span>
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--color-texto-sec)' }}>
-                        <strong>{item.cantidad}</strong> ({item.porcentaje}%)
-                      </div>
-                    </div>
-                    <div style={{ height: '6px', backgroundColor: 'var(--color-fondo)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${item.porcentaje}%`, backgroundColor: item.color, borderRadius: '3px', transition: 'width 0.4s ease' }} />
-                    </div>
-                  </div>
-                );
-              })}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {cargandoStats ? (
+            <div style={{ minHeight: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)' }}>
+              Cargando gráfico...
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          ) : kpis.total === 0 ? (
+            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
+              <strong style={{ display: 'block', color: 'var(--text-h)', marginBottom: '4px' }}>Sin incidentes registrados</strong>
+              <span>No se registraron incidentes en el período seleccionado.</span>
+            </div>
+          ) : (
+            <>
+              <div style={{ width: '100%', height: 380 }}>
+                {tipoVisualizacionCategoria === 'radar' ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datosGrafico}>
+                      <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
+                      <PolarAngleAxis
+                        dataKey="nombreCorto"
+                        tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
+                      />
+                      <PolarRadiusAxis
+                        allowDecimals={false}
+                        stroke="var(--color-texto-sec, #64748b)"
+                        tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                          borderColor: 'var(--color-borde, #334155)',
+                          borderRadius: '8px',
+                          color: 'var(--color-texto, #f8fafc)',
+                        }}
+                        formatter={(val: any, _, item: any) => [
+                          `${val} ${val === 1 ? 'incidente' : 'incidentes'} (${item.payload.porcentaje}%)`,
+                          item.payload.nombre,
+                        ]}
+                      />
+                      <Legend
+                        verticalAlign="bottom"
+                        height={28}
+                        iconType="circle"
+                        wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
+                      />
+                      <Radar
+                        name="Incidentes"
+                        dataKey="cantidad"
+                        stroke="#ef4444"
+                        fill="#ef4444"
+                        fillOpacity={0.4}
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: '#dc2626' }}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                ) : tipoVisualizacionCategoria === 'pareto' ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <ComposedChart data={datosPareto} margin={{ top: 12, right: 36, left: 10, bottom: 65 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                      <XAxis
+                        dataKey="nombreCorto"
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-22}
+                        textAnchor="end"
+                        height={60}
+                        dx={-4}
+                        dy={4}
+                      />
+                      <YAxis
+                        yAxisId="left"
+                        allowDecimals={false}
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        width={40}
+                        label={{
+                          value: 'Frecuencia',
+                          angle: -90,
+                          position: 'insideLeft',
+                          offset: 10,
+                          fill: colores.textoSec,
+                          fontSize: 11,
+                        }}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        domain={[0, 100]}
+                        unit="%"
+                        stroke="#f59e0b"
+                        fontSize={12}
+                        tickLine={false}
+                        width={46}
+                        label={{
+                          value: '% Acum.',
+                          angle: 90,
+                          position: 'insideRight',
+                          offset: 10,
+                          fill: '#f59e0b',
+                          fontSize: 11,
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                          borderColor: 'var(--color-borde, #334155)',
+                          borderRadius: '8px',
+                          color: 'var(--color-texto, #f8fafc)',
+                        }}
+                        formatter={(val: any, nombre: any, item: any) => {
+                          if (nombre === '% Acumulado') {
+                            return [`${val}%`, nombre];
+                          }
+                          return [`${val} (${item?.payload?.porcentaje || 0}%)`, 'Frecuencia'];
+                        }}
+                        labelFormatter={(_, items) => items?.[0]?.payload?.nombre || ''}
+                      />
+                      <Legend
+                        verticalAlign="top"
+                        align="right"
+                        height={32}
+                        wrapperStyle={{ fontSize: '12px', paddingBottom: '6px' }}
+                      />
+                      <ReferenceLine
+                        y={80}
+                        yAxisId="right"
+                        stroke="#10b981"
+                        strokeDasharray="4 4"
+                        strokeWidth={2}
+                        label={{
+                          value: 'Corte 80% (Pareto)',
+                          position: 'top',
+                          fill: '#10b981',
+                          fontSize: 11,
+                          fontWeight: 600,
+                        }}
+                      />
+                      <Bar
+                        yAxisId="left"
+                        dataKey="cantidad"
+                        name="Frecuencia (Incidentes)"
+                        fill="#ef4444"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="pctAcumulado"
+                        name="% Acumulado"
+                        stroke="#f59e0b"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#f59e0b' }}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <BarChart data={datosGrafico} margin={{ top: 16, right: 20, left: -6, bottom: 30 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                      <XAxis
+                        dataKey="nombreCorto"
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-20}
+                        textAnchor="end"
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        width={40}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-superficie-elevada)',
+                          borderColor: 'var(--color-borde)',
+                          color: 'var(--color-texto)',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(val, _, item) => [
+                          `${val} ${val === 1 ? 'incidente' : 'incidentes'} (${item.payload.porcentaje}%)`,
+                          item.payload.nombre,
+                        ]}
+                      />
+                      <Bar
+                        dataKey="cantidad"
+                        radius={[6, 6, 0, 0]}
+                        cursor="pointer"
+                        onClick={(entry: any) => {
+                          if (entry && entry.tipo) {
+                            setCategoriaSeleccionada((prev) => (prev === entry.tipo ? null : entry.tipo));
+                          }
+                        }}
+                      >
+                        {datosGrafico.map((entry) => (
+                          <Cell
+                            key={`cell-${entry.tipo}`}
+                            fill={entry.color}
+                            opacity={categoriaSeleccionada && categoriaSeleccionada !== entry.tipo ? 0.35 : 1}
+                            stroke={categoriaSeleccionada === entry.tipo ? 'var(--color-texto)' : 'none'}
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              {tipoVisualizacionCategoria === 'pareto' && datosPareto.length > 0 && (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--color-primario, #3b82f6)', flexShrink: 0, marginTop: '1px' }}>
+                    insights
+                  </span>
+                  <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                    <strong style={{ color: 'var(--text-h)' }}>Principio de Pareto (Regla del 80/20): </strong>
+                    <span>
+                      El 80% de los incidentes se originan en:{' '}
+                      <strong style={{ color: '#ef4444' }}>
+                        {datosPareto.filter((p) => p.esCausaVital).map((p) => p.nombre).join(', ') || 'N/A'}
+                      </strong>.
+                      Concentrar las acciones correctivas y capacitaciones sobre estas causas vitales reducirá la gran mayoría de desvíos en planta.
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card style={{ marginBottom: '1.5rem' }}>
         <CardHeader style={{ padding: '20px 24px 14px 24px' }}>

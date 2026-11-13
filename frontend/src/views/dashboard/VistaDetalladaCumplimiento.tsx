@@ -6,6 +6,12 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -74,6 +80,8 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
   const [datos, setDatos] = useState<CumplimientoDetalladoResponse | null>(null);
   const [cargando, setCargando] = useState<boolean>(true);
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
+  const [modoRadarCumplimiento, setModoRadarCumplimiento] = useState<'sector' | 'turno'>('sector');
+  const [pestañaCumplimiento, setPestañaCumplimiento] = useState<'radar' | 'tendencia' | 'sector' | 'equipo' | 'turno'>('radar');
 
   const [paginaActual, setPaginaActual] = useState<number>(1);
   const itemsPorPagina = 10;
@@ -232,6 +240,25 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
     (paginaActual - 1) * itemsPorPagina,
     paginaActual * itemsPorPagina
   );
+
+  const datosRadarCumplimiento = useMemo(() => {
+    if (modoRadarCumplimiento === 'sector') {
+      return (datos?.desglose_por_sector || []).map((s) => ({
+        dimension: s.nombre,
+        porcentaje: s.porcentaje,
+        meta: 80,
+        tareas_completadas: s.tareas_completadas,
+        total_tareas: s.total_tareas,
+      }));
+    }
+    return (datos?.desglose_por_turno || []).map((t) => ({
+      dimension: t.nombre,
+      porcentaje: t.porcentaje,
+      meta: 80,
+      tareas_completadas: t.tareas_completadas,
+      total_tareas: t.total_tareas,
+    }));
+  }, [datos, modoRadarCumplimiento]);
 
   const hayDatos = items.length > 0;
   const kpis = datos?.kpis;
@@ -561,110 +588,499 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
 
           <Card style={{ marginBottom: '1.5rem' }}>
             <CardHeader>
-              <CardTitle style={{ fontSize: '1rem' }}>Tendencia Temporal de Cumplimiento</CardTitle>
-              <CardDescription>Evolución cronológica del porcentaje de cumplimiento general</CardDescription>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '24px', color: 'var(--color-primario, #3b82f6)' }}>
+                    fact_check
+                  </span>
+                  <div>
+                    <CardTitle style={{ fontSize: '1.1rem' }}>Análisis Integral de Cumplimiento POES y Limpieza</CardTitle>
+                    <CardDescription>
+                      Evaluación multidimensional, evolución temporal y comparativas detalladas por sector, equipo y turno
+                    </CardDescription>
+                  </div>
+                </div>
+
+                <div style={{ display: 'inline-flex', borderRadius: '8px', border: '1px solid var(--border)', padding: '3px', background: 'var(--code-bg)', gap: '4px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: pestañaCumplimiento === 'radar' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                      color: pestañaCumplimiento === 'radar' ? '#ffffff' : 'var(--text-sec)',
+                      fontWeight: pestañaCumplimiento === 'radar' ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    onClick={() => setPestañaCumplimiento('radar')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>radar</span>
+                    Red de Araña
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: pestañaCumplimiento === 'tendencia' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                      color: pestañaCumplimiento === 'tendencia' ? '#ffffff' : 'var(--text-sec)',
+                      fontWeight: pestañaCumplimiento === 'tendencia' ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    onClick={() => setPestañaCumplimiento('tendencia')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>show_chart</span>
+                    Tendencia
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: pestañaCumplimiento === 'sector' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                      color: pestañaCumplimiento === 'sector' ? '#ffffff' : 'var(--text-sec)',
+                      fontWeight: pestañaCumplimiento === 'sector' ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    onClick={() => setPestañaCumplimiento('sector')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>domain</span>
+                    Por Sector
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: pestañaCumplimiento === 'equipo' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                      color: pestañaCumplimiento === 'equipo' ? '#ffffff' : 'var(--text-sec)',
+                      fontWeight: pestañaCumplimiento === 'equipo' ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    onClick={() => setPestañaCumplimiento('equipo')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>precision_manufacturing</span>
+                    Por Equipo
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: pestañaCumplimiento === 'turno' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                      color: pestañaCumplimiento === 'turno' ? '#ffffff' : 'var(--text-sec)',
+                      fontWeight: pestañaCumplimiento === 'turno' ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    onClick={() => setPestañaCumplimiento('turno')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>schedule</span>
+                    Por Turno
+                  </button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div style={{ width: '100%', height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={datos?.tendencia_temporal || []} margin={{ top: 12, right: 16, left: 0, bottom: 20 }}>
-                    <defs>
-                      <linearGradient id="gradTendencia" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
-                        <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                    <XAxis dataKey="etiqueta" stroke={colores.textoSec} fontSize={11} tickLine={false} />
-                    <YAxis domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} stroke={colores.textoSec} fontSize={11} tickLine={false} unit="%" width={40} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
-                      formatter={(val) => [`${val}%`, 'Cumplimiento']}
-                    />
-                    <ReferenceLine y={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 10.5 }} />
-                    <Area type="monotone" dataKey="porcentaje" stroke={colores.primario} strokeWidth={2.5} fill="url(#gradTendencia)" dot={{ r: 3, fill: colores.primario }} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+              {pestañaCumplimiento === 'radar' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                    <div style={{ display: 'inline-flex', borderRadius: '6px', border: '1px solid var(--border)', padding: '2px', background: 'var(--code-bg)' }}>
+                      <button
+                        type="button"
+                        style={{
+                          padding: '3px 10px',
+                          fontSize: '0.75rem',
+                          borderRadius: '4px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: modoRadarCumplimiento === 'sector' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                          color: modoRadarCumplimiento === 'sector' ? '#ffffff' : 'var(--text-sec)',
+                          fontWeight: modoRadarCumplimiento === 'sector' ? 600 : 400,
+                        }}
+                        onClick={() => setModoRadarCumplimiento('sector')}
+                      >
+                        Por Sector Físico
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          padding: '3px 10px',
+                          fontSize: '0.75rem',
+                          borderRadius: '4px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: modoRadarCumplimiento === 'turno' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                          color: modoRadarCumplimiento === 'turno' ? '#ffffff' : 'var(--text-sec)',
+                          fontWeight: modoRadarCumplimiento === 'turno' ? 600 : 400,
+                        }}
+                        onClick={() => setModoRadarCumplimiento('turno')}
+                      >
+                        Por Turno de Trabajo
+                      </button>
+                    </div>
+                  </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
-              gap: '16px',
-              marginBottom: '1.5rem',
-            }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ fontSize: '1rem' }}>Comparativa por Sector Físico</CardTitle>
-                <CardDescription>Porcentaje de cumplimiento en cada sector de la planta</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div style={{ width: '100%', height: 260 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={datos?.desglose_por_sector || []} layout="vertical" margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                      <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={11} unit="%" />
-                      <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={11} tickLine={false} width={90} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
-                        formatter={(val, _, item) => [
-                          `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
-                          'Cumplimiento',
-                        ]}
-                      />
-                      <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" />
-                      <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]}>
-                        {(datos?.desglose_por_sector || []).map((entry, index) => (
-                          <Cell key={`sector-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {datosRadarCumplimiento.length === 0 ? (
+                    <div style={{ height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
+                      Sin datos suficientes para proyectar la red de cumplimiento en este rango.
+                    </div>
+                  ) : (
+                    <div style={{ width: '100%', height: 380, minHeight: 380 }}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <RadarChart cx="50%" cy="50%" outerRadius="68%" data={datosRadarCumplimiento}>
+                          <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
+                          <PolarAngleAxis
+                            dataKey="dimension"
+                            tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
+                          />
+                          <PolarRadiusAxis
+                            angle={30}
+                            domain={[0, 100]}
+                            stroke="var(--color-texto-sec, #64748b)"
+                            tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
+                            tickFormatter={(val) => `${val}%`}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                              borderColor: 'var(--color-borde, #334155)',
+                              borderRadius: '8px',
+                              color: 'var(--color-texto, #f8fafc)',
+                            }}
+                            formatter={(val: any, name: any, item: any) => [
+                              `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
+                              name === 'porcentaje' ? 'Cumplimiento Real' : 'Meta',
+                            ]}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            height={28}
+                            iconType="circle"
+                            wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
+                          />
+                          <Radar
+                            name="Cumplimiento Real (%)"
+                            dataKey="porcentaje"
+                            stroke="#10b981"
+                            fill="#10b981"
+                            fillOpacity={0.35}
+                            strokeWidth={2}
+                            dot={{ r: 3, fill: '#059669' }}
+                          />
+                          <Radar
+                            name="Meta (80%)"
+                            dataKey="meta"
+                            stroke="#3b82f6"
+                            fill="#3b82f6"
+                            fillOpacity={0.08}
+                            strokeDasharray="3 3"
+                            strokeWidth={1.5}
+                            dot={{ r: 2, fill: '#2563eb' }}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      marginTop: '12px',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                      border: '1px solid rgba(16, 185, 129, 0.25)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#10b981', flexShrink: 0, marginTop: '1px' }}>
+                      checklist_rtl
+                    </span>
+                    <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                      <strong style={{ color: 'var(--text-h)' }}>Diagnóstico POES: </strong>
+                      <span>
+                        La red radial permite detectar asimetrías operativas. Los sectores o turnos que se sitúan por debajo del polígono azul (80%) requieren revisión de protocolos de saneamiento y refuerzo de supervisión en planta.
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ fontSize: '1rem' }}>Comparativa por Equipo</CardTitle>
-                <CardDescription>Identificación de equipos de producción críticos</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div style={{ width: '100%', height: 260 }}>
-                  {datos?.desglose_por_equipo && datos.desglose_por_equipo.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={datos.desglose_por_equipo} layout="vertical" margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                        <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={11} unit="%" />
-                        <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={11} tickLine={false} width={90} />
+              {pestañaCumplimiento === 'tendencia' && (
+                <div>
+                  <div style={{ width: '100%', height: 380 }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <AreaChart data={datos?.tendencia_temporal || []} margin={{ top: 12, right: 16, left: 0, bottom: 20 }}>
+                        <defs>
+                          <linearGradient id="gradTendencia" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
+                            <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                        <XAxis dataKey="etiqueta" stroke={colores.textoSec} fontSize={12} tickLine={false} />
+                        <YAxis domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} stroke={colores.textoSec} fontSize={12} tickLine={false} unit="%" width={44} />
                         <Tooltip
                           contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
+                          formatter={(val) => [`${val}%`, 'Cumplimiento']}
+                        />
+                        <ReferenceLine y={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 11, fontWeight: 600 }} />
+                        <Area type="monotone" dataKey="porcentaje" stroke={colores.primario} strokeWidth={2.5} fill="url(#gradTendencia)" dot={{ r: 3.5, fill: colores.primario }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: '12px',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--color-primario, #3b82f6)', flexShrink: 0, marginTop: '1px' }}>
+                      trending_up
+                    </span>
+                    <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                      <strong style={{ color: 'var(--text-h)' }}>Tendencia Temporal: </strong>
+                      <span>
+                        Evolución periódica del cumplimiento global. Permite verificar si las acciones preventivas logran mantener la ejecución de tareas por encima de la línea verde del 80%.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {pestañaCumplimiento === 'sector' && (
+                <div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+                    <div style={{ flex: '1 1 180px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-superficie)', border: '1px solid var(--color-borde)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>Sectores Evaluados</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-h)' }}>{(datos?.desglose_por_sector || []).length}</div>
+                    </div>
+                    <div style={{ flex: '1 1 180px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-superficie)', border: '1px solid var(--color-borde)' }}>
+                      <div style={{ fontSize: '11px', color: '#10b981' }}>En Meta (&ge;80%)</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10b981' }}>
+                        {(datos?.desglose_por_sector || []).filter((s) => s.porcentaje >= 80).length}
+                      </div>
+                    </div>
+                    <div style={{ flex: '1 1 180px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-superficie)', border: '1px solid var(--color-borde)' }}>
+                      <div style={{ fontSize: '11px', color: '#f59e0b' }}>En Atención (50-79%)</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f59e0b' }}>
+                        {(datos?.desglose_por_sector || []).filter((s) => s.porcentaje >= 50 && s.porcentaje < 80).length}
+                      </div>
+                    </div>
+                    <div style={{ flex: '1 1 180px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-superficie)', border: '1px solid var(--color-borde)' }}>
+                      <div style={{ fontSize: '11px', color: '#ef4444' }}>Críticos (&lt;50%)</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ef4444' }}>
+                        {(datos?.desglose_por_sector || []).filter((s) => s.porcentaje < 50).length}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ width: '100%', height: 340 }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <BarChart data={datos?.desglose_por_sector || []} layout="vertical" margin={{ top: 8, right: 30, left: 30, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
+                        <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={12} unit="%" />
+                        <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={12} tickLine={false} width={120} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)', borderRadius: '8px' }}
                           formatter={(val, _, item) => [
                             `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
-                            `Equipo (${item.payload.subtitulo || 'Sector'})`,
+                            'Cumplimiento',
                           ]}
                         />
-                        <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" />
+                        <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 11, fontWeight: 600 }} />
                         <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]}>
-                          {datos.desglose_por_equipo.map((entry, index) => (
-                            <Cell key={`equipo-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
+                          {(datos?.desglose_por_sector || []).map((entry, index) => (
+                            <Cell key={`sector-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
                           ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                  </div>
+
+                  <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                    {(datos?.desglose_por_sector || []).map((s) => (
+                      <div
+                        key={`sector-card-${s.id}`}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--color-borde)',
+                          backgroundColor: 'var(--color-superficie)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-texto)' }}>{s.nombre}</span>
+                          <Badge variant={obtenerBadgeVariante(s.porcentaje)} style={{ fontSize: '11px' }}>
+                            {s.porcentaje >= 80 ? 'Óptimo' : s.porcentaje >= 50 ? 'Regular' : 'Crítico'} ({s.porcentaje}%)
+                          </Badge>
+                        </div>
+                        <div style={{ height: '6px', backgroundColor: 'var(--color-fondo)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                          <div style={{ height: '100%', width: `${s.porcentaje}%`, backgroundColor: obtenerColorPorcentaje(s.porcentaje), borderRadius: '3px' }} />
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{s.tareas_completadas} completadas</span>
+                          <span>{s.total_tareas} programadas</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {pestañaCumplimiento === 'equipo' && (
+                <div>
+                  {datos?.desglose_por_equipo && datos.desglose_por_equipo.length > 0 ? (
+                    <div>
+                      <div style={{ width: '100%', height: 340 }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <BarChart data={datos.desglose_por_equipo} layout="vertical" margin={{ top: 8, right: 30, left: 30, bottom: 8 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
+                            <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={12} unit="%" />
+                            <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={12} tickLine={false} width={130} />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)', borderRadius: '8px' }}
+                              formatter={(val, _, item) => [
+                                `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
+                                `Equipo (${item.payload.subtitulo || 'Sector'})`,
+                              ]}
+                            />
+                            <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 11, fontWeight: 600 }} />
+                            <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]}>
+                              {datos.desglose_por_equipo.map((entry, index) => (
+                                <Cell key={`equipo-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                        {datos.desglose_por_equipo.map((eq) => (
+                          <div
+                            key={`equipo-card-${eq.id}`}
+                            style={{
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              border: '1px solid var(--color-borde)',
+                              backgroundColor: 'var(--color-superficie)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                              <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-texto)' }}>{eq.nombre}</span>
+                              <Badge variant={obtenerBadgeVariante(eq.porcentaje)} style={{ fontSize: '11px' }}>
+                                {eq.porcentaje}%
+                              </Badge>
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)', marginBottom: '6px' }}>{eq.subtitulo || 'Equipo de planta'}</div>
+                            <div style={{ height: '6px', backgroundColor: 'var(--color-fondo)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                              <div style={{ height: '100%', width: `${eq.porcentaje}%`, backgroundColor: obtenerColorPorcentaje(eq.porcentaje), borderRadius: '3px' }} />
+                            </div>
+                            <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>{eq.tareas_completadas} completadas</span>
+                              <span>{eq.total_tareas} tareas</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   ) : (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
+                    <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
                       No hay tareas asignadas directamente a equipos en este filtro.
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+
+              {pestañaCumplimiento === 'turno' && (
+                <div>
+                  <div style={{ width: '100%', height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <BarChart data={datos?.desglose_por_turno || []} layout="vertical" margin={{ top: 8, right: 30, left: 30, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
+                        <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={12} unit="%" />
+                        <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={12} tickLine={false} width={110} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)', borderRadius: '8px' }}
+                          formatter={(val, _, item) => [
+                            `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
+                            'Cumplimiento',
+                          ]}
+                        />
+                        <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 11, fontWeight: 600 }} />
+                        <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]}>
+                          {(datos?.desglose_por_turno || []).map((entry, index) => (
+                            <Cell key={`turno-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                    {(datos?.desglose_por_turno || []).map((t) => (
+                      <div
+                        key={`turno-card-${t.id}`}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--color-borde)',
+                          backgroundColor: 'var(--color-superficie)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-texto)' }}>{t.nombre}</span>
+                          <Badge variant={obtenerBadgeVariante(t.porcentaje)} style={{ fontSize: '11px' }}>
+                            {t.porcentaje >= 80 ? 'Óptimo' : t.porcentaje >= 50 ? 'Regular' : 'Crítico'} ({t.porcentaje}%)
+                          </Badge>
+                        </div>
+                        <div style={{ height: '6px', backgroundColor: 'var(--color-fondo)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                          <div style={{ height: '100%', width: `${t.porcentaje}%`, backgroundColor: obtenerColorPorcentaje(t.porcentaje), borderRadius: '3px' }} />
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{t.tareas_completadas} completadas</span>
+                          <span>{t.total_tareas} tareas</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card style={{ marginBottom: '2rem' }}>
             <CardHeader style={{ paddingBottom: '12px' }}>

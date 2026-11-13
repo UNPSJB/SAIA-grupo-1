@@ -87,6 +87,9 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
           setConsumoInsumos(data.consumo || []);
           if (Array.isArray(data.unidades_disponibles)) {
             setUnidadesDisponibles(data.unidades_disponibles);
+            if (data.unidades_disponibles.length > 0 && !data.unidades_disponibles.includes(unidadInsumos)) {
+              setUnidadInsumos(data.unidades_disponibles[0]);
+            }
           }
         }
       } catch (e) {
@@ -319,7 +322,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
         <div className="subtitulo">Panel de estadísticas y control general</div>
       </div>
 
-      {/* 🟢 Botón dinámico que cambia según el estado de habilitación global */}
       <div>
         {vistaHabilitada ? (
           <button
@@ -693,18 +695,43 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
             {loadingInsumos ? (
               <p className="dashboard-sin-datos">Cargando consumo de insumos...</p>
             ) : consumoInsumos.length === 0 ? (
-              <p className="dashboard-sin-datos">
-                No hay tareas completadas con consumo en este período.
-              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '16px', textAlign: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--color-texto-sec)', marginBottom: '6px' }}>
+                  science
+                </span>
+                <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: 'var(--color-texto-sec)' }}>
+                  Sin tareas completadas con consumo en este período ({periodoInsumos === 'dia' ? 'diario' : periodoInsumos === 'semana' ? 'semanal' : 'mensual'}).
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {periodoInsumos !== 'mes' && (
+                    <button
+                      type="button"
+                      className="dashboard-btn-detalle"
+                      style={{ fontSize: '11.5px', padding: '3px 8px' }}
+                      onClick={() => setPeriodoInsumos('mes')}
+                    >
+                      Ver mensual
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="dashboard-btn-detalle"
+                    style={{ fontSize: '11.5px', padding: '3px 8px' }}
+                    onClick={() => setVistaDetalle('insumos')}
+                  >
+                    Histórico completo &rarr;
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="dashboard-grafico-contenedor">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={consumoInsumos} margin={{ top: 8, right: 16, left: 12, bottom: 4 }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <BarChart data={consumoInsumos} margin={{ top: 12, right: 18, left: 14, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                     <XAxis
                       dataKey="nombre"
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       interval={0}
                       tickLine={false}
                       angle={-22}
@@ -714,7 +741,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                     />
                     <YAxis
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       tickLine={false}
                       width={62}
                       label={{
@@ -723,7 +750,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                         position: 'insideLeft',
                         offset: 12,
                         fill: colores.textoSec,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 500,
                         style: { textAnchor: 'middle' },
                       }}
@@ -783,9 +810,9 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 onChange={(e) => setPeriodoProduccion(e.target.value as Periodo)}
                 title="Seleccionar período de producción"
               >
-                <option value="dia">Semana</option>
-                <option value="semana">Mes</option>
-                <option value="mes">Año</option>
+                <option value="dia">Últimos 7 días</option>
+                <option value="semana">Últimas 4 semanas</option>
+                <option value="mes">Meses del año</option>
               </select>
             </div>
           </div>
@@ -793,66 +820,95 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
           <div className="dashboard-card-cuerpo">
             {loadingProduccion ? (
               <p className="dashboard-sin-datos">Cargando estadísticas de producción...</p>
+            ) : lotesProducidos === 0 && datosProduccion.every((p) => p.lotes === 0) ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '16px', textAlign: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--color-texto-sec)', marginBottom: '6px' }}>
+                  precision_manufacturing
+                </span>
+                <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: 'var(--color-texto-sec)' }}>
+                  No se registraron lotes producidos en este período.
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {periodoProduccion !== 'mes' && (
+                    <button
+                      type="button"
+                      className="dashboard-btn-detalle"
+                      style={{ fontSize: '11.5px', padding: '3px 8px' }}
+                      onClick={() => setPeriodoProduccion('mes')}
+                    >
+                      Ver todo el año
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="dashboard-btn-detalle"
+                    style={{ fontSize: '11.5px', padding: '3px 8px' }}
+                    onClick={() => setVistaDetalle('produccion')}
+                  >
+                    Detalle de producción &rarr;
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="dashboard-grafico-contenedor">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={datosProduccion} margin={{ top: 8, right: 16, left: 12, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                  <XAxis
-                    dataKey="nombre"
-                    stroke={colores.textoSec}
-                    fontSize={11}
-                    interval={0}
-                    tickLine={false}
-                    height={32}
-                    label={{
-                      value: 'Período',
-                      position: 'insideBottom',
-                      offset: -2,
-                      fill: colores.textoSec,
-                      fontSize: 11,
-                      fontWeight: 500,
-                    }}
-                  />
-                  <YAxis
-                    stroke={colores.textoSec}
-                    fontSize={11}
-                    tickLine={false}
-                    width={62}
-                    allowDecimals={false}
-                    label={{
-                      value: 'Lotes producidos',
-                      angle: -90,
-                      position: 'insideLeft',
-                      offset: 12,
-                      fill: colores.textoSec,
-                      fontSize: 11,
-                      fontWeight: 500,
-                      style: { textAnchor: 'middle' },
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--color-superficie-elevada)',
-                      borderColor: 'var(--color-borde)',
-                      color: 'var(--color-texto)',
-                    }}
-                    itemStyle={{ color: 'var(--color-texto)' }}
-                    cursor={{ fill: colores.suave }}
-                    formatter={(valor) => [Number(valor) === 1 ? '1 lote' : `${valor} lotes`, 'Lotes']}
-                    labelFormatter={(nombre) => `Período: ${nombre}`}
-                  />
-                  <Bar dataKey="lotes" radius={[4, 4, 0, 0]}>
-                    {datosProduccion.map((_, index) => (
-                      <Cell
-                        key={`produccion-bar-${index}`}
-                        fill={PALETA_PRODUCCION[index % PALETA_PRODUCCION.length]}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <BarChart data={datosProduccion} margin={{ top: 12, right: 18, left: 14, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                    <XAxis
+                      dataKey="nombre"
+                      stroke={colores.textoSec}
+                      fontSize={12}
+                      interval={0}
+                      tickLine={false}
+                      height={32}
+                      label={{
+                        value: 'Período',
+                        position: 'insideBottom',
+                        offset: -2,
+                        fill: colores.textoSec,
+                        fontSize: 12,
+                        fontWeight: 500,
+                      }}
+                    />
+                    <YAxis
+                      stroke={colores.textoSec}
+                      fontSize={12}
+                      tickLine={false}
+                      width={62}
+                      allowDecimals={false}
+                      label={{
+                        value: 'Lotes producidos',
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 12,
+                        fill: colores.textoSec,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        style: { textAnchor: 'middle' },
+                      }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--color-superficie-elevada)',
+                        borderColor: 'var(--color-borde)',
+                        color: 'var(--color-texto)',
+                      }}
+                      itemStyle={{ color: 'var(--color-texto)' }}
+                      cursor={{ fill: colores.suave }}
+                      formatter={(valor) => [Number(valor) === 1 ? '1 lote' : `${valor} lotes`, 'Lotes']}
+                      labelFormatter={(nombre) => `Período: ${nombre}`}
+                    />
+                    <Bar dataKey="lotes" radius={[4, 4, 0, 0]}>
+                      {datosProduccion.map((_, index) => (
+                        <Cell
+                          key={`produccion-bar-${index}`}
+                          fill={PALETA_PRODUCCION[index % PALETA_PRODUCCION.length]}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
 
