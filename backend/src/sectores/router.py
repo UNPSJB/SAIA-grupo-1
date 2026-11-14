@@ -4,9 +4,29 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.sectores import schemas, services
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 from src.autenticacion.dependencies import get_usuario_actual
 
 router = APIRouter()
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_sectores_pdf(
+    busqueda: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_sectores_para_exportar(db, busqueda=busqueda)
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Sector",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Sectores",
+        nombre_archivo="sectores.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_sectores_csv(
@@ -14,7 +34,7 @@ def exportar_sectores_csv(
     db: Session = Depends(get_db)
 ):
     
-    datos = services.obtener_sectores_para_csv(db, busqueda=busqueda)
+    datos = services.obtener_sectores_para_exportar(db, busqueda=busqueda)
 
     columnas = {
         "id": "ID",

@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { Sector } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
-import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoSectoresProps {
   onNuevoClick?: () => void;
@@ -80,7 +81,7 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
     return !term || s.nombre.toLowerCase().includes(term);
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -88,12 +89,21 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
       if (busqueda.trim()) params.append('busqueda', busqueda.trim());
 
       const queryString = params.toString();
-      const url = `/sectores/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'sectores.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/sectores/exportar-pdf${query}`, 'sectores.pdf');
+      } else {
+        await descargarCSV(`/sectores/exportar-csv${query}`, 'sectores.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al exportar sectores a CSV.');
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar sectores a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -130,7 +140,7 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (
