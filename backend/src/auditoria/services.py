@@ -7,7 +7,7 @@ from datetime import datetime
 
 # operaciones para Auditoria (registro de solo lectura/escritura, sin update/delete: es inmutable)
 
-def obtener_auditorias_para_csv(
+def obtener_auditorias_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     accion: Optional[str] = None,

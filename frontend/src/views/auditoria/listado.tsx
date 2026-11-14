@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import type { Auditoria } from "./tipos";
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
@@ -100,7 +101,7 @@ export const ListadoAuditoria: React.FC = () => {
     return matchBusqueda && matchAccion && matchTabla;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -110,12 +111,21 @@ export const ListadoAuditoria: React.FC = () => {
       if (filtroTabla !== 'TODAS') params.append('tabla', filtroTabla);
 
       const queryString = params.toString();
-      const url = `/auditoria/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'auditoria.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/auditoria/exportar-pdf${query}`, 'auditoria.pdf');
+      } else {
+        await descargarCSV(`/auditoria/exportar-csv${query}`, 'auditoria.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al exportar los registros de auditoría a CSV.');
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar los registros de auditoría a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -155,7 +165,7 @@ export const ListadoAuditoria: React.FC = () => {
           className="btn-cancelar"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
         >
-          <CsvIcon /> Exportar CSV
+          <ExportIcon /> Exportar
         </button>
       </div>
 
