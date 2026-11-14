@@ -6,8 +6,36 @@ from src.equipos import schemas, services
 from src.autenticacion.dependencies import get_usuario_actual
 from typing import Optional
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter()
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_equipos_pdf(
+    busqueda: Optional[str] = None,
+    categoria: Optional[str] = None,
+    estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_equipos_para_exportar(
+        db, busqueda=busqueda, categoria=categoria, estado=estado
+    )
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Equipo",
+        "ubicacion": "Ubicación / Sector",
+        "categoria": "Categoría",
+        "plan_de_limpieza": "Plan de Limpieza",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Equipos",
+        nombre_archivo="equipos.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_equipos_csv(
@@ -17,7 +45,7 @@ def exportar_equipos_csv(
     db: Session = Depends(get_db)
 ):
     
-    datos = services.obtener_equipos_para_csv(
+    datos = services.obtener_equipos_para_exportar(
         db, busqueda=busqueda, categoria=categoria, estado=estado
     )
 
