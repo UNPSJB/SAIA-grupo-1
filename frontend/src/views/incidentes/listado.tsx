@@ -8,12 +8,13 @@ import {
   formatearFecha,
 } from './tipos';
 import { DetalleIncidenteModal } from './detalleModal';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
-import { descargarCSV } from '../../utils/exportarCsv';
 import '../../styles/formularioAlta.css';
 import '../../styles/incidentes.css';
 
@@ -178,7 +179,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({
     return coincideBusqueda && coincideEstado;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -187,12 +188,21 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({
       if (filtroEstado !== 'TODOS') params.append('estado_grupo', filtroEstado);
 
       const queryString = params.toString();
-      const url = `/incidentes/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'historial_incidentes.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/incidentes/exportar-pdf${query}`, 'historial_incidentes.pdf');
+      } else {
+        await descargarCSV(`/incidentes/exportar-csv${query}`, 'historial_incidentes.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al exportar el historial de incidentes a CSV.');
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar el historial de incidentes a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -238,7 +248,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onRegistrarClick && (

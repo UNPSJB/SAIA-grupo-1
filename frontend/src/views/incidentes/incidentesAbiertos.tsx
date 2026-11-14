@@ -7,12 +7,13 @@ import {
   formatearFecha,
 } from './tipos';
 import { DetalleIncidenteModal } from './detalleModal';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
-import { descargarCSV } from '../../utils/exportarCsv';
 import '../../styles/formularioAlta.css';
 import '../../styles/incidentes.css';
 
@@ -171,7 +172,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
     return coincideBusqueda && coincideUrgencia;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -180,12 +181,21 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
       if (filtroUrgencia !== 'TODOS') params.append('urgencia', filtroUrgencia);
 
       const queryString = params.toString();
-      const url = `/incidentes/abiertos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'incidentes_abiertos.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/incidentes/abiertos/exportar-pdf${query}`, 'incidentes_abiertos.pdf');
+      } else {
+        await descargarCSV(`/incidentes/abiertos/exportar-csv${query}`, 'incidentes_abiertos.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al exportar incidentes abiertos a CSV.');
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar incidentes abiertos a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -260,7 +270,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onRegistrarClick && (
