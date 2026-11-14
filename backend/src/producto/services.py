@@ -6,7 +6,7 @@ from src.producto import exceptions, schemas
 from src.producto.models import Producto
 from src.documentos.models import Documento
 
-def obtener_productos_para_csv(
+def obtener_productos_para_exportar(
     db: Session,
     activo: Optional[bool] = None,
     busqueda: Optional[str] = None

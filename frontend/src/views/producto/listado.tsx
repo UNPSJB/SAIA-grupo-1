@@ -2,12 +2,13 @@ import React, { useEffect, useState } from "react";
 import type { ProductoConId } from "./tipos";
 import "../../styles/formularioAlta.css";
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
-import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
-import { CsvIcon } from "../../components/icons/CsvIcon";
+import { ConfirmExportDialog, type FormatoExportacion } from "../../components/ui/confirmExportDialog";
+import { ExportIcon } from "../../components/icons/ExportIcon";
+import { descargarCSV } from "../../utils/exportarCsv";
+import { descargarPDF } from "../../utils/exportarPdf";
 import { Paginacion} from "../../components/ui/paginacion";
 import { usePaginacion } from "../../components/ui/usePaginacion"; 
-import { apiFetch } from "../../api/client";
-import { descargarCSV } from "../../utils/exportarCsv"; 
+import { apiFetch } from "../../api/client"; 
 
 interface ListadoProductosProps {
   onNuevoClick?: () => void;
@@ -108,7 +109,7 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
     return matchBusqueda && matchEstado;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -124,13 +125,20 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
       }
 
       const queryString = params.toString();
-      const url = `/productos/exportar-csv${queryString ? `?${queryString}` : ""}`;
+      const query = queryString ? `?${queryString}` : "";
 
-      await descargarCSV(url, "productos_elaborados.csv");
+      if (formato === "pdf") {
+        await descargarPDF(`/productos/exportar-pdf${query}`, "productos_elaborados.pdf");
+      } else {
+        await descargarCSV(`/productos/exportar-csv${query}`, "productos_elaborados.csv");
+      }
+
       setDialogExportarAbierto(false);
     } catch (error) {
       setErrorDialogMsg(
-        error instanceof Error ? error.message : "Error al exportar los productos a CSV."
+        error instanceof Error
+          ? error.message
+          : `Error al exportar los productos a ${formato.toUpperCase()}.`
       );
     } finally {
       setExportando(false);
@@ -171,7 +179,7 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
             className="btn-cancelar"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (
