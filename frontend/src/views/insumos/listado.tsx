@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
-import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoInsumosProps {
   onNuevoClick?: () => void;
@@ -122,7 +123,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     return coincideBusqueda && coincideUnidad && coincideVencimiento;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -132,12 +133,21 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
       if (filtroVencimiento !== 'TODOS') params.append('vencimiento', filtroVencimiento);
 
       const queryString = params.toString();
-      const url = `/insumos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const url = `/insumos/exportar-pdf${queryString ? `?${queryString}` : ''}`;
 
-      await descargarCSV(url, 'ingredientes.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(url, 'ingredientes.pdf');
+      } else {
+        await descargarCSV(`/insumos/exportar-csv${queryString ? `?${queryString}` : ''}`, 'ingredientes.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar ingredientes a CSV.');
+      setErrorDialogMsg(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar ingredientes a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -178,7 +188,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (

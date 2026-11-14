@@ -21,17 +21,17 @@ def _validar_nombre_unico(db: Session, nombre: str, excluir_id: Optional[int] = 
     if db.scalar(consulta) is not None:
         raise exceptions.NombreInsumoDuplicado()
 
-def obtener_insumos_para_csv(
+def obtener_insumos_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     unidad: Optional[str] = None,
     vencimiento: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    
-    query = select(Insumo)
+    query = select(Insumo).where(Insumo.activo)
     insumos = db.scalars(query).all()
     filas = []
     term = busqueda.lower().strip() if busqueda else None
+    hoy = date.today()
 
     for i in insumos:
         nombre = getattr(i, "nombre", "") or ""
@@ -51,14 +51,15 @@ def obtener_insumos_para_csv(
         f_venc = getattr(i, "fechaVencimiento", None)
         f_rec = getattr(i, "fechaRecepcion", None)
 
-        str_venc = f_venc.strftime("%Y-%m-%d") if isinstance(f_venc, (datetime, date)) else "No aplica"
-        str_rec = f_rec.strftime("%Y-%m-%d") if isinstance(f_rec, (datetime, date)) else "No aplica"
+        f_venc_date = f_venc.date() if isinstance(f_venc, datetime) else f_venc
+        f_rec_date = f_rec.date() if isinstance(f_rec, datetime) else f_rec
+
+        str_venc = f_venc_date.strftime("%d/%m/%Y") if isinstance(f_venc_date, date) else "No aplica"
+        str_rec = f_rec_date.strftime("%d/%m/%Y") if isinstance(f_rec_date, date) else "No aplica"
 
         estado_venc = "SIN_VENCIMIENTO"
-        if f_venc:
-            now_dt = datetime.now()
-            f_venc_dt = datetime.combine(f_venc, datetime.min.time()) if isinstance(f_venc, date) and not isinstance(f_venc, datetime) else f_venc
-            dias = (f_venc_dt - now_dt).total_seconds() / (1000 * 60 * 60 * 24)
+        if isinstance(f_venc_date, date):
+            dias = (f_venc_date - hoy).days
             if dias < 0:
                 estado_venc = "VENCIDO"
             elif dias <= 15:
