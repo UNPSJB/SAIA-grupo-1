@@ -1023,7 +1023,7 @@ def test_autocompletar_datos_borrador(session: Session):
 
 def test_migraciones_tablas_rotulado_en_motor_vacio():
     from sqlalchemy import create_engine, text
-    from backend.src.rotulado.migraciones import actualizar_tablas_rotulado
+    from src.rotulado.migraciones import actualizar_tablas_rotulado
 
     engine_limpio = create_engine("sqlite:///:memory:")
     actualizar_tablas_rotulado(engine_limpio)

@@ -473,7 +473,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             >
               Previsualizar Borrador de Rótulo
             </h1>
-            <Badge variant="outline" style={{ fontSize: "0.85rem", fontWeight: 700 }}>
+            <Badge variant="secondary" style={{ fontSize: "0.85rem", fontWeight: 700 }}>
               Ley 27.642 / CAA
             </Badge>
           </div>
@@ -556,28 +556,27 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
 
       <div
         style={{
-          backgroundColor: "#fffbeb",
-          border: "2px solid #f59e0b",
+          backgroundColor: "var(--color-superficie)",
+          border: "1px solid var(--color-borde)",
           borderRadius: "10px",
           padding: "16px 20px",
           display: "flex",
           alignItems: "center",
           gap: "16px",
-          boxShadow: "0 2px 6px rgba(245, 158, 11, 0.15)",
         }}
       >
         <span
           className="material-symbols-outlined"
-          style={{ fontSize: "36px", color: "#d97706", lineHeight: 1 }}
+          style={{ fontSize: "28px", color: "var(--color-texto-sec)", lineHeight: 1 }}
         >
-          warning
+          verified
         </span>
         <div style={{ flex: 1 }}>
           <div
             style={{
-              color: "#92400e",
-              fontWeight: 800,
-              fontSize: "0.85rem",
+              color: "var(--color-texto-sec)",
+              fontWeight: 700,
+              fontSize: "0.78rem",
               textTransform: "uppercase",
               letterSpacing: "0.5px",
             }}
@@ -586,9 +585,9 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
           </div>
           <div
             style={{
-              color: "#78350f",
-              fontWeight: 700,
-              fontSize: "1.05rem",
+              color: "var(--color-texto)",
+              fontWeight: 600,
+              fontSize: "0.98rem",
               marginTop: "2px",
             }}
           >
@@ -719,8 +718,8 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
         {datosFaltantes.length > 0 ? (
           <div
             style={{
-              backgroundColor: "#fef2f2",
-              border: "1.5px solid #f87171",
+              backgroundColor: "var(--color-superficie)",
+              border: "1px solid var(--color-borde)",
               borderRadius: "10px",
               padding: "16px 20px",
               display: "flex",
@@ -733,35 +732,35 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                color: "#991b1b",
+                color: "var(--color-texto)",
                 fontWeight: 700,
-                fontSize: "1rem",
+                fontSize: "0.95rem",
               }}
             >
               <span
                 className="material-symbols-outlined"
-                style={{ fontSize: "20px", color: "#b91c1c" }}
+                style={{ fontSize: "20px", color: "var(--color-texto-sec)" }}
               >
-                cancel
+                info
               </span>
               <span>Datos Obligatorios Faltantes ({datosFaltantes.length})</span>
             </div>
             <p
               style={{
-                color: "#7f1d1d",
-                fontSize: "0.88rem",
+                color: "var(--color-texto-sec)",
+                fontSize: "0.85rem",
                 margin: 0,
                 lineHeight: 1.4,
               }}
             >
-              El rótulo no está apto para revisión formal o trámite oficial ante autoridad sanitaria hasta completar:
+              Requerido para trámite oficial ante autoridad sanitaria:
             </p>
             <ul
               style={{
                 margin: "4px 0 0 18px",
                 padding: 0,
-                color: "#b91c1c",
-                fontSize: "0.88rem",
+                color: "var(--color-texto)",
+                fontSize: "0.85rem",
               }}
             >
               {datosFaltantes.map((item, idx) => (
@@ -774,8 +773,8 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
         ) : (
           <div
             style={{
-              backgroundColor: "#f0fdf4",
-              border: "1.5px solid #4ade80",
+              backgroundColor: "var(--color-superficie)",
+              border: "1px solid var(--color-borde)",
               borderRadius: "10px",
               padding: "16px 20px",
               display: "flex",
@@ -785,15 +784,15 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
           >
             <span
               className="material-symbols-outlined"
-              style={{ fontSize: "28px", color: "#16a34a" }}
+              style={{ fontSize: "26px", color: "var(--color-texto)" }}
             >
               check_circle
             </span>
             <div>
-              <div style={{ color: "#166534", fontWeight: 700, fontSize: "0.98rem" }}>
+              <div style={{ color: "var(--color-texto)", fontWeight: 700, fontSize: "0.95rem" }}>
                 Todos los datos obligatorios completados
               </div>
-              <div style={{ color: "#15803d", fontSize: "0.85rem", marginTop: "2px" }}>
+              <div style={{ color: "var(--color-texto-sec)", fontSize: "0.82rem", marginTop: "2px" }}>
                 Denominación, ingredientes, origen, registros y lote cargados.
               </div>
             </div>
@@ -803,8 +802,8 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
         {borrador.tabla_nutricional_incompleta ? (
           <div
             style={{
-              backgroundColor: "#fff7ed",
-              border: "1.5px solid #fb923c",
+              backgroundColor: "var(--color-superficie)",
+              border: "1px solid var(--color-borde)",
               borderRadius: "10px",
               padding: "16px 20px",
               display: "flex",
@@ -817,14 +816,14 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                color: "#9a3412",
+                color: "var(--color-texto)",
                 fontWeight: 700,
-                fontSize: "1rem",
+                fontSize: "0.95rem",
               }}
             >
               <span
                 className="material-symbols-outlined"
-                style={{ fontSize: "20px", color: "#ea580c" }}
+                style={{ fontSize: "20px", color: "var(--color-texto-sec)" }}
               >
                 warning
               </span>
@@ -832,20 +831,20 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             </div>
             <p
               style={{
-                color: "#c2410c",
-                fontSize: "0.88rem",
+                color: "var(--color-texto-sec)",
+                fontSize: "0.85rem",
                 margin: 0,
                 lineHeight: 1.4,
               }}
             >
-              La tabla nutricional está marcada como incompleta o sin porción declarada. Debe ser completada con análisis bromatológico o cálculo teórico verificado.
+              La tabla nutricional está marcada como incompleta o sin porción declarada.
             </p>
           </div>
         ) : (
           <div
             style={{
-              backgroundColor: "#f0fdf4",
-              border: "1.5px solid #4ade80",
+              backgroundColor: "var(--color-superficie)",
+              border: "1px solid var(--color-borde)",
               borderRadius: "10px",
               padding: "16px 20px",
               display: "flex",
@@ -855,15 +854,15 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
           >
             <span
               className="material-symbols-outlined"
-              style={{ fontSize: "28px", color: "#16a34a" }}
+              style={{ fontSize: "26px", color: "var(--color-texto)" }}
             >
               verified
             </span>
             <div>
-              <div style={{ color: "#166534", fontWeight: 700, fontSize: "0.98rem" }}>
+              <div style={{ color: "var(--color-texto)", fontWeight: 700, fontSize: "0.95rem" }}>
                 Información Nutricional Completa
               </div>
-              <div style={{ color: "#15803d", fontSize: "0.85rem", marginTop: "2px" }}>
+              <div style={{ color: "var(--color-texto-sec)", fontSize: "0.82rem", marginTop: "2px" }}>
                 Porción declarada: {borrador.porcion || "30 g"}.
               </div>
             </div>
@@ -880,9 +879,9 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
       >
         <Card
           style={{
-            border: "2px solid var(--color-borde)",
+            border: "1px solid var(--color-borde)",
             backgroundColor: "var(--color-superficie)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
             position: "relative",
             overflow: "hidden",
           }}
@@ -900,33 +899,33 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               padding: "4px 38px",
               letterSpacing: "1px",
               pointerEvents: "none",
-              border: "1px dashed rgba(220, 38, 38, 0.3)",
+              border: "1px dashed rgba(220, 38, 38, 0.4)",
             }}
           >
             BORRADOR
           </div>
 
-          <CardHeader style={{ padding: "24px 28px 16px 28px", borderBottom: "1px solid var(--color-borde)" }}>
+          <CardHeader style={{ padding: "20px 24px 14px 24px", borderBottom: "1px solid var(--color-borde)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <CardTitle style={{ fontSize: "1.25rem", fontWeight: 800 }}>
+                <CardTitle style={{ fontSize: "1.2rem", fontWeight: 700 }}>
                   Cara Principal del Envase (Frontal)
                 </CardTitle>
-                <CardDescription style={{ fontSize: "0.88rem", marginTop: "4px" }}>
+                <CardDescription style={{ fontSize: "0.85rem", marginTop: "4px" }}>
                   Vista frontal requerida por CAA y Ley de Promoción de la Alimentación Saludable.
                 </CardDescription>
               </div>
-              <Badge variant="secondary">Frente</Badge>
+              <Badge variant="activo">Frente</Badge>
             </div>
           </CardHeader>
 
-          <CardContent style={{ padding: "28px", display: "flex", flexDirection: "column", gap: "24px" }}>
+          <CardContent style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
             <div
               style={{
-                minHeight: "130px",
+                minHeight: "120px",
                 padding: "16px",
-                backgroundColor: "var(--color-fondo, #f8fafc)",
-                borderRadius: "10px",
+                backgroundColor: "var(--color-fondo)",
+                borderRadius: "8px",
                 border: "1px solid var(--color-borde)",
                 display: "flex",
                 flexDirection: "column",
@@ -936,11 +935,11 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             >
               <div
                 style={{
-                  fontSize: "0.78rem",
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   textTransform: "uppercase",
                   color: "var(--color-texto-sec)",
-                  marginBottom: "12px",
+                  marginBottom: "10px",
                   letterSpacing: "0.5px",
                 }}
               >
@@ -963,14 +962,14 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               ) : (
                 <div
                   style={{
-                    backgroundColor: "#f0fdf4",
-                    border: "1px solid #86efac",
-                    color: "#166534",
-                    padding: "12px 18px",
-                    borderRadius: "8px",
+                    backgroundColor: "var(--color-superficie)",
+                    border: "1px solid var(--color-borde)",
+                    color: "var(--color-texto)",
+                    padding: "10px 16px",
+                    borderRadius: "6px",
                     textAlign: "center",
-                    fontSize: "0.92rem",
-                    fontWeight: 600,
+                    fontSize: "0.88rem",
+                    fontWeight: 500,
                   }}
                 >
                   {borrador.mensaje_octogonos}
@@ -981,14 +980,14 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             <div
               style={{
                 textAlign: "center",
-                padding: "20px 10px",
+                padding: "16px 10px",
                 borderBottom: "1px solid var(--color-borde)",
               }}
             >
               <div
                 style={{
-                  fontSize: "2.1rem",
-                  fontWeight: 900,
+                  fontSize: "1.9rem",
+                  fontWeight: 800,
                   color: "var(--color-texto)",
                   textTransform: "uppercase",
                   letterSpacing: "-0.5px",
@@ -998,10 +997,10 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               </div>
               <div
                 style={{
-                  fontSize: "1.15rem",
-                  fontWeight: 600,
+                  fontSize: "1.05rem",
+                  fontWeight: 500,
                   color: "var(--color-texto-sec)",
-                  marginTop: "6px",
+                  marginTop: "4px",
                   fontStyle: "italic",
                 }}
               >
@@ -1014,30 +1013,30 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                padding: "12px 18px",
-                backgroundColor: "var(--color-fondo, #f8fafc)",
+                padding: "12px 16px",
+                backgroundColor: "var(--color-fondo)",
                 borderRadius: "8px",
                 border: "1px solid var(--color-borde)",
               }}
             >
-              <span style={{ fontSize: "0.95rem", color: "var(--color-texto-sec)", fontWeight: 600 }}>
+              <span style={{ fontSize: "0.9rem", color: "var(--color-texto-sec)", fontWeight: 600 }}>
                 Contenido Neto:
               </span>
-              <span style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--color-texto)" }}>
+              <span style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--color-texto)" }}>
                 {borrador.contenido_neto || "Pendiente"}
               </span>
             </div>
 
             <div
               style={{
-                backgroundColor: "#fffbeb",
-                border: "1px dashed #d97706",
+                backgroundColor: "var(--color-fondo)",
+                border: "1px dashed var(--color-borde)",
                 borderRadius: "6px",
                 padding: "10px 14px",
                 textAlign: "center",
-                fontSize: "0.78rem",
-                color: "#b45309",
-                fontWeight: 600,
+                fontSize: "0.75rem",
+                color: "var(--color-texto-sec)",
+                fontWeight: 500,
               }}
             >
               {borrador.leyenda_obligatoria}
@@ -1047,9 +1046,9 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
 
         <Card
           style={{
-            border: "2px solid var(--color-borde)",
+            border: "1px solid var(--color-borde)",
             backgroundColor: "var(--color-superficie)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
             position: "relative",
             overflow: "hidden",
           }}
@@ -1067,7 +1066,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               padding: "4px 38px",
               letterSpacing: "1px",
               pointerEvents: "none",
-              border: "1px dashed rgba(220, 38, 38, 0.3)",
+              border: "1px dashed rgba(220, 38, 38, 0.4)",
             }}
           >
             BORRADOR
@@ -1252,8 +1251,9 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               {borrador.tabla_nutricional_incompleta && (
                 <div
                   style={{
-                    backgroundColor: "#fee2e2",
-                    color: "#991b1b",
+                    backgroundColor: "#f1f5f9",
+                    color: "#475569",
+                    border: "1px dashed #94a3b8",
                     fontSize: "0.76rem",
                     fontWeight: 700,
                     textAlign: "center",
