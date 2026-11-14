@@ -5,15 +5,37 @@ from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.tipoDocumento import schemas, services
 from src.database import get_db
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/documentos/tipos", tags=["tipos_documentos"])
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_tipos_documentos_pdf(
+    busqueda: Optional[str] = Query(None),
+    ordenar_por: Optional[str] = Query("id"),
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_tipos_para_exportar(db, busqueda=busqueda, ordenar_por=ordenar_por)
+    
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Tipo de Documento"
+    }
+    
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Tipos de Documentos",
+        nombre_archivo="tipos_documentos.pdf"
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_tipos_documentos_csv(
     busqueda: Optional[str] = Query(None),
+    ordenar_por: Optional[str] = Query("id"),
     db: Session = Depends(get_db)
 ):
-    datos = services.obtener_tipos_para_csv(db, busqueda=busqueda)
+    datos = services.obtener_tipos_para_exportar(db, busqueda=busqueda, ordenar_por=ordenar_por)
     
     columnas = {
         "id": "ID",

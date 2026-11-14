@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import type { TipoDocumento } from './tipos';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
-import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoTiposDocumentosProps {
   onNuevoClick?: () => void;
@@ -99,7 +100,7 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
       return a.id - b.id;
     });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -108,14 +109,25 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
         params.append('busqueda', searchTerm.trim());
       }
 
-      const queryString = params.toString();
-      const url = `/documentos/tipos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      if (ordenarPor !== 'id') {
+        params.append('ordenar_por', ordenarPor);
+      }
 
-      await descargarCSV(url, 'tipos_documentos.csv');
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
+
+      if (formato === 'pdf') {
+        await descargarPDF(`/documentos/tipos/exportar-pdf${query}`, 'tipos_documentos.pdf');
+      } else {
+        await descargarCSV(`/documentos/tipos/exportar-csv${query}`, 'tipos_documentos.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (error) {
       setErrorMsg(
-        error instanceof Error ? error.message : 'Error al exportar los tipos de documentos a CSV.'
+        error instanceof Error
+          ? error.message
+          : `Error al exportar los tipos de documentos a ${formato.toUpperCase()}.`
       );
     } finally {
       setExportando(false);
@@ -123,10 +135,10 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
   };
 
   const obtenerResumenFiltros = () => {
-    if (searchTerm.trim()) {
-      return `Búsqueda: "${searchTerm}"`;
-    }
-    return 'Sin filtros aplicados';
+    const partes: string[] = [];
+    if (searchTerm.trim()) partes.push(`Búsqueda: "${searchTerm}"`);
+    if (ordenarPor === 'nombre') partes.push('Ordenado por: Nombre');
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
   };
 
   const {
@@ -156,7 +168,7 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (
