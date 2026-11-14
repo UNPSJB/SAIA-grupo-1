@@ -87,7 +87,7 @@ def registrar_visita_control(
     db: Session,
     control_id: int,
     fecha_realizacion: date,
-    file: Optional[UploadFile] = None,  # <--- Obligatorio
+    file: Optional[UploadFile] = None,
     observaciones: Optional[str] = None
 ) -> VisitaControlAmbiental:
     control = db.scalar(select(ControlAmbiental).where(ControlAmbiental.id == control_id))
@@ -191,7 +191,7 @@ def reactivar_control_ambiental(db: Session, control_id: int) -> ControlAmbienta
     return control
 
 
-def obtener_controles_para_csv(
+def obtener_controles_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     tipo: Optional[str] = None,
