@@ -1,8 +1,5 @@
-from enum import StrEnum, auto
-from typing import Optional
-
-from sqlalchemy import ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column
 from src.models import ModeloBase
 
 
@@ -15,3 +12,9 @@ class IndentificadorUnico(ModeloBase):
     ver_grafico : Mapped[bool]=mapped_column(index=True)
     verAcercaDeNosotros: Mapped[bool]=mapped_column(index=True)
     verProductos: Mapped[bool]=mapped_column(default=False)
+    ver_dias_sin_incidentes: Mapped[bool] = mapped_column(default=False)
+    ver_total_lotes: Mapped[bool] = mapped_column(default=False)
+    ver_volumen_fabricado: Mapped[bool] = mapped_column(default=False)
+    ver_producto_mas_elaborado: Mapped[bool] = mapped_column(default=False)
+    ver_grafico_totales_productos: Mapped[bool] = mapped_column(default=False)
+    ver_grafico_red_arana: Mapped[bool] = mapped_column(default=False)

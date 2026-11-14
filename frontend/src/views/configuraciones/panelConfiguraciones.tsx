@@ -18,7 +18,13 @@ const MAESTROS_BASICOS: MaestroBasico[] = [
 ];
 
 const PARAMETROS: { campo: keyof Omit<ParametrosVistaPublica, 'habilitada'>; label: string }[] = [
-  { campo: 'ver_grafico', label: 'Mostrar gráfico de tareas' },
+  { campo: 'ver_grafico', label: 'Mostrar gráfico de tareas de limpieza' },
+  { campo: 'ver_grafico_red_arana', label: 'Mostrar gráfico de red de araña (cumplimiento de limpieza)' },
+  { campo: 'ver_grafico_totales_productos', label: 'Mostrar gráfico de totales de productos elaborados' },
+  { campo: 'ver_dias_sin_incidentes', label: 'Mostrar tarjeta: Días sin incidentes' },
+  { campo: 'ver_total_lotes', label: 'Mostrar tarjeta: Total de lotes' },
+  { campo: 'ver_volumen_fabricado', label: 'Mostrar tarjeta: Volumen fabricado' },
+  { campo: 'ver_producto_mas_elaborado', label: 'Mostrar tarjeta: Producto más elaborado' },
   { campo: 'verAcercaDeNosotros', label: 'Mostrar Acerca de Nosotros' },
   { campo: 'verProductos', label: 'Mostrar listado de productos' },
 ];

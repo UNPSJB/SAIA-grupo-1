@@ -47,6 +47,12 @@ def test_vista_publica_sin_habilitar(session: Session) -> None:
         "ver_grafico": False,
         "verAcercaDeNosotros": False,
         "verProductos": False,
+        "ver_dias_sin_incidentes": False,
+        "ver_total_lotes": False,
+        "ver_volumen_fabricado": False,
+        "ver_producto_mas_elaborado": False,
+        "ver_grafico_totales_productos": False,
+        "ver_grafico_red_arana": False,
     }
 
 
@@ -163,4 +169,37 @@ def test_endpoints_publicos_siguen_abiertos(session: Session, sin_sesion) -> Non
     qr = _qr(session)
     assert client.get(f"/identificadorQR/verificar/{qr}").status_code == status.HTTP_200_OK
     assert client.get(f"/identificadorQR/{qr}/productos").status_code == status.HTTP_200_OK
+    assert client.get(f"/identificadorQR/{qr}/estadisticas").status_code == status.HTTP_200_OK
     assert client.get("/acercaDeNosotros/").status_code == status.HTTP_200_OK
+
+
+def test_actualizar_nuevos_parametros(session: Session) -> None:
+    qr = _qr(session)
+    res = client.put(
+        "/configuracion/vista-publica",
+        json={
+            "ver_dias_sin_incidentes": True,
+            "ver_total_lotes": True,
+            "ver_volumen_fabricado": True,
+            "ver_producto_mas_elaborado": True,
+            "ver_grafico_totales_productos": True,
+            "ver_grafico_red_arana": True,
+        },
+    )
+    assert res.status_code == status.HTTP_200_OK
+    body = res.json()
+    assert body["ver_dias_sin_incidentes"] is True
+    assert body["ver_total_lotes"] is True
+    assert body["ver_volumen_fabricado"] is True
+    assert body["ver_producto_mas_elaborado"] is True
+    assert body["ver_grafico_totales_productos"] is True
+    assert body["ver_grafico_red_arana"] is True
+
+    stats_res = client.get(f"/identificadorQR/{qr}/estadisticas")
+    assert stats_res.status_code == status.HTTP_200_OK
+    stats_data = stats_res.json()
+    assert "dias_sin_incidentes" in stats_data
+    assert "total_lotes" in stats_data
+    assert "volumen_fabricado" in stats_data
+    assert "totales_productos" in stats_data
+    assert "red_arana_cumplimiento" in stats_data

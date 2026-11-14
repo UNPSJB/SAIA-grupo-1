@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
+from sqlalchemy import text
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
@@ -55,6 +56,21 @@ async def db_creation_lifespan(app: FastAPI):
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
             asegurar_tipos_base(db)
+            try:
+                cols = [c[1] for c in db.execute(text("PRAGMA table_info(Identificador_UnicoDeQR)")).fetchall()]
+                for col in [
+                    "ver_dias_sin_incidentes",
+                    "ver_total_lotes",
+                    "ver_volumen_fabricado",
+                    "ver_producto_mas_elaborado",
+                    "ver_grafico_totales_productos",
+                    "ver_grafico_red_arana",
+                ]:
+                    if col not in cols:
+                        db.execute(text(f"ALTER TABLE Identificador_UnicoDeQR ADD COLUMN {col} BOOLEAN DEFAULT 0"))
+                db.commit()
+            except Exception:
+                db.rollback()
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)

@@ -1,9 +1,7 @@
-import logging
-from typing_extensions import Buffer
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from src.database import get_db
-from src.qrCode import services,schemas
+from src.qrCode import services, schemas
 from src.indentificadorDeQR import services as ident
 from src.indentificadorDeQR import schemas as ident_schemas
 
@@ -17,7 +15,13 @@ async def createQR(quickResponse:schemas.QRCodeCreate,db: Session = Depends(get_
         estado=True,
         ver_grafico=quickResponse.ver_grafico,
         verAcercaDeNosotros=quickResponse.verAcercaDeNosotros,
-        verProductos=quickResponse.verProductos
+        verProductos=quickResponse.verProductos,
+        ver_dias_sin_incidentes=quickResponse.ver_dias_sin_incidentes,
+        ver_total_lotes=quickResponse.ver_total_lotes,
+        ver_volumen_fabricado=quickResponse.ver_volumen_fabricado,
+        ver_producto_mas_elaborado=quickResponse.ver_producto_mas_elaborado,
+        ver_grafico_totales_productos=quickResponse.ver_grafico_totales_productos,
+        ver_grafico_red_arana=quickResponse.ver_grafico_red_arana,
     )
     ident_data = ident.crear_IdentificadorUnico(db,datos_ident,urldelQR=quickResponse.texto)
     imagen=services.CrearCodigoQr(db,quickResponse,ident_data)

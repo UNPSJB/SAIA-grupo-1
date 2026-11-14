@@ -216,6 +216,12 @@ function Aplicacion() {
       verGrafico: estado.ver_grafico,
       verAcercaDeNosotros: estado.verAcercaDeNosotros,
       verProductos: estado.verProductos,
+      verDiasSinIncidentes: estado.ver_dias_sin_incidentes,
+      verTotalLotes: estado.ver_total_lotes,
+      verVolumenFabricado: estado.ver_volumen_fabricado,
+      verProductoMasElaborado: estado.ver_producto_mas_elaborado,
+      verGraficoTotalesProductos: estado.ver_grafico_totales_productos,
+      verGraficoRedArana: estado.ver_grafico_red_arana,
     });
   };
 

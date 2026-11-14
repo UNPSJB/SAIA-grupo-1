@@ -4,6 +4,12 @@ interface VistaPublicaConfig{
     verGrafico: boolean;
     verAcercaDeNosotros:boolean
     verProductos: boolean
+    verDiasSinIncidentes: boolean
+    verTotalLotes: boolean
+    verVolumenFabricado: boolean
+    verProductoMasElaborado: boolean
+    verGraficoTotalesProductos: boolean
+    verGraficoRedArana: boolean
 
     // ACA AGREGAMOS LOS DEMAS SWITCHS POR SI QUEREMOS MOSTRAR ALGO MAS EN LA VISTA PUBLICA
 
@@ -31,6 +37,12 @@ export const VistaPublicaProvider: React.FC<{ children: ReactNode }> = ({ childr
         verGrafico: true,
         verAcercaDeNosotros:true,
         verProductos: false, // el listado de productos arranca oculto
+        verDiasSinIncidentes: true,
+        verTotalLotes: true,
+        verVolumenFabricado: true,
+        verProductoMasElaborado: true,
+        verGraficoTotalesProductos: true,
+        verGraficoRedArana: true,
 
         //TODO LO QUE AGREGUEMOS EN EL VISTAPUBILICACONFIG VA ACA TAMBIEN INICIALIZADO EN TRU O FALSE DEPENDIENDO DE CADA UNO
     });

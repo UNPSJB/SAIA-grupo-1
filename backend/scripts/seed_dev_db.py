@@ -1012,6 +1012,12 @@ def main() -> None:
         ver_grafico=True,
         verAcercaDeNosotros=True,
         verProductos=True,
+        ver_dias_sin_incidentes=True,
+        ver_total_lotes=True,
+        ver_volumen_fabricado=True,
+        ver_producto_mas_elaborado=True,
+        ver_grafico_totales_productos=True,
+        ver_grafico_red_arana=True,
     ))
 
     db.add(AcercaDeNosotros(

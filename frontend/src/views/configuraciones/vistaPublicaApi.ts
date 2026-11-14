@@ -8,9 +8,28 @@ export interface EstadoVistaPublica {
   ver_grafico: boolean;
   verAcercaDeNosotros: boolean;
   verProductos: boolean;
+  ver_dias_sin_incidentes: boolean;
+  ver_total_lotes: boolean;
+  ver_volumen_fabricado: boolean;
+  ver_producto_mas_elaborado: boolean;
+  ver_grafico_totales_productos: boolean;
+  ver_grafico_red_arana: boolean;
 }
 
-export type ParametrosVistaPublica = Partial<Pick<EstadoVistaPublica, 'ver_grafico' | 'verAcercaDeNosotros' | 'verProductos'>> & {
+export type ParametrosVistaPublica = Partial<
+  Pick<
+    EstadoVistaPublica,
+    | 'ver_grafico'
+    | 'verAcercaDeNosotros'
+    | 'verProductos'
+    | 'ver_dias_sin_incidentes'
+    | 'ver_total_lotes'
+    | 'ver_volumen_fabricado'
+    | 'ver_producto_mas_elaborado'
+    | 'ver_grafico_totales_productos'
+    | 'ver_grafico_red_arana'
+  >
+> & {
   habilitada?: false;
 };
 

@@ -191,6 +191,19 @@ async function handleToggleProductos(nuevoValor: boolean) {
     }
 }
 
+async function handleToggleOpcion(
+    campoConfig: 'verDiasSinIncidentes' | 'verTotalLotes' | 'verVolumenFabricado' | 'verProductoMasElaborado' | 'verGraficoTotalesProductos' | 'verGraficoRedArana',
+    campoParametro: 'ver_dias_sin_incidentes' | 'ver_total_lotes' | 'ver_volumen_fabricado' | 'ver_producto_mas_elaborado' | 'ver_grafico_totales_productos' | 'ver_grafico_red_arana',
+    nuevoValor: boolean
+) {
+    actualizarConfig(campoConfig, nuevoValor);
+    try {
+        await actualizarVistaPublica({ [campoParametro]: nuevoValor });
+    } catch (err) {
+        console.error("Error al actualizar la opción:", err);
+    }
+}
+
 async function handleToggleAcercaDeNosotros(nuevoValor: boolean) {
     actualizarConfig('verAcercaDeNosotros',nuevoValor); // Lo cambia visualmente en tu PC al instante
 
@@ -237,6 +250,84 @@ return (
                     />
                     <label htmlFor="switch-grafico" className="config-switch-label" onClick={() => handleToggleGrafico(!config.verGrafico)}>
                         Mostrar Gráfico de Tareas
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-grafico-red-arana"
+                        checked={config.verGraficoRedArana} 
+                        onChange={(e) => handleToggleOpcion('verGraficoRedArana', 'ver_grafico_red_arana', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-grafico-red-arana" className="config-switch-label" onClick={() => handleToggleOpcion('verGraficoRedArana', 'ver_grafico_red_arana', !config.verGraficoRedArana)}>
+                        Mostrar Red de Araña (Limpieza)
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-grafico-totales"
+                        checked={config.verGraficoTotalesProductos} 
+                        onChange={(e) => handleToggleOpcion('verGraficoTotalesProductos', 'ver_grafico_totales_productos', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-grafico-totales" className="config-switch-label" onClick={() => handleToggleOpcion('verGraficoTotalesProductos', 'ver_grafico_totales_productos', !config.verGraficoTotalesProductos)}>
+                        Mostrar Totales de Productos Elaborados
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-dias-sin-incidentes"
+                        checked={config.verDiasSinIncidentes} 
+                        onChange={(e) => handleToggleOpcion('verDiasSinIncidentes', 'ver_dias_sin_incidentes', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-dias-sin-incidentes" className="config-switch-label" onClick={() => handleToggleOpcion('verDiasSinIncidentes', 'ver_dias_sin_incidentes', !config.verDiasSinIncidentes)}>
+                        Tarjeta: Días sin incidentes
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-total-lotes"
+                        checked={config.verTotalLotes} 
+                        onChange={(e) => handleToggleOpcion('verTotalLotes', 'ver_total_lotes', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-total-lotes" className="config-switch-label" onClick={() => handleToggleOpcion('verTotalLotes', 'ver_total_lotes', !config.verTotalLotes)}>
+                        Tarjeta: Total de lotes
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-volumen-fabricado"
+                        checked={config.verVolumenFabricado} 
+                        onChange={(e) => handleToggleOpcion('verVolumenFabricado', 'ver_volumen_fabricado', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-volumen-fabricado" className="config-switch-label" onClick={() => handleToggleOpcion('verVolumenFabricado', 'ver_volumen_fabricado', !config.verVolumenFabricado)}>
+                        Tarjeta: Volumen fabricado
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-producto-lider"
+                        checked={config.verProductoMasElaborado} 
+                        onChange={(e) => handleToggleOpcion('verProductoMasElaborado', 'ver_producto_mas_elaborado', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-producto-lider" className="config-switch-label" onClick={() => handleToggleOpcion('verProductoMasElaborado', 'ver_producto_mas_elaborado', !config.verProductoMasElaborado)}>
+                        Tarjeta: Producto más elaborado
                     </label>
                 </div>
 

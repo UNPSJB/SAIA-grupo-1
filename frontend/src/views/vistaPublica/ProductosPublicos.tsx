@@ -5,14 +5,6 @@ import { apiFetch } from '../../api/client';
 import { useVistaPublica } from './contextDeVistaPublica';
 import type { ProductoPublico } from '../producto/tipos';
 
-const UNIDADES: Record<string, string> = {
-  kilogramos: 'Kilogramos',
-  gramos: 'Gramos',
-  litros: 'Litros',
-  mililitros: 'Mililitros',
-  unidades: 'Unidades',
-};
-
 // Catálogo que ve cualquiera que abre el QR: solo los productos que el administrador eligió mostrar
 export const ProductosPublicos: React.FC = () => {
   const { identificadorId } = useParams<{ identificadorId: string }>();
@@ -71,16 +63,13 @@ export const ProductosPublicos: React.FC = () => {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px', marginTop: '20px' }}>
           {productos.map(p => (
-            <div key={p.id} className="dashboard-card" style={{ padding: '18px' }}>
-              <h2 style={{ fontSize: '1.05rem', margin: '0 0 6px 0' }}>{p.nombre}</h2>
+            <div key={p.id} className="dashboard-card" style={{ padding: '18px', justifyContent: 'flex-start', minHeight: 'auto', gap: '8px' }}>
+              <h2 style={{ fontSize: '1.05rem', margin: 0 }}>{p.nombre}</h2>
               {p.descripcion && (
-                <p style={{ margin: '0 0 10px 0', fontSize: '14px', lineHeight: 1.5, color: 'var(--color-texto, #333)' }}>
+                <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.5, color: 'var(--color-texto, #333)' }}>
                   {p.descripcion}
                 </p>
               )}
-              <span className="shadcn-badge shadcn-badge-secondary">
-                {UNIDADES[p.unidadMedida] ?? p.unidadMedida}
-              </span>
             </div>
           ))}
         </div>
