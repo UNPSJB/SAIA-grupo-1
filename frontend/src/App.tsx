@@ -539,6 +539,8 @@ interface RegistroVencimientoRef {
                     ? 'Nuevo Producto'
                     : vistaProductos === 'editar'
                     ? 'Editar Producto'
+                    : vistaProductos === 'ingredientes'
+                    ? 'Ordenar Ingredientes y Aditivos'
                     : 'Detalle de Producto'}
                 </span>
               </>

@@ -169,8 +169,16 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
                 type="button"
                 className="btn-guardar"
                 onClick={() => onGestionarIngredientes(producto.id)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
               >
-                🏷 Ordenar ingredientes y aditivos (Rótulo)
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  label
+                </span>
+                Ordenar ingredientes y aditivos (Rótulo)
               </button>
             )}
           </div>

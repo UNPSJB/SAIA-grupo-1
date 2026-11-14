@@ -247,8 +247,11 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                         className="btn-icon"
                         title="Ordenar ingredientes y aditivos (Rótulo)"
                         onClick={() => onIngredientesClick?.(i.id)}
+                        style={{ color: "#2563eb" }}
                       >
-                        🏷
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                          label
+                        </span>
                       </button>
                       <button
                         className="btn-icon btn-ver"
