@@ -12,8 +12,9 @@ import {
   YAxis,
 } from 'recharts';
 import { apiFetch } from '../../api/client';
-import { CsvIcon } from '../../components/icons/CsvIcon';
 import { useAuth } from '../../auth/useAuth';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import {
   Card,
   CardContent,
@@ -21,8 +22,11 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { useColoresTema } from './useColoresTema';
 import {
   COLORES_TIPO_QUIMICO,
@@ -70,7 +74,12 @@ const formatearFechaHoraVisual = (fechaIso?: string | null): string => {
   }
 };
 
-export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdInicial, textoVolver, mostrarBreadcrumbDashboard }) => {
+export const ConsumoHistoricoInsumos: React.FC<Props> = ({
+  onVolver,
+  insumoIdInicial,
+  textoVolver,
+  mostrarBreadcrumbDashboard,
+}) => {
   const { esAdministrador } = useAuth();
   const colores = useColoresTema();
 
@@ -91,6 +100,10 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
 
   const [busquedaMovimiento, setBusquedaMovimiento] = useState<string>('');
+
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+  const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -201,46 +214,57 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
 
   const paginacionMovimientos = usePaginacion(movimientosFiltrados, 10);
 
-  const exportarCSV = () => {
-    if (!movimientosFiltrados || movimientosFiltrados.length === 0) return;
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
 
-    const cabeceras = [
-      'Fecha y Hora',
-      'Insumo Químico',
-      'Tipo',
-      'Proveedor',
-      'Cantidad',
-      'Unidad',
-      'Responsable',
-      'Tarea',
-      'Plan de Limpieza',
-      'Sector / Equipo',
-    ];
+      if (desde) params.append('desde', desde);
+      if (hasta) params.append('hasta', hasta);
+      if (insumoIdSeleccionado) params.append('insumo_id', insumoIdSeleccionado);
+      if (agrupacionTiempo) params.append('agrupacion_tiempo', agrupacionTiempo);
+      if (unidadSeleccionada) params.append('unidad', unidadSeleccionada);
+      if (busquedaMovimiento.trim()) params.append('busqueda', busquedaMovimiento.trim());
 
-    const filas = movimientosFiltrados.map((m) => [
-      `"${formatearFechaHoraVisual(m.fecha_hora || m.fecha)}"`,
-      `"${(m.insumo_nombre || '').replace(/"/g, '""')}"`,
-      `"${(m.tipo || '').replace(/"/g, '""')}"`,
-      `"${(m.proveedor || '').replace(/"/g, '""')}"`,
-      m.cantidad,
-      m.unidad,
-      `"${(m.responsable_nombre || '').replace(/"/g, '""')}"`,
-      `"${(m.tarea_nombre || '').replace(/"/g, '""')}"`,
-      `"${(m.plan_nombre || '').replace(/"/g, '""')}"`,
-      `"${(m.sector_o_equipo || '').replace(/"/g, '""')}"`,
-    ]);
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
 
-    const contenidoCSV = '\uFEFF' + [cabeceras.join(';'), ...filas.map((f) => f.join(';'))].join('\r\n');
-    const blob = new Blob([contenidoCSV], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `consumo_historico_quimicos_${formatearFechaInput(new Date())}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (formato === 'pdf') {
+        await descargarPDF(
+          `/api/insumos-quimicos/historico-consumo/exportar-pdf${query}`,
+          'consumo_historico_quimicos.pdf'
+        );
+      } else {
+        await descargarCSV(
+          `/api/insumos-quimicos/historico-consumo/exportar-csv${query}`,
+          'consumo_historico_quimicos.csv'
+        );
+      }
+
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar el consumo histórico de insumos químicos a ${formato.toUpperCase()}.`
+      );
+    } finally {
+      setExportando(false);
+    }
   };
 
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (desde) partes.push(`Desde: ${desde}`);
+    if (hasta) partes.push(`Hasta: ${hasta}`);
+    if (insumoIdSeleccionado) {
+      const insumo = catalogoQuimicos.find((q) => String(q.id) === insumoIdSeleccionado);
+      partes.push(`Insumo: ${insumo ? insumo.nombre : `#${insumoIdSeleccionado}`}`);
+    }
+    if (unidadSeleccionada) partes.push(`Unidad: ${unidadSeleccionada}`);
+    if (busquedaMovimiento.trim()) partes.push(`Búsqueda: "${busquedaMovimiento.trim()}"`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
 
   if (!esAdministrador) {
     return (
@@ -318,16 +342,14 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
           </p>
         </div>
 
-        {hayDatos && (
-          <button
-            type="button"
-            onClick={exportarCSV}
-            className="btn-cancelar"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <CsvIcon /> Exportar CSV
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setDialogExportarAbierto(true)}
+          className="btn-cancelar"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <ExportIcon size={18} /> Exportar
+        </button>
       </div>
 
       <Card style={{ marginBottom: '24px' }}>
@@ -1193,6 +1215,22 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
           </Card>
         </div>
       )}
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={movimientosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportDialog)}
+        title="No se pudo completar la exportación"
+        description={errorExportDialog || ''}
+        onClose={() => setErrorExportDialog(null)}
+      />
     </div>
   );
 };
