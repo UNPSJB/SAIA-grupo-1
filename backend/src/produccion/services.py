@@ -1,5 +1,5 @@
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -10,6 +10,45 @@ from src.produccion.constants import INTENTOS_CODIGO_LOTE
 from src.produccion.models import InsumoLote, LoteProduccion
 from src.producto.models import Producto
 
+def obtener_lotes_para_exportar(
+    db: Session,
+    producto_id: Optional[int] = None,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+) -> List[Dict[str, Any]]:
+    lotes = listar_lotes(db, producto_id=producto_id, desde=desde, hasta=hasta)
+    filas: List[Dict[str, Any]] = []
+
+    for l in lotes:
+        unidad = ""
+        nombre_producto = "-"
+        if getattr(l, "producto", None):
+            nombre_producto = getattr(l.producto, "nombre", "-") or "-"
+            unidad_raw = getattr(l.producto, "unidadMedida", "")
+            unidad = unidad_raw.value if hasattr(unidad_raw, "value") else str(unidad_raw or "")
+
+        responsable = "-"
+        if getattr(l, "responsable", None):
+            nombre = getattr(l.responsable, "nombre", "") or ""
+            apellido = getattr(l.responsable, "apellido", "") or ""
+            responsable = f"{nombre} {apellido}".strip() or f"Legajo #{l.responsable_legajo}"
+        elif getattr(l, "responsable_legajo", None):
+            responsable = f"Legajo #{l.responsable_legajo}"
+
+        fecha_str = l.fecha.strftime("%d/%m/%Y") if isinstance(l.fecha, date) else str(l.fecha)
+        cantidad_str = f"{l.cantidad} {unidad}".strip()
+
+        filas.append({
+            "codigo": l.codigo,
+            "fecha": fecha_str,
+            "producto": nombre_producto,
+            "cantidad": cantidad_str,
+            "responsable": responsable,
+            "insumos": len(l.insumos) if getattr(l, "insumos", None) else 0,
+            "estado": "Abierto" if l.editable else "Cerrado",
+        })
+
+    return filas
 
 def leer_producto_activo(db: Session, producto_id: int) -> Producto:
     """Los productos se dan de alta en el ABM de productos; a uno dado de baja no se le registran lotes."""
