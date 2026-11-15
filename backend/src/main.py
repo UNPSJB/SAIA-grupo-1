@@ -117,7 +117,7 @@ app.include_router(IdentificadorQR)
 app.include_router(AcercaDeNostrosRouter)
 # registrar un lote lo define el endpoint (solo operadores); consultar alcanza con estar logueado
 app.include_router(lotes_router, dependencies=SESION)
-app.include_router(producto_router, dependencies=SOLO_ADMIN)
+app.include_router(producto_router, dependencies=SESION)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
 app.include_router(tipo_insumo_router, dependencies=SESION)
 app.include_router(proveedores_router, dependencies=SESION)

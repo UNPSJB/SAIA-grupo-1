@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import type { ClaseFuncional, RecetaDetalleConId, RecetaDetalleForm } from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
-import { usePersonalActivo } from "../tareas/usePersonalActivo";
 
 interface InsumoOption {
   id: number;
@@ -32,7 +31,6 @@ const DETALLE_INICIAL: RecetaDetalleForm = {
   es_aditivo: false,
   clase_funcional: "",
   numero_ins: "",
-  operario_legajo: "",
   descripcion_pasos: "",
 };
 
@@ -57,7 +55,6 @@ export default function NuevoDetalleReceta({
   const [detalle, setDetalle] = useState<RecetaDetalleForm>(DETALLE_INICIAL);
   const [insumos, setInsumos] = useState<InsumoOption[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const personas = usePersonalActivo();
 
   useEffect(() => {
     let cancelado = false;
@@ -93,7 +90,6 @@ export default function NuevoDetalleReceta({
       return;
     }
 
-    // Autocompletar unidad_medida al elegir el ingrediente
     if (name === "ingrediente_id") {
       const insumoElegido = insumos.find((i) => i.id === Number(value));
       const unidadAutocompletada = obtenerUnidadDeInsumo(insumoElegido);
@@ -159,17 +155,11 @@ export default function NuevoDetalleReceta({
       }
     }
 
-    if (!detalle.operario_legajo) {
-      setErrorMsg("Debe asignar el operario a cargo de la etapa.");
-      return;
-    }
-
     if (!detalle.descripcion_pasos.trim()) {
       setErrorMsg("La descripción de pasos no puede estar vacía.");
       return;
     }
 
-    const asignado = personas.find((p) => p.legajo === Number(detalle.operario_legajo));
     const insumoSeleccionado = insumos.find((i) => i.id === Number(detalle.ingrediente_id));
 
     onAgregarLocal?.({
@@ -183,8 +173,6 @@ export default function NuevoDetalleReceta({
       es_aditivo: detalle.es_aditivo,
       clase_funcional: detalle.es_aditivo && detalle.clase_funcional ? detalle.clase_funcional : null,
       numero_ins: detalle.es_aditivo && detalle.numero_ins.trim() ? detalle.numero_ins.trim() : null,
-      operario_legajo: Number(detalle.operario_legajo),
-      nombre_operario: asignado ? `${asignado.nombre} ${asignado.apellido}` : null,
       descripcion_pasos: detalle.descripcion_pasos.trim(),
     });
 
@@ -267,7 +255,7 @@ export default function NuevoDetalleReceta({
             placeholder="Se autocompleta al elegir insumo (ej: kg, g, ml, l)"
             value={detalle.unidad_medida}
             onChange={handleChange}
-            required
+            disabled
           />
         </div>
 
@@ -321,26 +309,6 @@ export default function NuevoDetalleReceta({
             </div>
           </>
         )}
-
-        <div className="form-group">
-          <label htmlFor="operario_legajo">Operario a Cargo</label>
-          <select
-            id="operario_legajo"
-            name="operario_legajo"
-            value={detalle.operario_legajo}
-            onChange={handleChange}
-            required
-          >
-            <option value="" disabled>
-              Seleccione un operador activo
-            </option>
-            {personas.map((p) => (
-              <option key={p.legajo} value={p.legajo}>
-                {p.apellido}, {p.nombre} (Legajo: {p.legajo})
-              </option>
-            ))}
-          </select>
-        </div>
 
         <div className="form-group">
           <label htmlFor="descripcion_pasos">Procedimiento / Pasos</label>

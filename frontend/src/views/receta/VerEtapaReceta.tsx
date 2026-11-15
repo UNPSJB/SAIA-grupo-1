@@ -82,20 +82,6 @@ export const VerDetalleReceta: React.FC<VerDetalleRecetaProps> = ({
           )}
 
           <div className="form-group">
-            <label htmlFor="etapa-operario">Operario a Cargo</label>
-            <input
-              id="etapa-operario"
-              type="text"
-              value={
-                detalle.nombre_operario
-                  ? `${detalle.nombre_operario} (Legajo #${detalle.operario_legajo})`
-                  : `Legajo #${detalle.operario_legajo}`
-              }
-              disabled
-            />
-          </div>
-
-          <div className="form-group">
             <label htmlFor="etapa-pasos">Procedimiento / Pasos</label>
             <textarea
               id="etapa-pasos"

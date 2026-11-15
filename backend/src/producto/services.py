@@ -4,8 +4,17 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 from src.producto import exceptions, schemas
 from src.producto.models import Producto
-from src.documentos.models import Documento
 from src.unidadesMedida.services import resolver_unidad_medida
+
+
+def _obtener_nombre_receta(receta_obj: Any) -> Optional[str]:
+    """Devuelve el nombre de la receta asociada (soporta objeto único o lista de relaciones)."""
+    if not receta_obj:
+        return None
+    if isinstance(receta_obj, list):
+        return getattr(receta_obj[0], "nombre", None) if receta_obj else None
+    return getattr(receta_obj, "nombre", None)
+
 
 def obtener_productos_para_csv(
     db: Session,
@@ -25,7 +34,7 @@ def obtener_productos_para_csv(
     for p in productos:
         nombre = p.nombre or ""
         descripcion = p.descripcion or ""
-        nombre_receta = p.receta.titulo if p.receta else ""
+        nombre_receta = _obtener_nombre_receta(p.receta) or ""
 
         # Filtro opcional por búsqueda
         if term:
@@ -51,18 +60,6 @@ def obtener_productos_para_csv(
     return filas
 
 
-def validar_receta(db: Session, id_receta: int) -> Documento:
-    doc = db.scalar(select(Documento).where(Documento.id == id_receta, Documento.activo == True))
-    if doc is None:
-        raise exceptions.RecetaNoEncontrada()
-
-    tipo_str = str(getattr(doc, "tipo", "") or "").upper()
-    if tipo_str != "RECETA":
-        raise exceptions.DocumentoNoEsReceta()
-
-    return doc
-
-
 def validar_nombre_unico(db: Session, nombre: str, producto_id_actual: Optional[int] = None) -> None:
     nombre_sin_espacios = nombre.replace(" ", "").lower()
     stmt = select(Producto).where(
@@ -80,9 +77,6 @@ def validar_nombre_unico(db: Session, nombre: str, producto_id_actual: Optional[
 def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
     validar_nombre_unico(db, producto.nombre)
 
-    if producto.id_receta:
-        validar_receta(db, producto.id_receta)
-
     unidad = resolver_unidad_medida(
         db,
         unidad_medida_id=producto.unidad_medida_id,
@@ -93,7 +87,6 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
         nombre=producto.nombre,
         descripcion=producto.descripcion,
         unidad_medida_id=unidad.id,
-        id_receta=producto.id_receta,
         activo=True,
     )
     db.add(_producto)
@@ -101,7 +94,7 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
     db.refresh(_producto)
 
     if _producto.receta:
-        _producto.nombre_receta = _producto.receta.titulo
+        _producto.nombre_receta = _obtener_nombre_receta(_producto.receta)
 
     return _producto
 
@@ -111,7 +104,7 @@ def listar_productos(db: Session) -> List[Producto]:
 
     for prod in productos:
         if prod.receta:
-            prod.nombre_receta = prod.receta.titulo
+            prod.nombre_receta = _obtener_nombre_receta(prod.receta)
 
     return productos
 
@@ -122,7 +115,7 @@ def obtener_producto(db: Session, producto_id: int) -> Producto:
         raise exceptions.ProductoNoEncontrado()
 
     if db_producto.receta:
-        db_producto.nombre_receta = db_producto.receta.titulo
+        db_producto.nombre_receta = _obtener_nombre_receta(db_producto.receta)
 
     return db_producto
 
@@ -149,8 +142,7 @@ def editar_producto(
     if "nombre" in datos_actualizar and datos_actualizar["nombre"]:
         validar_nombre_unico(db, datos_actualizar["nombre"], producto_id_actual=producto_id)
 
-    if "id_receta" in datos_actualizar and datos_actualizar["id_receta"]:
-        validar_receta(db, datos_actualizar["id_receta"])
+    datos_actualizar.pop("id_receta", None)
 
     if datos_actualizar:
         db.execute(
@@ -162,7 +154,7 @@ def editar_producto(
         db.refresh(db_producto)
 
     if db_producto.receta:
-        db_producto.nombre_receta = db_producto.receta.titulo
+        db_producto.nombre_receta = _obtener_nombre_receta(db_producto.receta)
 
     return db_producto
 
@@ -183,6 +175,7 @@ def restaurar_producto(db: Session, producto_id: int) -> Producto:
     db.commit()
     db.refresh(db_producto)
     return db_producto
+
 
 def actualizar_visibilidad_publica(db: Session, productos_visibles: List[int]) -> List[Producto]:
     """Deja visibles en la vista publica solo los productos indicados y oculta el resto.

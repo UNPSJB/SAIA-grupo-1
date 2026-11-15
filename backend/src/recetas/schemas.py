@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.recetas import exceptions
-from src.recetas.models import CLASE_FUNCIONAL, EstadoEtapaRecetaItem,EstadoGeneralRecetaChecklist
+from src.recetas.models import CLASE_FUNCIONAL, EstadoEtapaRecetaItem, EstadoGeneralRecetaChecklist
 
 
 # ==========================================
@@ -17,7 +17,6 @@ class RecetaDetalleBase(BaseModel):
     es_aditivo: bool = False
     clase_funcional: Optional[CLASE_FUNCIONAL] = None
     numero_ins: Optional[str] = None
-    operario_legajo: int
     descripcion_pasos: str = Field(min_length=1)
 
 
@@ -51,34 +50,34 @@ class RecetaDetalleCreate(RecetaDetalleBase):
             self.numero_ins = None
 
         return self
+
     @field_validator("descripcion_pasos")
     @classmethod
     def validar_descripcion(cls, v):
-            if len(v) > 0:
-                return v
-            raise exceptions.DescripcionVacia()
+        if len(v) > 0:
+            return v
+        raise exceptions.DescripcionVacia()
+
     @field_validator("nombre")
     @classmethod
     def validar_nombre(cls, v: Optional[str]) -> Optional[str]:
-            if v is None:
-                return None
-            if v and all(c.isalnum() or c.isspace() for c in v):
-                return v
-            raise exceptions.NombreInvalido()
-    
+        if v is None:
+            return None
+        if v and all(c.isalnum() or c.isspace() for c in v):
+            return v
+        raise exceptions.NombreInvalido()
+
     @field_validator("nombre")
     @classmethod
     def validar_longitud(cls, v):
-            if len(v) > 1:
-                return v
-            raise exceptions.NombreVacio()
+        if len(v) > 1:
+            return v
+        raise exceptions.NombreVacio()
 
 
 class RecetaDetalle(RecetaDetalleBase):
     id: int
     version_receta_id: int
-    operario_legajo: int
-    nombre_operario: Optional[str] = None    
     nombre_ingrediente: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -98,7 +97,6 @@ class VersionRecetaCreate(VersionRecetaBase):
     responsable_legajo: Optional[int] = None
     detalles: List[RecetaDetalleCreate] = []
 
-
     @model_validator(mode="after")
     def validar_al_menos_un_ingrediente(self) -> "VersionRecetaCreate":
         if not self.detalles:
@@ -107,16 +105,15 @@ class VersionRecetaCreate(VersionRecetaBase):
         if not tiene_ingrediente:
             raise exceptions.AgregueIngredientes()
         return self
-    @field_validator("fecha_vigencia","fecha_vencimiento")
+
+    @field_validator("fecha_vigencia", "fecha_vencimiento")
     @classmethod
     def validar_fechas_version(cls, v: datetime) -> datetime:
-                    
-                    if v is not None:
-                        v_naive = v.replace(tzinfo=None) if v.tzinfo else v
-                        
-                        if v_naive < datetime.now():
-                         raise exceptions.FechaAnterior()
-                    return v
+        if v is not None:
+            v_naive = v.replace(tzinfo=None) if v.tzinfo else v
+            if v_naive.date() < date.today():
+                raise exceptions.FechaAnterior()
+        return v
 
 
 class VersionRecetaResponse(VersionRecetaBase):
@@ -125,7 +122,6 @@ class VersionRecetaResponse(VersionRecetaBase):
     version: int
     archivado: bool
     es_vigente: bool
-    #fecha_archivo: Optional[date] = None
     usuario: str
     creado_el: datetime
     detalles: Optional[List[RecetaDetalle]] = None
@@ -134,17 +130,19 @@ class VersionRecetaResponse(VersionRecetaBase):
 
 
 # ==========================================
-# SCHEMAS DE LA RECETA (RecetaVersionada)
+# SCHEMAS DE LA RECETA (Cabecera con id_producto y operario_legajo)
 # ==========================================
 
 class RecetaBase(BaseModel):
     nombre: str = Field(max_length=50)
     rendimiento_final: float
     fecha_creacion: datetime
+    id_producto: int
+    operario_legajo: int
 
 
 class RecetaCreate(RecetaBase):
-    detalles: List[RecetaDetalleCreate] 
+    detalles: List[RecetaDetalleCreate]
     fecha_vigencia: Optional[datetime] = None
     fecha_vencimiento: Optional[datetime] = None
 
@@ -165,7 +163,6 @@ class RecetaCreate(RecetaBase):
             return v
         raise exceptions.NombreInvalido()
 
-
     @model_validator(mode="after")
     def validar_ingredientes_receta(self) -> "RecetaCreate":
         if not self.detalles:
@@ -178,10 +175,9 @@ class RecetaCreate(RecetaBase):
     @field_validator("fecha_creacion")
     @classmethod
     def validar_fecha_creacion(cls, v: datetime) -> datetime:
-                
         if v is not None:
             v_naive = v.replace(tzinfo=None) if v.tzinfo else v
-            if v_naive.date() < date.today(): 
+            if v_naive.date() < date.today():
                 raise exceptions.FechaAnterior()
         return v
 
@@ -198,6 +194,8 @@ class RecetaCreate(RecetaBase):
 class RecetaUpdate(BaseModel):
     nombre: Optional[str] = Field(None, max_length=50)
     rendimiento_final: Optional[float] = None
+    id_producto: Optional[int] = None
+    operario_legajo: Optional[int] = None
     fecha_creacion: Optional[datetime] = None
     fecha_vigencia: Optional[datetime] = None
     fecha_vencimiento: Optional[datetime] = None
@@ -222,7 +220,6 @@ class RecetaUpdate(BaseModel):
             return v
         raise exceptions.NombreInvalido()
 
-
     @model_validator(mode="after")
     def validar_ingredientes_update(self) -> "RecetaUpdate":
         if not self.detalles:
@@ -235,7 +232,6 @@ class RecetaUpdate(BaseModel):
     @field_validator("fecha_creacion")
     @classmethod
     def validar_fecha_creacion(cls, v: Optional[datetime]) -> Optional[datetime]:
-                    
         if v is not None:
             v_naive = v.replace(tzinfo=None) if v.tzinfo else v
             if v_naive.date() < date.today():
@@ -245,24 +241,32 @@ class RecetaUpdate(BaseModel):
     @field_validator("fecha_vigencia", "fecha_vencimiento")
     @classmethod
     def validar_fechas_version(cls, v: Optional[datetime]) -> Optional[datetime]:
-            if v is not None:
-                v_naive = v.replace(tzinfo=None) if v.tzinfo else v
-                if v_naive.date() < date.today():
-                    raise exceptions.FechaAnterior()
-            return v
+        if v is not None:
+            v_naive = v.replace(tzinfo=None) if v.tzinfo else v
+            if v_naive.date() < date.today():
+                raise exceptions.FechaAnterior()
+        return v
 
 
 class Receta(RecetaBase):
     id: int
     activo: bool
+    nombre_operario: Optional[str] = None
+    nombre_producto: Optional[str] = None
     version_actual: Optional[VersionRecetaResponse] = None
     version_vigente: Optional[VersionRecetaResponse] = None
     detalles: Optional[List[RecetaDetalle]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
+
+# ==========================================
+# SCHEMAS DE CHECKLIST DE RECETAS
+# ==========================================
+
 class ChecklistRecetaGenerar(BaseModel):
     responsable_legajo: Optional[int] = None
+    id_producto: Optional[int] = None
     fecha: Optional[date] = Field(default_factory=date.today)
 
     @field_validator("fecha", mode="before")

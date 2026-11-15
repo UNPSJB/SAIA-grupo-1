@@ -62,7 +62,7 @@ export const ListadoRecetas: React.FC<ListadoRecetasProps> = ({
         (d) =>
           (d.nombre?.toLowerCase().includes(term) ?? false) ||
           (d.nombre_ingrediente?.toLowerCase().includes(term) ?? false) ||
-          (d.nombre_operario?.toLowerCase().includes(term) ?? false)
+          (r.nombre_operario?.toLowerCase().includes(term) ?? false)
       );
 
     const tieneVersionVigente = Boolean(r.version_vigente);

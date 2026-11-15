@@ -1,15 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { RecetaForm, RecetaDetalleConId } from "./tipos";
 import "../../styles/formularioAlta.css";
 import NuevoDetalleReceta from "./crearEtapaReceta";
 import { apiFetch } from "../../api/client";
 import { Dialog, DialogContent } from "../../components/ui/dialog";
+import { usePersonalActivo } from "../tareas/usePersonalActivo";
+
+interface ProductoOption {
+  id: number;
+  nombre: string;
+  activo?: boolean;
+}
 
 const HOY = new Date().toISOString().split("T")[0];
 
 const RECETA_INICIAL: RecetaForm = {
   nombre: "",
   rendimiento_final: "",
+  id_producto: "",
+  operario_legajo: "",
   fecha_creacion: HOY,
   fecha_vigencia: HOY,
   fecha_vencimiento: "",
@@ -23,14 +32,47 @@ interface NuevaRecetaProps {
 
 export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
   const [receta, setReceta] = useState<RecetaForm>(RECETA_INICIAL);
+  const [productos, setProductos] = useState<ProductoOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [detalles, setDetalles] = useState<RecetaDetalleConId[]>([]);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const personas = usePersonalActivo();
+
+  useEffect(() => {
+    let cancelado = false;
+    const fetchProductos = async () => {
+      try {
+        const res = await apiFetch(`/productos/`);
+        if (!cancelado && res.ok) {
+          const data: ProductoOption[] = await res.json();
+          setProductos(data.filter((p) => p.activo !== false));
+        }
+      } catch {
+        if (!cancelado) setProductos([]);
+      }
+    };
+    fetchProductos();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setReceta({ ...receta, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === "id_producto") {
+      const prodSeleccionado = productos.find((p) => p.id === Number(value));
+      setReceta((prev) => ({
+        ...prev,
+        id_producto: value ? Number(value) : "",
+        nombre: prodSeleccionado ? prodSeleccionado.nombre : prev.nombre,
+      }));
+      return;
+    }
+
+    setReceta((prev) => ({ ...prev, [name]: value }));
   }
 
   async function handleGuardar(e: React.FormEvent<HTMLFormElement>) {
@@ -38,10 +80,14 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    // Validación de caracteres permitidos según schemas.py del backend
     function nombreValido(nombre: string): boolean {
       const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s.,;()\-_]+$/;
       return patron.test(nombre);
+    }
+
+    if (!receta.id_producto) {
+      setErrorMsg("Debe seleccionar un producto asociado a la receta.");
+      return;
     }
 
     if (!receta.nombre.trim()) {
@@ -56,6 +102,11 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
 
     if (!nombreValido(receta.nombre)) {
       setErrorMsg("El nombre contiene caracteres no permitidos.");
+      return;
+    }
+
+    if (!receta.operario_legajo) {
+      setErrorMsg("Debe asignar el operario a cargo de la receta.");
       return;
     }
 
@@ -99,11 +150,9 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
       return;
     }
 
-    // Formateamos las fechas para que Pydantic (datetime) las acepte sin error de segundos
     const formatearFechaISO = (fechaStr: string) => {
       if (!fechaStr) return null;
       if (fechaStr === HOY) {
-        // Si es hoy, mandamos fecha futura del final del día o fecha actual + 1 min para pasar validar_fecha_creacion
         return `${fechaStr}T23:59:59`;
       }
       return `${fechaStr}T00:00:00`;
@@ -112,6 +161,8 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
     const payload = {
       nombre: receta.nombre.trim(),
       rendimiento_final: Number(receta.rendimiento_final),
+      id_producto: Number(receta.id_producto),
+      operario_legajo: Number(receta.operario_legajo),
       fecha_creacion: formatearFechaISO(receta.fecha_creacion),
       fecha_vigencia: receta.fecha_vigencia ? formatearFechaISO(receta.fecha_vigencia) : null,
       fecha_vencimiento: receta.fecha_vencimiento ? formatearFechaISO(receta.fecha_vencimiento) : null,
@@ -123,7 +174,6 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
         es_aditivo: d.es_aditivo,
         clase_funcional: d.es_aditivo ? d.clase_funcional : null,
         numero_ins: d.es_aditivo ? d.numero_ins : null,
-        operario_legajo: Number(d.operario_legajo),
         descripcion_pasos: d.descripcion_pasos.trim(),
       })),
     };
@@ -196,16 +246,56 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
         </div>
 
         <div className="form-group">
+          <label htmlFor="id_producto">Producto Asociado</label>
+          <select
+            id="id_producto"
+            name="id_producto"
+            value={receta.id_producto}
+            onChange={handleChange}
+            required
+          >
+            <option value="" disabled>
+              Seleccione un producto
+            </option>
+            {productos.map((prod) => (
+              <option key={prod.id} value={prod.id}>
+                {prod.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
           <label htmlFor="nombre">Nombre de la Receta</label>
           <input
             id="nombre"
             name="nombre"
             type="text"
-            placeholder="Ej: Pan Lactal"
+            placeholder="Se autocompleta al elegir el producto (o escriba uno)"
             value={receta.nombre}
             onChange={handleChange}
             required
           />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="operario_legajo">Operario a Cargo de la Receta</label>
+          <select
+            id="operario_legajo"
+            name="operario_legajo"
+            value={receta.operario_legajo}
+            onChange={handleChange}
+            required
+          >
+            <option value="" disabled>
+              Seleccione un operador activo
+            </option>
+            {personas.map((p) => (
+              <option key={p.legajo} value={p.legajo}>
+                {p.apellido}, {p.nombre} (Legajo: {p.legajo})
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">
@@ -266,19 +356,18 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
                 <th>Ingrediente / Aditivo</th>
                 <th>Cantidad</th>
                 <th>Procedimiento</th>
-                <th>Operario a Cargo</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>
+                  <td colSpan={4} style={{ textAlign: "center", padding: "2rem" }}>
                     Cargando Etapas...
                   </td>
                 </tr>
               ) : detalles?.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>
+                  <td colSpan={4} style={{ textAlign: "center", padding: "2rem" }}>
                     No hay etapas registradas.
                   </td>
                 </tr>
@@ -296,7 +385,6 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
                       {d.cantidad} {d.unidad_medida}
                     </td>
                     <td>{d.descripcion_pasos}</td>
-                    <td>{d.nombre_operario ?? `Legajo #${d.operario_legajo}`}</td>
                   </tr>
                 ))
               )}
@@ -319,7 +407,8 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
           <NuevoDetalleReceta
             onSuccess={() => setModalAbierto(false)}
             onCancel={() => setModalAbierto(false)}
-            onAgregarLocal={(nuevoDetalle) => {setDetalles((prev) => [...prev, nuevoDetalle]);
+            onAgregarLocal={(nuevoDetalle: RecetaDetalleConId) => {
+              setDetalles((prev) => [...prev, nuevoDetalle]);
             }}
           />
         </DialogContent>

@@ -147,11 +147,11 @@ async def create_receta(receta: schemas.RecetaCreate, db: Session = Depends(get_
     return services.crear_receta(db, receta,usuario=usuario)
 
 @router.get("/", response_model=List[schemas.Receta], status_code=status.HTTP_200_OK)
-async def read_recetas(db: Session = Depends(get_db),usuario: Personal = Depends(obtener_usuario_actual)):
-    return services.listar_recetas(db,usuario=usuario)
+async def read_recetas(db: Session = Depends(get_db)):
+    return services.listar_recetas(db)
 
 @router.get("/{receta_id}", response_model=schemas.Receta, status_code=status.HTTP_200_OK)
-async def read_receta(receta_id: int, db: Session = Depends(get_db),usuario: Personal = Depends(obtener_usuario_actual)):
+async def read_receta(receta_id: int, db: Session = Depends(get_db),usuario: Personal = Depends(get_usuario_actual)):
     return services.obtener_receta(db, receta_id, usuario=usuario)
 
 @router.put("/{receta_id}", response_model=schemas.Receta, status_code=status.HTTP_200_OK)

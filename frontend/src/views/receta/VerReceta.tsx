@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import type { RecetaConId, RecetaDetalleConId } from './tipos';
+import type { RecetaConId, RecetaDetalleConId, VersionRecetaItem } from './tipos';
 import '../../styles/formularioAlta.css';
 import { VerDetalleReceta } from './VerEtapaReceta';
+import { ModalHistorialVersionesReceta } from './ModalHistorialReceta';
 import { apiFetch } from '../../api/client';
+import { useAuth } from '../../auth/useAuth';
 import { Dialog, DialogContent } from '../../components/ui/dialog';
 
 interface DetalleRecetaProps {
@@ -30,11 +32,18 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
   onCancel,
   recetaID,
 }) => {
+  const { esAdministrador } = useAuth();
   const [receta, setReceta] = useState<RecetaConId | null>(null);
+  const [totalVersiones, setTotalVersiones] = useState<number>(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [modalVerEtapa, setModalVerEtapa] = useState(false);
   const [etapaSeleccionada, setEtapaSeleccionada] = useState<RecetaDetalleConId | null>(null);
+
+  // Estado para abrir el Modal de Historial (igual que en Documentos)
+  const [modalHistorialAbierto, setModalHistorialAbierto] = useState(false);
+  const [versionSeleccionada, setVersionSeleccionada] = useState<VersionRecetaItem | null>(null);
 
   useEffect(() => {
     if (!recetaID) return;
@@ -43,10 +52,25 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
       try {
         const res = await apiFetch(`/recetas/${recetaID}`);
         if (!cancelado && res.ok) {
-          const data = await res.json();
+          const data: RecetaConId = await res.json();
           setReceta(data);
+          // Mostrar siempre por defecto la versión vigente
+          const vInicial = data.version_vigente ?? data.version_actual ?? null;
+          setVersionSeleccionada(vInicial);
+          if (vInicial?.version) {
+            setTotalVersiones(vInicial.version);
+          }
         } else if (!cancelado) {
           setError('No se pudo cargar la información de la receta.');
+        }
+
+        // Consultamos la cantidad total de versiones para mostrar en el botón
+        const resVersiones = await apiFetch(`/recetas/${recetaID}/versiones`);
+        if (!cancelado && resVersiones.ok) {
+          const listaVersiones: VersionRecetaItem[] = await resVersiones.json();
+          if (Array.isArray(listaVersiones) && listaVersiones.length > 0) {
+            setTotalVersiones(listaVersiones.length);
+          }
         }
       } catch {
         if (!cancelado) setError('Error al conectar con el servidor.');
@@ -60,14 +84,19 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
     };
   }, [recetaID]);
 
-  const etapas = receta?.detalles ?? receta?.version_actual?.detalles ?? [];
-  const versionActual = receta?.version_actual;
-  const esVigente = Boolean(receta?.version_vigente);
+  const versionMostrada =
+    versionSeleccionada ?? receta?.version_vigente ?? receta?.version_actual;
+  const etapas = versionMostrada?.detalles ?? receta?.detalles ?? [];
+  const versionVigente = receta?.version_vigente ?? receta?.version_actual;
+  const viendoVersionAntigua =
+    Boolean(versionMostrada && versionVigente && versionMostrada.id !== versionVigente.id);
 
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Detalle de Receta</h1>
+        <h1>
+          {esAdministrador ? 'Detalle de Receta' : 'Consulta de Versión Vigente de Receta'}
+        </h1>
         <div className="subtitulo">
           {receta
             ? `${receta.nombre} (ID #${receta.id})`
@@ -81,6 +110,32 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
         <div className="alerta-error">{error}</div>
       ) : receta ? (
         <form onSubmit={(e) => e.preventDefault()}>
+          {viendoVersionAntigua && (
+            <div
+              className="alerta-error"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+                marginBottom: '1rem',
+              }}
+            >
+              <span>
+                Estás consultando una <strong>versión anterior (v{versionMostrada?.version})</strong> en modo solo lectura.
+              </span>
+              <button
+                type="button"
+                className="btn-guardar"
+                style={{ padding: '0.35rem 0.8rem', fontSize: '0.85rem' }}
+                onClick={() => setVersionSeleccionada(versionVigente ?? null)}
+              >
+                Volver a la versión vigente (v{versionVigente?.version ?? 1})
+              </button>
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="receta-id">ID</label>
             <input id="receta-id" type="text" value={receta.id} disabled />
@@ -92,24 +147,96 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="rendimiento_final">Rendimiento Final</label>
+            <label htmlFor="producto">Producto Asociado</label>
             <input
-              id="rendimiento_final"
-              name="rendimiento_final"
+              id="producto"
               type="text"
-              value={receta.rendimiento_final}
+              value={receta.nombre_producto ?? `Producto #${receta.id_producto}`}
               disabled
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="version">Versión Actual</label>
+            <label htmlFor="operario">Operario a Cargo</label>
+            <input
+              id="operario"
+              type="text"
+              value={
+                receta.nombre_operario
+                  ? `${receta.nombre_operario} (Legajo #${receta.operario_legajo})`
+                  : `Legajo #${receta.operario_legajo}`
+              }
+              disabled
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="rendimiento_final">Rendimiento Final</label>
+            <input
+              id="rendimiento_final"
+              name="rendimiento_final"
+              type="text"
+              value={versionMostrada?.rendimiento_final ?? receta.rendimiento_final}
+              disabled
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="version">
+              {viendoVersionAntigua ? 'Versión Consultada (Histórica)' : 'Versión Vigente'}
+            </label>
             <input
               id="version"
               type="text"
-              value={`v${versionActual?.version ?? 1} (${esVigente ? 'Vigente' : 'No vigente'})`}
+              value={
+                versionMostrada
+                  ? `v${versionMostrada.version} (${
+                      versionMostrada.es_vigente
+                        ? `vigente desde ${formatDate(versionMostrada.fecha_vigencia || versionMostrada.creado_el)}`
+                        : 'archivada · solo lectura'
+                    })`
+                  : 'Sin versiones registradas'
+              }
               disabled
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="receta-total-versiones">Historial de Versiones</label>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <input
+                id="receta-total-versiones"
+                type="text"
+                value=""
+                disabled
+                style={{ width: '100%', margin: 0 }}
+              />
+              <button
+                type="button"
+                onClick={() => setModalHistorialAbierto(true)}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '12px',
+                  transform: 'translateY(-50%)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  color: 'var(--color-primario-texto)',
+                  fontWeight: 600,
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+              >
+                <span>Ver historial ({totalVersiones} versión/es)</span>
+                <span style={{ fontSize: '0.95rem', lineHeight: 1 }}>↗</span>
+              </button>
+            </div>
           </div>
 
           <div className="form-group">
@@ -127,7 +254,7 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
             <input
               id="fecha_vigencia"
               type="text"
-              value={formatDate(versionActual?.fecha_vigencia)}
+              value={formatDate(versionMostrada?.fecha_vigencia)}
               disabled
             />
           </div>
@@ -137,15 +264,17 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
             <input
               id="fecha_vencimiento"
               type="text"
-              value={formatDate(versionActual?.fecha_vencimiento)}
+              value={formatDate(versionMostrada?.fecha_vencimiento)}
               disabled
             />
           </div>
 
           <div className="form-group">
-            <label>Etapas de la Receta</label>
+            <label>
+              Etapas de la Receta (Versión v{versionMostrada?.version ?? 1})
+            </label>
             {etapas.length === 0 ? (
-              <input type="text" value="Sin etapas registradas" disabled />
+              <input type="text" value="Sin etapas registradas en esta versión" disabled />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {etapas.map((etapa: RecetaDetalleConId) => (
@@ -177,14 +306,13 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
                         {etapa.nombre_ingrediente ?? `Insumo #${etapa.ingrediente_id}`})
                       </span>
                       <span style={{ fontSize: '0.82rem', color: 'var(--color-texto-sec)' }}>
-                        {etapa.es_aditivo ? 'Aditivo · ' : 'Ingrediente · '}
-                        Responsable: {etapa.nombre_operario ?? `Legajo #${etapa.operario_legajo}`}
+                        {etapa.es_aditivo ? 'Aditivo' : 'Ingrediente'}
                       </span>
                     </div>
                     <button
                       type="button"
                       className="btn-icon btn-ver"
-                      title="Ver detalles"
+                      title="Ver detalles de la etapa"
                       onClick={() => {
                         setEtapaSeleccionada(etapa);
                         setModalVerEtapa(true);
@@ -216,6 +344,15 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
           />
         </DialogContent>
       </Dialog>
+
+      <ModalHistorialVersionesReceta
+        isOpen={modalHistorialAbierto}
+        onClose={() => setModalHistorialAbierto(false)}
+        recetaId={receta?.id ?? null}
+        recetaNombre={receta?.nombre}
+        versionSeleccionadaId={versionMostrada?.id ?? null}
+        onVerVersion={(versionElegida) => setVersionSeleccionada(versionElegida)}
+      />
     </div>
   );
 };

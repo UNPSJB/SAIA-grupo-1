@@ -1,5 +1,6 @@
 from typing import Optional, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from src.recetas.schemas import RecetaBase
 from src.producto import exceptions
 
 
@@ -8,10 +9,12 @@ class ProductoBase(BaseModel):
     descripcion: Optional[str] = Field(default=None, min_length=1, max_length=100)
     unidad_medida_id: Optional[int] = None
     unidadMedida: Optional[str] = None
-    id_receta: Optional[int] = None
 
 
 class ProductoCreate(ProductoBase):
+
+    receta:Optional[RecetaBase] = None
+    
     @field_validator('nombre')
     @classmethod
     def validar_nombre_no_vacio(cls, v: str) -> str:
@@ -34,7 +37,7 @@ class ProductoUpdate(ProductoBase):
     descripcion: Optional[str] = None
     unidad_medida_id: Optional[int] = None
     unidadMedida: Optional[str] = None
-    id_receta: Optional[int] = None
+    receta:Optional[RecetaBase] = None
 
     @field_validator('nombre')
     @classmethod

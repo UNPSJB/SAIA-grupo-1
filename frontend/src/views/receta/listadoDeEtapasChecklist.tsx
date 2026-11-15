@@ -1,4 +1,3 @@
-// src/views/recetas/listadoChecklistReceta.tsx
 import React, { useEffect, useState } from 'react';
 import type { ChecklistReceta, PersonalResumen } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
@@ -8,9 +7,11 @@ import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
+import { VerReceta } from './VerReceta';
 
 interface ListadoChecklistsRecetaProps {
   onDetalleClick: (id: number) => void;
+  onVerRecetaVigente?: (id: number) => void;
 }
 
 const obtenerFechaLocalHoy = (): string => {
@@ -37,20 +38,20 @@ const formatearMotivo = (motivo?: string | null): string => {
 
 export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = ({
   onDetalleClick,
+  onVerRecetaVigente,
 }) => {
-  const { esAdministrador, esOperador, usuario } = useAuth();
+  const { esAdministrador, usuario } = useAuth();
   const [checklists, setChecklists] = useState<ChecklistReceta[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [personal, setPersonal] = useState<PersonalResumen[]>([]);
-  const [modalGenerar, setModalGenerar] = useState(false);
-  const [generando, setGenerando] = useState(false);
 
   const [fechaFiltro, setFechaFiltro] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState('');
   const [responsableFiltro, setResponsableFiltro] = useState('');
   const [checklistHoyId, setChecklistHoyId] = useState<number | null>(null);
   const [checklistExpandido, setChecklistExpandido] = useState<number | null>(null);
+  const [recetaIdSeleccionada, setRecetaIdSeleccionada] = useState<number | null>(null);
   const columnas = esAdministrador ? 6 : 5;
 
   const [errorDialog, setErrorDialog] = useState<{
@@ -164,8 +165,6 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
     };
   }, [esAdministrador, usuario]);
 
-  const hoy = obtenerFechaLocalHoy();
-
   const {
     itemsPaginados: checklistsPaginados,
     paginaActual,
@@ -202,38 +201,27 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
     await recargarChecklists('', '', '');
   };
 
-  const handleGenerarChecklist = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setGenerando(true);
-    try {
-      const res = await apiFetch(`/recetas/checklist/generar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fecha: hoy }),
-      });
-
-      if (res.ok) {
-        const nueva: ChecklistReceta = await res.json();
-        setModalGenerar(false);
-        setChecklistHoyId(nueva.id);
-        await recargarChecklists();
-        onDetalleClick(nueva.id);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        const detalle =
-          typeof err.detail === 'string'
-            ? err.detail
-            : Array.isArray(err.detail)
-            ? err.detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(', ')
-            : 'Error al generar el checklist de producción del día.';
-        mostrarError(detalle, 'No se pudo generar');
-      }
-    } catch {
-      mostrarError('Error de red al intentar generar el checklist.', 'Error de conexión');
-    } finally {
-      setGenerando(false);
+  const handleAbrirReceta = (recetaId?: number | null) => {
+    if (!recetaId) {
+      mostrarError('No se encontró la receta asociada a este checklist.');
+      return;
+    }
+    if (onVerRecetaVigente) {
+      onVerRecetaVigente(recetaId);
+    } else {
+      setRecetaIdSeleccionada(recetaId);
     }
   };
+
+  // Si se abrió VerReceta directamente desde esta vista
+  if (recetaIdSeleccionada !== null) {
+    return (
+      <VerReceta
+        recetaID={recetaIdSeleccionada}
+        onCancel={() => setRecetaIdSeleccionada(null)}
+      />
+    );
+  }
 
   return (
     <div className="checklist-container">
@@ -252,7 +240,7 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
         </div>
 
         <div className="top-bar-acciones" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {checklistHoyId ? (
+          {checklistHoyId && (
             <button
               onClick={() => onDetalleClick(checklistHoyId)}
               className="btn-dia-ver"
@@ -260,15 +248,7 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
             >
               📅 Ver mi Checklist de Hoy
             </button>
-          ) : esOperador ? (
-            <button
-              onClick={() => setModalGenerar(true)}
-              className="btn-guardar"
-              title="Generar tu checklist de hoy con las etapas de recetas que tenés asignadas"
-            >
-              + Generar mi Checklist del Día
-            </button>
-          ) : null}
+          )}
         </div>
       </div>
 
@@ -359,7 +339,7 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
                     ? 'No se encontraron checklists registrados con los filtros seleccionados.'
                     : esAdministrador
                     ? 'No se encontraron checklists de recetas registrados.'
-                    : 'Todavía no generaste ningún checklist de producción. Usá "Generar mi Checklist del Día" para empezar.'}
+                    : 'Todavía no tenés checklists de producción generados. Registrate un lote en Producción para generar tu checklist.'}
                 </td>
               </tr>
             ) : (
@@ -372,6 +352,7 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
                     : 'vacio';
 
                 const estaExpandido = checklistExpandido === c.id;
+                const recetaIdAsociada = c.items?.find((i) => i.receta_id)?.receta_id;
 
                 return (
                   <React.Fragment key={c.id}>
@@ -445,12 +426,24 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
                       <td className="acciones-col">
                         <div className="acciones-btns">
                           <button
+                            type="button"
                             className="btn-icon btn-ver"
                             title="Ver detalle del checklist y ejecutar etapas"
                             onClick={() => onDetalleClick(c.id)}
                           >
                             👁
                           </button>
+
+                          {recetaIdAsociada && (
+                            <button
+                              type="button"
+                              className="btn-icon btn-ver"
+                              title="Consultar receta vigente e historial de versiones"
+                              onClick={() => handleAbrirReceta(recetaIdAsociada)}
+                            >
+                              📄
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -462,13 +455,24 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
                               <h4>
                                 Etapas y Procedimientos del Checklist #{c.id} ({c.fecha})
                               </h4>
-                              <button
-                                type="button"
-                                className="btn-ver-detalle-inline"
-                                onClick={() => onDetalleClick(c.id)}
-                              >
-                                Abrir detalle completo y ejecutar ➔
-                              </button>
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                {recetaIdAsociada && (
+                                  <button
+                                    type="button"
+                                    className="btn-ver-detalle-inline"
+                                    onClick={() => handleAbrirReceta(recetaIdAsociada)}
+                                  >
+                                    📄 Ver Receta e Historial
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="btn-ver-detalle-inline"
+                                  onClick={() => onDetalleClick(c.id)}
+                                >
+                                  Abrir detalle completo y ejecutar ➔
+                                </button>
+                              </div>
                             </div>
                             <div className="tareas-expandidas-grid">
                               {c.items && c.items.length > 0 ? (
@@ -567,40 +571,6 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="checklists de recetas"
       />
-
-      {modalGenerar && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Generar mi Checklist de Producción</h2>
-              <p>
-                Fecha programada: <strong>{hoy}</strong>
-              </p>
-            </div>
-
-            <form onSubmit={handleGenerarChecklist}>
-              <p>
-                Se generará tu checklist de hoy con las etapas de recetas vigentes que tenés
-                asignadas.
-              </p>
-
-              <div className="form-acciones">
-                <button type="submit" className="btn-guardar" disabled={generando}>
-                  {generando ? 'Generando...' : 'Generar mi Checklist del Día'}
-                </button>
-                <button
-                  type="button"
-                  className="btn-cancelar"
-                  onClick={() => setModalGenerar(false)}
-                  disabled={generando}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       <ErrorAlertDialog
         open={errorDialog.open}

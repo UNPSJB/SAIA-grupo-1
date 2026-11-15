@@ -1,3 +1,5 @@
+import type { Receta } from "../receta/tipos";
+
 /** Lo que el lote usa del producto; los productos se dan de alta en el ABM de Productos Elaborados */
 export interface Producto {
   id: number;
@@ -35,6 +37,7 @@ export interface LoteProduccion {
   id: number;
   codigo: string;
   producto: Producto;
+  receta:Receta;
   fecha: string;
   /** en la unidad de medida del producto; no se edita */
   cantidad: number;

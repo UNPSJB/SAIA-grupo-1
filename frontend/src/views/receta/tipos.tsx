@@ -1,7 +1,3 @@
-// ==========================================
-// 1. ENUMS Y TIPOS LITERALES
-// ==========================================
-
 export type ClaseFuncional =
   | 'conservante'
   | 'antioxidante'
@@ -25,10 +21,6 @@ export type EstadoGeneralRecetaChecklist =
   | 'completado'
   | 'vencido';
 
-// ==========================================
-// 2. DETALLE / ETAPA DE RECETA 
-// ==========================================
-
 export interface RecetaDetalle {
   ingrediente_id: number;
   nombre: string;
@@ -37,9 +29,7 @@ export interface RecetaDetalle {
   es_aditivo: boolean;
   clase_funcional?: ClaseFuncional | null;
   numero_ins?: string | null;
-  operario_legajo: number | '';
   descripcion_pasos: string;
-  nombre_operario?: string | null;
   nombre_ingrediente?: string | null;
 }
 
@@ -56,13 +46,8 @@ export interface RecetaDetalleForm {
   es_aditivo: boolean;
   clase_funcional: ClaseFuncional | '';
   numero_ins: string;
-  operario_legajo: number | '';
   descripcion_pasos: string;
 }
-
-// ==========================================
-// 3. VERSIÓN DE RECETA
-// ==========================================
 
 export interface VersionRecetaItem {
   id: number;
@@ -78,13 +63,13 @@ export interface VersionRecetaItem {
   detalles?: RecetaDetalleConId[] | null;
 }
 
-// ==========================================
-// 4. CABECERA DE RECETA 
-// ==========================================
-
 export interface Receta {
   nombre: string;
   rendimiento_final: number;
+  id_producto: number;
+  operario_legajo: number;
+  nombre_producto?: string | null;
+  nombre_operario?: string | null;
   fecha_creacion?: string;
   fecha_vigencia?: string | null;
   fecha_vencimiento?: string | null;
@@ -102,15 +87,13 @@ export interface RecetaConId extends Receta {
 export interface RecetaForm {
   nombre: string;
   rendimiento_final: number | '';
+  id_producto: number | '';
+  operario_legajo: number | '';
   fecha_creacion: string;
   fecha_vigencia: string;
   fecha_vencimiento: string;
   detalles: RecetaDetalleConId[];
 }
-
-// ==========================================
-// 5. CHECKLIST DE RECETAS
-// ==========================================
 
 export interface ChecklistRecetaItem {
   id: number;
@@ -160,7 +143,6 @@ export interface PersonalResumen {
   capacidad?: 'OPERAR' | 'ADMINISTRAR' | 'AMBAS';
 }
 
-/** El responsable no se manda: lo define la sesión del operador que genera. */
 export interface ChecklistRecetaGenerarPayload {
   fecha?: string;
 }

@@ -85,21 +85,22 @@ def crear_receta(db: Session, receta_data: schemas.RecetaCreate, usuario: Person
 
     if not detalles_data:
         raise exceptions.AgregueIngredientes()
-    
-    # Como model_dump() convierte los sub-modelos en dicts, evaluamos con ["es_aditivo"]
+
     tiene_ingrediente = any(not d["es_aditivo"] for d in detalles_data)
     if not tiene_ingrediente:
         raise exceptions.AgregueIngredientes()
 
+    # Validamos el operario asignado en la cabecera de la receta
+    validar_operario_etapa(db, datos["operario_legajo"])
 
     fecha_vigencia = datos.pop("fecha_vigencia", None)
     fecha_vencimiento = datos.pop("fecha_vencimiento", None)
 
     _receta = Receta(**datos)
     db.add(_receta)
-    db.flush() # Para obtener _receta.id
+    db.flush()  # Para obtener _receta.id
 
-    #  Creamos la Versión 1 asociada
+    # Creamos la Versión 1 asociada
     nueva_version = VersionReceta(
         receta_id=_receta.id,
         version=1,
@@ -112,11 +113,10 @@ def crear_receta(db: Session, receta_data: schemas.RecetaCreate, usuario: Person
         creado_por_usuario=getattr(usuario, "usuario", None),
     )
     db.add(nueva_version)
-    db.flush() # Para obtener nueva_version.id
+    db.flush()  # Para obtener nueva_version.id
 
     # Iteramos y creamos los detalles asignándoles el ID de la versión
     for detalle in detalles_data:
-        validar_operario_etapa(db, detalle["operario_legajo"])
         detalle["version_receta_id"] = nueva_version.id
         nuevo_detalle = RecetaDetalle(**detalle)
         db.add(nuevo_detalle)
@@ -145,36 +145,35 @@ def editar_receta(db: Session, receta_id: int, receta_data: schemas.RecetaUpdate
         if not tiene_ingrediente:
             raise exceptions.AgregueIngredientes()
 
-    # Extraer fechas si vienen en la actualización
+    if "operario_legajo" in datos and datos["operario_legajo"] is not None:
+        validar_operario_etapa(db, datos["operario_legajo"])
+
     fecha_vigencia = datos.pop("fecha_vigencia", None)
     fecha_vencimiento = datos.pop("fecha_vencimiento", None)
 
-    # 1. Actualizar los datos generales de la receta (ej. nombre)
+    
     if datos:
         db.execute(
             update(Receta).where(Receta.id == receta_id).values(**datos)
         )
         db.flush()
 
-    # 2. PATRÓN DE VERSIONADO: Desactivar la versión vigente actual (dejarla en solo lectura)
+ 
     version_anterior = db.scalar(
         select(VersionReceta).where(
             VersionReceta.receta_id == receta_id,
-            VersionReceta.es_vigente == True
+            VersionReceta.es_vigente == True,
         )
     )
     if version_anterior:
         version_anterior.es_vigente = False
         db.add(version_anterior)
 
-    # 3. Calcular el número de la nueva versión
     db.refresh(db_receta)
     siguiente_version = calcular_siguiente_version(db_receta.versiones)
 
-    # 4. Obtener el rendimiento actual (del update o el último conocido)
     rendimiento_actual = datos.get("rendimiento_final", db_receta.rendimiento_final)
 
-    # 5. Crear la NUEVA versión de la receta
     nueva_version = VersionReceta(
         receta_id=receta_id,
         version=siguiente_version,
@@ -187,12 +186,10 @@ def editar_receta(db: Session, receta_id: int, receta_data: schemas.RecetaUpdate
         creado_por_usuario=getattr(usuario, "usuario", None),
     )
     db.add(nueva_version)
-    db.flush()  # Para obtener el ID de la nueva versión
+    db.flush()
 
-    # 6. Agregar los nuevos detalles vinculados EXCLUSIVAMENTE a esta nueva versión
     if detalles_data is not None:
         for detalle in detalles_data:
-            validar_operario_etapa(db, detalle["operario_legajo"])
             detalle["version_receta_id"] = nueva_version.id
             nuevo_detalle = RecetaDetalle(**detalle)
             db.add(nuevo_detalle)
@@ -208,7 +205,7 @@ def listar_versiones_receta(db: Session, receta_id: int) -> List[VersionReceta]:
     return db_receta.versiones
 
 
-def listar_recetas(db: Session, usuario: Personal) -> List[Receta]:
+def listar_recetas(db: Session) -> List[Receta]:
     return list(db.scalars(select(Receta)).all())
 
 
@@ -242,21 +239,25 @@ def generar_checklist_receta(
     if ya_generado is not None:
         raise exceptions.ChecklistYaGenerado()
 
-    recetas_activas = db.scalars(
-        select(Receta).where(Receta.activo == True)
-    ).all()
+    # Buscamos todas las recetas activas asignadas a este operador
+    query_recetas = select(Receta).where(
+        Receta.activo == True,
+        Receta.operario_legajo == responsable.legajo,
+    )
+    if datos.id_producto is not None:
+        query_recetas = query_recetas.where(Receta.id_producto == datos.id_producto)
+
+    recetas_asignadas = db.scalars(query_recetas).all()
 
     items_a_crear: List[ChecklistRecetaItem] = []
 
-    for receta in recetas_activas:
+    for receta in recetas_asignadas:
         version_vig = receta.version_vigente
         if not version_vig:
             continue
 
+        # Se generan como pendientes todas las etapas de la versión vigente de la receta
         for detalle in version_vig.detalles:
-            if detalle.operario_legajo != responsable.legajo:
-                continue
-
             item = ChecklistRecetaItem(
                 receta_id=receta.id,
                 version_receta_id=version_vig.id,

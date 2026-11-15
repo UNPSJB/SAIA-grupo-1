@@ -7,6 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.insumos.models import Insumo
 from src.models import ModeloBase
 from src.personal.models import Personal
+if TYPE_CHECKING:
+    from src.producto.models import Producto
 
 class EstadoEtapaRecetaItem(StrEnum):
     PENDIENTE = auto()
@@ -34,6 +36,7 @@ class Receta(ModeloBase):
     rendimiento_final:Mapped[float]= mapped_column(index=True)
     fecha_creacion:Mapped[datetime]= mapped_column(DateTime, default=datetime.now, nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    operario_legajo: Mapped[int] = mapped_column(ForeignKey("personal.legajo"))
 
     versiones: Mapped[List["VersionReceta"]] = relationship(
             "VersionReceta",
@@ -42,6 +45,14 @@ class Receta(ModeloBase):
             cascade="all, delete-orphan",
             order_by="desc(VersionReceta.id)",
         )
+    producto: Mapped["Producto"] = relationship("Producto",back_populates="receta",order_by="desc(Producto.id)")
+
+    id_producto:Mapped[int] = mapped_column(ForeignKey("productos.id"))
+    operario: Mapped["Personal"] = relationship(
+             "Personal",
+             back_populates="receta",
+             foreign_keys=[operario_legajo]
+             )
 
 
     @property
@@ -74,6 +85,18 @@ class Receta(ModeloBase):
     def detalles(self) -> List["RecetaDetalle"]:
         v = self.version_actual
         return v.detalles if v else []
+
+    @property
+    def nombre_operario(self) -> str:
+            if self.operario:
+                return f"{self.operario.nombre} {self.operario.apellido}".strip()
+            return "Desconocido"
+
+    @property
+    def nombre_producto(self) -> str:
+        if self.producto:
+            return self.producto.nombre
+        return "Desconocido"
     
 class VersionReceta(ModeloBase):
         __tablename__ = "versiones_receta"
@@ -141,7 +164,6 @@ class RecetaDetalle(ModeloBase):
     es_aditivo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     clase_funcional: Mapped[Optional[CLASE_FUNCIONAL]] = mapped_column(index=True,nullable=True)
     numero_ins: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    operario_legajo: Mapped[int] = mapped_column(ForeignKey("personal.legajo"))
     descripcion_pasos: Mapped[str]
 # x unidad de medida por rendimiento final de la receta 
     version_receta: Mapped["VersionReceta"] = relationship(
@@ -155,18 +177,6 @@ class RecetaDetalle(ModeloBase):
         foreign_keys=[ingrediente_id],
     )
 
-    operario: Mapped["Personal"] = relationship(
-         "Personal",
-         back_populates="recetas_detalles",
-         foreign_keys=[operario_legajo]
-         )
-
-
-    @property
-    def nombre_operario(self) -> str:
-        if self.operario:
-            return f"{self.operario.nombre} {self.operario.apellido}".strip()
-        return "Desconocido"
     @property
     def nombre_ingrediente(self) -> str:
         if self.ingrediente:

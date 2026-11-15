@@ -6,6 +6,13 @@ import NuevoDetalleReceta from "./crearEtapaReceta";
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
 import { Dialog, DialogContent } from "../../components/ui/dialog";
 import { apiFetch } from "../../api/client";
+import { usePersonalActivo } from "../tareas/usePersonalActivo";
+
+interface ProductoOption {
+  id: number;
+  nombre: string;
+  activo?: boolean;
+}
 
 const HOY = new Date().toISOString().split("T")[0];
 
@@ -13,6 +20,8 @@ const RECETA_INICIAL: RecetaConId = {
   id: 0,
   nombre: "",
   rendimiento_final: 0,
+  id_producto: 0,
+  operario_legajo: 0,
   activo: true,
   detalles: [],
 };
@@ -46,6 +55,7 @@ interface EditarRecetaProps {
 
 export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRecetaProps) {
   const [receta, setReceta] = useState<RecetaConId>(RECETA_INICIAL);
+  const [productos, setProductos] = useState<ProductoOption[]>([]);
   const [detalles, setDetalles] = useState<RecetaDetalleConId[]>([]);
   const [fechaVigencia, setFechaVigencia] = useState<string>(HOY);
   const [fechaVencimiento, setFechaVencimiento] = useState<string>("");
@@ -59,6 +69,26 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
   const [detalleAConfirmar, setDetalleAConfirmar] = useState<RecetaDetalleConId | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
+  const personas = usePersonalActivo();
+
+  useEffect(() => {
+    let cancelado = false;
+    const fetchProductos = async () => {
+      try {
+        const res = await apiFetch(`/productos/`);
+        if (!cancelado && res.ok) {
+          const data: ProductoOption[] = await res.json();
+          setProductos(data.filter((p) => p.activo !== false));
+        }
+      } catch {
+        if (!cancelado) setProductos([]);
+      }
+    };
+    fetchProductos();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!recetaID) return;
@@ -94,7 +124,19 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
   }, [recetaID]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setReceta({ ...receta, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === "id_producto") {
+      const prodSeleccionado = productos.find((p) => p.id === Number(value));
+      setReceta((prev) => ({
+        ...prev,
+        id_producto: Number(value),
+        nombre: prodSeleccionado ? prodSeleccionado.nombre : prev.nombre,
+      }));
+      return;
+    }
+
+    setReceta((prev) => ({ ...prev, [name]: value }));
   }
 
   async function handleGuardar(e: React.FormEvent<HTMLFormElement>) {
@@ -105,6 +147,11 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
     function nombreValido(nombre: string): boolean {
       const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s.,;()\-_]+$/;
       return patron.test(nombre);
+    }
+
+    if (!receta.id_producto) {
+      setErrorMsg("Debe seleccionar un producto asociado.");
+      return;
     }
 
     if (!receta.nombre.trim()) {
@@ -119,6 +166,11 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
 
     if (!nombreValido(receta.nombre)) {
       setErrorMsg("No se permiten caracteres especiales inválidos en el nombre.");
+      return;
+    }
+
+    if (!receta.operario_legajo) {
+      setErrorMsg("Debe seleccionar un operario a cargo de la receta.");
       return;
     }
 
@@ -154,6 +206,8 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
     const payload = {
       nombre: receta.nombre.trim(),
       rendimiento_final: Number(receta.rendimiento_final),
+      id_producto: Number(receta.id_producto),
+      operario_legajo: Number(receta.operario_legajo),
       fecha_vigencia: fechaVigencia ? formatearFechaISO(fechaVigencia) : null,
       fecha_vencimiento: fechaVencimiento ? formatearFechaISO(fechaVencimiento) : null,
       detalles: detalles.map((d) => ({
@@ -164,7 +218,6 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
         es_aditivo: Boolean(d.es_aditivo),
         clase_funcional: d.es_aditivo ? d.clase_funcional : null,
         numero_ins: d.es_aditivo ? d.numero_ins : null,
-        operario_legajo: Number(d.operario_legajo),
         descripcion_pasos: d.descripcion_pasos.trim(),
       })),
     };
@@ -246,6 +299,26 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
         </div>
 
         <div className="form-group">
+          <label htmlFor="id_producto">Producto Asociado</label>
+          <select
+            id="id_producto"
+            name="id_producto"
+            value={receta.id_producto ?? ""}
+            onChange={handleChange}
+            required
+          >
+            <option value="" disabled>
+              Seleccione un producto
+            </option>
+            {productos.map((prod) => (
+              <option key={prod.id} value={prod.id}>
+                {prod.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
           <label htmlFor="nombre">Receta</label>
           <input
             id="nombre"
@@ -254,6 +327,26 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
             value={receta.nombre}
             onChange={handleChange}
           />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="operario_legajo">Operario a Cargo de la Receta</label>
+          <select
+            id="operario_legajo"
+            name="operario_legajo"
+            value={receta.operario_legajo ?? ""}
+            onChange={handleChange}
+            required
+          >
+            <option value="" disabled>
+              Seleccione un operador activo
+            </option>
+            {personas.map((p) => (
+              <option key={p.legajo} value={p.legajo}>
+                {p.apellido}, {p.nombre} (Legajo: {p.legajo})
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">
@@ -312,20 +405,19 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
                 <th>Ingrediente / Aditivo</th>
                 <th>Cantidad</th>
                 <th>Procedimiento</th>
-                <th>Operario a Cargo</th>
                 <th className="acciones-col">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
+                  <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>
                     Cargando Etapas...
                   </td>
                 </tr>
               ) : detalles.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
+                  <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>
                     No hay Etapas registradas.
                   </td>
                 </tr>
@@ -343,7 +435,6 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
                       {d.cantidad} {d.unidad_medida}
                     </td>
                     <td>{d.descripcion_pasos}</td>
-                    <td>{d.nombre_operario ?? `Legajo #${d.operario_legajo}`}</td>
                     <td className="acciones-col">
                       <div className="acciones-btns">
                         <button

@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from src.recetas.models import Receta
 from src.models import ModeloBase
 
 if TYPE_CHECKING:
@@ -19,11 +20,8 @@ class Producto(ModeloBase):
     )
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     visible_publico: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-
-    id_receta: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("documentos.id"), nullable=True, default=None
-    )
-    receta: Mapped[Optional["Documento"]] = relationship("Documento")
+    
+    receta: Mapped[Optional["Receta"]] = relationship("Receta",back_populates="producto")
     unidad_medida_rel: Mapped["UnidadMedida"] = relationship(
         "src.unidadesMedida.models.UnidadMedida", lazy="joined"
     )
