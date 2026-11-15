@@ -15,8 +15,10 @@ def obtener_lotes_para_exportar(
     producto_id: Optional[int] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    busqueda: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     lotes = listar_lotes(db, producto_id=producto_id, desde=desde, hasta=hasta)
+    term = busqueda.lower().strip() if busqueda else None
     filas: List[Dict[str, Any]] = []
 
     for l in lotes:
@@ -28,12 +30,23 @@ def obtener_lotes_para_exportar(
             unidad = unidad_raw.value if hasattr(unidad_raw, "value") else str(unidad_raw or "")
 
         responsable = "-"
+        legajo_str = str(getattr(l, "responsable_legajo", "") or "")
         if getattr(l, "responsable", None):
             nombre = getattr(l.responsable, "nombre", "") or ""
             apellido = getattr(l.responsable, "apellido", "") or ""
-            responsable = f"{nombre} {apellido}".strip() or f"Legajo #{l.responsable_legajo}"
-        elif getattr(l, "responsable_legajo", None):
-            responsable = f"Legajo #{l.responsable_legajo}"
+            responsable = f"{nombre} {apellido}".strip() or f"Legajo #{legajo_str}"
+        elif legajo_str:
+            responsable = f"Legajo #{legajo_str}"
+
+        if term:
+            coincide = (
+                term in (l.codigo or "").lower()
+                or term in nombre_producto.lower()
+                or term in responsable.lower()
+                or term in legajo_str
+            )
+            if not coincide:
+                continue
 
         fecha_str = l.fecha.strftime("%d/%m/%Y") if isinstance(l.fecha, date) else str(l.fecha)
         cantidad_str = f"{l.cantidad} {unidad}".strip()

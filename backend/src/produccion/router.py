@@ -16,10 +16,11 @@ def exportar_lotes_csv(
     producto_id: Optional[int] = Query(None),
     desde: Optional[date] = Query(None),
     hasta: Optional[date] = Query(None),
+    busqueda: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     datos = services.obtener_lotes_para_exportar(
-        db, producto_id=producto_id, desde=desde, hasta=hasta
+        db, producto_id=producto_id, desde=desde, hasta=hasta, busqueda=busqueda
     )
 
     columnas = {
@@ -44,10 +45,11 @@ def exportar_lotes_pdf(
     producto_id: Optional[int] = Query(None),
     desde: Optional[date] = Query(None),
     hasta: Optional[date] = Query(None),
+    busqueda: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     datos = services.obtener_lotes_para_exportar(
-        db, producto_id=producto_id, desde=desde, hasta=hasta
+        db, producto_id=producto_id, desde=desde, hasta=hasta, busqueda=busqueda
     )
 
     columnas = {
