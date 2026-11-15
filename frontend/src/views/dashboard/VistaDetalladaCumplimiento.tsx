@@ -13,7 +13,8 @@ import {
   YAxis,
 } from 'recharts';
 import { apiFetch } from '../../api/client';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Badge } from '../../components/ui/badge';
 import {
   Card,
@@ -22,6 +23,9 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import type {
   CumplimientoDetalladoResponse,
 } from './tipos';
@@ -77,6 +81,10 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
 
   const [paginaActual, setPaginaActual] = useState<number>(1);
   const itemsPorPagina = 10;
+
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+  const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -186,46 +194,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
     return 'vencido';
   };
 
-  const exportarCSV = () => {
-    if (!datos || !datos.items_detalle || datos.items_detalle.length === 0) return;
-
-    const cabeceras = [
-      'ID',
-      'Checklist ID',
-      'Fecha',
-      'Tarea',
-      'Frecuencia',
-      'Sector / Equipo',
-      'Tipo',
-      'Responsable',
-      'Estado',
-      'Hora Fin',
-    ];
-
-    const filas = datos.items_detalle.map((it) => [
-      it.id,
-      it.checklist_id,
-      it.fecha,
-      `"${(it.nombre_tarea || '').replace(/"/g, '""')}"`,
-      it.frecuencia,
-      `"${(it.sector_o_equipo || '').replace(/"/g, '""')}"`,
-      it.tipo_objeto,
-      `"${(it.responsable || '').replace(/"/g, '""')}"`,
-      it.estado,
-      it.hora_fin || '',
-    ]);
-
-    const contenidoCSV = '\uFEFF' + [cabeceras.join(';'), ...filas.map((f) => f.join(';'))].join('\r\n');
-    const blob = new Blob([contenidoCSV], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `cumplimiento_detallado_${formatearFechaInput(new Date())}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const items = datos?.items_detalle || [];
   const totalPaginas = Math.ceil(items.length / itemsPorPagina) || 1;
   const itemsPaginados = items.slice(
@@ -235,6 +203,53 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
 
   const hayDatos = items.length > 0;
   const kpis = datos?.kpis;
+
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (desde) params.append('desde', desde);
+      if (hasta) params.append('hasta', hasta);
+      if (sectorSeleccionado) params.append('sector_id', sectorSeleccionado);
+
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
+
+      if (formato === 'pdf') {
+        await descargarPDF(
+          `/checklist/cumplimiento-detallado/exportar-pdf${query}`,
+          'cumplimiento_detallado.pdf'
+        );
+      } else {
+        await descargarCSV(
+          `/checklist/cumplimiento-detallado/exportar-csv${query}`,
+          'cumplimiento_detallado.csv'
+        );
+      }
+
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar el cumplimiento detallado a ${formato.toUpperCase()}.`
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (desde) partes.push(`Desde: ${formatearFechaVisual(desde)}`);
+    if (hasta) partes.push(`Hasta: ${formatearFechaVisual(hasta)}`);
+    if (sectorSeleccionado) {
+      const sec = sectores.find((s) => String(s.id) === sectorSeleccionado);
+      partes.push(`Sector: ${sec ? sec.nombre : `#${sectorSeleccionado}`}`);
+    }
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
 
   return (
     <div className="modulo-container dashboard-vista-detalle">
@@ -266,16 +281,14 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
             </div>
           </div>
 
-          {hayDatos && (
-            <button
-              type="button"
-              onClick={exportarCSV}
-              className="btn-cancelar"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <CsvIcon /> Exportar CSV
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <ExportIcon size={18} /> Exportar
+          </button>
         </div>
       </div>
 
@@ -760,7 +773,22 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
           </Card>
         </div>
       )}
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={items.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportDialog)}
+        title="No se pudo completar la exportación"
+        description={errorExportDialog || ''}
+        onClose={() => setErrorExportDialog(null)}
+      />
     </div>
   );
 };
-
