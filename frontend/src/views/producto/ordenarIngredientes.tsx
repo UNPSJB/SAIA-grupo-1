@@ -1,5 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "../../api/client";
+import { Badge } from "../../components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import {
+  ConfirmAlertDialog,
+  ErrorAlertDialog,
+} from "../../components/ui/alert-dialog";
 import type {
   FormatoDeclaracionAditivos,
   ItemIngrediente,
@@ -10,6 +29,7 @@ import "../../styles/formularioAlta.css";
 interface OrdenarIngredientesProps {
   productoId: number;
   onVolver: () => void;
+  onPrevisualizarBorrador?: () => void;
 }
 
 const FUNCIONES_COMUNES = [
@@ -29,6 +49,7 @@ const FUNCIONES_COMUNES = [
 export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
   productoId,
   onVolver,
+  onPrevisualizarBorrador,
 }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [guardando, setGuardando] = useState<boolean>(false);
@@ -43,6 +64,59 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
   const [textoRotulo, setTextoRotulo] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [exitoMsg, setExitoMsg] = useState<string | null>(null);
+  const [copiado, setCopiado] = useState<boolean>(false);
+
+  const copiarTextoRotulo = () => {
+    if (!textoRotulo) return;
+    navigator.clipboard.writeText(textoRotulo);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  };
+
+  const descargarTextoRotulo = () => {
+    if (!textoRotulo) return;
+    const blob = new Blob([textoRotulo], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `rotulo_ingredientes_${productoNombre ? productoNombre.replace(/\s+/g, "_").toLowerCase() : productoId}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const alergenosDetectados = React.useMemo(() => {
+    const nombres = items.map((it) => (it.denominacion_rotulo || it.nombre).toLowerCase());
+    const detectados: string[] = [];
+    if (nombres.some((n) => n.includes("trigo") || n.includes("harina") || n.includes("gluten") || n.includes("avena") || n.includes("cebada") || n.includes("centeno"))) {
+      detectados.push("trigo");
+    }
+    if (nombres.some((n) => n.includes("leche") || n.includes("manteca") || n.includes("queso") || n.includes("suero") || n.includes("lacte") || n.includes("crema"))) {
+      detectados.push("leche");
+    }
+    if (nombres.some((n) => n.includes("huevo"))) {
+      detectados.push("huevo");
+    }
+    if (nombres.some((n) => n.includes("soja") || n.includes("lecitina"))) {
+      detectados.push("soja");
+    }
+    if (nombres.some((n) => n.includes("mani") || n.includes("maní"))) {
+      detectados.push("maní");
+    }
+    if (nombres.some((n) => n.includes("nuez") || n.includes("almendra") || n.includes("castaña") || n.includes("avellana"))) {
+      detectados.push("frutos secos");
+    }
+    return detectados;
+  }, [items]);
+
+  const totalIngredientes = items.filter((it) => !it.es_aditivo).length;
+  const totalAditivos = items.filter((it) => it.es_aditivo).length;
+  const sumaPorcentajes = items.reduce((acc, it) => acc + (it.porcentaje || 0), 0);
+  const totalAromatizantes = items.filter(
+    (it) =>
+      it.es_aromatizante ||
+      (it.funcion || "").toLowerCase().includes("aroma") ||
+      (it.funcion || "").toLowerCase().includes("saboriz")
+  ).length;
 
   const [modalAbierto, setModalAbierto] = useState<boolean>(false);
   const [indiceEdicion, setIndiceEdicion] = useState<number | null>(null);
@@ -173,46 +247,43 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
       return { ...it, texto_declaracion: dec };
     });
     setItems(itemsActualizados);
-    const declaraciones = itemsActualizados
-      .map((i) => i.texto_declaracion)
-      .filter(Boolean);
-    setTextoRotulo(
-      declaraciones.length > 0 ? `INGREDIENTES: ${declaraciones.join(", ")}.` : ""
-    );
+    if (itemsActualizados.length > 0) {
+      const decs = itemsActualizados.map((i) => i.texto_declaracion);
+      setTextoRotulo(`INGREDIENTES: ${decs.join(", ")}.`);
+    }
   };
 
   const moverItem = (indice: number, direccion: "arriba" | "abajo") => {
+    if (
+      (direccion === "arriba" && indice === 0) ||
+      (direccion === "abajo" && indice === items.length - 1)
+    ) {
+      return;
+    }
     const nuevoIndice = direccion === "arriba" ? indice - 1 : indice + 1;
-    if (nuevoIndice < 0 || nuevoIndice >= items.length) return;
-
     const copia = [...items];
-    const temp = copia[indice];
-    copia[indice] = copia[nuevoIndice];
-    copia[nuevoIndice] = temp;
+    const [movido] = copia.splice(indice, 1);
+    copia.splice(nuevoIndice, 0, movido);
 
     const actualizados = copia.map((it, idx) => ({ ...it, orden: idx + 1 }));
     setItems(actualizados);
     setAjustadoManualmente(true);
-    setFechaAjuste(new Date().toISOString());
-
-    const decs = actualizados.map((i) => i.texto_declaracion).filter(Boolean);
+    const decs = actualizados.map((i) => i.texto_declaracion);
     setTextoRotulo(`INGREDIENTES: ${decs.join(", ")}.`);
   };
 
   const eliminarItem = (indice: number) => {
-    const copia = items.filter((_, idx) => idx !== indice);
-    const actualizados = copia.map((it, idx) => ({ ...it, orden: idx + 1 }));
+    const filtrados = items.filter((_, idx) => idx !== indice);
+    const actualizados = filtrados.map((it, idx) => ({
+      ...it,
+      orden: idx + 1,
+    }));
     setItems(actualizados);
-
+    setAjustadoManualmente(true);
     if (actualizados.length === 0) {
       setTextoRotulo("");
-      return;
-    }
-
-    if (!ajustadoManualmente) {
-      previsualizar(actualizados, formato);
     } else {
-      const decs = actualizados.map((i) => i.texto_declaracion).filter(Boolean);
+      const decs = actualizados.map((i) => i.texto_declaracion);
       setTextoRotulo(`INGREDIENTES: ${decs.join(", ")}.`);
     }
   };
@@ -310,7 +381,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
     } else {
       const actualizados = copia.map((it, idx) => ({ ...it, orden: idx + 1 }));
       setItems(actualizados);
-      const decs = actualizados.map((i) => i.texto_declaracion).filter(Boolean);
+      const decs = actualizados.map((i) => i.texto_declaracion);
       setTextoRotulo(`INGREDIENTES: ${decs.join(", ")}.`);
     }
   };
@@ -460,35 +531,36 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
             type="button"
             className="btn-cancelar"
             onClick={onVolver}
-            style={{
-              fontSize: "0.95rem",
-              padding: "10px 18px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
+            style={{ fontSize: "0.95rem", padding: "10px 18px" }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-              arrow_back
-            </span>
             Volver al producto
           </button>
+          {onPrevisualizarBorrador && (
+            <button
+              type="button"
+              className="btn-secundario"
+              onClick={onPrevisualizarBorrador}
+              style={{
+                fontSize: "0.95rem",
+                padding: "10px 18px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                label
+              </span>
+              <span>Previsualizar Rótulo</span>
+            </button>
+          )}
           <button
             type="button"
             className="btn-guardar"
             disabled={guardando || items.length === 0}
             onClick={guardarListaCompleta}
-            style={{
-              fontSize: "0.95rem",
-              padding: "10px 22px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
+            style={{ fontSize: "0.95rem", padding: "10px 22px" }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-              save
-            </span>
             {guardando ? "Guardando..." : "Guardar para el rótulo"}
           </button>
         </div>
@@ -506,15 +578,9 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
             border: "1px solid rgba(16, 185, 129, 0.25)",
             fontWeight: 500,
             fontSize: "0.95rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
           }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-            check_circle
-          </span>
-          <span>{exitoMsg}</span>
+          {exitoMsg}
         </div>
       )}
 
@@ -525,229 +591,176 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
             marginBottom: "20px",
             padding: "14px 18px",
             fontSize: "0.95rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
           }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-            error
-          </span>
-          <span>{errorMsg}</span>
+          {errorMsg}
         </div>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "16px",
-          padding: "16px 22px",
-          background: "var(--color-superficie)",
-          border: "1px solid var(--color-borde)",
-          borderRadius: "10px",
-          marginBottom: "20px",
-          width: "100%",
-          boxSizing: "border-box",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          <span style={{ fontSize: "0.95rem", fontWeight: 600 }}>Estado del Orden:</span>
-          {ajustadoManualmente ? (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "6px 12px",
-                fontSize: "0.88rem",
-                borderRadius: "6px",
-                background: "rgba(234, 179, 8, 0.15)",
-                color: "#eab308",
-                fontWeight: 600,
-                border: "1px solid rgba(234, 179, 8, 0.3)",
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                edit
+      <Card style={{ marginBottom: "20px", width: "100%", boxSizing: "border-box", border: "1px solid var(--color-borde)" }}>
+        <CardContent
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "16px",
+            padding: "16px 20px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.92rem", fontWeight: 600 }}>Estado del Orden:</span>
+            {ajustadoManualmente ? (
+              <Badge variant="proximo" style={{ padding: "5px 10px", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
+                  edit
+                </span>
+                <span>Modificado manualmente</span>
+              </Badge>
+            ) : (
+              <Badge variant="activo" style={{ padding: "5px 10px", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
+                  check_circle
+                </span>
+                <span>Automático (proporción decreciente)</span>
+              </Badge>
+            )}
+            {ajustadoManualmente && fechaAjuste && (
+              <span style={{ fontSize: "0.82rem", color: "var(--color-texto-sec)" }}>
+                Por {usuarioAjuste || "Administrador"} el{" "}
+                {new Date(fechaAjuste).toLocaleString()}
               </span>
-              Modificado manualmente
-            </span>
-          ) : (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "6px 12px",
-                fontSize: "0.88rem",
-                borderRadius: "6px",
-                background: "rgba(34, 197, 94, 0.15)",
-                color: "#22c55e",
-                fontWeight: 600,
-                border: "1px solid rgba(34, 197, 94, 0.3)",
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                check_circle
-              </span>
-              Automático (proporción decreciente)
-            </span>
-          )}
-          {ajustadoManualmente && fechaAjuste && (
-            <span style={{ fontSize: "0.85rem", color: "var(--color-texto-sec)" }}>
-              Por {usuarioAjuste || "Administrador"} el{" "}
-              {new Date(fechaAjuste).toLocaleString()}
-            </span>
-          )}
-        </div>
+            )}
+          </div>
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          {ajustadoManualmente && (
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+            {ajustadoManualmente && (
+              <button
+                type="button"
+                className="btn-cancelar"
+                style={{ fontSize: "0.88rem", padding: "7px 14px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+                onClick={() => setDialogResetAbierto(true)}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                  restart_alt
+                </span>
+                <span>Restablecer orden automático</span>
+              </button>
+            )}
             <button
               type="button"
               className="btn-cancelar"
-              style={{
-                fontSize: "0.9rem",
-                padding: "8px 16px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-              onClick={() => setDialogResetAbierto(true)}
+              style={{ fontSize: "0.88rem", padding: "7px 14px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+              onClick={() => setDialogImportarAbierto(true)}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                restart_alt
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                download
               </span>
-              Restablecer orden automático
+              <span>Importar de lote</span>
             </button>
-          )}
-          <button
-            type="button"
-            className="btn-cancelar"
-            style={{
-              fontSize: "0.9rem",
-              padding: "8px 16px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-            onClick={() => setDialogImportarAbierto(true)}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-              download
-            </span>
-            Importar de lote
-          </button>
-          <button
-            type="button"
-            className="btn-agregar"
-            style={{
-              fontSize: "0.9rem",
-              padding: "8px 18px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-            onClick={abrirModalNuevo}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-              add
-            </span>
-            Agregar ingrediente / aditivo
-          </button>
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "16px",
-          marginBottom: "24px",
-          padding: "16px 22px",
-          background: "var(--color-superficie)",
-          border: "1px solid var(--color-borde)",
-          borderRadius: "10px",
-          width: "100%",
-          boxSizing: "border-box",
-        }}
-      >
-        <span style={{ fontSize: "0.95rem", fontWeight: 600 }}>
-          Formato de declaración de aditivos:
-        </span>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          {[
-            { id: "ins_y_nombre", label: "INS y Nombre" },
-            { id: "nombre_e_ins", label: "Nombre e INS" },
-            { id: "solo_ins", label: "Solo INS" },
-            { id: "solo_nombre", label: "Solo Nombre" },
-          ].map((opc) => (
             <button
-              key={opc.id}
               type="button"
-              onClick={() =>
-                cambiarFormatoAditivos(opc.id as FormatoDeclaracionAditivos)
-              }
-              style={{
-                padding: "8px 16px",
-                borderRadius: "6px",
-                border: "1px solid",
-                borderColor:
-                  formato === opc.id
-                    ? "var(--color-primario, #2563eb)"
-                    : "var(--color-borde)",
-                background:
-                  formato === opc.id
-                    ? "var(--color-primario, #2563eb)"
-                    : "transparent",
-                color: formato === opc.id ? "#ffffff" : "var(--color-texto)",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: formato === opc.id ? 600 : 400,
-                transition: "all 0.15s ease",
-              }}
+              className="btn-agregar"
+              style={{ fontSize: "0.88rem", padding: "7px 16px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+              onClick={abrirModalNuevo}
             >
-              {opc.label}
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                add
+              </span>
+              <span>Agregar ingrediente / aditivo</span>
             </button>
-          ))}
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div
+      <Card style={{ marginBottom: "20px", width: "100%", boxSizing: "border-box", border: "1px solid var(--color-borde)" }}>
+        <CardContent
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "14px",
+            padding: "14px 20px",
+          }}
+        >
+          <span style={{ fontSize: "0.92rem", fontWeight: 600 }}>
+            Formato de declaración de aditivos:
+          </span>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {[
+              { id: "ins_y_nombre", label: "INS y Nombre" },
+              { id: "nombre_e_ins", label: "Nombre e INS" },
+              { id: "solo_ins", label: "Solo INS" },
+              { id: "solo_nombre", label: "Solo Nombre" },
+            ].map((opc) => (
+              <button
+                key={opc.id}
+                type="button"
+                onClick={() =>
+                  cambiarFormatoAditivos(opc.id as FormatoDeclaracionAditivos)
+                }
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "6px",
+                  border: "1px solid",
+                  borderColor:
+                    formato === opc.id
+                      ? "var(--color-texto)"
+                      : "var(--color-borde)",
+                  background:
+                    formato === opc.id
+                      ? "var(--color-texto)"
+                      : "transparent",
+                  color: formato === opc.id ? "var(--color-superficie)" : "var(--color-texto)",
+                  cursor: "pointer",
+                  fontSize: "0.85rem",
+                  fontWeight: formato === opc.id ? 600 : 400,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {opc.label}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card
         style={{
-          marginBottom: "32px",
+          marginBottom: "28px",
           width: "100%",
           overflow: "hidden",
           border: "1px solid var(--color-borde)",
-          borderRadius: "12px",
+          borderRadius: "10px",
           boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
-          background: "var(--color-superficie)",
         }}
       >
-        <div
+        <CardHeader
           style={{
-            padding: "24px 28px",
+            padding: "20px 24px",
             borderBottom: "1px solid var(--color-borde)",
             background: "var(--color-superficie)",
           }}
         >
-          <h3 style={{ fontSize: "1.35rem", fontWeight: 700, margin: 0, color: "var(--color-texto)" }}>
-            Ingredientes y Aditivos del Producto
-          </h3>
-          <p style={{ fontSize: "0.95rem", marginTop: "4px", lineHeight: "1.5", color: "var(--color-texto-sec)", margin: "4px 0 0 0" }}>
-            Los ingredientes principales se ubican al inicio en orden
-            decreciente según su proporción; los aditivos continúan a
-            continuación agrupados por función. Utilice los controles para
-            ajustar el orden manual si fuese necesario.
-          </p>
-        </div>
-        <div style={{ padding: "0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+            <div>
+              <CardTitle style={{ fontSize: "1.25rem", fontWeight: 700 }}>
+                Ingredientes y Aditivos del Producto
+              </CardTitle>
+              <CardDescription style={{ fontSize: "0.9rem", marginTop: "4px", lineHeight: "1.4" }}>
+                Los ingredientes se ordenan de mayor a menor proporción; los aditivos continúan a continuación agrupados por función.
+              </CardDescription>
+            </div>
+            {items.length > 0 && (
+              <Badge variant="outline" style={{ fontSize: "0.85rem", padding: "4px 10px", fontWeight: 600 }}>
+                {items.length} {items.length === 1 ? "componente" : "componentes"}
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent style={{ padding: "0" }}>
           {loading ? (
-            <div style={{ textAlign: "center", padding: "3rem", fontSize: "1rem" }}>
+            <div style={{ textAlign: "center", padding: "3rem", fontSize: "0.95rem" }}>
               Cargando lista de ingredientes...
             </div>
           ) : items.length === 0 ? (
@@ -756,7 +769,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                 style={{
                   color: "var(--color-texto-sec)",
                   marginBottom: "20px",
-                  fontSize: "1.05rem",
+                  fontSize: "0.98rem",
                 }}
               >
                 Aún no hay ingredientes ni aditivos cargados para este producto.
@@ -764,125 +777,121 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               <div
                 style={{
                   display: "flex",
-                  gap: "14px",
+                  gap: "12px",
                   justifyContent: "center",
                 }}
               >
                 <button
                   type="button"
                   className="btn-agregar"
-                  style={{
-                    fontSize: "0.95rem",
-                    padding: "10px 20px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
+                  style={{ fontSize: "0.9rem", padding: "8px 18px" }}
                   onClick={abrirModalNuevo}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                    add
-                  </span>
-                  Agregar primer ingrediente
+                  + Agregar primer ingrediente
                 </button>
                 <button
                   type="button"
                   className="btn-cancelar"
-                  style={{
-                    fontSize: "0.95rem",
-                    padding: "10px 20px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
+                  style={{ fontSize: "0.9rem", padding: "8px 18px", display: "inline-flex", alignItems: "center", gap: "6px" }}
                   onClick={() => setDialogImportarAbierto(true)}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
                     download
                   </span>
-                  Cargar desde producción
+                  <span>Cargar desde producción</span>
                 </button>
               </div>
             </div>
           ) : (
             <div
-              className="tabla-wrapper"
               style={{
-                border: "none",
-                borderRadius: "0",
-                boxShadow: "none",
                 width: "100%",
-                overflowX: "auto",
+                maxWidth: "100%",
+                overflowX: "hidden",
+                margin: 0,
+                padding: 0,
+                boxSizing: "border-box",
               }}
             >
               <table
                 className="tabla-custom"
                 style={{
                   width: "100%",
-                  borderCollapse: "collapse",
                   tableLayout: "fixed",
+                  borderCollapse: "collapse",
+                  margin: 0,
+                  boxSizing: "border-box",
                 }}
               >
+                <colgroup>
+                  <col style={{ width: "55px" }} />
+                  <col style={{ width: "24%" }} />
+                  <col style={{ width: "17%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col />
+                  <col style={{ width: "70px" }} />
+                </colgroup>
                 <thead>
                   <tr>
                     <th
                       style={{
-                        width: "75px",
                         textAlign: "center",
-                        padding: "0.85rem 0.5rem",
-                        fontSize: "0.8rem",
+                        padding: "0.75rem 0.25rem",
+                        fontSize: "0.76rem",
+                        whiteSpace: "normal",
+                        boxSizing: "border-box",
                       }}
                     >
                       Orden
                     </th>
                     <th
                       style={{
-                        width: "25%",
-                        padding: "0.85rem 0.85rem",
-                        fontSize: "0.8rem",
+                        padding: "0.75rem 0.5rem",
+                        fontSize: "0.76rem",
                         whiteSpace: "normal",
+                        boxSizing: "border-box",
                       }}
                     >
-                      Denominación para Rótulo
+                      Denominación
                     </th>
                     <th
                       style={{
-                        width: "18%",
-                        padding: "0.85rem 0.85rem",
-                        fontSize: "0.8rem",
+                        padding: "0.75rem 0.4rem",
+                        fontSize: "0.76rem",
                         whiteSpace: "normal",
+                        boxSizing: "border-box",
                       }}
                     >
-                      Tipo y Función
+                      Tipo / Función
                     </th>
                     <th
                       style={{
-                        width: "95px",
                         textAlign: "right",
-                        padding: "0.85rem 0.85rem",
-                        fontSize: "0.8rem",
+                        padding: "0.75rem 0.4rem",
+                        fontSize: "0.76rem",
+                        whiteSpace: "normal",
+                        boxSizing: "border-box",
                       }}
                     >
                       Proporción
                     </th>
                     <th
                       style={{
-                        width: "auto",
-                        padding: "0.85rem 0.85rem",
-                        fontSize: "0.8rem",
+                        padding: "0.75rem 0.5rem",
+                        fontSize: "0.76rem",
                         whiteSpace: "normal",
+                        boxSizing: "border-box",
                       }}
                     >
-                      Declaración en Rótulo
+                      Declaración Rótulo
                     </th>
                     <th
-                      className="acciones-col"
                       style={{
-                        width: "80px",
                         textAlign: "center",
-                        padding: "0.85rem 0.5rem",
-                        fontSize: "0.8rem",
+                        padding: "0.75rem 0.25rem",
+                        fontSize: "0.76rem",
                         whiteSpace: "nowrap",
+                        boxSizing: "border-box",
                       }}
                     >
                       Acciones
@@ -894,17 +903,15 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     <tr
                       key={`${it.id || idx}-${it.nombre}`}
                       style={{
-                        backgroundColor: it.es_aditivo
-                          ? "rgba(147, 51, 234, 0.03)"
-                          : "transparent",
+                        backgroundColor: "transparent",
                       }}
                     >
                       <td
                         style={{
                           textAlign: "center",
                           fontWeight: 600,
-                          padding: "0.85rem 0.5rem",
-                          width: "75px",
+                          padding: "0.75rem 0.25rem",
+                          boxSizing: "border-box",
                         }}
                       >
                         <div
@@ -912,13 +919,12 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            gap: "6px",
+                            gap: "4px",
                           }}
                         >
                           <span
                             style={{
-                              minWidth: "22px",
-                              fontSize: "0.95rem",
+                              fontSize: "0.92rem",
                               fontWeight: 700,
                             }}
                           >
@@ -939,9 +945,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                               onClick={() => moverItem(idx, "arriba")}
                               style={{
                                 padding: 0,
-                                width: "22px",
-                                height: "18px",
-                                fontSize: "11px",
+                                width: "20px",
+                                height: "16px",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -952,7 +957,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                                 opacity: idx === 0 ? 0.3 : 1,
                               }}
                             >
-                              <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>
                                 keyboard_arrow_up
                               </span>
                             </button>
@@ -964,9 +969,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                               onClick={() => moverItem(idx, "abajo")}
                               style={{
                                 padding: 0,
-                                width: "22px",
-                                height: "18px",
-                                fontSize: "11px",
+                                width: "20px",
+                                height: "16px",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -977,7 +981,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                                 opacity: idx === items.length - 1 ? 0.3 : 1,
                               }}
                             >
-                              <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>
                                 keyboard_arrow_down
                               </span>
                             </button>
@@ -985,11 +989,18 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                         </div>
                       </td>
 
-                      <td style={{ padding: "0.85rem 0.85rem", wordBreak: "break-word" }}>
+                      <td
+                        style={{
+                          padding: "0.75rem 0.5rem",
+                          wordBreak: "break-word",
+                          overflowWrap: "anywhere",
+                          boxSizing: "border-box",
+                        }}
+                      >
                         <div
                           style={{
                             fontWeight: 600,
-                            fontSize: "0.95rem",
+                            fontSize: "0.92rem",
                           }}
                         >
                           {it.denominacion_rotulo || it.nombre}
@@ -998,7 +1009,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                           it.denominacion_rotulo !== it.nombre && (
                             <div
                               style={{
-                                fontSize: "0.8rem",
+                                fontSize: "0.78rem",
                                 color: "var(--color-texto-sec)",
                                 marginTop: "2px",
                               }}
@@ -1008,80 +1019,43 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                           )}
                       </td>
 
-                      <td style={{ padding: "0.85rem 0.85rem" }}>
+                      <td
+                        style={{
+                          padding: "0.75rem 0.4rem",
+                          boxSizing: "border-box",
+                        }}
+                      >
                         {it.es_aditivo ? (
                           <div
                             style={{
                               display: "flex",
-                              gap: "6px",
+                              gap: "4px",
                               alignItems: "center",
                               flexWrap: "wrap",
                             }}
                           >
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "2px 8px",
-                                fontSize: "0.8rem",
-                                borderRadius: "4px",
-                                background: "rgba(168, 85, 247, 0.15)",
-                                color: "#c084fc",
-                                fontWeight: 500,
-                                border: "1px solid rgba(168, 85, 247, 0.3)",
-                              }}
-                            >
+                            <Badge variant="secondary" style={{ fontSize: "0.76rem", padding: "2px 6px" }}>
                               {it.funcion || "Aditivo"}
-                            </span>
+                            </Badge>
                             {it.numero_ins && (
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  padding: "2px 8px",
-                                  fontSize: "0.8rem",
-                                  borderRadius: "4px",
-                                  background: "rgba(255, 255, 255, 0.05)",
-                                  color: "var(--color-texto)",
-                                  border: "1px solid var(--color-borde)",
-                                }}
-                              >
+                              <Badge variant="outline" style={{ fontSize: "0.76rem", padding: "2px 6px" }}>
                                 INS {it.numero_ins}
-                              </span>
+                              </Badge>
                             )}
                             {it.es_aromatizante && (
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  padding: "2px 8px",
-                                  fontSize: "0.8rem",
-                                  borderRadius: "4px",
-                                  background: "rgba(56, 189, 248, 0.15)",
-                                  color: "#38bdf8",
-                                  border: "1px solid rgba(56, 189, 248, 0.3)",
-                                }}
+                              <Badge
+                                variant="al_dia"
+                                style={{ fontSize: "0.76rem", padding: "2px 6px" }}
                                 title="Se declara únicamente por su función"
                               >
                                 Solo función
-                              </span>
+                              </Badge>
                             )}
                           </div>
                         ) : (
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              padding: "2px 8px",
-                              fontSize: "0.8rem",
-                              borderRadius: "4px",
-                              background: "rgba(255, 255, 255, 0.05)",
-                              color: "var(--color-texto)",
-                              border: "1px solid var(--color-borde)",
-                            }}
-                          >
+                          <Badge variant="outline" style={{ fontSize: "0.76rem", padding: "2px 6px" }}>
                             Ingrediente
-                          </span>
+                          </Badge>
                         )}
                       </td>
 
@@ -1090,8 +1064,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                           textAlign: "right",
                           fontWeight: 700,
                           fontSize: "0.95rem",
-                          padding: "0.85rem 0.85rem",
-                          whiteSpace: "nowrap",
+                          padding: "0.75rem 0.4rem",
+                          boxSizing: "border-box",
                         }}
                       >
                         {it.porcentaje.toFixed(2)} %
@@ -1102,9 +1076,11 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                           fontStyle: "italic",
                           color: "var(--color-texto)",
                           fontSize: "0.9rem",
-                          lineHeight: "1.4",
-                          padding: "0.85rem 0.85rem",
+                          lineHeight: "1.45",
+                          padding: "0.75rem 0.5rem",
                           wordBreak: "break-word",
+                          overflowWrap: "anywhere",
+                          boxSizing: "border-box",
                         }}
                       >
                         {it.texto_declaracion ||
@@ -1112,23 +1088,35 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       </td>
 
                       <td
-                        className="acciones-col"
                         style={{
                           textAlign: "center",
-                          padding: "0.85rem 0.5rem",
+                          padding: "0.75rem 0.25rem",
                           whiteSpace: "nowrap",
-                          width: "80px",
+                          boxSizing: "border-box",
                         }}
                       >
                         <div
-                          className="acciones-btns"
-                          style={{ justifyContent: "center", gap: "6px" }}
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
                         >
                           <button
                             type="button"
                             className="btn-icon btn-editar"
                             title="Editar"
                             onClick={() => abrirModalEditar(idx)}
+                            style={{
+                              padding: "0",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: "25px",
+                              height: "25px",
+                              borderRadius: "4px",
+                            }}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
                               edit
@@ -1139,6 +1127,15 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                             className="btn-icon btn-eliminar"
                             title="Eliminar"
                             onClick={() => eliminarItem(idx)}
+                            style={{
+                              padding: "0",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: "25px",
+                              height: "25px",
+                              borderRadius: "4px",
+                            }}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
                               delete
@@ -1152,23 +1149,24 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               </table>
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div
+      <Card
         style={{
-          border: "2px solid rgba(37, 99, 235, 0.3)",
-          background: "var(--color-superficie)",
-          boxShadow: "0 4px 14px rgba(0, 0, 0, 0.05)",
-          borderRadius: "12px",
+          border: "1px solid var(--color-borde)",
+          boxShadow: "0 2px 10px rgba(0, 0, 0, 0.04)",
+          borderRadius: "10px",
           width: "100%",
+          boxSizing: "border-box",
+          overflow: "hidden",
         }}
       >
-        <div
+        <CardHeader
           style={{
-            borderBottom: "1px solid rgba(37, 99, 235, 0.2)",
-            background: "rgba(37, 99, 235, 0.03)",
-            padding: "24px 28px",
+            background: "var(--color-superficie)",
+            borderBottom: "1px solid var(--color-borde)",
+            padding: "18px 24px",
           }}
         >
           <div
@@ -1177,436 +1175,449 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               justifyContent: "space-between",
               alignItems: "center",
               flexWrap: "wrap",
-              gap: "12px",
+              gap: "14px",
             }}
           >
-            <div>
-              <h3 style={{ fontSize: "1.35rem", fontWeight: 700, margin: 0, color: "var(--color-texto)" }}>
-                Vista Previa para el Rótulo
-              </h3>
-              <p style={{ fontSize: "0.95rem", margin: "4px 0 0 0", color: "var(--color-texto-sec)" }}>
-                Texto estandarizado listo para imprimirse en la etiqueta del
-                producto. Disponible para el módulo de rotulado sin requerir
-                recargas.
-              </p>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div
+                style={{
+                  width: "38px",
+                  height: "38px",
+                  borderRadius: "8px",
+                  background: "var(--color-fondo)",
+                  border: "1px solid var(--color-borde)",
+                  color: "var(--color-texto)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
+                  receipt_long
+                </span>
+              </div>
+              <div>
+                <CardTitle style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0, color: "var(--color-texto)" }}>
+                  Vista Previa del Rótulo Reglamentario (Capítulo V CAA)
+                </CardTitle>
+                <CardDescription style={{ fontSize: "0.85rem", marginTop: "2px", color: "var(--color-texto-sec)" }}>
+                  Declaración oficial de ingredientes y aditivos estandarizada según la Res. GMC 26/03.
+                </CardDescription>
+              </div>
             </div>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "6px 14px",
-                fontSize: "0.9rem",
-                borderRadius: "6px",
-                background: "rgba(34, 197, 94, 0.15)",
-                color: "#22c55e",
-                fontWeight: 600,
-                border: "1px solid rgba(34, 197, 94, 0.3)",
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                check
-              </span>
-              Rótulo generado
-            </span>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              {textoRotulo && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-cancelar"
+                    onClick={copiarTextoRotulo}
+                    style={{
+                      fontSize: "0.85rem",
+                      padding: "6px 12px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                      {copiado ? "done" : "content_copy"}
+                    </span>
+                    <span>{copiado ? "¡Copiado!" : "Copiar Texto"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-cancelar"
+                    onClick={descargarTextoRotulo}
+                    style={{
+                      fontSize: "0.85rem",
+                      padding: "6px 12px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                      download
+                    </span>
+                    <span>Descargar .txt</span>
+                  </button>
+                </>
+              )}
+
+              {onPrevisualizarBorrador && (
+                <button
+                  type="button"
+                  className="btn-guardar"
+                  onClick={onPrevisualizarBorrador}
+                  style={{
+                    fontSize: "0.85rem",
+                    padding: "7px 16px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                    label
+                  </span>
+                  <span>Ver Rótulo Completo (HDU #87)</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
+                    arrow_forward
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-        <div style={{ padding: "28px" }}>
-          {textoRotulo ? (
-            <div
-              style={{
-                padding: "22px 28px",
-                background: "var(--color-fondo, #f8fafc)",
-                border: "1px dashed var(--color-borde)",
-                borderRadius: "10px",
-                fontFamily: "monospace",
-                fontSize: "1.1rem",
-                lineHeight: "1.8",
-                color: "var(--color-texto)",
-                wordBreak: "break-word",
-              }}
-            >
-              {textoRotulo}
-            </div>
-          ) : (
-            <p style={{ color: "var(--color-texto-sec)", margin: 0, fontSize: "1rem" }}>
-              Cargue al menos un ingrediente para generar la declaración del
-              rótulo.
-            </p>
-          )}
 
           <div
             style={{
-              marginTop: "16px",
-              fontSize: "0.85rem",
-              color: "var(--color-texto-sec)",
               display: "flex",
               alignItems: "center",
               gap: "8px",
+              marginTop: "14px",
+              flexWrap: "wrap",
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-              info
-            </span>
-            <span>
-              Regulación CAA / Mercosur Res. 26/03: Aromatizantes declarados
-              únicamente por función; aditivos al final agrupados por función.
-            </span>
-          </div>
-        </div>
-      </div>
+            <Badge variant="outline" style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", fontSize: "0.8rem" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>nutrition</span>
+              <span>{totalIngredientes} {totalIngredientes === 1 ? "ingrediente" : "ingredientes"}</span>
+            </Badge>
 
-      {modalAbierto && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            backdropFilter: "blur(4px)",
-            padding: "16px",
-          }}
-          onClick={() => setModalAbierto(false)}
-        >
-          <div
-            style={{
-              backgroundColor: "var(--color-superficie, #1e293b)",
-              border: "1px solid var(--color-borde, #334155)",
-              borderRadius: "12px",
-              maxWidth: "540px",
-              width: "100%",
-              maxHeight: "90vh",
-              overflowY: "auto",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
-              padding: "24px",
-              boxSizing: "border-box",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+            <Badge variant="outline" style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", fontSize: "0.8rem" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>science</span>
+              <span>{totalAditivos} {totalAditivos === 1 ? "aditivo" : "aditivos"}</span>
+            </Badge>
+
+            {totalAromatizantes > 0 && (
+              <Badge variant="outline" style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", fontSize: "0.8rem" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>psychiatry</span>
+                <span>{totalAromatizantes} aromatizante</span>
+              </Badge>
+            )}
+
+            <Badge
+              variant="outline"
+              style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", fontSize: "0.8rem" }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+                {Math.abs(sumaPorcentajes - 100) < 0.1 ? "check_circle" : "info"}
+              </span>
+              <span>Fórmula: {sumaPorcentajes.toFixed(2)}%</span>
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent style={{ padding: "20px 24px" }}>
+          {textoRotulo ? (
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "20px",
-                borderBottom: "1px solid var(--color-borde)",
-                paddingBottom: "12px",
+                background: "var(--color-fondo)",
+                border: "1px solid var(--color-borde)",
+                borderRadius: "8px",
+                padding: "20px",
               }}
             >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: "1.25rem",
-                  fontWeight: 700,
-                  color: "var(--color-texto)",
-                }}
-              >
-                {indiceEdicion !== null
-                  ? "Editar Ingrediente / Aditivo"
-                  : "Agregar Ingrediente o Aditivo"}
-              </h2>
-              <button
-                type="button"
-                className="btn-icon"
-                onClick={() => setModalAbierto(false)}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  color: "var(--color-texto-sec)",
-                }}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                guardarModalItem();
-              }}
-            >
-              <div className="form-group" style={{ marginBottom: "14px" }}>
-                <label htmlFor="formNombre">Nombre Comercial / Insumo *</label>
-                <input
-                  id="formNombre"
-                  type="text"
-                  value={formNombre}
-                  onChange={(e) => setFormNombre(e.target.value)}
-                  placeholder="Ej. Harina de trigo 0000, Lecitina de soja"
-                  required
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: "14px" }}>
-                <label htmlFor="formDenominacion">
-                  Denominación para el Rótulo (opcional)
-                </label>
-                <input
-                  id="formDenominacion"
-                  type="text"
-                  value={formDenominacion}
-                  onChange={(e) => setFormDenominacion(e.target.value)}
-                  placeholder="Nombre legal que saldrá en la lista de ingredientes"
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: "14px" }}>
-                <label htmlFor="formPorcentaje">Proporción (%) *</label>
-                <input
-                  id="formPorcentaje"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max="100"
-                  value={formPorcentaje}
-                  onChange={(e) => setFormPorcentaje(e.target.value)}
-                  placeholder="Ej. 65.5"
-                  required
-                />
-              </div>
-
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "10px",
+                  borderBottom: "1px solid var(--color-borde)",
+                  paddingBottom: "8px",
+                  flexWrap: "wrap",
                   gap: "8px",
-                  marginBottom: "16px",
-                  padding: "8px 12px",
-                  background: "var(--color-superficie)",
-                  border: "1px solid var(--color-borde)",
-                  borderRadius: "6px",
                 }}
               >
-                <input
-                  id="formEsAditivo"
-                  type="checkbox"
-                  checked={formEsAditivo}
-                  onChange={(e) => setFormEsAditivo(e.target.checked)}
-                  style={{ width: "16px", height: "16px" }}
-                />
-                <label
-                  htmlFor="formEsAditivo"
-                  style={{ fontWeight: 600, cursor: "pointer", margin: 0 }}
-                >
-                  ¿Es un aditivo alimentario?
-                </label>
-              </div>
-
-              {formEsAditivo && (
-                <div
-                  style={{
-                    padding: "14px",
-                    background: "rgba(147, 51, 234, 0.05)",
-                    border: "1px solid rgba(147, 51, 234, 0.2)",
-                    borderRadius: "8px",
-                    marginBottom: "16px",
-                  }}
-                >
-                  <div className="form-group" style={{ marginBottom: "12px" }}>
-                    <label htmlFor="formFuncion">Función Tecnológica *</label>
-                    <input
-                      id="formFuncion"
-                      type="text"
-                      list="funciones-sugeridas"
-                      value={formFuncion}
-                      onChange={(e) => setFormFuncion(e.target.value)}
-                      placeholder="Ej. Conservante, Emulsionante, Aromatizante"
-                    />
-                    <datalist id="funciones-sugeridas">
-                      {FUNCIONES_COMUNES.map((f) => (
-                        <option key={f} value={f} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: "12px" }}>
-                    <label htmlFor="formIns">Número INS (opcional)</label>
-                    <input
-                      id="formIns"
-                      type="text"
-                      value={formIns}
-                      onChange={(e) => setFormIns(e.target.value)}
-                      placeholder="Ej. 202, 322, 330"
-                    />
-                  </div>
-
-                  <div
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "var(--color-texto-sec)" }}>
+                    verified
+                  </span>
+                  <span
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      color: "var(--color-texto-sec)",
                     }}
                   >
-                    <input
-                      id="formEsAroma"
-                      type="checkbox"
-                      checked={formEsAroma}
-                      onChange={(e) => setFormEsAroma(e.target.checked)}
-                      style={{ width: "16px", height: "16px" }}
-                    />
-                    <label
-                      htmlFor="formEsAroma"
-                      style={{ fontSize: "0.85rem", cursor: "pointer", margin: 0 }}
-                    >
-                      Es aromatizante / saborizante (se declarará solo por su
-                      función)
-                    </label>
-                  </div>
+                    Simulación de Etiqueta (Normativa CAA)
+                  </span>
                 </div>
-              )}
+                <span style={{ fontSize: "0.72rem", color: "var(--color-texto-sec)" }}>
+                  Formato: {formato.replace(/_/g, " ")}
+                </span>
+              </div>
 
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: "12px",
-                  marginTop: "24px",
-                  borderTop: "1px solid var(--color-borde)",
-                  paddingTop: "16px",
+                  fontFamily: "var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)",
+                  fontSize: "1rem",
+                  lineHeight: "1.65",
+                  color: "var(--color-texto)",
+                  wordBreak: "break-word",
+                  fontWeight: 500,
                 }}
               >
-                <button
-                  type="button"
-                  className="btn-cancelar"
-                  onClick={() => setModalAbierto(false)}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-guardar">
-                  {indiceEdicion !== null ? "Guardar Cambios" : "Agregar"}
-                </button>
+                {textoRotulo}
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {dialogResetAbierto && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1100,
-            padding: "16px",
-          }}
-          onClick={() => setDialogResetAbierto(false)}
-        >
+              {alergenosDetectados.length > 0 && (
+                <div
+                  style={{
+                    marginTop: "14px",
+                    paddingTop: "10px",
+                    borderTop: "1px dashed var(--color-borde)",
+                    fontSize: "0.85rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.02em",
+                    color: "var(--color-texto)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "var(--color-texto-sec)" }}>
+                    warning
+                  </span>
+                  <span>
+                    ALÉRGENOS (Art. 235 7mo CAA): CONTIENE {alergenosDetectados.map((a) => a.toUpperCase()).join(", ")}.
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "2.5rem 1rem",
+                color: "var(--color-texto-sec)",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "36px", opacity: 0.5, marginBottom: "8px" }}>
+                receipt_long
+              </span>
+              <p style={{ margin: 0, fontSize: "0.95rem" }}>
+                Cargue al menos un ingrediente para generar la declaración reglamentaria del rótulo.
+              </p>
+            </div>
+          )}
+
           <div
             style={{
-              backgroundColor: "var(--color-superficie, #1e293b)",
-              border: "1px solid var(--color-borde, #334155)",
-              borderRadius: "12px",
-              maxWidth: "460px",
-              width: "100%",
-              padding: "24px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+              marginTop: "18px",
+              padding: "12px 16px",
+              background: "rgba(59, 130, 246, 0.05)",
+              border: "1px solid rgba(59, 130, 246, 0.15)",
+              borderRadius: "8px",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "10px",
+              fontSize: "0.85rem",
+              color: "var(--color-texto-sec)",
+              lineHeight: 1.5,
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-              <span className="material-symbols-outlined" style={{ color: "#eab308", fontSize: "28px" }}>
-                warning
-              </span>
-              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
-                ¿Restablecer orden automático?
-              </h3>
+            <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#3b82f6", flexShrink: 0, marginTop: "2px" }}>
+              gavel
+            </span>
+            <div>
+              <strong style={{ color: "var(--color-texto)" }}>Cumplimiento Normativo (CAA Cap. V - Res. GMC 26/03):</strong>{" "}
+              Los ingredientes se listan en orden decreciente de peso inicial. Los aditivos se colocan al final agrupados por su función tecnológica con su nombre completo y/o número INS según el formato seleccionado. Los aromatizantes/saborizantes se declaran obligatoriamente de forma genérica solo por su función.
             </div>
-            <p style={{ color: "var(--color-texto-sec)", fontSize: "0.95rem", lineHeight: "1.5", margin: "0 0 20px 0" }}>
-              Se recalculará la secuencia ordenando los ingredientes por porcentaje decreciente y colocando los aditivos al final agrupados por función. Se perderán los ajustes manuales de posición.
-            </p>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
+        <DialogContent size="default">
+          <DialogHeader>
+            <DialogTitle>
+              {indiceEdicion !== null
+                ? "Editar Ingrediente / Aditivo"
+                : "Agregar Ingrediente o Aditivo"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={(e) => { e.preventDefault(); guardarModalItem(); }}>
+            <div className="form-group" style={{ marginBottom: "14px" }}>
+              <label htmlFor="formNombre">Nombre Comercial / Insumo *</label>
+              <input
+                id="formNombre"
+                type="text"
+                value={formNombre}
+                onChange={(e) => setFormNombre(e.target.value)}
+                placeholder="Ej. Harina de trigo 0000, Lecitina de soja"
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "14px" }}>
+              <label htmlFor="formDenominacion">
+                Denominación para el Rótulo (opcional)
+              </label>
+              <input
+                id="formDenominacion"
+                type="text"
+                value={formDenominacion}
+                onChange={(e) => setFormDenominacion(e.target.value)}
+                placeholder="Nombre legal que saldrá en la lista de ingredientes"
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "14px" }}>
+              <label htmlFor="formPorcentaje">Proporción (%) *</label>
+              <input
+                id="formPorcentaje"
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="100"
+                value={formPorcentaje}
+                onChange={(e) => setFormPorcentaje(e.target.value)}
+                placeholder="Ej. 65.5"
+                required
+              />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "16px",
+                padding: "8px 12px",
+                background: "var(--color-superficie)",
+                border: "1px solid var(--color-borde)",
+                borderRadius: "6px",
+              }}
+            >
+              <input
+                id="formEsAditivo"
+                type="checkbox"
+                checked={formEsAditivo}
+                onChange={(e) => setFormEsAditivo(e.target.checked)}
+                style={{ width: "16px", height: "16px" }}
+              />
+              <label
+                htmlFor="formEsAditivo"
+                style={{ fontWeight: 600, cursor: "pointer", margin: 0 }}
+              >
+                ¿Es un aditivo alimentario?
+              </label>
+            </div>
+
+            {formEsAditivo && (
+              <div
+                style={{
+                  padding: "14px",
+                  background: "rgba(147, 51, 234, 0.05)",
+                  border: "1px solid rgba(147, 51, 234, 0.2)",
+                  borderRadius: "8px",
+                  marginBottom: "16px",
+                }}
+              >
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label htmlFor="formFuncion">Función Tecnológica *</label>
+                  <input
+                    id="formFuncion"
+                    type="text"
+                    list="funciones-sugeridas"
+                    value={formFuncion}
+                    onChange={(e) => setFormFuncion(e.target.value)}
+                    placeholder="Ej. Conservante, Emulsionante, Aromatizante"
+                  />
+                  <datalist id="funciones-sugeridas">
+                    {FUNCIONES_COMUNES.map((f) => (
+                      <option key={f} value={f} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label htmlFor="formIns">Número INS (opcional)</label>
+                  <input
+                    id="formIns"
+                    type="text"
+                    value={formIns}
+                    onChange={(e) => setFormIns(e.target.value)}
+                    placeholder="Ej. 202, 322, 330"
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <input
+                    id="formEsAroma"
+                    type="checkbox"
+                    checked={formEsAroma}
+                    onChange={(e) => setFormEsAroma(e.target.checked)}
+                    style={{ width: "16px", height: "16px" }}
+                  />
+                  <label
+                    htmlFor="formEsAroma"
+                    style={{ fontSize: "0.85rem", cursor: "pointer", margin: 0 }}
+                  >
+                    Es aromatizante / saborizante (se declarará solo por su
+                    función)
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
               <button
                 type="button"
                 className="btn-cancelar"
-                onClick={() => setDialogResetAbierto(false)}
+                onClick={() => setModalAbierto(false)}
               >
                 Cancelar
               </button>
-              <button
-                type="button"
-                className="btn-guardar"
-                onClick={ejecutarRestablecerAutomatico}
-              >
-                Restablecer
+              <button type="submit" className="btn-guardar">
+                {indiceEdicion !== null ? "Guardar Cambios" : "Agregar"}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      {dialogImportarAbierto && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1100,
-            padding: "16px",
-          }}
-          onClick={() => setDialogImportarAbierto(false)}
-        >
-          <div
-            style={{
-              backgroundColor: "var(--color-superficie, #1e293b)",
-              border: "1px solid var(--color-borde, #334155)",
-              borderRadius: "12px",
-              maxWidth: "460px",
-              width: "100%",
-              padding: "24px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-              <span className="material-symbols-outlined" style={{ color: "#38bdf8", fontSize: "28px" }}>
-                download
-              </span>
-              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
-                ¿Importar insumos del lote de producción?
-              </h3>
-            </div>
-            <p style={{ color: "var(--color-texto-sec)", fontSize: "0.95rem", lineHeight: "1.5", margin: "0 0 20px 0" }}>
-              Se calcularán las proporciones porcentuales de los insumos usados en el lote de producción más reciente de este producto y se clasificarán automáticamente en ingredientes y aditivos.
-            </p>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-              <button
-                type="button"
-                className="btn-cancelar"
-                onClick={() => setDialogImportarAbierto(false)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn-guardar"
-                onClick={ejecutarImportarLote}
-              >
-                Importar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmAlertDialog
+        open={dialogResetAbierto}
+        title="¿Restablecer orden automático?"
+        description="Se recalculará la secuencia ordenando los ingredientes por porcentaje decreciente y colocando los aditivos al final agrupados por función. Se perderán los ajustes manuales de posición."
+        confirmText="Restablecer"
+        cancelText="Cancelar"
+        onConfirm={ejecutarRestablecerAutomatico}
+        onCancel={() => setDialogResetAbierto(false)}
+      />
+
+      <ConfirmAlertDialog
+        open={dialogImportarAbierto}
+        title="¿Importar insumos del lote de producción?"
+        description="Se calcularán las proporciones porcentuales de los insumos usados en el lote de producción más reciente de este producto y se clasificarán automáticamente en ingredientes y aditivos."
+        confirmText="Importar"
+        cancelText="Cancelar"
+        onConfirm={ejecutarImportarLote}
+        onCancel={() => setDialogImportarAbierto(false)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorMsg)}
+        title="Atención"
+        description={errorMsg || ""}
+        onClose={() => setErrorMsg(null)}
+      />
     </div>
   );
 };
+
