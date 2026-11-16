@@ -100,9 +100,11 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
 
+  const graficoRadarRef = useRef<HTMLDivElement | null>(null);
   const graficoTendenciaRef = useRef<HTMLDivElement | null>(null);
   const graficoSectorRef = useRef<HTMLDivElement | null>(null);
   const graficoEquipoRef = useRef<HTMLDivElement | null>(null);
+  const graficoTurnoRef = useRef<HTMLDivElement | null>(null);
 
   const [exportGraficoModal, setExportGraficoModal] = useState<{
     titulo: string;
@@ -305,7 +307,20 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
     const filtros = obtenerResumenFiltros();
     const lista: ConfiguracionGraficoExportar[] = [];
 
-    if (graficoTendenciaRef.current) {
+    if (graficoRadarRef.current && datosRadarCumplimiento.length > 0) {
+      lista.push({
+        id: `cumplimiento-radar-${modoRadarCumplimiento}`,
+        titulo: `Red de Araña de Cumplimiento (${modoRadarCumplimiento === 'sector' ? 'Por Sector' : 'Por Turno'})`,
+        subtitulo: 'Perfil radial de cumplimiento real frente a la meta del 80%',
+        filtros,
+        contenedor: graficoRadarRef.current,
+        leyenda: [
+          { etiqueta: 'Cumplimiento Real (%)', color: '#10b981' },
+          { etiqueta: 'Meta (80%)', color: '#3b82f6' },
+        ],
+      });
+    }
+    if (graficoTendenciaRef.current && (datos?.tendencia_temporal?.length ?? 0) > 0) {
       lista.push({
         id: 'cumplimiento-tendencia',
         titulo: 'Tendencia Temporal de Cumplimiento',
@@ -334,6 +349,16 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
         leyenda: leyendaCumplimiento,
       });
     }
+    if (graficoTurnoRef.current && (datos?.desglose_por_turno?.length ?? 0) > 0) {
+      lista.push({
+        id: 'cumplimiento-turno',
+        titulo: 'Comparativa por Turno de Trabajo',
+        subtitulo: 'Porcentaje de cumplimiento según turno operativo',
+        filtros,
+        contenedor: graficoTurnoRef.current,
+        leyenda: leyendaCumplimiento,
+      });
+    }
 
     if (lista.length === 0) {
       setErrorExportDialog('No hay gráficos disponibles para exportar con los filtros actuales.');
@@ -341,7 +366,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
     }
 
     setExportGraficoModal({
-      titulo: `Cumplimiento Detallado (${lista.length} gráficos)`,
+      titulo: lista.length === 1 ? lista[0].titulo : `Cumplimiento Detallado (${lista.length} gráficos)`,
       nombreArchivo: `graficos_cumplimiento_${desde}_a_${hasta}`,
       graficos: lista,
     });
@@ -404,9 +429,9 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                 onClick={abrirExportacionTodosGraficos}
                 className="btn-cancelar"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                title="Exportar todos los gráficos de cumplimiento en PNG, JPEG o PDF"
+                title="Exportar el gráfico visible en PNG, JPEG o PDF"
               >
-                <ExportIcon size={18} /> Exportar Gráficos
+                <ExportIcon size={18} /> Exportar Gráfico
               </button>
             )}
             <button
@@ -865,7 +890,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                       Sin datos suficientes para proyectar la red de cumplimiento en este rango.
                     </div>
                   ) : (
-                    <div style={{ width: '100%', height: 380, minHeight: 380 }}>
+                    <div ref={graficoRadarRef} style={{ width: '100%', height: 380, minHeight: 380 }}>
                       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                         <RadarChart cx="50%" cy="50%" outerRadius="68%" data={datosRadarCumplimiento}>
                           <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
@@ -949,7 +974,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
 
               {pestañaCumplimiento === 'tendencia' && (
                 <div>
-                  <div style={{ width: '100%', height: 380 }}>
+                  <div ref={graficoTendenciaRef} style={{ width: '100%', height: 380 }}>
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <AreaChart data={datos?.tendencia_temporal || []} margin={{ top: 12, right: 16, left: 0, bottom: 20 }}>
                         <defs>
@@ -1023,7 +1048,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                     </div>
                   </div>
 
-                  <div style={{ width: '100%', height: 340 }}>
+                  <div ref={graficoSectorRef} style={{ width: '100%', height: 340 }}>
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <BarChart data={datos?.desglose_por_sector || []} layout="vertical" margin={{ top: 8, right: 30, left: 30, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
@@ -1080,7 +1105,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                 <div>
                   {datos?.desglose_por_equipo && datos.desglose_por_equipo.length > 0 ? (
                     <div>
-                      <div style={{ width: '100%', height: 340 }}>
+                      <div ref={graficoEquipoRef} style={{ width: '100%', height: 340 }}>
                         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <BarChart data={datos.desglose_por_equipo} layout="vertical" margin={{ top: 8, right: 30, left: 30, bottom: 8 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
@@ -1142,7 +1167,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
 
               {pestañaCumplimiento === 'turno' && (
                 <div>
-                  <div style={{ width: '100%', height: 320 }}>
+                  <div ref={graficoTurnoRef} style={{ width: '100%', height: 320 }}>
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <BarChart data={datos?.desglose_por_turno || []} layout="vertical" margin={{ top: 8, right: 30, left: 30, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />

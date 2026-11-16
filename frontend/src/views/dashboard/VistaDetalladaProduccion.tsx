@@ -315,6 +315,29 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
   } | null>(null);
   const [exportandoGrafico, setExportandoGrafico] = useState(false);
 
+  const tituloGraficoEvolucion = useMemo(() => {
+    if (tipoGraficoEvolucion === 'control_spc') {
+      return 'Control Estadístico de Procesos (CEP / SPC)';
+    }
+    if (tipoGraficoEvolucion === 'radar') {
+      return 'Red de Araña: Perfil Multicriterio de Producción';
+    }
+    if (tipoGraficoEvolucion === 'combinado') {
+      return 'Gráfico Combinado: Lotes y Volumen Fabricado';
+    }
+    return 'Producción de Lotes por Fecha y Producto';
+  }, [tipoGraficoEvolucion]);
+
+  const subtituloGraficoEvolucion = useMemo(() => {
+    if (tipoGraficoEvolucion === 'control_spc') {
+      return `Monitoreo estadístico en ${formatearUnidad(unidadSeleccionada)} (UCL/LCL a ±3σ)`;
+    }
+    if (tipoGraficoEvolucion === 'radar') {
+      return 'Comparativa radial multicriterio entre productos';
+    }
+    return `Agrupado por ${agrupacionTemporal}`;
+  }, [tipoGraficoEvolucion, unidadSeleccionada, agrupacionTemporal]);
+
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
       return "La fecha 'Desde' no puede ser anterior al año 2000.";
@@ -685,8 +708,8 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
 
     const puntos = filtrados.map((l, index) => {
       const cant = Number(l.cantidad) || 0;
-      const esFuera = (n > 1 && sigma > 0) ? (cant > ucl || cant < lcl) : false;
-      const esAdv = (n > 1 && sigma > 0 && !esFuera) ? (cant > uwcl || cant < lwcl) : false;
+      const esFuera = n > 1 && sigma > 0 ? cant > ucl || cant < lcl : false;
+      const esAdv = n > 1 && sigma > 0 && !esFuera ? cant > uwcl || cant < lwcl : false;
 
       if (esFuera) fueraDeControl++;
       else enControl++;
@@ -976,8 +999,8 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     if (graficoEvolucionRef.current && datosEvolucionTemporal.length > 0 && kpis.totalLotes > 0) {
       lista.push({
         id: 'produccion-evolucion',
-        titulo: 'Producción de Lotes por Fecha y Producto',
-        subtitulo: `Agrupado por ${agrupacionTemporal}`,
+        titulo: tituloGraficoEvolucion,
+        subtitulo: subtituloGraficoEvolucion,
         filtros,
         contenedor: graficoEvolucionRef.current,
       });
@@ -1294,13 +1317,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '14px', width: '100%' }}>
             <div>
               <CardTitle style={{ fontSize: '1.05rem' }}>
-                {tipoGraficoEvolucion === 'control_spc'
-                  ? 'Control Estadístico de Procesos (CEP / SPC)'
-                  : tipoGraficoEvolucion === 'radar'
-                  ? 'Red de Araña: Perfil Multicriterio de Producción'
-                  : tipoGraficoEvolucion === 'combinado'
-                  ? 'Gráfico Combinado: Lotes y Volumen Fabricado'
-                  : 'Producción de Lotes por Fecha y Producto'}
+                {tituloGraficoEvolucion}
               </CardTitle>
               <CardDescription>
                 {tipoGraficoEvolucion === 'control_spc'
@@ -1394,14 +1411,14 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                   type="button"
                   onClick={() =>
                     setExportGraficoModal({
-                      titulo: 'Producción de Lotes por Fecha y Producto',
-                      filtros: `${obtenerResumenFiltros()} | Agrupación: ${agrupacionTemporal}`,
+                      titulo: tituloGraficoEvolucion,
+                      filtros: `${obtenerResumenFiltros()} | ${subtituloGraficoEvolucion}`,
                       nombreArchivo: `evolucion_produccion_${desde || 'inicio'}_a_${hasta || 'hoy'}`,
                       graficos: [
                         {
                           id: 'produccion-evolucion',
-                          titulo: 'Producción de Lotes por Fecha y Producto',
-                          subtitulo: `Agrupado por ${agrupacionTemporal}`,
+                          titulo: tituloGraficoEvolucion,
+                          subtitulo: subtituloGraficoEvolucion,
                           filtros: obtenerResumenFiltros(),
                           contenedor: graficoEvolucionRef.current,
                         },
@@ -1414,7 +1431,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                 >
                   <ExportIcon size={14} /> Exportar gráfico
                 </button>
-              </div>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -1458,7 +1475,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
               </div>
             </div>
           ) : (
-            <div style={{ width: '100%' }}>
+            <div ref={graficoEvolucionRef} style={{ width: '100%' }}>
               {tipoGraficoEvolucion === 'control_spc' ? (
                 <div>
                   <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '14px', padding: '10px 14px', borderRadius: '8px', backgroundColor: 'var(--color-fondo)', border: '1px solid var(--color-borde)', fontSize: '12px' }}>
@@ -1831,7 +1848,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                 No se elaboraron productos medidos en {formatearUnidad(unidadSeleccionada)} en este período.
               </div>
             ) : (
-              <div style={{ width: '100%', height: 340 }}>
+              <div ref={graficoProductosRef} style={{ width: '100%', height: 340 }}>
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart
                     data={datosProductosPorUnidad}
@@ -1917,7 +1934,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                 No se registró consumo de insumos en los lotes de este período.
               </div>
             ) : (
-              <div style={{ width: '100%', height: 340 }}>
+              <div ref={graficoInsumosRef} style={{ width: '100%', height: 340 }}>
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart
                     data={datosInsumosMasUtilizados.slice(0, 8)}

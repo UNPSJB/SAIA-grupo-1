@@ -269,6 +269,11 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
     };
   }, []);
 
+  const hayProduccionVisible =
+    !loadingProduccion &&
+    datosProduccion.length > 0 &&
+    (lotesProducidos > 0 || datosProduccion.some((p) => p.lotes > 0));
+
   const obtenerConfigInsumos = (): ConfiguracionGraficoExportar | null => {
     if (loadingInsumos || consumoInsumos.length === 0 || !graficoInsumosRef.current) return null;
     const labelPeriodo = periodoInsumos === 'dia' ? 'Diario' : periodoInsumos === 'semana' ? 'Semanal' : 'Mensual';
@@ -282,8 +287,8 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
   };
 
   const obtenerConfigProduccion = (): ConfiguracionGraficoExportar | null => {
-    if (loadingProduccion || datosProduccion.length === 0 || !graficoProduccionRef.current) return null;
-    const labelPeriodo = periodoProduccion === 'dia' ? 'Semana' : periodoProduccion === 'semana' ? 'Mes' : 'Año';
+    if (!hayProduccionVisible || !graficoProduccionRef.current) return null;
+    const labelPeriodo = periodoProduccion === 'dia' ? 'Últimos 7 días' : periodoProduccion === 'semana' ? 'Últimas 4 semanas' : 'Meses del año';
     const prodNombre = productoProduccion
       ? listaProductos.find((p) => String(p.id) === productoProduccion)?.nombre || 'Producto filtrado'
       : 'Todos los productos';
@@ -419,29 +424,40 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
     <div className="modulo-container dashboard-container">
 
       <div className="dashboard-titulo-fila">
-      <div className="modulo-header dashboard-header-compacto">
-        <h1>Inicio</h1>
-        <div className="subtitulo">Panel de estadísticas y control general</div>
-      </div>
+        <div className="modulo-header dashboard-header-compacto">
+          <h1>Inicio</h1>
+          <div className="subtitulo">Panel de estadísticas y control general</div>
+        </div>
 
-      <div>
-        {vistaHabilitada ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
-            onClick={() => onIrAVistaPublica?.(true)}
-            className="btn-activar"
-            style={{ backgroundColor: '#0284c7' }}
+            type="button"
+            onClick={abrirExportacionConsolidada}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            title="Exportar los gráficos del Dashboard en PNG, JPEG o PDF"
           >
-            Ver QR / Gestionar Vista
+            <ExportIcon size={17} /> Exportar Gráficos
           </button>
-        ) : (
-          <button
-            onClick={() => onIrAVistaPublica?.(false)}
-            className="btn-activar"
-          >
-            Activar Vista Pública
-          </button>
-        )}
-      </div>
+          {vistaHabilitada ? (
+            <button
+              type="button"
+              onClick={() => onIrAVistaPublica?.(true)}
+              className="btn-activar"
+              style={{ backgroundColor: '#0284c7' }}
+            >
+              Ver QR / Gestionar Vista
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onIrAVistaPublica?.(false)}
+              className="btn-activar"
+            >
+              Activar Vista Pública
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="dashboard-fila-1">
@@ -842,7 +858,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 </div>
               </div>
             ) : (
-              <div className="dashboard-grafico-contenedor">
+              <div ref={graficoInsumosRef} className="dashboard-grafico-contenedor">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart data={consumoInsumos} margin={{ top: 12, right: 18, left: 14, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
@@ -932,7 +948,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 <option value="semana">Últimas 4 semanas</option>
                 <option value="mes">Meses del año</option>
               </select>
-              {!loadingProduccion && datosProduccion.length > 0 && (
+              {hayProduccionVisible && (
                 <button
                   type="button"
                   className="dashboard-badge dashboard-badge-btn dashboard-badge-al-dia"
@@ -984,7 +1000,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 </div>
               </div>
             ) : (
-              <div className="dashboard-grafico-contenedor">
+              <div ref={graficoProduccionRef} className="dashboard-grafico-contenedor">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart data={datosProduccion} margin={{ top: 12, right: 18, left: 14, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
