@@ -249,3 +249,55 @@ export interface ProduccionDashboardResponse {
   total_cantidad: number;
   puntos: PuntoProduccion[];
 }
+
+export interface DimensionRadar {
+  dimension: string;
+  clave: string;
+  actual: number;
+  anterior: number;
+  meta: number;
+  evaluados_actual: number;
+  evaluados_anterior: number;
+  descripcion: string;
+  unidad: string;
+}
+
+export interface MatrizCalidadRadarResponse {
+  sector_id?: number | null;
+  sector_nombre?: string | null;
+  periodo_etiqueta: string;
+  comparativa_etiqueta: string;
+  indice_global_actual: number;
+  indice_global_anterior: number;
+  dimensiones: DimensionRadar[];
+  tiene_datos: boolean;
+}
+
+export interface MesDesvioItem {
+  mes: string;
+  etiqueta: string;
+  conformes: number;
+  desvios_leves: number;
+  desvios_criticos: number;
+  total_eventos: number;
+  porcentaje_conformidad: number;
+  porcentaje_desvios: number;
+}
+
+export interface ResumenEvolucionDesvios {
+  total_eventos: number;
+  total_conformes: number;
+  total_desvios: number;
+  tasa_conformidad_promedio: number;
+  tasa_desvio_promedio: number;
+  mes_mayor_desvio?: string | null;
+}
+
+export interface EvolucionMensualDesviosResponse {
+  meses_evaluados: number;
+  sector_id?: number | null;
+  sector_nombre?: string | null;
+  items: MesDesvioItem[];
+  resumen: ResumenEvolucionDesvios;
+  tiene_datos: boolean;
+}

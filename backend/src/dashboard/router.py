@@ -112,3 +112,18 @@ def obtener_produccion(
     return services.obtener_estadisticas_produccion(
         db, periodo=periodo, producto_id=producto_id
     )
+
+@router.get("/matriz-calidad-radar", response_model=schemas.MatrizCalidadRadarResponse)
+def obtener_matriz_calidad_radar(
+    sector_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    return services.obtener_matriz_calidad_radar(db, sector_id=sector_id)
+
+@router.get("/evolucion-mensual-desvios", response_model=schemas.EvolucionMensualDesviosResponse)
+def obtener_evolucion_mensual_desvios(
+    meses: int = Query(6, ge=1, le=24),
+    sector_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    return services.obtener_evolucion_mensual_desvios(db, meses=meses, sector_id=sector_id)
