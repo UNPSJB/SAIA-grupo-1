@@ -809,37 +809,47 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               style={{
                 width: "100%",
                 maxWidth: "100%",
-                overflowX: "hidden",
+                overflow: "hidden",
                 margin: 0,
                 padding: 0,
                 boxSizing: "border-box",
               }}
             >
               <table
-                className="tabla-custom"
                 style={{
                   width: "100%",
                   tableLayout: "fixed",
                   borderCollapse: "collapse",
                   margin: 0,
                   boxSizing: "border-box",
+                  textAlign: "left",
+                  fontSize: "0.875rem",
                 }}
               >
                 <colgroup>
-                  <col style={{ width: "60px" }} />
-                  <col style={{ width: "23%" }} />
-                  <col style={{ width: "16%" }} />
-                  <col style={{ width: "80px" }} />
+                  <col style={{ width: "55px" }} />
+                  <col style={{ width: "24%" }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "85px" }} />
                   <col />
-                  <col style={{ width: "75px" }} />
+                  <col style={{ width: "70px" }} />
                 </colgroup>
                 <thead>
-                  <tr>
+                  <tr
+                    style={{
+                      borderBottom: "1px solid var(--color-borde)",
+                      background: "var(--color-fondo)",
+                    }}
+                  >
                     <th
                       style={{
                         textAlign: "center",
-                        padding: "0.75rem 0.35rem",
-                        fontSize: "0.75rem",
+                        padding: "10px 4px",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        color: "var(--color-texto)",
                         whiteSpace: "normal",
                       }}
                     >
@@ -847,8 +857,12 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     </th>
                     <th
                       style={{
-                        padding: "0.75rem 0.65rem",
-                        fontSize: "0.75rem",
+                        padding: "10px 8px",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        color: "var(--color-texto)",
                         whiteSpace: "normal",
                         wordBreak: "break-word",
                       }}
@@ -857,8 +871,12 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     </th>
                     <th
                       style={{
-                        padding: "0.75rem 0.65rem",
-                        fontSize: "0.75rem",
+                        padding: "10px 8px",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        color: "var(--color-texto)",
                         whiteSpace: "normal",
                         wordBreak: "break-word",
                       }}
@@ -868,8 +886,12 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     <th
                       style={{
                         textAlign: "right",
-                        padding: "0.75rem 0.65rem",
-                        fontSize: "0.75rem",
+                        padding: "10px 8px",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        color: "var(--color-texto)",
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -877,8 +899,12 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     </th>
                     <th
                       style={{
-                        padding: "0.75rem 0.65rem",
-                        fontSize: "0.75rem",
+                        padding: "10px 8px",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        color: "var(--color-texto)",
                         whiteSpace: "normal",
                         wordBreak: "break-word",
                       }}
@@ -886,12 +912,16 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       Declaración en Rótulo
                     </th>
                     <th
-                      className="acciones-col"
                       style={{
                         textAlign: "center",
-                        padding: "0.75rem 0.35rem",
-                        fontSize: "0.75rem",
+                        padding: "10px 4px",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        color: "var(--color-texto)",
                         whiteSpace: "nowrap",
+                        width: "70px",
                       }}
                     >
                       Acciones
@@ -1120,12 +1150,11 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       </td>
 
                       <td
-                        className="acciones-col"
                         style={{
                           textAlign: "center",
-                          padding: "0.75rem 0.35rem",
+                          padding: "10px 4px",
                           whiteSpace: "nowrap",
-                          width: "75px",
+                          width: "70px",
                         }}
                       >
                         <div

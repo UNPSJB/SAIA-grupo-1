@@ -1,3 +1,5 @@
+import os
+import json
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 from src.insumos.constants import ALIMENTOS_SARA_2_INICIALES
@@ -67,13 +69,27 @@ def migrar_columnas_nutricionales_insumos(db: Session) -> None:
     asegurar_alimentos_sara(db)
 
 def asegurar_alimentos_sara(db: Session) -> None:
-    for item in ALIMENTOS_SARA_2_INICIALES:
-        existente = db.scalar(
-            select(AlimentoReferenciaSARA).where(
-                AlimentoReferenciaSARA.codigo == item["codigo"]
-            )
-        )
-        if not existente:
-            nuevo = AlimentoReferenciaSARA(**item)
-            db.add(nuevo)
-    db.commit()
+    todos_los_items = list(ALIMENTOS_SARA_2_INICIALES)
+
+    data_json = os.path.join(os.path.dirname(__file__), "data", "sara_alimentos.json")
+    if os.path.exists(data_json):
+        try:
+            with open(data_json, "r", encoding="utf-8") as f:
+                extras = json.load(f)
+                todos_los_items.extend(extras)
+        except Exception:
+            pass
+
+    codigos_en_bd = set(db.scalars(select(AlimentoReferenciaSARA.codigo)).all())
+
+    para_insertar = []
+    codigos_vistos = set()
+    for item in todos_los_items:
+        cod = item["codigo"]
+        if cod not in codigos_en_bd and cod not in codigos_vistos:
+            codigos_vistos.add(cod)
+            para_insertar.append(AlimentoReferenciaSARA(**item))
+
+    if para_insertar:
+        db.add_all(para_insertar)
+        db.commit()
