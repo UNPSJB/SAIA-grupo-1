@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { InsumoConId } from "./tipos";
+import { DatosNutricionalesModal } from "./DatosNutricionalesModal";
 import "../../styles/formularioAlta.css";
 
 interface VerInsumoProps {
@@ -24,6 +26,8 @@ const formatDate = (dateStr?: string | null) => {
 };
 
 export default function VerInsumo({ insumo, onEditarClick, onVolver }: VerInsumoProps) {
+  const [modalNutricionAbierto, setModalNutricionAbierto] = useState<boolean>(false);
+
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
@@ -55,7 +59,7 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver }: VerInsumo
         </div>
 
         <div className="form-group">
-          <label htmlFor="fechaRecepcion">Fecha de recepción</label>
+          <label htmlFor="fechaRecepcion">Fecha de Recepción</label>
           <input
             id="fechaRecepcion"
             type="text"
@@ -66,7 +70,7 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver }: VerInsumo
         </div>
 
         <div className="form-group">
-          <label htmlFor="fechaVencimiento">Fecha de vencimiento</label>
+          <label htmlFor="fechaVencimiento">Fecha de Vencimiento</label>
           <input
             id="fechaVencimiento"
             type="text"
@@ -77,22 +81,22 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver }: VerInsumo
         </div>
 
         <div className="form-group">
-          <label htmlFor="cantRecibida">Cantidad recibida</label>
+          <label htmlFor="cantRecibida">Cantidad Recibida</label>
           <input
             id="cantRecibida"
             type="text"
-            value={`${insumo.cantRecibida} ${insumo.medida}`}
+            value={insumo.cantRecibida}
             readOnly
             style={{ cursor: "default" }}
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="stock">Stock actual</label>
+          <label htmlFor="stock">Stock Actual</label>
           <input
             id="stock"
             type="text"
-            value={`${insumo.stock} ${insumo.medida}`}
+            value={insumo.stock}
             readOnly
             style={{ cursor: "default" }}
           />
@@ -113,6 +117,22 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver }: VerInsumo
           <button
             type="button"
             className="btn-guardar"
+            onClick={() => setModalNutricionAbierto(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              backgroundColor: "#2563eb",
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+              monitoring
+            </span>
+            Datos Nutricionales
+          </button>
+          <button
+            type="button"
+            className="btn-guardar"
             onClick={() => onEditarClick?.(insumo)}
           >
             Editar
@@ -122,6 +142,12 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver }: VerInsumo
           </button>
         </div>
       </div>
+
+      <DatosNutricionalesModal
+        insumo={insumo}
+        abierto={modalNutricionAbierto}
+        onCerrar={() => setModalNutricionAbierto(false)}
+      />
     </div>
   );
 }

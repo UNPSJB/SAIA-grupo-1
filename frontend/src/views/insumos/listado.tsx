@@ -8,6 +8,8 @@ import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
+import { Badge } from '../../components/ui/badge';
+import { DatosNutricionalesModal } from './DatosNutricionalesModal';
 
 interface ListadoInsumosProps {
   onNuevoClick?: () => void;
@@ -51,6 +53,9 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
+  const [insumoNutricion, setInsumoNutricion] = useState<InsumoConId | null>(null);
+  const [modalNutricionAbierto, setModalNutricionAbierto] = useState<boolean>(false);
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroUnidad, setFiltroUnidad] = useState('TODOS');
@@ -235,19 +240,20 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
               <th>Unidad</th>
               <th>Recepción</th>
               <th>Vencimiento</th>
+              <th>Nutrición</th>
               <th className="acciones-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '2rem' }}>
                   Cargando ingredientes...
                 </td>
               </tr>
             ) : insumosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '2rem' }}>
                   {busqueda || filtroUnidad !== 'TODOS' || filtroVencimiento !== 'TODOS'
                     ? 'No se encontraron ingredientes que coincidan con los filtros.'
                     : 'No hay ingredientes registrados.'}
@@ -263,28 +269,67 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                   <td>{i.medida}</td>
                   <td>{formatDate(i.fechaRecepcion)}</td>
                   <td>{formatDate(i.fechaVencimiento)}</td>
+                  <td>
+                    {i.es_aditivo ? (
+                      <Badge variant="secondary" style={{ fontSize: '0.74rem' }}>
+                        Aditivo
+                      </Badge>
+                    ) : i.tiene_datos_nutricionales ? (
+                      i.modificado_manualmente ? (
+                        <Badge variant="proximo" style={{ fontSize: '0.74rem' }}>
+                          Modificado
+                        </Badge>
+                      ) : (
+                        <Badge variant="activo" style={{ fontSize: '0.74rem' }}>
+                          Cargado
+                        </Badge>
+                      )
+                    ) : (
+                      <Badge variant="outline" style={{ fontSize: '0.74rem', opacity: 0.7 }}>
+                        Sin datos
+                      </Badge>
+                    )}
+                  </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
+                      <button
+                        className="btn-icon"
+                        title="Datos nutricionales por 100g"
+                        onClick={() => {
+                          setInsumoNutricion(i);
+                          setModalNutricionAbierto(true);
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                          monitoring
+                        </span>
+                      </button>
                       <button
                         className="btn-icon btn-ver"
                         title="Ver detalles"
                         onClick={() => onVerClick?.(i)}
                       >
-                        👁
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                          visibility
+                        </span>
                       </button>
                       <button
                         className="btn-icon btn-editar"
                         title="Editar"
                         onClick={() => onEditarClick?.(i)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                          edit
+                        </span>
                       </button>
                       <button
                         className="btn-icon btn-eliminar"
                         title="Eliminar"
                         onClick={() => abrirConfirmacion(i)}
                       >
-                        🗑
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                          delete
+                        </span>
                       </button>
                     </div>
                   </td>
@@ -336,6 +381,25 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
         description={errorDialogMsg || ''}
         onClose={() => setErrorDialogMsg(null)}
       />
+
+      {insumoNutricion && (
+        <DatosNutricionalesModal
+          insumo={insumoNutricion}
+          abierto={modalNutricionAbierto}
+          onCerrar={() => {
+            setModalNutricionAbierto(false);
+            setInsumoNutricion(null);
+          }}
+          onGuardadoExitoso={() => {
+            apiFetch('/insumos/').then(async (res) => {
+              if (res.ok) {
+                const data = await res.json();
+                setInsumos(data);
+              }
+            });
+          }}
+        />
+      )}
     </div>
   );
 };

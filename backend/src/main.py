@@ -40,6 +40,8 @@ from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
+from src.rotulado.router import router as rotulado_router
+from src.rotulado.migraciones import actualizar_tablas_rotulado
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -48,9 +50,12 @@ setup_logging()
 
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
+    actualizar_tablas_rotulado(engine)
     ModeloBase.metadata.create_all(bind=engine)
-    if ENV == "DEV":
-        with SessionLocal() as db:
+    with SessionLocal() as db:
+        from src.insumos.migraciones import migrar_columnas_nutricionales_insumos
+        migrar_columnas_nutricionales_insumos(db)
+        if ENV == "DEV":
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
             asegurar_tipos_base(db)
@@ -108,7 +113,7 @@ app.include_router(motivo_router, prefix="/motivos")
 app.include_router(qrCode_router)
 app.include_router(IdentificadorQR)
 app.include_router(AcercaDeNostrosRouter)
-# registrar un lote lo define el endpoint (solo operadores); consultar alcanza con estar logueado
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SOLO_ADMIN)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
+app.include_router(rotulado_router)
