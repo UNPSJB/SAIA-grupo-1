@@ -1,0 +1,406 @@
+/* Rotulado frontal: parámetros normativos, interruptor de octógonos y cálculo por producto */
+
+.rot-tarjeta {
+  background-color: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--sombra-sm);
+}
+
+.rot-tarjeta h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-texto);
+  margin: 0 0 0.75rem 0;
+}
+
+.rot-tarjeta h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-texto);
+  margin: 0 0 0.5rem 0;
+}
+
+.rot-texto-sec {
+  color: var(--color-texto-sec);
+  font-size: 0.85rem;
+}
+
+/* --- Interruptor del módulo --- */
+
+.rot-interruptor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border-left: 4px solid var(--color-borde);
+}
+
+.rot-interruptor--activo {
+  border-left-color: var(--color-exito);
+}
+
+.rot-interruptor--inactivo {
+  border-left-color: var(--color-alerta);
+}
+
+.rot-interruptor-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.rot-interruptor-titulo {
+  font-weight: 700;
+  color: var(--color-texto);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rot-interruptor-control {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.rot-interruptor-control .switch-input {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  border-radius: 11px;
+}
+
+.rot-interruptor-control .switch-input::before {
+  width: 18px;
+  height: 18px;
+}
+
+.rot-interruptor-control .switch-input:checked {
+  background-color: var(--color-exito);
+}
+
+.rot-interruptor-control .switch-input:checked::before {
+  transform: translateX(22px);
+}
+
+.rot-interruptor-control .switch-input:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* --- Estados --- */
+
+.rot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rot-chip--borrador {
+  background-color: var(--color-alerta-bg);
+  color: var(--color-alerta-texto);
+}
+
+.rot-chip--publicado {
+  background-color: var(--color-suave);
+  color: var(--color-primario-texto);
+}
+
+.rot-chip--vigente {
+  background-color: var(--color-exito-bg);
+  color: var(--color-exito-texto);
+}
+
+.rot-chip--activo {
+  background-color: var(--color-exito-bg);
+  color: var(--color-exito-texto);
+}
+
+.rot-chip--inactivo {
+  background-color: var(--color-alerta-bg);
+  color: var(--color-alerta-texto);
+}
+
+/* --- Datos generales (detalle) --- */
+
+.rot-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.9rem 1.5rem;
+}
+
+.rot-dato-etiqueta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-texto-sec);
+  margin-bottom: 0.15rem;
+}
+
+.rot-dato-valor {
+  color: var(--color-texto);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* --- Formulario --- */
+
+.rot-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0 1rem;
+}
+
+.rot-form-grid .form-group textarea,
+.rot-textarea {
+  width: 100%;
+  min-height: 70px;
+  padding: 0.75rem 1rem;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: var(--text-h);
+  font-family: inherit;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.rot-regla {
+  border: 1px solid var(--color-borde);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: var(--color-fondo);
+}
+
+.rot-regla-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.rot-regla-cabecera strong {
+  color: var(--color-texto);
+}
+
+.rot-fila-condicion {
+  display: grid;
+  grid-template-columns: 1.4fr 1.3fr 0.7fr 0.8fr 0.8fr 1fr auto;
+  gap: 0.5rem;
+  align-items: end;
+  margin-bottom: 0.5rem;
+}
+
+.rot-fila-aplicabilidad {
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr 0.8fr auto;
+  gap: 0.5rem;
+  align-items: end;
+  margin-bottom: 0.5rem;
+  max-width: 560px;
+}
+
+.rot-fila-condicion label,
+.rot-fila-aplicabilidad label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-texto-sec);
+  margin-bottom: 0.2rem;
+}
+
+.rot-fila-condicion input,
+.rot-fila-condicion select,
+.rot-fila-aplicabilidad input,
+.rot-fila-aplicabilidad select {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-h);
+  box-sizing: border-box;
+}
+
+.rot-fila-condicion input:disabled {
+  opacity: 0.45;
+}
+
+.rot-btn-quitar {
+  background: none;
+  border: 1px solid var(--color-borde);
+  color: var(--color-error-texto);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.rot-btn-quitar:hover {
+  background-color: var(--color-error-bg);
+}
+
+.rot-btn-agregar {
+  background: none;
+  border: 1px dashed var(--color-primario-claro);
+  color: var(--color-primario-texto);
+  border-radius: 6px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.rot-btn-agregar:hover {
+  background-color: var(--color-suave);
+}
+
+.rot-subseccion {
+  margin-top: 0.75rem;
+}
+
+.rot-subseccion-titulo {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-texto);
+  margin-bottom: 0.4rem;
+}
+
+.rot-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--color-texto);
+  cursor: pointer;
+}
+
+.rot-checkbox input {
+  width: auto !important;
+}
+
+.rot-errores {
+  margin: 0 0 1rem 0;
+  padding-left: 1.2rem;
+  color: var(--color-error-texto);
+  font-size: 0.85rem;
+}
+
+/* --- Octógonos --- */
+
+.rot-sellos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.rot-octogono {
+  display: block;
+  flex-shrink: 0;
+}
+
+.rot-sin-sellos {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  background-color: var(--color-exito-bg);
+  color: var(--color-exito-texto);
+  font-weight: 600;
+}
+
+.rot-sellos-mini {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* --- Valores nutricionales --- */
+
+.rot-valores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0 1rem;
+}
+
+.rot-input-unidad {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rot-input-unidad span {
+  color: var(--color-texto-sec);
+  font-size: 0.85rem;
+  min-width: 34px;
+}
+
+/* --- Detalle de evaluación --- */
+
+.rot-tabla-detalle td,
+.rot-tabla-detalle th {
+  font-size: 0.85rem;
+  vertical-align: top;
+}
+
+.rot-resultado-supera {
+  color: var(--color-error-texto);
+  font-weight: 700;
+}
+
+.rot-resultado-ok {
+  color: var(--color-exito-texto);
+  font-weight: 600;
+}
+
+.rot-resultado-na {
+  color: var(--color-texto-sec);
+}
+
+.rot-condicion-linea {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.rot-historial-fila-abierta td {
+  background-color: var(--color-fondo);
+}
+
+.rot-acciones-fila {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.rot-btn-chico {
+  padding: 0.35rem 0.75rem !important;
+  font-size: 0.8rem !important;
+}
+
+@media (max-width: 760px) {
+  .rot-fila-condicion,
+  .rot-fila-aplicabilidad {
+    grid-template-columns: 1fr 1fr;
+  }
+}

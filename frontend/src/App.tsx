@@ -93,8 +93,11 @@ import { ListadoControlesAmbientales } from './views/controlesAmbientales/listad
 import NuevoControlAmbiental from './views/controlesAmbientales/nuevoControl';
 import { DetalleControlAmbiental } from './views/controlesAmbientales/verDetalle';
 import { EditarControlAmbiental } from './views/controlesAmbientales/editarDetalle';
+import { ListadoParametros } from './views/rotuladoFrontal/listado';
+import { DetalleConjunto } from './views/rotuladoFrontal/verConjunto';
+import { FormConjunto } from './views/rotuladoFrontal/formConjunto';
 
-type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales';
+type Modulo = 'dashboard' | 'insumos' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales' | 'rotuladoFrontal';
 type VistaSectores = 'listado' | 'alta' | 'editar';
 type VistaEquipos = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaInsumos = 'listado' | 'alta' | 'ver' | 'editar';
@@ -111,6 +114,7 @@ type VistaMotivos = 'listado' | 'alta' | 'detalle';
 type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
 type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar' | 'receta';
 type VistaControlesAmbientales = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaRotulado = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -166,6 +170,8 @@ function Aplicacion() {
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<number | null>(null);
 
   const [vistaControlesAmbientales, setVistaControlesAmbientales] = useState<VistaControlesAmbientales>('listado');
+  const [vistaRotulado, setVistaRotulado] = useState<VistaRotulado>('listado');
+  const [conjuntoSeleccionado, setConjuntoSeleccionado] = useState<number | null>(null);
   const [controlAmbientalSeleccionado, setControlAmbientalSeleccionado] = useState<number | null>(null);
 
   const [filtroCertificadosInicial, setFiltroCertificadosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
@@ -229,6 +235,8 @@ function Aplicacion() {
     setRecetaDesdeProducto(null);
     setVistaControlesAmbientales('listado');
     setControlAmbientalSeleccionado(null);
+    setVistaRotulado('listado');
+    setConjuntoSeleccionado(null);
     if (limpiarFiltros) {
       setFiltroCertificadosInicial('TODOS');
       setFiltroCalibracionInicial('TODOS');
@@ -1262,7 +1270,44 @@ const irANotificacion = (notif: NotificacionItem) => {
               onVolver={origenVencimientos ? volverAVencimientos : () => setVistaControlesAmbientales('listado')}
             />
           )
-        ): null}
+        ) : modulo === 'rotuladoFrontal' ? (
+          vistaRotulado === 'listado' ? (
+            <ListadoParametros
+              onNuevoClick={() => {
+                setConjuntoSeleccionado(null);
+                setVistaRotulado('alta');
+              }}
+              onVerClick={(id) => {
+                setConjuntoSeleccionado(id);
+                setVistaRotulado('detalle');
+              }}
+              onEditarClick={(id) => {
+                setConjuntoSeleccionado(id);
+                setVistaRotulado('editar');
+              }}
+            />
+          ) : vistaRotulado === 'detalle' ? (
+            <DetalleConjunto
+              key={conjuntoSeleccionado ?? 0}
+              conjuntoId={conjuntoSeleccionado}
+              onVolver={() => setVistaRotulado('listado')}
+              onEditar={(id) => {
+                setConjuntoSeleccionado(id);
+                setVistaRotulado('editar');
+              }}
+            />
+          ) : (
+            <FormConjunto
+              key={`${vistaRotulado}-${conjuntoSeleccionado ?? 'nuevo'}`}
+              conjuntoId={vistaRotulado === 'editar' ? conjuntoSeleccionado : null}
+              onGuardado={(id) => {
+                setConjuntoSeleccionado(id);
+                setVistaRotulado('detalle');
+              }}
+              onCancel={() => setVistaRotulado('listado')}
+            />
+          )
+        ) : null}
         </div>
       </SidebarInset>
     </SidebarProvider>
