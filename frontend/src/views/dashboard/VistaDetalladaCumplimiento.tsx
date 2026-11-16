@@ -693,7 +693,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                             tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
                           />
                           <PolarRadiusAxis
-                            angle={30}
+                            angle={90}
                             domain={[0, 100]}
                             stroke="var(--color-texto-sec, #64748b)"
                             tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
@@ -706,10 +706,15 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                               borderRadius: '8px',
                               color: 'var(--color-texto, #f8fafc)',
                             }}
-                            formatter={(val: any, name: any, item: any) => [
-                              `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
-                              name === 'porcentaje' ? 'Cumplimiento Real' : 'Meta',
-                            ]}
+                            formatter={(val: any, name: any, item: any) => {
+                              const esCumplimiento = name === 'porcentaje' || name === 'Cumplimiento Real (%)';
+                              return [
+                                esCumplimiento
+                                  ? `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`
+                                  : `${val}%`,
+                                esCumplimiento ? 'Cumplimiento Real' : 'Meta',
+                              ];
+                            }}
                           />
                           <Legend
                             verticalAlign="bottom"

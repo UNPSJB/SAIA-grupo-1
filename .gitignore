@@ -1,6 +1,8 @@
 # Created by https://www.toptal.com/developers/gitignore/api/react,node,python
 # Edit at https://www.toptal.com/developers/gitignore?templates=react,node,python
 
+backend/storage/vista_publica/
+
 ### Node ###
 # Logs
 logs

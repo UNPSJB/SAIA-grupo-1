@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from src.producto import exceptions, schemas
 from src.producto.models import Producto
 from src.documentos.models import Documento
+from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 
 def obtener_productos_para_csv(
     db: Session,
@@ -143,6 +144,7 @@ def editar_producto(
         )
         db.commit()
         db.refresh(db_producto)
+        regenerar_snapshot_seguro(db)
 
     if db_producto.receta:
         db_producto.nombre_receta = db_producto.receta.titulo
@@ -157,6 +159,7 @@ def eliminar_producto(db: Session, producto_id: int) -> Producto:
     db_producto.visible_publico = False
     db.commit()
     db.refresh(db_producto)
+    regenerar_snapshot_seguro(db)
     return db_producto
 
 
@@ -181,6 +184,7 @@ def actualizar_visibilidad_publica(db: Session, productos_visibles: List[int]) -
 
     db.execute(update(Producto).values(visible_publico=Producto.id.in_(list(ids))))
     db.commit()
+    regenerar_snapshot_seguro(db)
     return listar_productos(db)
 
 

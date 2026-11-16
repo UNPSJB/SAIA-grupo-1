@@ -6,6 +6,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from src.indentificadorDeQR.models import IndentificadorUnico
 from src.indentificadorDeQR import schemas, exceptions
+from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 from src.incidentes.models import Incidente
 from src.categorias_incidentes.models import CategoriaIncidente
 from src.produccion.models import LoteProduccion
@@ -44,6 +45,7 @@ def crear_IdentificadorUnico(db:Session,ident:schemas.IdentificadorQRCreate,urld
     db.add(_ident)
     db.commit()
     db.refresh(_ident)
+    regenerar_snapshot_seguro(db)
     return _ident
 
 
@@ -66,6 +68,7 @@ def editar_identificadorQr(db:Session,identificador_id:str)-> schemas.Identifica
 
      db.commit()
      db.refresh(db_identQR)
+     regenerar_snapshot_seguro(db)
      return db_identQR
 
 def actualizar_ver_grafico(db: Session, identificador_id: str, ident: schemas.IdentifacadorQRUpdate) -> schemas.IdentificadorQR:
@@ -80,6 +83,7 @@ def actualizar_ver_grafico(db: Session, identificador_id: str, ident: schemas.Id
 
     db.commit()
     db.refresh(db_identQR)
+    regenerar_snapshot_seguro(db)
     return db_identQR
 
 def actualizar_ver_acercaDeNosotros(db: Session, identificador_id: str, ident: schemas.IdentifacadorQRUpdate) -> schemas.IdentificadorQR:
@@ -94,6 +98,7 @@ def actualizar_ver_acercaDeNosotros(db: Session, identificador_id: str, ident: s
 
     db.commit()
     db.refresh(db_identQR)
+    regenerar_snapshot_seguro(db)
     return db_identQR
 
 def actualizar_ver_productos(db: Session, identificador_id: str, ident: schemas.IdentifacadorQRUpdate) -> schemas.IdentificadorQR:
@@ -107,6 +112,7 @@ def actualizar_ver_productos(db: Session, identificador_id: str, ident: schemas.
 
     db.commit()
     db.refresh(db_identQR)
+    regenerar_snapshot_seguro(db)
     return db_identQR
 
 
