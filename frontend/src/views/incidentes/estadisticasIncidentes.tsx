@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -32,9 +32,15 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { descargarCSV } from '../../utils/exportarCsv';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
 import { descargarPDF } from '../../utils/exportarPdf';
 import { useColoresTema } from '../dashboard/useColoresTema';
 import { DetalleIncidenteModal } from './detalleModal';
@@ -54,15 +60,26 @@ import '../../styles/incidentes.css';
 
 interface FotoMiniaturaProps {
   incidenteId: number;
+  tieneFoto?: boolean;
   descripcion: string;
   onClick: () => void;
 }
 
-const FotoMiniatura: React.FC<FotoMiniaturaProps> = ({ incidenteId, descripcion, onClick }) => {
+const FotoMiniatura: React.FC<FotoMiniaturaProps> = ({
+  incidenteId,
+  tieneFoto,
+  descripcion,
+  onClick,
+}) => {
   const [url, setUrl] = useState<string | null>(null);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(Boolean(tieneFoto));
 
   useEffect(() => {
+    if (!tieneFoto) {
+      setCargando(false);
+      return;
+    }
+
     let activo = true;
     let objUrl: string | null = null;
 
@@ -85,7 +102,7 @@ const FotoMiniatura: React.FC<FotoMiniaturaProps> = ({ incidenteId, descripcion,
       activo = false;
       if (objUrl) URL.revokeObjectURL(objUrl);
     };
-  }, [incidenteId]);
+  }, [incidenteId, tieneFoto]);
 
   if (cargando) {
     return (
@@ -173,6 +190,15 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
+
+  const graficoEvolucionRef = useRef<HTMLDivElement | null>(null);
+  const graficoCategoriaRef = useRef<HTMLDivElement | null>(null);
+  const [exportGraficoModal, setExportGraficoModal] = useState<{
+    titulo: string;
+    nombreArchivo: string;
+    graficos: ConfiguracionGraficoExportar[];
+  } | null>(null);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -570,6 +596,134 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
     return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
   };
 
+  const construirConfigEvolucion = (): ConfiguracionGraficoExportar | null => {
+    if (!graficoEvolucionRef.current || datosEvolucionTemporal.length === 0 || kpis.total === 0) {
+      return null;
+    }
+    return {
+      id: 'incidentes-evolucion',
+      titulo: 'Evolución Temporal de Incidentes',
+      subtitulo: categoriaSeleccionada
+        ? `Frecuencia temporal bajo categoría ${ETIQUETAS_TIPO[categoriaSeleccionada] || categoriaSeleccionada}`
+        : 'Frecuencia cronológica de incidentes reportados vs resueltos/cerrados',
+      filtros: `${obtenerResumenFiltros()} | Agrupación: ${agrupacionTemporal === 'dia' ? 'Día' : agrupacionTemporal === 'semana' ? 'Semana' : 'Mes'}`,
+      contenedor: graficoEvolucionRef.current,
+      leyenda: [
+        { etiqueta: 'Reportados', color: '#ef4444' },
+        { etiqueta: 'Resueltos / Cerrados', color: '#10b981' },
+      ],
+    };
+  };
+
+  const construirConfigCategorias = (): ConfiguracionGraficoExportar | null => {
+    if (!graficoCategoriaRef.current || kpis.total === 0) {
+      return null;
+    }
+    const tituloVista =
+      tipoVisualizacionCategoria === 'radar'
+        ? 'Distribución de Incidentes - Red de Araña'
+        : tipoVisualizacionCategoria === 'pareto'
+        ? 'Distribución de Incidentes - Diagrama de Pareto (80/20)'
+        : 'Distribución de Incidentes por Categoría';
+
+    const leyendaVista =
+      tipoVisualizacionCategoria === 'pareto'
+        ? [
+            { etiqueta: 'Frecuencia (Incidentes)', color: '#ef4444' },
+            { etiqueta: '% Acumulado', color: '#f59e0b' },
+            { etiqueta: 'Corte 80% (Pareto)', color: '#10b981' },
+          ]
+        : tipoVisualizacionCategoria === 'radar'
+        ? [{ etiqueta: 'Incidentes por categoría', color: '#ef4444' }]
+        : datosGrafico
+            .filter((d) => d.cantidad > 0)
+            .map((d) => ({
+              etiqueta: `${d.nombreCorto} (${d.porcentaje}%)`,
+              color: d.color,
+            }));
+
+    return {
+      id: `incidentes-categoria-${tipoVisualizacionCategoria}`,
+      titulo: tituloVista,
+      subtitulo: 'Frecuencia de ocurrencia clasificada por tipología de incidente',
+      filtros: obtenerResumenFiltros(),
+      contenedor: graficoCategoriaRef.current,
+      leyenda: leyendaVista,
+    };
+  };
+
+  const abrirExportacionEvolucion = () => {
+    const config = construirConfigEvolucion();
+    if (!config) return;
+    const sufijo = desde && hasta ? `${desde}_a_${hasta}` : 'historico';
+    setExportGraficoModal({
+      titulo: config.titulo,
+      nombreArchivo: `incidentes_evolucion_${sufijo}`,
+      graficos: [config],
+    });
+  };
+
+  const abrirExportacionCategorias = () => {
+    const config = construirConfigCategorias();
+    if (!config) return;
+    const sufijo = desde && hasta ? `${desde}_a_${hasta}` : 'historico';
+    setExportGraficoModal({
+      titulo: config.titulo,
+      nombreArchivo: `incidentes_categorias_${tipoVisualizacionCategoria}_${sufijo}`,
+      graficos: [config],
+    });
+  };
+
+  const abrirExportacionTodosGraficos = () => {
+    const lista: ConfiguracionGraficoExportar[] = [];
+    const configEvolucion = construirConfigEvolucion();
+    const configCategorias = construirConfigCategorias();
+
+    if (configEvolucion) lista.push(configEvolucion);
+    if (configCategorias) lista.push(configCategorias);
+
+    if (lista.length === 0) {
+      setErrorExportDialog('No hay gráficos disponibles para exportar con los filtros actuales.');
+      return;
+    }
+
+    const sufijo = desde && hasta ? `${desde}_a_${hasta}` : 'historico';
+    setExportGraficoModal({
+      titulo:
+        lista.length === 1
+          ? lista[0].titulo
+          : `Incidentes Detallados (${lista.length} gráficos)`,
+      nombreArchivo: `graficos_incidentes_${sufijo}`,
+      graficos: lista,
+    });
+  };
+
+  const ejecutarExportacionGrafico = async (formato: FormatoGrafico) => {
+    if (!exportGraficoModal) return;
+    try {
+      setExportandoGrafico(true);
+      await exportarGraficos(
+        exportGraficoModal.graficos,
+        formato,
+        exportGraficoModal.nombreArchivo,
+        'Reporte Gráfico - Gestión de Incidentes'
+      );
+      setExportGraficoModal(null);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error ? err.message : 'Error al exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
+
+  const hayGraficosDisponibles =
+    !cargandoStats &&
+    !cargandoIncidentes &&
+    kpis.total > 0 &&
+    datosEvolucionTemporal.length > 0;
+
   return (
     <div className="modulo-container dashboard-vista-detalle">
       {onVolver && (
@@ -608,14 +762,25 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {hayGraficosDisponibles && (
+              <button
+                type="button"
+                onClick={abrirExportacionTodosGraficos}
+                className="btn-cancelar"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title="Exportar todos los gráficos en PNG, JPEG o PDF"
+              >
+                <ExportIcon/> Exportar Gráficos
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setDialogExportarAbierto(true)}
               className="btn-cancelar"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              <ExportIcon size={18} /> Exportar
+              <ExportIcon/> Exportar Datos
             </button>
           </div>
         </div>
@@ -930,6 +1095,24 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                   Barras
                 </button>
               </div>
+
+              {!cargandoIncidentes && datosEvolucionTemporal.length > 0 && kpis.total > 0 && (
+                <button
+                  type="button"
+                  onClick={abrirExportacionEvolucion}
+                  className="btn-cancelar"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '12px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                  title="Exportar gráfico de evolución en PNG, JPEG o PDF"
+                >
+                  <ExportIcon size={14} /> Exportar gráfico
+                </button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -944,7 +1127,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
               <span>No se registraron incidentes para la serie temporal seleccionada.</span>
             </div>
           ) : (
-            <div style={{ width: '100%', height: 380 }}>
+            <div ref={graficoEvolucionRef} style={{ width: '100%', height: 380 }}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 {tipoGraficoEvolucion === 'lineas' ? (
                   <AreaChart data={datosEvolucionTemporal} margin={{ top: 16, right: 24, left: -6, bottom: 25 }}>
@@ -1074,7 +1257,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
               <CardTitle style={{ fontSize: '1rem' }}>Distribución de Incidentes por Categoría</CardTitle>
               <CardDescription>Frecuencia de ocurrencia clasificada por tipología</CardDescription>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <div style={{ display: 'inline-flex', borderRadius: '6px', border: '1px solid var(--border)', padding: '2px', background: 'var(--code-bg)' }}>
                 <button
                   type="button"
@@ -1135,6 +1318,23 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                   Restablecer selección
                 </button>
               )}
+              {!cargandoStats && kpis.total > 0 && (
+                <button
+                  type="button"
+                  onClick={abrirExportacionCategorias}
+                  className="btn-cancelar"
+                  style={{
+                    padding: '3px 10px',
+                    fontSize: '12px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                  title="Exportar gráfico de categorías en PNG, JPEG o PDF"
+                >
+                  <ExportIcon size={14} /> Exportar gráfico
+                </button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -1150,7 +1350,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
             </div>
           ) : (
             <>
-              <div style={{ width: '100%', height: 380 }}>
+              <div ref={graficoCategoriaRef} style={{ width: '100%', height: 380 }}>
                 {tipoVisualizacionCategoria === 'radar' ? (
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datosGrafico}>
@@ -1532,7 +1732,12 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                           <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>Legajo #{inc.reportado_por_id ?? '-'}</div>
                         </td>
                         <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                          <FotoMiniatura incidenteId={inc.id} descripcion={inc.descripcion} onClick={() => setIncidenteParaModal(inc)} />
+                          <FotoMiniatura
+                            incidenteId={inc.id}
+                            tieneFoto={Boolean(inc.foto_url)}
+                            descripcion={inc.descripcion}
+                            onClick={() => setIncidenteParaModal(inc)}
+                          />
                         </td>
                         <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                           <Badge variant={inc.estado === 'resuelto' || inc.estado === 'cerrado' ? 'al_dia' : inc.estado === 'en_revision' ? 'proximo' : 'vencido'}>
@@ -1583,6 +1788,16 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
         loading={exportando}
         onConfirm={ejecutarExportacion}
         onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ConfirmExportGraficoDialog
+        open={Boolean(exportGraficoModal)}
+        tituloGrafico={exportGraficoModal?.titulo || ''}
+        cantidadGraficos={exportGraficoModal?.graficos.length || 1}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportandoGrafico}
+        onConfirm={ejecutarExportacionGrafico}
+        onCancel={() => setExportGraficoModal(null)}
       />
 
       <ErrorAlertDialog

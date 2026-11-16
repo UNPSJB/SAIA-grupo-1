@@ -423,24 +423,13 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {hayDatos && !cargando && (
-              <button
-                type="button"
-                onClick={abrirExportacionTodosGraficos}
-                className="btn-cancelar"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                title="Exportar el gráfico visible en PNG, JPEG o PDF"
-              >
-                <ExportIcon size={18} /> Exportar Gráfico
-              </button>
-            )}
             <button
               type="button"
               onClick={() => setDialogExportarAbierto(true)}
               className="btn-cancelar"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              <ExportIcon size={18} /> Exportar Datos
+              <ExportIcon/> Exportar Datos
             </button>
           </div>
         </div>
@@ -843,6 +832,23 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                     Por Turno
                   </button>
                 </div>
+                {hayDatos && !cargando && (
+                  <button
+                    type="button"
+                    onClick={abrirExportacionTodosGraficos}
+                    className="btn-cancelar"
+                    style={{
+                      padding: '5px 10px',
+                      fontSize: '12px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    title="Exportar este gráfico en PNG, JPEG o PDF"
+                  >
+                    <ExportIcon size={14} /> Exportar gráfico
+                  </button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
