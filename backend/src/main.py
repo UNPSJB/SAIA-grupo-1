@@ -3,6 +3,7 @@ from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
+from src.rotulado.migraciones import actualizar_tablas_rotulado
 from src.models import ModeloBase
 
 from src.config import settings
@@ -48,6 +49,7 @@ from src.recetas.router import router as recetas_router
 from src.configuracion.router import router as configuracion_router
 from src.rotulado_frontal.router import router as rotulado_frontal_router
 from src.rotulado_frontal.services import asegurar_datos_iniciales as asegurar_parametros_rotulado
+from src.rotulado.router import router as rotulado_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -57,9 +59,9 @@ setup_logging()
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
-    # parametros normativos del rotulado frontal: datos que el sistema necesita en todos los entornos
     with SessionLocal() as db:
         asegurar_parametros_rotulado(db)
+    actualizar_tablas_rotulado(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
@@ -134,3 +136,4 @@ app.include_router(proveedores_router, dependencies=SESION)
 app.include_router(unidades_medida_router, dependencies=SESION)
 app.include_router(recetas_router)
 app.include_router(rotulado_frontal_router, prefix="/rotulado-frontal", tags=["Rotulado frontal"], dependencies=SESION)
+app.include_router(rotulado_router)

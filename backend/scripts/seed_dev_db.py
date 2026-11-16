@@ -92,6 +92,9 @@ from src.tipoInsumo.services import crear_tipo_insumo
 from src.proveedores.models import Proveedor
 from src.proveedores.schemas import ProveedorCreate
 from src.proveedores.services import crear_proveedor
+from src.rotulado.services import guardar_lista_rotulo
+from src.rotulado.models import FormatoDeclaracionAditivos
+from src.rotulado import schemas as rotulado_schemas
 
 INSUMOS = [
     ("Harina 000", "HAR3-2409", 12, 150, 450.0, 320.0, "kilogramos"),
@@ -1220,6 +1223,43 @@ def main() -> None:
         descripcion="Somos una panificadora y elaboradora de alimentos artesanales comprometida con los más altos estándares de inocuidad alimentaria, trazabilidad de materias primas y buenas prácticas de manufactura (BPM).",
     ))
     db.commit()
+
+    guardar_lista_rotulo(
+        db=db,
+        producto_id=p_pan.id,
+        datos=rotulado_schemas.ListaIngredientesCreate(
+            formato_aditivos=FormatoDeclaracionAditivos.INS_Y_NOMBRE,
+            ajustado_manualmente=False,
+            items=[
+                rotulado_schemas.ItemIngredienteCreate(nombre="Harina 000", denominacion_rotulo="Harina de trigo enriquecida Ley 25630", porcentaje=60.0, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Agua Potable", denominacion_rotulo="Agua potable", porcentaje=34.0, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Levadura Fresca", denominacion_rotulo="Levadura biológica", porcentaje=3.0, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Aceite de Girasol", denominacion_rotulo="Aceite vegetal", porcentaje=1.8, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Sal Fina", denominacion_rotulo="Sal", porcentaje=1.2, es_aditivo=False),
+            ],
+        ),
+        usuario=juan,
+    )
+
+    guardar_lista_rotulo(
+        db=db,
+        producto_id=p_medialunas.id,
+        datos=rotulado_schemas.ListaIngredientesCreate(
+            formato_aditivos=FormatoDeclaracionAditivos.INS_Y_NOMBRE,
+            ajustado_manualmente=False,
+            items=[
+                rotulado_schemas.ItemIngredienteCreate(nombre="Harina 0000", denominacion_rotulo="Harina de trigo 0000", porcentaje=45.0, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Manteca", denominacion_rotulo="Manteca", porcentaje=22.0, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Leche Entera", denominacion_rotulo="Leche", porcentaje=18.0, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Azucar Comun", denominacion_rotulo="Azúcar", porcentaje=9.0, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Huevos", denominacion_rotulo="Huevo pasteurizado", porcentaje=4.0, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Levadura Fresca", denominacion_rotulo="Levadura", porcentaje=1.2, es_aditivo=False),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Esencia de Vainilla", denominacion_rotulo="Aroma a vainilla", porcentaje=0.5, es_aditivo=True, funcion="Aromatizante", es_aromatizante=True),
+                rotulado_schemas.ItemIngredienteCreate(nombre="Sal Fina", denominacion_rotulo="Sal", porcentaje=0.3, es_aditivo=False),
+            ],
+        ),
+        usuario=marcos,
+    )
 
     auditorias = [
         Auditoria(
