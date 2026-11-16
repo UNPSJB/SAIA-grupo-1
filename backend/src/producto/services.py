@@ -21,7 +21,6 @@ def obtener_productos_para_csv(
     activo: Optional[bool] = None,
     busqueda: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    
     query = db.query(Producto)
     
     if activo is not None:
@@ -36,7 +35,6 @@ def obtener_productos_para_csv(
         descripcion = p.descripcion or ""
         nombre_receta = _obtener_nombre_receta(p.receta) or ""
 
-        # Filtro opcional por búsqueda
         if term:
             coincide = (
                 term in nombre.lower()
@@ -59,7 +57,6 @@ def obtener_productos_para_csv(
         
     return filas
 
-
 def validar_nombre_unico(db: Session, nombre: str, producto_id_actual: Optional[int] = None) -> None:
     nombre_sin_espacios = nombre.replace(" ", "").lower()
     stmt = select(Producto).where(
@@ -72,7 +69,6 @@ def validar_nombre_unico(db: Session, nombre: str, producto_id_actual: Optional[
     existente = db.scalar(stmt)
     if existente is not None:
         raise exceptions.NombreProductoDuplicado()
-
 
 def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
     validar_nombre_unico(db, producto.nombre)
@@ -87,6 +83,9 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
         nombre=producto.nombre,
         descripcion=producto.descripcion,
         unidad_medida_id=unidad.id,
+        tamano_porcion_g=producto.tamano_porcion_g,
+        porciones_por_envase=producto.porciones_por_envase,
+        descripcion_porcion=producto.descripcion_porcion,
         activo=True,
     )
     db.add(_producto)
@@ -98,7 +97,6 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
 
     return _producto
 
-
 def listar_productos(db: Session) -> List[Producto]:
     productos = list(db.scalars(select(Producto).order_by(Producto.id.desc())).all())
 
@@ -107,7 +105,6 @@ def listar_productos(db: Session) -> List[Producto]:
             prod.nombre_receta = _obtener_nombre_receta(prod.receta)
 
     return productos
-
 
 def obtener_producto(db: Session, producto_id: int) -> Producto:
     db_producto = db.scalar(select(Producto).where(Producto.id == producto_id))
@@ -118,7 +115,6 @@ def obtener_producto(db: Session, producto_id: int) -> Producto:
         db_producto.nombre_receta = _obtener_nombre_receta(db_producto.receta)
 
     return db_producto
-
 
 def editar_producto(
     db: Session,
@@ -158,16 +154,13 @@ def editar_producto(
 
     return db_producto
 
-
 def eliminar_producto(db: Session, producto_id: int) -> Producto:
     db_producto = obtener_producto(db, producto_id)
     db_producto.activo = False
-    # un producto dado de baja no se puede mostrar; si se restaura vuelve oculto
     db_producto.visible_publico = False
     db.commit()
     db.refresh(db_producto)
     return db_producto
-
 
 def restaurar_producto(db: Session, producto_id: int) -> Producto:
     db_producto = obtener_producto(db, producto_id)
@@ -178,10 +171,6 @@ def restaurar_producto(db: Session, producto_id: int) -> Producto:
 
 
 def actualizar_visibilidad_publica(db: Session, productos_visibles: List[int]) -> List[Producto]:
-    """Deja visibles en la vista publica solo los productos indicados y oculta el resto.
-
-    Si algun id no existe o esta dado de baja no se cambia nada.
-    """
     ids = set(productos_visibles)
     encontrados = db.scalars(select(Producto).where(Producto.id.in_(list(ids)))).all() if ids else []
     if len(encontrados) != len(ids):
@@ -192,7 +181,6 @@ def actualizar_visibilidad_publica(db: Session, productos_visibles: List[int]) -
     db.execute(update(Producto).values(visible_publico=Producto.id.in_(list(ids))))
     db.commit()
     return listar_productos(db)
-
 
 def listar_productos_publicos(db: Session) -> List[Producto]:
     return list(db.scalars(

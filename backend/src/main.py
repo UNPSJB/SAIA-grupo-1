@@ -50,6 +50,7 @@ from src.configuracion.router import router as configuracion_router
 from src.rotulado_frontal.router import router as rotulado_frontal_router
 from src.rotulado_frontal.services import asegurar_datos_iniciales as asegurar_parametros_rotulado
 from src.rotulado.router import router as rotulado_router
+from src.nutricion.router import router as nutricion_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -67,6 +68,9 @@ async def db_creation_lifespan(app: FastAPI):
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
             asegurar_unidades_base(db)
+            from src.nutricion.services import migrar_columnas_nutricionales, asegurar_parametros_defecto
+            migrar_columnas_nutricionales(db)
+            asegurar_parametros_defecto(db)
         asegurar_tipos_base(db)
     yield
 
@@ -79,10 +83,6 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-   ## allow_origins=[
-    ##    "http://localhost:5173",
-     ##   "http://127.0.0.1:5173",
-   ## ],
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
@@ -127,7 +127,6 @@ app.include_router(qrCode_router, dependencies=SOLO_ADMIN)
 app.include_router(IdentificadorQR)
 app.include_router(configuracion_router, dependencies=SOLO_ADMIN)
 app.include_router(AcercaDeNostrosRouter)
-# registrar un lote lo define el endpoint (solo operadores); consultar alcanza con estar logueado
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SESION)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
@@ -137,3 +136,4 @@ app.include_router(unidades_medida_router, dependencies=SESION)
 app.include_router(recetas_router)
 app.include_router(rotulado_frontal_router, prefix="/rotulado-frontal", tags=["Rotulado frontal"], dependencies=SESION)
 app.include_router(rotulado_router)
+app.include_router(nutricion_router)

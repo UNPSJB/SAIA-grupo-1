@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
-from sqlalchemy import ForeignKey, Integer, String, true
+from sqlalchemy import Float, ForeignKey, Integer, String, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 
@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from src.proveedores.models import Proveedor
     from src.tipoInsumo.models import TipoInsumo
     from src.unidadesMedida.models import UnidadMedida
-
 
 class Insumo(ModeloBase):
     __tablename__ = "insumos"
@@ -32,6 +31,18 @@ class Insumo(ModeloBase):
     proveedor_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("proveedores.id"), index=True, nullable=True
     )
+
+    energia_kcal: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    energia_kj: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    carbohidratos: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    azucares_totales: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    azucares_anadidos: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    proteinas: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    grasas_totales: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    grasas_saturadas: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    grasas_trans: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    fibra_alimentaria: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    sodio_mg: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
 
     unidad_medida_rel: Mapped["UnidadMedida"] = relationship(
         "src.unidadesMedida.models.UnidadMedida", lazy="joined"

@@ -3,13 +3,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from src.recetas.schemas import RecetaBase
 from src.producto import exceptions
 
-
 class ProductoBase(BaseModel):
     nombre: str = Field(min_length=1, max_length=50)
     descripcion: Optional[str] = Field(default=None, min_length=1, max_length=100)
     unidad_medida_id: Optional[int] = None
     unidadMedida: Optional[str] = None
-
+    tamano_porcion_g: Optional[float] = None
+    porciones_por_envase: Optional[float] = None
+    descripcion_porcion: Optional[str] = None
 
 class ProductoCreate(ProductoBase):
 
@@ -31,13 +32,15 @@ class ProductoCreate(ProductoBase):
             raise exceptions.UnidadVacia
         return self
 
-
 class ProductoUpdate(ProductoBase):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
     unidad_medida_id: Optional[int] = None
     unidadMedida: Optional[str] = None
     receta:Optional[RecetaBase] = None
+    tamano_porcion_g: Optional[float] = None
+    porciones_por_envase: Optional[float] = None
+    descripcion_porcion: Optional[str] = None
 
     @field_validator('nombre')
     @classmethod
@@ -55,21 +58,16 @@ class ProductoResponse(ProductoBase):
     unidadMedida: str
     unidad_medida_nombre: Optional[str] = None
     unidad_medida_abreviatura: Optional[str] = None
-
     nombre_receta: Optional[str] = None
     activo: bool
     visible_publico: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
-
 class VisibilidadPublicaUpdate(BaseModel):
-    # ids de los productos que se muestran en la vista publica; el resto queda oculto
     productos_visibles: list[int] = Field(default_factory=list)
 
-
 class ProductoPublico(BaseModel):
-    """Lo que ve cualquiera desde la vista publica: sin receta ni datos internos."""
     id: int
     nombre: str
     descripcion: Optional[str] = None
@@ -77,3 +75,5 @@ class ProductoPublico(BaseModel):
     unidad_medida_abreviatura: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+ProductoCatalogoPublico = ProductoPublico

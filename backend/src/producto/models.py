@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, Optional
-from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.recetas.models import Receta
 from src.models import ModeloBase
@@ -7,7 +7,6 @@ from src.models import ModeloBase
 if TYPE_CHECKING:
     from src.gestion_archivos.models import Documento
     from src.unidadesMedida.models import UnidadMedida
-
 
 class Producto(ModeloBase):
     __tablename__ = "productos"
@@ -25,6 +24,10 @@ class Producto(ModeloBase):
     unidad_medida_rel: Mapped["UnidadMedida"] = relationship(
         "src.unidadesMedida.models.UnidadMedida", lazy="joined"
     )
+
+    tamano_porcion_g: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    porciones_por_envase: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    descripcion_porcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default=None)
 
     @property
     def unidadMedida(self) -> str:

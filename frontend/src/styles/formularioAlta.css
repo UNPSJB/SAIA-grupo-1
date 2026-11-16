@@ -300,6 +300,16 @@
   border-color: color-mix(in srgb, var(--color-alerta) 40%, transparent);
 }
 
+.btn-icon.btn-nutricion {
+  color: #38bdf8;
+}
+
+.btn-icon.btn-nutricion:hover {
+  background-color: var(--color-suave);
+  color: #0284c7;
+  border-color: #38bdf8;
+}
+
 .btn-icon.btn-eliminar {
   padding: 0;
   width: 32px;
