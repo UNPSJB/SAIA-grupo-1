@@ -511,6 +511,33 @@ def mapear_respuesta_lista(
     )
 
 
+def _obtener_abreviatura_unidad(producto: Producto) -> str:
+    abrev = getattr(producto, "unidad_medida_abreviatura", None)
+    if abrev:
+        return str(abrev).strip()
+    u_med = getattr(producto, "unidadMedida", None)
+    if not u_med:
+        return "kg"
+    val = (
+        u_med.value
+        if hasattr(u_med, "value")
+        else str(u_med).replace("UnidadMedida.", "")
+    ).lower().strip()
+    mapa = {
+        "kilogramos": "kg",
+        "gramos": "g",
+        "litros": "l",
+        "mililitros": "ml",
+        "unidades": "un",
+        "kilogramo": "kg",
+        "gramo": "g",
+        "litro": "l",
+        "mililitro": "ml",
+        "unidad": "un",
+    }
+    return mapa.get(val, val or "kg")
+
+
 def obtener_o_crear_borrador(
     db: Session, producto_id: int
 ) -> BorradorRotulo:
@@ -530,11 +557,7 @@ def obtener_o_crear_borrador(
         .first()
     )
     cod_lote = u_lote.codigo if u_lote else "L-001"
-    unidad_str = (
-        producto.unidadMedida.value
-        if hasattr(producto.unidadMedida, "value")
-        else str(producto.unidadMedida)
-    )
+    unidad_str = _obtener_abreviatura_unidad(producto)
 
     nuevo_borrador = BorradorRotulo(
         producto_id=producto_id,
@@ -617,11 +640,7 @@ def autocompletar_datos_borrador(
         .first()
     )
     cod_lote = u_lote.codigo if u_lote else "L-001"
-    unidad_str = (
-        producto.unidadMedida.value
-        if hasattr(producto.unidadMedida, "value")
-        else str(producto.unidadMedida)
-    )
+    unidad_str = _obtener_abreviatura_unidad(producto)
 
     t_campos = set(campos) if campos else {"lote", "denominacion", "contenido_neto", "sellos", "tabla", "ingredientes"}
 
@@ -1224,6 +1243,7 @@ def exportar_borrador(
 <meta charset="utf-8">
 <title>Borrador de Rótulo - {datos_rotulo.producto_nombre}</title>
 <style>
+* {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
 body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 20px; color: #1e293b; background: #fff; }}
 .watermark {{ position: fixed; top: 45%; left: 10%; transform: rotate(-30deg); font-size: 42px; font-weight: 900; color: rgba(220, 38, 38, 0.12); pointer-events: none; z-index: 1000; border: 4px dashed rgba(220, 38, 38, 0.2); padding: 10px 30px; }}
 .banner-borrador {{ background: #fef2f2; border: 2px solid #ef4444; color: #b91c1c; padding: 12px 18px; border-radius: 8px; font-weight: 800; font-size: 13px; text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px; }}
@@ -1236,6 +1256,11 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Aria
 .seccion-titulo {{ font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px; }}
 .texto-regular {{ font-size: 12px; line-height: 1.5; color: #334155; }}
 .footer-borrador {{ margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 11px; color: #64748b; }}
+@media print {{
+  body {{ margin: 10mm; background: #fff; }}
+  .rotulo-card {{ box-shadow: none; border: 2px solid #000; }}
+  .banner-borrador {{ border: 2px solid #ef4444; background: #fef2f2 !important; color: #b91c1c !important; }}
+}}
 </style>
 </head>
 <body>
