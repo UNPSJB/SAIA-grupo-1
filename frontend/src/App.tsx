@@ -24,7 +24,9 @@ import { VerDetalle as VerDetalleInsumoQuimico } from './views/insumos_quimicos/
 import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
 import { ConsumoHistoricoInsumos } from './views/dashboard/ConsumoHistoricoInsumos';
 import { Panel_Publico } from './views/vistaPublica/datosPublicos';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, type Modulo } from './components/Sidebar';
+import { PanelConfiguraciones } from './views/configuraciones/panelConfiguraciones';
+import { obtenerEstadoVistaPublica, enlaceVistaPublica, type EstadoVistaPublica } from './views/configuraciones/vistaPublicaApi';
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar';
 import { NavbarPublica, type ModuloPublico } from './components/navbarVistaPublica';
 import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
@@ -54,7 +56,7 @@ import NuevoDocumento from './views/documentos/nuevoDocumento';
 import NuevaVersion from './views/documentos/nuevaVersion';
 import { Login } from './views/auth/login';
 import { useAuth } from './auth/useAuth';
-import { moduloInicial, puedeVerModulo } from './auth/permisos';
+import { MODULOS_DE_CONFIGURACION, moduloInicial, puedeVerModulo } from './auth/permisos';
 import { EditarPlanDeCalibracion } from './views/planDeCalibracion/editarPlanDeCalibracion';
 import { VerPlanDeCalibracion } from './views/planDeCalibracion/verPlanDeCalibracion';
 import { ListadoCertificados } from './views/certificado/listado';
@@ -114,7 +116,6 @@ import { VerReceta } from './views/receta/VerReceta';
 import { ListadoChecklistsReceta } from './views/receta/listadoDeEtapasChecklist';
 import { DetalleChecklistReceta } from './views/receta/VerEtapaChecklist';
 
-type Modulo = 'dashboard' | 'insumos' | 'tipoInsumo' | 'unidadesMedida' | 'proveedores' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales'| 'receta'|'checklistRecetas';
 type VistaTipoInsumo = 'listado' | 'alta' | 'editar' | 'detalle';
 type VistaUnidadesMedida = 'listado' | 'alta' | 'editar';
 type VistaProveedores = 'listado' | 'alta' | 'editar';
@@ -239,6 +240,38 @@ function Aplicacion() {
   const [qrUrlPublica, setQrUrlPublica] = useState<string | null>(null);
   const [idAlfanumericoPublico, setIdAlfanumericoPublico] = useState<string | null>(null);
   const [urlTextoPublica, setUrlTextoPublica] = useState<string | null>(null);
+  const [estadoVistaPublica, setEstadoVistaPublica] = useState<EstadoVistaPublica | null>(null);
+  const [errorVistaPublica, setErrorVistaPublica] = useState<string | null>(null);
+  const { setConfig: setConfigVistaPublica } = useVistaPublica();
+
+  // el estado de la vista pública vive en el backend: así sobrevive a recargar la página
+  const aplicarEstadoVistaPublica = (estado: EstadoVistaPublica) => {
+    setEstadoVistaPublica(estado);
+    setErrorVistaPublica(null);
+    setVistaPublicaHabilitada(estado.habilitada);
+    setIdAlfanumericoPublico(estado.id_alfanumerico);
+    setUrlTextoPublica(enlaceVistaPublica(estado));
+    if (!estado.habilitada) setQrUrlPublica(null);
+    setConfigVistaPublica({
+      verGrafico: estado.ver_grafico,
+      verAcercaDeNosotros: estado.verAcercaDeNosotros,
+      verProductos: estado.verProductos,
+    });
+  };
+
+  const cargarEstadoVistaPublica = () => {
+    if (!esAdministrador) return;
+    obtenerEstadoVistaPublica()
+      .then(aplicarEstadoVistaPublica)
+      .catch((err: unknown) => setErrorVistaPublica(err instanceof Error ? err.message : 'Error de conexión con el servidor.'));
+  };
+
+  useEffect(cargarEstadoVistaPublica, [esAdministrador]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const irAConfiguraciones = () => {
+    cambiarModulo('configuraciones');
+    cargarEstadoVistaPublica();
+  };
 
   const cambiarModulo = (nuevoModulo: Modulo, limpiarFiltros: boolean = true, esDesdeDashboard: boolean = false) => {
     setModulo(nuevoModulo);
@@ -445,6 +478,29 @@ interface RegistroVencimientoRef {
     setNombrePersonaSeleccionada(nombreCompleto);
     setVistaPersonas('certificados');
     setModulo('personas');
+  };
+
+  const ETIQUETAS_CONFIGURACION: Partial<Record<Modulo, string>> = {
+    sectores: 'Sectores',
+    tipoCertificado: 'Tipos de Certificado',
+    tipoDocumento: 'Tipos de Documento',
+    motivos: 'Motivos de No Realización',
+    vistaPublica: 'Vista Pública',
+  };
+
+  const renderBreadcrumbConfiguracion = () => {
+    if (desdeDashboard || !MODULOS_DE_CONFIGURACION.includes(modulo)) return null;
+    return (
+      <div className="dashboard-breadcrumb-wrapper" style={{ maxWidth: '1180px', padding: '0 1.5rem' }}>
+        <nav className="dashboard-breadcrumb" aria-label="Breadcrumb">
+          <button type="button" className="dashboard-breadcrumb-link" onClick={irAConfiguraciones}>
+            Configuraciones
+          </button>
+          <span className="dashboard-breadcrumb-separador">/</span>
+          <span className="dashboard-breadcrumb-actual">{ETIQUETAS_CONFIGURACION[modulo]}</span>
+        </nav>
+      </div>
+    );
   };
 
   const renderBreadcrumb = () => {
@@ -785,6 +841,7 @@ const irANotificacion = async (notif: NotificacionItem) => {
           onNavegarNotificacion={irANotificacion}
           onIrAIncidentes={() => cambiarModulo('incidentes')}
           onIrAVencimientos={() => cambiarModulo('vencimientos')}
+          onIrAConfiguracion={irAConfiguraciones}
         />
 
         <div
@@ -798,6 +855,7 @@ const irANotificacion = async (notif: NotificacionItem) => {
           }}
         >
         {renderBreadcrumb()}
+        {renderBreadcrumbConfiguracion()}
         {modulo === 'dashboard' ? (
           <PanelDashboard
             vistaHabilitada={vistaPublicaHabilitada}
@@ -848,6 +906,14 @@ const irANotificacion = async (notif: NotificacionItem) => {
               }
             }}
           />
+          ) : modulo === 'configuraciones' ? (
+          <PanelConfiguraciones
+            estadoVistaPublica={estadoVistaPublica}
+            errorVistaPublica={errorVistaPublica}
+            onEstadoVistaPublica={aplicarEstadoVistaPublica}
+            onAbrirMaestro={(m) => cambiarModulo(m)}
+            onGestionarVistaPublica={() => setModulo('vistaPublica')}
+          />
           ) : modulo === 'vistaPublica' ? (
           vistaPublicaHabilitada ? (
             <VistaPublica_Habilitada
@@ -859,9 +925,9 @@ const irANotificacion = async (notif: NotificacionItem) => {
                 setQrUrlPublica(null);
                 setIdAlfanumericoPublico(null);
                 setUrlTextoPublica(null);
-                setModulo('dashboard');
+                irAConfiguraciones();
               }}
-              onCancel={() => setModulo('dashboard')}
+              onCancel={irAConfiguraciones}
             />
           ) : (
             <ActivarVista_Publica
@@ -870,9 +936,9 @@ const irANotificacion = async (notif: NotificacionItem) => {
                 setIdAlfanumericoPublico(idAlfanumerico);
                 setUrlTextoPublica(urlTexto);
                 setVistaPublicaHabilitada(true);
-                setModulo('dashboard');
+                irAConfiguraciones();
               }}
-              onCancel={() => setModulo('dashboard')}
+              onCancel={irAConfiguraciones}
             />
           )
         ) : modulo === 'vencimientos' ? (

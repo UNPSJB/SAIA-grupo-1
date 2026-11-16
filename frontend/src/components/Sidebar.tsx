@@ -44,7 +44,8 @@ export type Modulo =
   | 'vistaPublica'
   | 'controlesAmbientales'
   | 'receta'
-  | 'checklistRecetas';
+  | 'checklistRecetas'
+  | 'configuraciones';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -235,6 +236,12 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
   ),
+  configuraciones: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
   controlesAmbientales: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.4 19 2c1 2 2 4.1 2 7 0 4.7-4 9-10 9Z" />
@@ -310,7 +317,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       titulo: 'Higiene y POES',
       items: [
         { id: 'checklist', label: 'Checklists Diarios', icono: ICONOS_MODULO.checklist },
-        { id: 'motivos', label: 'Motivos No Realización', icono: ICONOS_MODULO.motivos },
         { id: 'planDeLimpieza', label: 'Plan de Limpieza', icono: ICONOS_MODULO.planDeLimpieza },
         { id: 'insumos_quimicos', label: 'Químicos Limpieza', icono: ICONOS_MODULO.insumos_quimicos },
         { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza', icono: ICONOS_MODULO.elementosDeLimpieza },
@@ -322,7 +328,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       items: [
         { id: 'equipos', label: 'Equipos', icono: ICONOS_MODULO.equipos },
         { id: 'planDeCalibracion', label: 'Plan de Calibración', icono: ICONOS_MODULO.planDeCalibracion },
-        { id: 'sectores', label: 'Sectores', icono: ICONOS_MODULO.sectores },
         { id: 'tipoInsumo', label: 'Tipos de Insumo', icono: ICONOS_MODULO.tipoInsumo },
         { id: 'unidadesMedida', label: 'Unidades de Medida', icono: ICONOS_MODULO.unidadesMedida },
         { id: 'proveedores', label: 'Proveedores', icono: ICONOS_MODULO.proveedores },
@@ -336,7 +341,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       titulo: 'Personal y Habilitaciones',
       items: [
         { id: 'personas', label: 'Personas', icono: ICONOS_MODULO.personas },
-        { id: 'tipoCertificado', label: 'Tipo Certificado', icono: ICONOS_MODULO.tipoCertificado },
       ],
     },
     {
@@ -345,7 +349,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       items: [
         { id: 'produccion', label: 'Producción', icono: ICONOS_MODULO.produccion },
         { id: 'documentos', label: 'Documentos', icono: ICONOS_MODULO.documentos },
-        { id: 'tipoDocumento', label: 'Tipo Documento', icono: ICONOS_MODULO.tipoDocumento },
         { id: 'checklistRecetas', label: 'Checklist de Recetas', icono: ICONOS_MODULO.checklistRecetas},
         {
           id: 'incidentes',
