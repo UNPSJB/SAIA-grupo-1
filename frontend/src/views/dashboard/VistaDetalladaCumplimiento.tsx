@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -24,7 +24,13 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
 import { descargarCSV } from '../../utils/exportarCsv';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
 import { descargarPDF } from '../../utils/exportarPdf';
 import type {
   CumplimientoDetalladoResponse,
@@ -85,6 +91,17 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
+
+  const graficoTendenciaRef = useRef<HTMLDivElement | null>(null);
+  const graficoSectorRef = useRef<HTMLDivElement | null>(null);
+  const graficoEquipoRef = useRef<HTMLDivElement | null>(null);
+
+  const [exportGraficoModal, setExportGraficoModal] = useState<{
+    titulo: string;
+    nombreArchivo: string;
+    graficos: ConfiguracionGraficoExportar[];
+  } | null>(null);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -251,6 +268,78 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
     return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
   };
 
+  const leyendaCumplimiento = [
+    { etiqueta: 'Óptimo (≥ 80%)', color: colores.exito },
+    { etiqueta: 'Atención (50% - 79%)', color: colores.alerta },
+    { etiqueta: 'Crítico (< 50%)', color: colores.error },
+  ];
+
+  const abrirExportacionTodosGraficos = () => {
+    const filtros = obtenerResumenFiltros();
+    const lista: ConfiguracionGraficoExportar[] = [];
+
+    if (graficoTendenciaRef.current) {
+      lista.push({
+        id: 'cumplimiento-tendencia',
+        titulo: 'Tendencia Temporal de Cumplimiento',
+        subtitulo: 'Evolución cronológica del porcentaje de cumplimiento general',
+        filtros,
+        contenedor: graficoTendenciaRef.current,
+      });
+    }
+    if (graficoSectorRef.current && (datos?.desglose_por_sector?.length ?? 0) > 0) {
+      lista.push({
+        id: 'cumplimiento-sector',
+        titulo: 'Comparativa por Sector Físico',
+        subtitulo: 'Porcentaje de cumplimiento en cada sector de la planta',
+        filtros,
+        contenedor: graficoSectorRef.current,
+        leyenda: leyendaCumplimiento,
+      });
+    }
+    if (graficoEquipoRef.current && (datos?.desglose_por_equipo?.length ?? 0) > 0) {
+      lista.push({
+        id: 'cumplimiento-equipo',
+        titulo: 'Comparativa por Equipo',
+        subtitulo: 'Identificación de equipos de producción críticos',
+        filtros,
+        contenedor: graficoEquipoRef.current,
+        leyenda: leyendaCumplimiento,
+      });
+    }
+
+    if (lista.length === 0) {
+      setErrorExportDialog('No hay gráficos disponibles para exportar con los filtros actuales.');
+      return;
+    }
+
+    setExportGraficoModal({
+      titulo: `Cumplimiento Detallado (${lista.length} gráficos)`,
+      nombreArchivo: `graficos_cumplimiento_${desde}_a_${hasta}`,
+      graficos: lista,
+    });
+  };
+
+  const ejecutarExportacionGrafico = async (formato: FormatoGrafico) => {
+    if (!exportGraficoModal) return;
+    try {
+      setExportandoGrafico(true);
+      await exportarGraficos(
+        exportGraficoModal.graficos,
+        formato,
+        exportGraficoModal.nombreArchivo,
+        'Reporte Gráfico - Cumplimiento de Limpieza'
+      );
+      setExportGraficoModal(null);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error ? err.message : 'Error al exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
+
   return (
     <div className="modulo-container dashboard-vista-detalle">
       <nav className="dashboard-breadcrumb" aria-label="Breadcrumb">
@@ -281,14 +370,27 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setDialogExportarAbierto(true)}
-            className="btn-cancelar"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <ExportIcon size={18} /> Exportar
-          </button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {hayDatos && !cargando && (
+              <button
+                type="button"
+                onClick={abrirExportacionTodosGraficos}
+                className="btn-cancelar"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title="Exportar todos los gráficos de cumplimiento en PNG, JPEG o PDF"
+              >
+                <ExportIcon size={18} /> Exportar Gráficos
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setDialogExportarAbierto(true)}
+              className="btn-cancelar"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <ExportIcon size={18} /> Exportar Datos
+            </button>
+          </div>
         </div>
       </div>
 
@@ -574,11 +676,38 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
 
           <Card style={{ marginBottom: '1.5rem' }}>
             <CardHeader>
-              <CardTitle style={{ fontSize: '1rem' }}>Tendencia Temporal de Cumplimiento</CardTitle>
-              <CardDescription>Evolución cronológica del porcentaje de cumplimiento general</CardDescription>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <div>
+                  <CardTitle style={{ fontSize: '1rem' }}>Tendencia Temporal de Cumplimiento</CardTitle>
+                  <CardDescription>Evolución cronológica del porcentaje de cumplimiento general</CardDescription>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExportGraficoModal({
+                      titulo: 'Tendencia Temporal de Cumplimiento',
+                      nombreArchivo: `tendencia_cumplimiento_${desde}_a_${hasta}`,
+                      graficos: [
+                        {
+                          id: 'cumplimiento-tendencia',
+                          titulo: 'Tendencia Temporal de Cumplimiento',
+                          subtitulo: 'Evolución cronológica del porcentaje de cumplimiento general',
+                          filtros: obtenerResumenFiltros(),
+                          contenedor: graficoTendenciaRef.current,
+                        },
+                      ],
+                    })
+                  }
+                  className="btn-cancelar"
+                  style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  title="Exportar gráfico en PNG, JPEG o PDF"
+                >
+                  <ExportIcon size={14} /> Exportar gráfico
+                </button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div style={{ width: '100%', height: 260 }}>
+              <div style={{ width: '100%', height: 260 }} ref={graficoTendenciaRef}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={datos?.tendencia_temporal || []} margin={{ top: 12, right: 16, left: 0, bottom: 20 }}>
                     <defs>
@@ -612,11 +741,41 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
           >
             <Card>
               <CardHeader>
-                <CardTitle style={{ fontSize: '1rem' }}>Comparativa por Sector Físico</CardTitle>
-                <CardDescription>Porcentaje de cumplimiento en cada sector de la planta</CardDescription>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                  <div>
+                    <CardTitle style={{ fontSize: '1rem' }}>Comparativa por Sector Físico</CardTitle>
+                    <CardDescription>Porcentaje de cumplimiento en cada sector de la planta</CardDescription>
+                  </div>
+                  {(datos?.desglose_por_sector?.length ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExportGraficoModal({
+                          titulo: 'Comparativa por Sector Físico',
+                          nombreArchivo: `cumplimiento_por_sector_${desde}_a_${hasta}`,
+                          graficos: [
+                            {
+                              id: 'cumplimiento-sector',
+                              titulo: 'Comparativa por Sector Físico',
+                              subtitulo: 'Porcentaje de cumplimiento en cada sector de la planta',
+                              filtros: obtenerResumenFiltros(),
+                              contenedor: graficoSectorRef.current,
+                              leyenda: leyendaCumplimiento,
+                            },
+                          ],
+                        })
+                      }
+                      className="btn-cancelar"
+                      style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                      title="Exportar gráfico en PNG, JPEG o PDF"
+                    >
+                      <ExportIcon size={14} /> Exportar gráfico
+                    </button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                <div style={{ width: '100%', height: 260 }}>
+                <div style={{ width: '100%', height: 260 }} ref={graficoSectorRef}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={datos?.desglose_por_sector || []} layout="vertical" margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
@@ -643,11 +802,41 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
 
             <Card>
               <CardHeader>
-                <CardTitle style={{ fontSize: '1rem' }}>Comparativa por Equipo</CardTitle>
-                <CardDescription>Identificación de equipos de producción críticos</CardDescription>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                  <div>
+                    <CardTitle style={{ fontSize: '1rem' }}>Comparativa por Equipo</CardTitle>
+                    <CardDescription>Identificación de equipos de producción críticos</CardDescription>
+                  </div>
+                  {(datos?.desglose_por_equipo?.length ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExportGraficoModal({
+                          titulo: 'Comparativa por Equipo',
+                          nombreArchivo: `cumplimiento_por_equipo_${desde}_a_${hasta}`,
+                          graficos: [
+                            {
+                              id: 'cumplimiento-equipo',
+                              titulo: 'Comparativa por Equipo',
+                              subtitulo: 'Identificación de equipos de producción críticos',
+                              filtros: obtenerResumenFiltros(),
+                              contenedor: graficoEquipoRef.current,
+                              leyenda: leyendaCumplimiento,
+                            },
+                          ],
+                        })
+                      }
+                      className="btn-cancelar"
+                      style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                      title="Exportar gráfico en PNG, JPEG o PDF"
+                    >
+                      <ExportIcon size={14} /> Exportar gráfico
+                    </button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                <div style={{ width: '100%', height: 260 }}>
+                <div style={{ width: '100%', height: 260 }} ref={graficoEquipoRef}>
                   {datos?.desglose_por_equipo && datos.desglose_por_equipo.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={datos.desglose_por_equipo} layout="vertical" margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
@@ -781,6 +970,16 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
         loading={exportando}
         onConfirm={ejecutarExportacion}
         onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ConfirmExportGraficoDialog
+        open={Boolean(exportGraficoModal)}
+        tituloGrafico={exportGraficoModal?.titulo || ''}
+        cantidadGraficos={exportGraficoModal?.graficos.length || 1}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportandoGrafico}
+        onConfirm={ejecutarExportacionGrafico}
+        onCancel={() => setExportGraficoModal(null)}
       />
 
       <ErrorAlertDialog
