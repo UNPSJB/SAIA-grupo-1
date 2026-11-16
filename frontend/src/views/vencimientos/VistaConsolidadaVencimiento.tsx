@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -11,8 +11,15 @@ import {
 } from 'recharts';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
 import { descargarPDF } from '../../utils/exportarPdf';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
 import { ExportIcon } from '../../components/icons/ExportIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
@@ -64,6 +71,14 @@ const ETIQUETA_ESTADO: Record<EstadoVencimiento, string> = {
   vigente: '✓ Vigente',
 };
 
+const ETIQUETA_RANGO_AGING: Record<string, string> = {
+  vencidos: 'Vencidos',
+  menos7: '< 7 días',
+  de8a15: '8 a 15 días',
+  de16a30: '16 a 30 días',
+  mas30: '> 30 días',
+};
+
 const formatearFecha = (fecha: string): string => {
   const [anio, mes, dia] = fecha.slice(0, 10).split('-');
   return `${dia}/${mes}/${anio}`;
@@ -90,6 +105,15 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
+
+  const graficoAgingRef = useRef<HTMLDivElement | null>(null);
+  const [exportGraficoModal, setExportGraficoModal] = useState<{
+    titulo: string;
+    nombreArchivo: string;
+    graficos: ConfiguracionGraficoExportar[];
+  } | null>(null);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -219,7 +243,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
 
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(
+      setErrorExportDialog(
         err instanceof Error
           ? err.message
           : `Error al exportar los vencimientos consolidados a ${formato.toUpperCase()}.`
@@ -229,13 +253,62 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
     }
   };
 
-  const obtenerResumenFiltros = () => {
+  const obtenerResumenFiltros = (incluirRangoAging = true) => {
     const partes: string[] = [];
     if (filtro) partes.push(`Origen: ${ETIQUETA_ORIGEN[filtro]}`);
     if (filtroEstado) partes.push(`Estado: ${ETIQUETA_ESTADO[filtroEstado]}`);
+    if (incluirRangoAging && rangoAgingSeleccionado) {
+      partes.push(`Rango Aging: ${ETIQUETA_RANGO_AGING[rangoAgingSeleccionado] || rangoAgingSeleccionado}`);
+    }
     if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
     return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
   };
+
+  const abrirExportacionGraficoAging = () => {
+    if (!graficoAgingRef.current) return;
+    setExportGraficoModal({
+      titulo: 'Aging de Vencimientos (Criterio FEFO/FIFO)',
+      nombreArchivo: `aging_vencimientos_${filtro || 'consolidado'}`,
+      graficos: [
+        {
+          id: 'vencimientos-aging',
+          titulo: 'Aging de Vencimientos (Criterio FEFO/FIFO)',
+          subtitulo: 'Distribución de criticidad temporal por rangos de vida útil restante',
+          filtros: obtenerResumenFiltros(true),
+          contenedor: graficoAgingRef.current,
+          leyenda: datosAging.map((item) => ({
+            etiqueta: `${item.rango} (${item.cantidad})`,
+            color: item.color,
+          })),
+        },
+      ],
+    });
+  };
+
+  const ejecutarExportacionGrafico = async (formato: FormatoGrafico) => {
+    if (!exportGraficoModal) return;
+    try {
+      setExportandoGrafico(true);
+      await exportarGraficos(
+        exportGraficoModal.graficos,
+        formato,
+        exportGraficoModal.nombreArchivo,
+        'Reporte Gráfico - Control Consolidado de Vencimientos'
+      );
+      setExportGraficoModal(null);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error ? err.message : 'Error al exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
+
+  const hayDatosEnGrafico = useMemo(
+    () => datosAging.some((d) => d.cantidad > 0),
+    [datosAging]
+  );
 
   const {
     itemsPaginados: filasPaginadas,
@@ -270,15 +343,15 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
               >
                 Solo Personal (con archivo)
               </button>
-            {onVerSoloDocumentos && (
-              <button
-                type="button"
-                className="venc-tab"
-                onClick={onVerSoloDocumentos}
-              >
-                Solo Documentos
-              </button>
-            )}
+              {onVerSoloDocumentos && (
+                <button
+                  type="button"
+                  className="venc-tab"
+                  onClick={onVerSoloDocumentos}
+                >
+                  Solo Documentos
+                </button>
+              )}
             </div>
           )}
 
@@ -322,19 +395,39 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
               </span>
             </div>
           </div>
-          {rangoAgingSeleccionado && (
-            <button
-              type="button"
-              className="btn-secundario"
-              style={{ padding: '3px 10px', fontSize: '11px' }}
-              onClick={() => setRangoAgingSeleccionado(null)}
-            >
-              Restablecer filtro de rango
-            </button>
-          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {rangoAgingSeleccionado && (
+              <button
+                type="button"
+                className="btn-secundario"
+                style={{ padding: '4px 10px', fontSize: '12px' }}
+                onClick={() => setRangoAgingSeleccionado(null)}
+              >
+                Restablecer filtro de rango
+              </button>
+            )}
+            {!cargando && hayDatosEnGrafico && (
+              <button
+                type="button"
+                onClick={abrirExportacionGraficoAging}
+                className="btn-cancelar"
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+                title="Exportar gráfico de aging en PNG, JPEG o PDF"
+              >
+                <ExportIcon size={14} /> Exportar gráfico
+              </button>
+            )}
+          </div>
         </div>
 
-        <div style={{ width: '100%', height: 200 }}>
+        <div ref={graficoAgingRef} style={{ width: '100%', height: 200 }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart data={datosAging} margin={{ top: 10, right: 16, left: -10, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-borde, #334155)" vertical={false} />
@@ -484,10 +577,26 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
       <ConfirmExportDialog
         open={dialogExportarAbierto}
         totalRegistros={filasVisibles.length}
-        filtrosAplicados={obtenerResumenFiltros()}
+        filtrosAplicados={obtenerResumenFiltros(false)}
         loading={exportando}
         onConfirm={ejecutarExportacion}
         onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ConfirmExportGraficoDialog
+        open={Boolean(exportGraficoModal)}
+        tituloGrafico={exportGraficoModal?.titulo || ''}
+        filtrosAplicados={obtenerResumenFiltros(true)}
+        loading={exportandoGrafico}
+        onConfirm={ejecutarExportacionGrafico}
+        onCancel={() => setExportGraficoModal(null)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportDialog)}
+        title="No se pudo completar la exportación"
+        description={errorExportDialog || ''}
+        onClose={() => setErrorExportDialog(null)}
       />
     </div>
   );
