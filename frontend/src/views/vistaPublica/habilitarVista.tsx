@@ -72,7 +72,13 @@ export default function ActivarVista_Publica({ onSuccess, onCancel }: ActivarVis
         texto: `${window.location.origin}/vista-publica?verGrafico=${config.verGrafico}&verAcercaDeNosotros=${config.verAcercaDeNosotros}`,
         ver_grafico: config.verGrafico,
         verAcercaDeNosotros: config.verAcercaDeNosotros,
-        verProductos: config.verProductos
+        verProductos: config.verProductos,
+        ver_dias_sin_incidentes: config.verDiasSinIncidentes,
+        ver_total_lotes: config.verTotalLotes,
+        ver_volumen_fabricado: config.verVolumenFabricado,
+        ver_producto_mas_elaborado: config.verProductoMasElaborado,
+        ver_grafico_totales_productos: config.verGraficoTotalesProductos,
+        ver_grafico_red_arana: config.verGraficoRedArana
     };
 
     const modulosBase = 21 + ((payload.version - 1) * 4);
@@ -217,6 +223,84 @@ export default function ActivarVista_Publica({ onSuccess, onCancel }: ActivarVis
                         />
                         <label htmlFor="switch-grafico" className="config-switch-label" onClick={() => actualizarConfig('verGrafico', !config.verGrafico)}>
                             Mostrar Gráfico de Tareas
+                        </label>
+                    </div>
+
+                    <div className="config-switch-item">
+                        <input 
+                            type="checkbox" 
+                            className="switch-input"
+                            id="switch-grafico-red-arana"
+                            checked={config.verGraficoRedArana} 
+                            onChange={(e) => actualizarConfig('verGraficoRedArana', e.target.checked)} 
+                        />
+                        <label htmlFor="switch-grafico-red-arana" className="config-switch-label" onClick={() => actualizarConfig('verGraficoRedArana', !config.verGraficoRedArana)}>
+                            Mostrar Red de Araña (Limpieza)
+                        </label>
+                    </div>
+
+                    <div className="config-switch-item">
+                        <input 
+                            type="checkbox" 
+                            className="switch-input"
+                            id="switch-grafico-totales"
+                            checked={config.verGraficoTotalesProductos} 
+                            onChange={(e) => actualizarConfig('verGraficoTotalesProductos', e.target.checked)} 
+                        />
+                        <label htmlFor="switch-grafico-totales" className="config-switch-label" onClick={() => actualizarConfig('verGraficoTotalesProductos', !config.verGraficoTotalesProductos)}>
+                            Mostrar Totales de Productos Elaborados
+                        </label>
+                    </div>
+
+                    <div className="config-switch-item">
+                        <input 
+                            type="checkbox" 
+                            className="switch-input"
+                            id="switch-dias-sin-incidentes"
+                            checked={config.verDiasSinIncidentes} 
+                            onChange={(e) => actualizarConfig('verDiasSinIncidentes', e.target.checked)} 
+                        />
+                        <label htmlFor="switch-dias-sin-incidentes" className="config-switch-label" onClick={() => actualizarConfig('verDiasSinIncidentes', !config.verDiasSinIncidentes)}>
+                            Tarjeta: Días sin incidentes
+                        </label>
+                    </div>
+
+                    <div className="config-switch-item">
+                        <input 
+                            type="checkbox" 
+                            className="switch-input"
+                            id="switch-total-lotes"
+                            checked={config.verTotalLotes} 
+                            onChange={(e) => actualizarConfig('verTotalLotes', e.target.checked)} 
+                        />
+                        <label htmlFor="switch-total-lotes" className="config-switch-label" onClick={() => actualizarConfig('verTotalLotes', !config.verTotalLotes)}>
+                            Tarjeta: Total de lotes
+                        </label>
+                    </div>
+
+                    <div className="config-switch-item">
+                        <input 
+                            type="checkbox" 
+                            className="switch-input"
+                            id="switch-volumen-fabricado"
+                            checked={config.verVolumenFabricado} 
+                            onChange={(e) => actualizarConfig('verVolumenFabricado', e.target.checked)} 
+                        />
+                        <label htmlFor="switch-volumen-fabricado" className="config-switch-label" onClick={() => actualizarConfig('verVolumenFabricado', !config.verVolumenFabricado)}>
+                            Tarjeta: Volumen fabricado
+                        </label>
+                    </div>
+
+                    <div className="config-switch-item">
+                        <input 
+                            type="checkbox" 
+                            className="switch-input"
+                            id="switch-producto-lider"
+                            checked={config.verProductoMasElaborado} 
+                            onChange={(e) => actualizarConfig('verProductoMasElaborado', e.target.checked)} 
+                        />
+                        <label htmlFor="switch-producto-lider" className="config-switch-label" onClick={() => actualizarConfig('verProductoMasElaborado', !config.verProductoMasElaborado)}>
+                            Tarjeta: Producto más elaborado
                         </label>
                     </div>
 

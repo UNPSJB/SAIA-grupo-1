@@ -1,13 +1,10 @@
-import logging
-from fastapi.responses import RedirectResponse
-from typing_extensions import Buffer
-from fastapi import APIRouter, Depends, HTTPException, Response
 from typing import List
-from src.autenticacion.dependencies import requiere_admin
-from src.producto import schemas as producto_schemas
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from src.autenticacion.dependencies import requiere_admin
 from src.database import get_db
-from src.indentificadorDeQR import services,schemas
+from src.indentificadorDeQR import schemas, services
+from src.producto import schemas as producto_schemas
 
 
 router=APIRouter(prefix="/identificadorQR",tags=["identificadorQR"])
@@ -49,3 +46,8 @@ async def actualizar_estado_productos(identificador_id: str, ident_update: schem
 @router.get("/{identificador_id}/productos", response_model=List[producto_schemas.ProductoPublico])
 def listar_productos_publicos(identificador_id: str, db: Session = Depends(get_db)):
     return services.listar_productos_publicos(db, identificador_id)
+
+
+@router.get("/{identificador_id}/estadisticas")
+def obtener_estadisticas_publicas(identificador_id: str, db: Session = Depends(get_db)):
+    return services.obtener_estadisticas_publicas(db, identificador_id)

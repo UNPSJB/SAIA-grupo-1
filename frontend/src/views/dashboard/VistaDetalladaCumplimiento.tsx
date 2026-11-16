@@ -80,8 +80,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
   const [datos, setDatos] = useState<CumplimientoDetalladoResponse | null>(null);
   const [cargando, setCargando] = useState<boolean>(true);
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
-  const [modoRadarCumplimiento, setModoRadarCumplimiento] = useState<'sector' | 'turno'>('sector');
-  const [pestañaCumplimiento, setPestañaCumplimiento] = useState<'radar' | 'tendencia' | 'sector' | 'equipo' | 'turno'>('radar');
+  const [pestañaCumplimiento, setPestañaCumplimiento] = useState<'radar' | 'tendencia' | 'sector' | 'equipo'>('radar');
 
   const [paginaActual, setPaginaActual] = useState<number>(1);
   const itemsPorPagina = 10;
@@ -242,23 +241,14 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
   );
 
   const datosRadarCumplimiento = useMemo(() => {
-    if (modoRadarCumplimiento === 'sector') {
-      return (datos?.desglose_por_sector || []).map((s) => ({
-        dimension: s.nombre,
-        porcentaje: s.porcentaje,
-        meta: 80,
-        tareas_completadas: s.tareas_completadas,
-        total_tareas: s.total_tareas,
-      }));
-    }
-    return (datos?.desglose_por_turno || []).map((t) => ({
-      dimension: t.nombre,
-      porcentaje: t.porcentaje,
+    return (datos?.desglose_por_sector || []).map((s) => ({
+      dimension: s.nombre,
+      porcentaje: s.porcentaje,
       meta: 80,
-      tareas_completadas: t.tareas_completadas,
-      total_tareas: t.total_tareas,
+      tareas_completadas: s.tareas_completadas,
+      total_tareas: s.total_tareas,
     }));
-  }, [datos, modoRadarCumplimiento]);
+  }, [datos]);
 
   const hayDatos = items.length > 0;
   const kpis = datos?.kpis;
@@ -596,7 +586,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                   <div>
                     <CardTitle style={{ fontSize: '1.1rem' }}>Análisis Integral de Cumplimiento POES y Limpieza</CardTitle>
                     <CardDescription>
-                      Evaluación multidimensional, evolución temporal y comparativas detalladas por sector, equipo y turno
+                      Evaluación multidimensional, evolución temporal y comparativas detalladas por sector y equipo
                     </CardDescription>
                   </div>
                 </div>
@@ -682,69 +672,13 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>precision_manufacturing</span>
                     Por Equipo
                   </button>
-                  <button
-                    type="button"
-                    style={{
-                      padding: '4px 12px',
-                      fontSize: '0.8rem',
-                      borderRadius: '6px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      background: pestañaCumplimiento === 'turno' ? 'var(--color-primario, #3b82f6)' : 'transparent',
-                      color: pestañaCumplimiento === 'turno' ? '#ffffff' : 'var(--text-sec)',
-                      fontWeight: pestañaCumplimiento === 'turno' ? 600 : 400,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                    }}
-                    onClick={() => setPestañaCumplimiento('turno')}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>schedule</span>
-                    Por Turno
-                  </button>
+
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               {pestañaCumplimiento === 'radar' && (
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-                    <div style={{ display: 'inline-flex', borderRadius: '6px', border: '1px solid var(--border)', padding: '2px', background: 'var(--code-bg)' }}>
-                      <button
-                        type="button"
-                        style={{
-                          padding: '3px 10px',
-                          fontSize: '0.75rem',
-                          borderRadius: '4px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          background: modoRadarCumplimiento === 'sector' ? 'var(--color-primario, #3b82f6)' : 'transparent',
-                          color: modoRadarCumplimiento === 'sector' ? '#ffffff' : 'var(--text-sec)',
-                          fontWeight: modoRadarCumplimiento === 'sector' ? 600 : 400,
-                        }}
-                        onClick={() => setModoRadarCumplimiento('sector')}
-                      >
-                        Por Sector Físico
-                      </button>
-                      <button
-                        type="button"
-                        style={{
-                          padding: '3px 10px',
-                          fontSize: '0.75rem',
-                          borderRadius: '4px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          background: modoRadarCumplimiento === 'turno' ? 'var(--color-primario, #3b82f6)' : 'transparent',
-                          color: modoRadarCumplimiento === 'turno' ? '#ffffff' : 'var(--text-sec)',
-                          fontWeight: modoRadarCumplimiento === 'turno' ? 600 : 400,
-                        }}
-                        onClick={() => setModoRadarCumplimiento('turno')}
-                      >
-                        Por Turno de Trabajo
-                      </button>
-                    </div>
-                  </div>
-
                   {datosRadarCumplimiento.length === 0 ? (
                     <div style={{ height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
                       Sin datos suficientes para proyectar la red de cumplimiento en este rango.
@@ -825,7 +759,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                     <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
                       <strong style={{ color: 'var(--text-h)' }}>Diagnóstico POES: </strong>
                       <span>
-                        La red radial permite detectar asimetrías operativas. Los sectores o turnos que se sitúan por debajo del polígono azul (80%) requieren revisión de protocolos de saneamiento y refuerzo de supervisión en planta.
+                        La red radial permite detectar asimetrías operativas. Los sectores que se sitúan por debajo del polígono azul (80%) requieren revisión de protocolos de saneamiento y refuerzo de supervisión en planta.
                       </span>
                     </div>
                   </div>
@@ -1025,60 +959,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                 </div>
               )}
 
-              {pestañaCumplimiento === 'turno' && (
-                <div>
-                  <div style={{ width: '100%', height: 320 }}>
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <BarChart data={datos?.desglose_por_turno || []} layout="vertical" margin={{ top: 8, right: 30, left: 30, bottom: 8 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                        <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={12} unit="%" />
-                        <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={12} tickLine={false} width={110} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)', borderRadius: '8px' }}
-                          formatter={(val, _, item) => [
-                            `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
-                            'Cumplimiento',
-                          ]}
-                        />
-                        <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 11, fontWeight: 600 }} />
-                        <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]}>
-                          {(datos?.desglose_por_turno || []).map((entry, index) => (
-                            <Cell key={`turno-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
 
-                  <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
-                    {(datos?.desglose_por_turno || []).map((t) => (
-                      <div
-                        key={`turno-card-${t.id}`}
-                        style={{
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--color-borde)',
-                          backgroundColor: 'var(--color-superficie)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-texto)' }}>{t.nombre}</span>
-                          <Badge variant={obtenerBadgeVariante(t.porcentaje)} style={{ fontSize: '11px' }}>
-                            {t.porcentaje >= 80 ? 'Óptimo' : t.porcentaje >= 50 ? 'Regular' : 'Crítico'} ({t.porcentaje}%)
-                          </Badge>
-                        </div>
-                        <div style={{ height: '6px', backgroundColor: 'var(--color-fondo)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
-                          <div style={{ height: '100%', width: `${t.porcentaje}%`, backgroundColor: obtenerColorPorcentaje(t.porcentaje), borderRadius: '3px' }} />
-                        </div>
-                        <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>{t.tareas_completadas} completadas</span>
-                          <span>{t.total_tareas} tareas</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 

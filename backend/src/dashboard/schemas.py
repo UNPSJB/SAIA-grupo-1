@@ -133,7 +133,6 @@ class ItemDetalleChecklist(BaseModel):
     sector_o_equipo: str
     tipo_objeto: str
     responsable: str
-    turno: str
     estado: str
     hora_fin: Optional[str] = None
 
@@ -147,19 +146,15 @@ class KpisCumplimientoDetallado(BaseModel):
     porcentaje_sector_menor: Optional[float] = None
     equipo_menor_cumplimiento: Optional[str] = None
     porcentaje_equipo_menor: Optional[float] = None
-    turno_critico: Optional[str] = None
-    porcentaje_turno_critico: Optional[float] = None
 
 class CumplimientoDetalladoResponse(BaseModel):
     desde: Optional[date] = None
     hasta: Optional[date] = None
     sector_id: Optional[int] = None
-    turno: Optional[str] = None
     kpis: KpisCumplimientoDetallado
     tendencia_temporal: List[PuntoTendenciaCumplimiento]
     desglose_por_sector: List[CumplimientoDesgloseItem]
     desglose_por_equipo: List[CumplimientoDesgloseItem]
-    desglose_por_turno: List[CumplimientoDesgloseItem]
     items_detalle: List[ItemDetalleChecklist]
 
 class PuntoProduccion(BaseModel):

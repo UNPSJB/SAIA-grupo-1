@@ -17,6 +17,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
+  type TooltipValueType,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -161,6 +162,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
   const [errorStats, setErrorStats] = useState<string | null>(null);
 
   const [incidentesLista, setIncidentesLista] = useState<Incidente[]>([]);
+  const [incidentesTotales, setIncidentesTotales] = useState<Incidente[]>([]);
   const [cargandoIncidentes, setCargandoIncidentes] = useState(false);
   const [errorIncidentes, setErrorIncidentes] = useState<string | null>(null);
 
@@ -241,6 +243,22 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
     void cargarIncidentes();
   }, [cargarIncidentes]);
 
+  const cargarIncidentesTotales = useCallback(async () => {
+    try {
+      const res = await apiFetch('/incidentes/');
+      if (res.ok) {
+        const data: Incidente[] = await res.json();
+        setIncidentesTotales(data);
+      }
+    } catch {
+      setIncidentesTotales([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void cargarIncidentesTotales();
+  }, [cargarIncidentesTotales]);
+
   const aplicarAtajo = (dias: number) => {
     const fin = new Date();
     const inicio = restarDias(fin, dias);
@@ -284,17 +302,18 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
     const validos = datosGrafico.filter((it) => it.cantidad > 0);
     const ordenados = [...validos].sort((a, b) => b.cantidad - a.cantidad);
     const total = ordenados.reduce((acc, it) => acc + it.cantidad, 0);
-    let acumulado = 0;
-    return ordenados.map((item) => {
-      acumulado += item.cantidad;
-      const pctAcumulado = total > 0 ? Math.round((acumulado / total) * 1000) / 10 : 0;
-      return {
+    return ordenados.reduce<Array<(typeof ordenados)[number] & { acumulado: number; pctAcumulado: number; esCausaVital: boolean }>>((acc, item) => {
+      const prevAcum = acc.length > 0 ? acc[acc.length - 1].acumulado : 0;
+      const nuevoAcumulado = prevAcum + item.cantidad;
+      const pctAcumulado = total > 0 ? Math.round((nuevoAcumulado / total) * 1000) / 10 : 0;
+      acc.push({
         ...item,
-        acumulado,
+        acumulado: nuevoAcumulado,
         pctAcumulado,
-        esCausaVital: (acumulado - item.cantidad) / total < 0.8 || pctAcumulado <= 80,
-      };
-    });
+        esCausaVital: (nuevoAcumulado - item.cantidad) / total < 0.8 || pctAcumulado <= 80,
+      });
+      return acc;
+    }, []);
   }, [datosGrafico]);
 
   const datosEvolucionTemporal = useMemo(() => {
@@ -482,12 +501,28 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
     const masFrecuente = items.length > 0 && items[0].cantidad > 0 ? items[0] : null;
     const categoriasConIncidentes = items.filter((i) => i.cantidad > 0).length;
 
+    let diasDesdeUltimo: number | null = null;
+    if (incidentesTotales && incidentesTotales.length > 0) {
+      const timestamps = incidentesTotales
+        .map((inc) => new Date(inc.creado_el).getTime())
+        .filter((ts) => !isNaN(ts));
+      if (timestamps.length > 0) {
+        const fechaUltimo = new Date(Math.max(...timestamps));
+        fechaUltimo.setHours(0, 0, 0, 0);
+        const hoySinHora = new Date();
+        hoySinHora.setHours(0, 0, 0, 0);
+        const diff = Math.round((hoySinHora.getTime() - fechaUltimo.getTime()) / (1000 * 60 * 60 * 24));
+        diasDesdeUltimo = Math.max(0, diff);
+      }
+    }
+
     return {
       total,
       masFrecuente,
       categoriasConIncidentes,
+      diasDesdeUltimo,
     };
-  }, [estadisticas]);
+  }, [estadisticas, incidentesTotales]);
 
   const incidentesFiltrados = useMemo(() => {
     const term = busquedaIncidente.toLowerCase().trim();
@@ -776,13 +811,17 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
         <Card>
           <CardContent style={{ padding: '16px' }}>
             <span style={{ fontSize: '12px', color: 'var(--color-texto-sec)', fontWeight: 500 }}>
-              Filtro Activo
+              Días desde el último incidente
             </span>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: categoriaSeleccionada ? (COLORES_TIPO[categoriaSeleccionada] || 'var(--text-h)') : 'var(--text-h)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {categoriaSeleccionada ? (ETIQUETAS_TIPO[categoriaSeleccionada] || categoriaSeleccionada) : 'Todas las categorías'}
+            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-h)', marginTop: '4px' }}>
+              {kpis.diasDesdeUltimo !== null ? kpis.diasDesdeUltimo : '—'}
             </div>
             <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', marginTop: '4px' }}>
-              {categoriaSeleccionada ? `${incidentesLista.length} incidentes filtrados` : 'clic en una barra para filtrar'}
+              {kpis.diasDesdeUltimo !== null
+                ? kpis.diasDesdeUltimo === 1
+                  ? 'día sin incidentes'
+                  : 'días sin incidentes'
+                : 'sin incidentes registrados'}
             </div>
           </CardContent>
         </Card>
@@ -974,9 +1013,9 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                         borderRadius: '8px',
                         color: 'var(--color-texto)',
                       }}
-                      formatter={(valor: any, nombre: any) => [
-                        `${valor} ${Number(valor) === 1 ? 'incidente' : 'incidentes'}`,
-                        nombre,
+                      formatter={(valor: TooltipValueType | undefined, nombre: number | string | undefined) => [
+                        `${valor ?? 0} ${Number(valor) === 1 ? 'incidente' : 'incidentes'}`,
+                        String(nombre ?? ''),
                       ]}
                       labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
                     />
@@ -1031,9 +1070,9 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                         borderRadius: '8px',
                         color: 'var(--color-texto)',
                       }}
-                      formatter={(valor: any, nombre: any) => [
-                        `${valor} ${Number(valor) === 1 ? 'incidente' : 'incidentes'}`,
-                        nombre,
+                      formatter={(valor: TooltipValueType | undefined, nombre: number | string | undefined) => [
+                        `${valor ?? 0} ${Number(valor) === 1 ? 'incidente' : 'incidentes'}`,
+                        String(nombre ?? ''),
                       ]}
                       labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
                     />
@@ -1162,9 +1201,9 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                           borderRadius: '8px',
                           color: 'var(--color-texto, #f8fafc)',
                         }}
-                        formatter={(val: any, _, item: any) => [
-                          `${val} ${val === 1 ? 'incidente' : 'incidentes'} (${item.payload.porcentaje}%)`,
-                          item.payload.nombre,
+                        formatter={(val: TooltipValueType | undefined, _, item: { payload?: { porcentaje?: number; nombre?: string } }) => [
+                          `${val ?? 0} ${Number(val) === 1 ? 'incidente' : 'incidentes'} (${item?.payload?.porcentaje ?? 0}%)`,
+                          item?.payload?.nombre ?? '',
                         ]}
                       />
                       <Legend
@@ -1241,11 +1280,11 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                           borderRadius: '8px',
                           color: 'var(--color-texto, #f8fafc)',
                         }}
-                        formatter={(val: any, nombre: any, item: any) => {
+                        formatter={(val: TooltipValueType | undefined, nombre: number | string | undefined, item: { payload?: { porcentaje?: number } }) => {
                           if (nombre === '% Acumulado') {
-                            return [`${val}%`, nombre];
+                            return [`${val ?? 0}%`, String(nombre)];
                           }
-                          return [`${val} (${item?.payload?.porcentaje || 0}%)`, 'Frecuencia'];
+                          return [`${val ?? 0} (${item?.payload?.porcentaje || 0}%)`, 'Frecuencia'];
                         }}
                         labelFormatter={(_, items) => items?.[0]?.payload?.nombre || ''}
                       />
@@ -1323,11 +1362,6 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                         dataKey="cantidad"
                         radius={[6, 6, 0, 0]}
                         cursor="pointer"
-                        onClick={(entry: any) => {
-                          if (entry && entry.tipo) {
-                            setCategoriaSeleccionada((prev) => (prev === entry.tipo ? null : entry.tipo));
-                          }
-                        }}
                       >
                         {datosGrafico.map((entry) => (
                           <Cell
@@ -1336,6 +1370,9 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                             opacity={categoriaSeleccionada && categoriaSeleccionada !== entry.tipo ? 0.35 : 1}
                             stroke={categoriaSeleccionada === entry.tipo ? 'var(--color-texto)' : 'none'}
                             strokeWidth={2}
+                            onClick={() => {
+                              setCategoriaSeleccionada((prev) => (prev === entry.tipo ? null : entry.tipo));
+                            }}
                           />
                         ))}
                       </Bar>

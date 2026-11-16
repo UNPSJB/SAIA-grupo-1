@@ -34,8 +34,20 @@ def CrearCodigoQr(db:Session,quickResponse:schemas.QRCodeCreate,nuevo_identifica
 
     img=qr.make_image(fill_color=quickResponse.color_fill,back_color=quickResponse.color_back)
     buffer = io.BytesIO()  #creo un buffer para convertir la img en bytes
-    img.save(buffer,format="PNG") #guarda la img en formato png en el buffer
-    img_bytes= buffer.getvalue() #el getvalue extrae la imagen guardada en el buffer (lo extrae en forma de bytes)
+    img.save(buffer, "PNG")
+    img_bytes= buffer.getvalue()
 
     return img_bytes
+
+
+def MostrarQR() -> schemas.QRCode:
+    return schemas.QRCode(
+        version=1,
+        box_size=10,
+        boder=4,
+        color_fill="black",
+        color_back="white",
+        texto="",
+        identificadorUnico="",
+    )
 
