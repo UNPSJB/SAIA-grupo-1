@@ -4,6 +4,7 @@ import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 import { Badge } from "../../components/ui/badge";
 import { DetalleDocumento } from "../documentos/verDetalle";
+import { RotuladoProducto } from "../rotuladoFrontal/RotuladoProducto";
 
 interface DetalleProductoProps {
   onCancel?: () => void;
@@ -153,6 +154,8 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({ onCancel, prod
               </Badge>
             </div>
           </div>
+
+          <RotuladoProducto productoId={producto.id} unidadMedida={producto.unidadMedida} />
 
           <div className="form-acciones">
             <button type="button" className="btn-cancelar" onClick={onCancel}>

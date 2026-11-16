@@ -26,6 +26,11 @@ class BadRequest(DetailedHTTPException):
     DETAIL = "Solicitud incorrecta"
 
 
+class Conflict(DetailedHTTPException):
+    STATUS_CODE = status.HTTP_409_CONFLICT
+    DETAIL = "Conflicto con el estado actual del recurso"
+
+
 class UnprocessableContent(DetailedHTTPException):
     STATUS_CODE = status.HTTP_422_UNPROCESSABLE_CONTENT
     DETAIL = "Contenido no procesable"
