@@ -11,8 +11,85 @@ from .exceptions import (
     InsumoQuimicoDuplicateNameException,
 )
 from src.unidadesMedida.services import resolver_unidad_medida
+from datetime import date, datetime
 
-def obtener_para_csv(
+def obtener_consumo_historico_para_exportar(
+    db: Session,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    insumo_id: Optional[int] = None,
+    agrupacion_tiempo: str = "dia",
+    unidad: Optional[str] = None,
+    busqueda: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    respuesta = obtener_historico_consumo(
+        db=db,
+        desde=desde,
+        hasta=hasta,
+        insumo_id=insumo_id,
+        agrupacion_tiempo=agrupacion_tiempo,
+        unidad=unidad,
+    )
+
+    term = busqueda.lower().strip() if busqueda else None
+    filas: List[Dict[str, Any]] = []
+
+    for m in respuesta.movimientos:
+        insumo_nombre = m.insumo_nombre or ""
+        responsable_nombre = m.responsable_nombre or ""
+        tarea_nombre = m.tarea_nombre or ""
+        plan_nombre = m.plan_nombre or ""
+        sector = m.sector_o_equipo or ""
+        proveedor = m.proveedor or ""
+        tipo_val = m.tipo.value if hasattr(m.tipo, "value") else str(m.tipo or "")
+
+        if term:
+            coincide = (
+                term in insumo_nombre.lower()
+                or term in responsable_nombre.lower()
+                or term in tarea_nombre.lower()
+                or term in plan_nombre.lower()
+                or term in sector.lower()
+                or term in proveedor.lower()
+                or term in tipo_val.lower()
+            )
+            if not coincide:
+                continue
+
+        fecha_raw = getattr(m, "fecha_hora", None) or getattr(m, "fecha", None)
+        if isinstance(fecha_raw, datetime):
+            fecha_str = fecha_raw.strftime("%d/%m/%Y %H:%M")
+        elif isinstance(fecha_raw, date):
+            fecha_str = fecha_raw.strftime("%d/%m/%Y")
+        elif isinstance(fecha_raw, str) and fecha_raw:
+            try:
+                fecha_str = datetime.fromisoformat(fecha_raw).strftime("%d/%m/%Y %H:%M")
+            except ValueError:
+                fecha_str = fecha_raw
+        else:
+            fecha_str = "-"
+
+        unidad_val = m.unidad.value if hasattr(m.unidad, "value") else str(m.unidad or "")
+        responsable_str = (
+            responsable_nombre
+            if responsable_nombre
+            else (f"Legajo #{m.responsable_legajo}" if getattr(m, "responsable_legajo", None) else "-")
+        )
+
+        filas.append({
+            "fecha_hora": fecha_str,
+            "insumo_nombre": insumo_nombre,
+            "tipo": tipo_val,
+            "proveedor": proveedor or "-",
+            "cantidad": f"{m.cantidad} {unidad_val}".strip(),
+            "responsable": responsable_str,
+            "tarea_plan": f"{tarea_nombre} ({plan_nombre})" if plan_nombre else tarea_nombre,
+            "sector_o_equipo": sector or "-",
+        })
+
+    return filas
+
+def obtener_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     tipo: Optional[str] = None,

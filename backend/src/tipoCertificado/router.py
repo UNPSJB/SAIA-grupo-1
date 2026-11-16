@@ -6,8 +6,33 @@ from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.tipoCertificado import schemas, services
 from src.database import get_db
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/certificados/tipos", tags=["tipos_certificados"])
+
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+async def exportar_tipos_certificados_pdf(
+    busqueda: Optional[str] = None,
+    ordenar_por: Optional[str] = "id",
+    db: Session = Depends(get_db)
+):
+  """Exporta la lista de tipos de certificados a PDF aplicando búsqueda y orden activo."""
+  datos = services.obtener_tipos_certificados_para_exportar(
+      db, busqueda=busqueda, ordenar_por=ordenar_por
+  )
+
+  columnas = {
+      "id": "ID",
+      "nombre": "Nombre del Tipo de Certificado",
+  }
+
+  return generar_respuesta_pdf(
+      datos=datos,
+      columnas=columnas,
+      titulo_reporte="Listado de Tipos de Certificados",
+      nombre_archivo="tipos_de_certificados.pdf",
+  )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 async def exportar_tipos_certificados_csv(
@@ -16,7 +41,7 @@ async def exportar_tipos_certificados_csv(
     db: Session = Depends(get_db)
 ):
   """Exporta la lista de tipos de certificados a CSV aplicando búsqueda y orden activo."""
-  datos = services.obtener_tipos_certificados_para_csv(
+  datos = services.obtener_tipos_certificados_para_exportar(
       db, busqueda=busqueda, ordenar_por=ordenar_por
   )
 

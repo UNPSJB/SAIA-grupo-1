@@ -9,6 +9,10 @@ import { useProductos } from './useProductos';
 import '../../styles/formularioAlta.css';
 import '../../styles/checklist.css';
 import '../../styles/produccion.css';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 
 interface HistorialLotesProps {
   onVerLote: (loteId: number) => void;
@@ -32,6 +36,8 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
   const [loading, setLoading] = useState(true);
   const [filtros, setFiltros] = useState<Filtros>(SIN_FILTROS);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   const {
     itemsPaginados: lotesPaginados,
@@ -103,6 +109,49 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
     setConsulta({ ...nuevos }); // copia nueva: filtrar dos veces lo mismo también vuelve a pedir
   };
 
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (consulta.producto) params.append('producto_id', consulta.producto);
+      if (consulta.desde) params.append('desde', consulta.desde);
+      if (consulta.hasta) params.append('hasta', consulta.hasta);
+
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
+
+      if (formato === 'pdf') {
+        await descargarPDF(`/lotes/exportar-pdf${query}`, 'historial_lotes.pdf');
+      } else {
+        await descargarCSV(`/lotes/exportar-csv${query}`, 'historial_lotes.csv');
+      }
+
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorDialog({
+        title: 'Error al exportar',
+        message:
+          err instanceof Error
+            ? err.message
+            : `Error al exportar el historial de lotes a ${formato.toUpperCase()}.`,
+      });
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (consulta.producto) {
+      const prod = productos.find((p) => String(p.id) === consulta.producto);
+      partes.push(`Producto: ${prod ? prod.nombre : `#${consulta.producto}`}`);
+    }
+    if (consulta.desde) partes.push(`Desde: ${formatearFecha(consulta.desde)}`);
+    if (consulta.hasta) partes.push(`Hasta: ${formatearFecha(consulta.hasta)}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const handleFiltrar = (e: React.FormEvent) => {
     e.preventDefault();
     aplicar(filtros);
@@ -128,11 +177,22 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
           <h1>Historial de lotes</h1>
           <div className="subtitulo">Producción</div>
         </div>
-        {onRegistrarClick && (
-          <button type="button" className="btn-agregar" onClick={onRegistrarClick}>
-            + Registrar lote
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <ExportIcon/> Exportar
           </button>
-        )}
+
+          {onRegistrarClick && (
+            <button type="button" className="btn-agregar" onClick={onRegistrarClick}>
+              + Registrar lote
+            </button>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleFiltrar} className="filtros-historial">
@@ -266,6 +326,15 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
         title={errorDialog?.title || ''}
         description={errorDialog?.message || ''}
         onClose={() => setErrorDialog(null)}
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={lotes.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
     </div>
   );

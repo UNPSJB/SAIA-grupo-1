@@ -26,50 +26,53 @@ from src.personal.models import Personal
 IMAGENES_DIR = Path(__file__).resolve().parent / "imagenes"
 IMAGENES_DIR.mkdir(parents=True, exist_ok=True)
 
-def obtener_incidentes_para_csv(
+def obtener_incidentes_para_exportar(
     db: Session,
     usuario: Personal,
     busqueda: Optional[str] = None,
     urgencia: Optional[str] = None,
     estado_grupo: Optional[str] = None,
-    solo_abiertos: bool = False
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    tipo: Optional[TipoIncidente] = None,
+    solo_abiertos: bool = False,
 ) -> List[Dict[str, Any]]:
-   
     if solo_abiertos:
-        abiertos_schema = listar_incidentes_abiertos(db)
-        filas_base = abiertos_schema
+        filas_base = listar_incidentes_abiertos(db)
     else:
-        filas_base = listar_incidentes(db, usuario=usuario)
+        filas_base = listar_incidentes(
+            db, usuario=usuario, desde=desde, hasta=hasta, tipo=tipo
+        )
 
     filas = []
     term = busqueda.lower().strip() if busqueda else None
 
     for inc in filas_base:
-        # Extraer atributos según provenga de IncidenteAbierto o Incidente
         inc_id = getattr(inc, "id", "")
         desc = getattr(inc, "descripcion", "") or ""
         rep_nombre = getattr(inc, "nombre_reportante", "") or ""
         legajo_str = str(getattr(inc, "reportado_por_id", "") or "")
         estado_raw = getattr(inc, "estado", "")
         estado_str = str(getattr(estado_raw, "value", estado_raw))
+        tipo_raw = getattr(inc, "tipo", None)
+        tipo_label = ETIQUETAS_TIPO.get(tipo_raw, str(getattr(tipo_raw, "value", tipo_raw or "")))
 
-        # Filtro por búsqueda
         if term:
             coincide = (
                 term in desc.lower()
                 or term in rep_nombre.lower()
                 or term in legajo_str
+                or term in tipo_label.lower()
+                or term in estado_str.lower()
             )
             if not coincide:
                 continue
 
-        # Filtro por urgencia (solo si viene desde la vista de abiertos)
         nivel_urg = getattr(inc, "nivel_urgencia", None)
         if urgencia and urgencia != "TODOS":
             if str(nivel_urg).upper() != urgencia.upper():
                 continue
 
-        # Filtro por estado del grupo (ABIERTOS / CERRADOS / TODOS)
         es_cerrado = _es_cerrado(estado_str) or estado_str.lower() == "descartado"
         if estado_grupo and estado_grupo != "TODOS":
             if estado_grupo.upper() == "ABIERTOS" and es_cerrado:
@@ -77,12 +80,11 @@ def obtener_incidentes_para_csv(
             elif estado_grupo.upper() == "CERRADOS" and not es_cerrado:
                 continue
 
-        # Formateo de fechas
         f_creado = getattr(inc, "creado_el", None)
-        str_creado = f_creado.strftime("%Y-%m-%d %H:%M") if hasattr(f_creado, "strftime") and f_creado else "-"
+        str_creado = f_creado.strftime("%d/%m/%Y %H:%M") if hasattr(f_creado, "strftime") and f_creado else "-"
 
         f_cerrado = getattr(inc, "cerrado_el", None)
-        str_cerrado = f_cerrado.strftime("%Y-%m-%d %H:%M") if hasattr(f_cerrado, "strftime") and f_cerrado else "-"
+        str_cerrado = f_cerrado.strftime("%d/%m/%Y %H:%M") if hasattr(f_cerrado, "strftime") and f_cerrado else "-"
 
         filas.append({
             "id": inc_id,

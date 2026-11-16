@@ -7,7 +7,7 @@ from src.equipos import schemas, exceptions
 from src.sectores.models import Sector
 from src.sectores.exceptions import SectorNoEncontrado
 
-def obtener_equipos_para_csv(
+def obtener_equipos_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     categoria: Optional[str] = None,

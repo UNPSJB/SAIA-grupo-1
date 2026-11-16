@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import type { InsumoQuimico } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
-import { descargarCSV } from '../../utils/exportarCsv';
 
 interface Props {
   onNuevo: () => void;
@@ -95,7 +96,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({
     return cumpleBusqueda && cumpleTipo && cumpleEstado;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -105,12 +106,21 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({
       if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
 
       const queryString = params.toString();
-      const url = `/api/insumos-quimicos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'insumos_quimicos.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/api/insumos-quimicos/exportar-pdf${query}`, 'insumos_quimicos.pdf');
+      } else {
+        await descargarCSV(`/api/insumos-quimicos/exportar-csv${query}`, 'insumos_quimicos.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al exportar insumos químicos a CSV.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar insumos químicos a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -175,7 +185,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           <button onClick={onNuevo} className="btn-guardar">

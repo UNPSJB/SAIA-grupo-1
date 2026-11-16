@@ -5,6 +5,10 @@ import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 
 interface ListadoMotivosProps {
   onNuevoClick: () => void;
@@ -28,6 +32,9 @@ export const ListadoMotivos: React.FC<ListadoMotivosProps> = ({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [motivoAAlterar, setMotivoAAlterar] = useState<MotivoNoRealizado | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -109,6 +116,46 @@ export const ListadoMotivos: React.FC<ListadoMotivosProps> = ({
       return a.id - b.id;
     });
 
+    const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (searchTerm.trim()) params.append('busqueda', searchTerm.trim());
+      if (filtroEstado !== 'todos') params.append('estado', filtroEstado);
+      if (ordenarPor !== 'id') params.append('ordenar_por', ordenarPor);
+
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
+
+      if (formato === 'pdf') {
+        await descargarPDF(`/checklist/motivos/exportar-pdf${query}`, 'motivos_no_realizacion.pdf');
+      } else {
+        await descargarCSV(`/checklist/motivos/exportar-csv${query}`, 'motivos_no_realizacion.csv');
+      }
+
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar motivos de no realización a ${formato.toUpperCase()}.`
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (searchTerm.trim()) partes.push(`Búsqueda: "${searchTerm}"`);
+    if (filtroEstado !== 'todos') {
+      partes.push(`Estado: ${filtroEstado === 'activos' ? 'Solo activos' : 'Solo inactivos'}`);
+    }
+    if (ordenarPor === 'nombre') partes.push('Ordenado por: Nombre');
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
   const {
     itemsPaginados: motivosPaginados,
     paginaActual,
@@ -129,11 +176,22 @@ export const ListadoMotivos: React.FC<ListadoMotivosProps> = ({
           <div className="subtitulo">01 · Listado</div>
         </div>
 
-        {onNuevoClick && (
-          <button onClick={onNuevoClick} className="btn-guardar">
-            + Agregar Motivo
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <ExportIcon size={18} /> Exportar
           </button>
-        )}
+
+          {onNuevoClick && (
+            <button onClick={onNuevoClick} className="btn-guardar">
+              + Agregar Motivo
+            </button>
+          )}
+        </div>
       </div>
 
       {errorMsg && (
@@ -262,6 +320,15 @@ export const ListadoMotivos: React.FC<ListadoMotivosProps> = ({
           setDialogOpen(false);
           setMotivoAAlterar(null);
         }}
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={motivosFiltradosYOrdenados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
     </div>
   );

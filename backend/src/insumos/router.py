@@ -5,10 +5,41 @@ from src.autenticacion.dependencies import get_usuario_actual
 from src.database import get_db
 from src.insumos import schemas, services
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter()
 operador_router = APIRouter(prefix="/insumos-operador", tags=["Insumos Operaciones"])
 
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_insumos_pdf(
+    busqueda: Optional[str] = None,
+    unidad: Optional[str] = None,
+    vencimiento: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_insumos_para_exportar(
+        db, busqueda=busqueda, unidad=unidad, vencimiento=vencimiento
+    )
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Ingrediente",
+        "lote": "Lote",
+        "stock": "Stock Actual",
+        "cantRecibida": "Cantidad Recibida",
+        "medida": "Unidad de Medida",
+        "fechaRecepcion": "Fecha de Recepción",
+        "fechaVencimiento": "Fecha de Vencimiento",
+        "estadoVencimiento": "Estado de Vencimiento",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Ingredientes",
+        nombre_archivo="ingredientes.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_insumos_csv(
@@ -17,7 +48,7 @@ def exportar_insumos_csv(
     vencimiento: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    datos = services.obtener_insumos_para_csv(
+    datos = services.obtener_insumos_para_exportar(
         db, busqueda=busqueda, unidad=unidad, vencimiento=vencimiento
     )
     columnas = {

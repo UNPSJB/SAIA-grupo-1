@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from src.sectores.models import Sector
 from src.sectores import schemas, exceptions
 
-def obtener_sectores_para_csv(
+def obtener_sectores_para_exportar(
     db: Session,
     busqueda: Optional[str] = None
 ) -> List[Dict[str, Any]]:

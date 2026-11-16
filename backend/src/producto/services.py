@@ -16,7 +16,7 @@ def _obtener_nombre_receta(receta_obj: Any) -> Optional[str]:
         return getattr(receta_obj[0], "nombre", None) if receta_obj else None
     return getattr(receta_obj, "nombre", None)
 
-def obtener_productos_para_csv(
+def obtener_productos_para_exportar(
     db: Session,
     activo: Optional[bool] = None,
     busqueda: Optional[str] = None

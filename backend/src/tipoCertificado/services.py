@@ -5,7 +5,7 @@ from src.tipoCertificado.models import TipoCertificado
 from src.certificado.models import Certificado
 from typing import Optional, Dict, Any, List
 
-def obtener_tipos_certificados_para_csv(
+def obtener_tipos_certificados_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     ordenar_por: Optional[str] = "id"

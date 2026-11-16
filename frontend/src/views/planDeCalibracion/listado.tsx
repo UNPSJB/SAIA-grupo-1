@@ -6,8 +6,9 @@ import { usePaginacion } from '../../components/ui/usePaginacion';
 import { Badge } from '../../components/ui/badge';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import RegistrarCalibracion from '../calibracion_Realizada/registrarCalibracion';
 
 interface ListadoPlanesCProps {
@@ -130,27 +131,45 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
     return (coincideBusqueda || coincideVencimiento) && coincideEstado;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
 
       if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
 
       const queryString = params.toString();
-      const url = `/plan_de_calibracion/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'planes_de_calibracion.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/plan_de_calibracion/exportar-pdf${query}`, 'planes_de_calibracion.pdf');
+      } else {
+        await descargarCSV(`/plan_de_calibracion/exportar-csv${query}`, 'planes_de_calibracion.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al exportar los planes de calibración a CSV.');
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar los planes de calibración a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
   };
 
   const obtenerResumenFiltros = () => {
-    return busqueda.trim() ? `Búsqueda: "${busqueda}"` : 'Sin filtros aplicados';
+    const etiquetasEstado: Record<string, string> = {
+      VENCIDOS: 'Vencidos',
+      PROXIMOS: 'Próximos a vencer',
+      AL_DIA: 'Al día',
+    };
+    const partes: string[] = [];
+    if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
+    if (filtroEstado !== 'TODOS') partes.push(`Estado: ${etiquetasEstado[filtroEstado] || filtroEstado}`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
   };
 
   const {
@@ -180,7 +199,7 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (

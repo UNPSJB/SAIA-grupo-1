@@ -4,20 +4,20 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.plan_De_limpieza import schemas, services
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 from src.autenticacion.dependencies import get_usuario_actual
 from typing import Optional
 
 router = APIRouter(prefix="/plan_De_limpieza", tags=["plan_De_limpieza"])
 
-@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
-def exportar_planes_csv(
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_planes_pdf(
     busqueda: Optional[str] = None,
     frecuencia: Optional[str] = None,
     tareas: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    
-    datos = services.obtener_planes_para_csv(
+    datos = services.obtener_planes_para_exportar(
         db,
         busqueda=busqueda,
         frecuencia=frecuencia,
@@ -30,7 +30,37 @@ def exportar_planes_csv(
         "alcance": "Equipo / Sector / Alcance",
         "frecuencia": "Frecuencia",
         "cant_tareas": "Cantidad de Tareas",
-        "descripcion": "Descripción",
+        "tareas": "Tareas del Plan",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Planes de Limpieza",
+        nombre_archivo="planes_de_limpieza.pdf",
+    )
+
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_planes_csv(
+    busqueda: Optional[str] = None,
+    frecuencia: Optional[str] = None,
+    tareas: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_planes_para_exportar(
+        db,
+        busqueda=busqueda,
+        frecuencia=frecuencia,
+        tareas_filtro=tareas
+    )
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Plan",
+        "alcance": "Equipo / Sector / Alcance",
+        "frecuencia": "Frecuencia",
+        "cant_tareas": "Cantidad de Tareas",
+        "tareas": "Tareas del Plan",
     }
 
     return generar_respuesta_csv(

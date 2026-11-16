@@ -21,7 +21,8 @@ import {
   YAxis,
 } from 'recharts';
 import { apiFetch } from '../../api/client';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Badge } from '../../components/ui/badge';
 import {
   Card,
@@ -30,8 +31,11 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import type { LoteProduccion, Producto } from '../produccion/tipos';
 import { useColoresTema } from './useColoresTema';
 import '../../styles/dashboard.css';
@@ -296,6 +300,10 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
   const [unidadSeleccionada, setUnidadSeleccionada] = useState<string>('kilogramos');
 
   const [loteParaModal, setLoteParaModal] = useState<LoteProduccion | null>(null);
+
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+  const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -908,43 +916,47 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     indiceFin,
   } = usePaginacion(lotesFiltrados, 10);
 
-  const exportarCSV = () => {
-    if (lotesFiltrados.length === 0) return;
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
 
-    const cabeceras = [
-      'ID',
-      'Código',
-      'Fecha',
-      'Producto',
-      'Cantidad',
-      'Unidad',
-      'Responsable',
-      'Legajo',
-      'Insumos Usados',
-    ];
+      if (desde) params.append('desde', desde);
+      if (hasta) params.append('hasta', hasta);
+      if (productoSeleccionado) params.append('producto_id', productoSeleccionado);
+      if (busquedaLote.trim()) params.append('busqueda', busquedaLote.trim());
 
-    const filas = lotesFiltrados.map((l) => [
-      l.id,
-      `"${(l.codigo || '').replace(/"/g, '""')}"`,
-      l.fecha,
-      `"${(l.producto?.nombre || '').replace(/"/g, '""')}"`,
-      l.cantidad,
-      `"${(l.producto?.unidadMedida || '').replace(/"/g, '""')}"`,
-      `"${(l.nombre_responsable || '').replace(/"/g, '""')}"`,
-      l.responsable_legajo,
-      `"${l.insumos.map((i) => `${i.insumo.nombre}: ${i.cantidad} ${abreviarUnidad(i.insumo.medida)}`).join(', ')}"`,
-    ]);
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
 
-    const contenidoCSV =
-      '\uFEFF' + [cabeceras.join(';'), ...filas.map((f) => f.join(';'))].join('\r\n');
-    const blob = new Blob([contenidoCSV], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `produccion_detallada_${formatearFechaInput(new Date())}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (formato === 'pdf') {
+        await descargarPDF(`/lotes/exportar-pdf${query}`, 'produccion_detallada.pdf');
+      } else {
+        await descargarCSV(`/lotes/exportar-csv${query}`, 'produccion_detallada.csv');
+      }
+
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar producción detallada a ${formato.toUpperCase()}.`
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (desde) partes.push(`Desde: ${formatearFechaVisual(desde)}`);
+    if (hasta) partes.push(`Hasta: ${formatearFechaVisual(hasta)}`);
+    if (productoSeleccionado) {
+      const prod = productosCatalogo.find((p) => String(p.id) === productoSeleccionado);
+      partes.push(`Producto: ${prod ? prod.nombre : `#${productoSeleccionado}`}`);
+    }
+    if (busquedaLote.trim()) partes.push(`Búsqueda: "${busquedaLote.trim()}"`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
   };
 
   return (
@@ -978,16 +990,14 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {lotesFiltrados.length > 0 && (
-              <button
-                type="button"
-                onClick={exportarCSV}
-                className="btn-cancelar"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              >
-                <CsvIcon /> Exportar CSV
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setDialogExportarAbierto(true)}
+              className="btn-cancelar"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <ExportIcon size={18} /> Exportar
+            </button>
           </div>
         </div>
       </div>
@@ -1938,7 +1948,22 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
       {loteParaModal && (
         <ModalDetalleLote lote={loteParaModal} onClose={() => setLoteParaModal(null)} />
       )}
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={lotesFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportDialog)}
+        title="No se pudo completar la exportación"
+        description={errorExportDialog || ''}
+        onClose={() => setErrorExportDialog(null)}
+      />
     </div>
   );
 };
-

@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { DocumentoListItem, TipoDocumento } from './tipos';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
@@ -22,19 +23,13 @@ interface VencimientosDocumentosProps {
 const getTipoLabel = (tipo?: TipoDocumento | null): string => tipo || "";
 
 const formatearFecha = (dateStr?: string | null) => {
-  if (!dateStr) return '—';
-  try {
-    const d = new Date(dateStr);
-    return isNaN(d.getTime())
-      ? dateStr
-      : d.toLocaleDateString('es-AR', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        });
-  } catch {
-    return dateStr;
+  if (!dateStr) return "-";
+  const limpia = dateStr.trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(limpia)) {
+    const [anio, mes, dia] = limpia.split("-");
+    return `${dia}/${mes}/${anio}`;
   }
+  return dateStr;
 };
 
 export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
@@ -103,18 +98,24 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
-    const fechaV = new Date(fechaStr);
-    if (isNaN(fechaV.getTime())) {
-      // Fallback si la cadena tiene formato YYYY-MM-DD
-      const partes = fechaStr.slice(0, 10).split('-').map(Number);
-      if (partes.length === 3) {
-        fechaV.setFullYear(partes[0], partes[1] - 1, partes[2]);
-      }
+    let fechaV: Date;
+    const limpia = fechaStr.trim().slice(0, 10);
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(limpia)) {
+      const [anio, mes, dia] = limpia.split('-').map(Number);
+      fechaV = new Date(anio, mes - 1, dia);
+    } else {
+      fechaV = new Date(fechaStr);
     }
+
+    if (isNaN(fechaV.getTime())) {
+      return { estado: 'al_dia', diffDias: 999999 };
+    }
+
     fechaV.setHours(0, 0, 0, 0);
 
     const diffMs = fechaV.getTime() - hoy.getTime();
-    const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDias < 0) {
       return { estado: 'vencido', diffDias };
@@ -179,7 +180,7 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
       });
   }, [documentosConPlazo, filtroTipo, filtroEstado, busqueda]);
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -189,13 +190,21 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
       if (filtroEstado !== "TODOS") params.append("filtro_estado", filtroEstado);
 
       const queryString = params.toString();
-      // LLAMADA AL ENDPOINT EXCLUSIVO DE VENCIMIENTOS
-      const url = `/documentos/vencimientos/exportar-csv${queryString ? `?${queryString}` : ""}`;
+      const query = queryString ? `?${queryString}` : "";
 
-      await descargarCSV(url, "vencimientos_documentos.csv");
+      if (formato === "pdf") {
+        await descargarPDF(`/documentos/vencimientos/exportar-pdf${query}`, "vencimientos_documentos.pdf");
+      } else {
+        await descargarCSV(`/documentos/vencimientos/exportar-csv${query}`, "vencimientos_documentos.csv");
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al exportar vencimientos a CSV.");
+      alert(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar vencimientos a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -265,7 +274,7 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
         </div>
       </div>
