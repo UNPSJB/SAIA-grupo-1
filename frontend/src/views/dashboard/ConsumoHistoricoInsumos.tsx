@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -23,9 +23,15 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { descargarCSV } from '../../utils/exportarCsv';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
 import { descargarPDF } from '../../utils/exportarPdf';
 import { useColoresTema } from './useColoresTema';
 import {
@@ -104,6 +110,10 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
+
+  const graficoAnalisisRef = useRef<HTMLDivElement | null>(null);
+  const [modalExportGraficoAbierto, setModalExportGraficoAbierto] = useState(false);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -278,6 +288,52 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
   const hayDatos = (datos?.total_registros ?? 0) > 0;
   const metricas = datos?.metricas;
   const unidadUso = datos?.unidad_seleccionada || 'L';
+
+  const tituloGraficoActual =
+    pestañaGrafico === 'evolucion'
+      ? `Consumo Histórico - Evolución Temporal (${unidadUso})`
+      : pestañaGrafico === 'tipo'
+      ? `Consumo Histórico - Por Tipo de Químico (${unidadUso})`
+      : `Consumo Histórico - Por Proveedor (${unidadUso})`;
+
+  const subtituloGraficoActual =
+    pestañaGrafico === 'evolucion'
+      ? `Evolución del volumen acumulado de químicos (${unidadUso}) a través del tiempo.`
+      : pestañaGrafico === 'tipo'
+      ? `Distribución del consumo según la función química del producto.`
+      : `Comparativa de consumo acumulado según el proveedor suministrador.`;
+
+  const ejecutarExportacionGrafico = async (formato: FormatoGrafico) => {
+    try {
+      setExportandoGrafico(true);
+      const cfg: ConfiguracionGraficoExportar = {
+        id: `consumo-historico-${pestañaGrafico}`,
+        titulo: tituloGraficoActual,
+        subtitulo: subtituloGraficoActual,
+        filtros: obtenerResumenFiltros(),
+        contenedor: graficoAnalisisRef.current,
+        leyenda:
+          pestañaGrafico === 'tipo'
+            ? (datos?.por_tipo || []).map((t) => ({
+                etiqueta: `${t.etiqueta} (${t.porcentaje}%)`,
+                color: COLORES_TIPO_QUIMICO[t.clave] || '#64748b',
+              }))
+            : undefined,
+      };
+      await exportarGraficos(
+        [cfg],
+        formato,
+        `grafico_consumo_${pestañaGrafico}_${desde}_a_${hasta}`
+      );
+      setModalExportGraficoAbierto(false);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error ? err.message : 'Error al exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
 
   return (
     <div className="modulo-container" style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -764,16 +820,10 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
               >
                 <div>
                   <CardTitle>Análisis y Visualización de Uso</CardTitle>
-                  <CardDescription>
-                    {pestañaGrafico === 'evolucion'
-                      ? `Evolución del volumen acumulado de químicos (${unidadUso}) a través del tiempo.`
-                      : pestañaGrafico === 'tipo'
-                      ? `Distribución del consumo según la función química del producto.`
-                      : `Comparativa de consumo acumulado según el proveedor suministrador.`}
-                  </CardDescription>
+                  <CardDescription>{subtituloGraficoActual}</CardDescription>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <div
                     style={{
                       display: 'inline-flex',
@@ -870,201 +920,219 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
                       </button>
                     </div>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => setModalExportGraficoAbierto(true)}
+                    className="btn-cancelar"
+                    style={{
+                      padding: '5px 10px',
+                      fontSize: '12px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    title="Exportar este gráfico en PNG, JPEG o PDF"
+                  >
+                    <ExportIcon size={14} /> Exportar gráfico
+                  </button>
                 </div>
               </div>
             </CardHeader>
 
             <CardContent>
-              {pestañaGrafico === 'evolucion' && (
-                <div style={{ width: '100%', height: 320, marginTop: '8px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    {tipoGraficoEvolucion === 'lineas' ? (
-                      <AreaChart data={datos?.evolucion || []} margin={{ top: 16, right: 20, left: 6, bottom: 20 }}>
-                        <defs>
-                          <linearGradient id="colorConsumoHistorico" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
-                            <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                        <XAxis
-                          dataKey="etiqueta"
-                          stroke={colores.textoSec}
-                          fontSize={11.5}
-                          tickLine={false}
-                          interval={(datos?.evolucion?.length ?? 0) > 12 ? 'preserveStartEnd' : 0}
-                          angle={(datos?.evolucion?.length ?? 0) > 8 ? -20 : 0}
-                          textAnchor={(datos?.evolucion?.length ?? 0) > 8 ? 'end' : 'middle'}
-                          height={(datos?.evolucion?.length ?? 0) > 8 ? 40 : 25}
-                        />
-                        <YAxis
-                          stroke={colores.textoSec}
-                          fontSize={11.5}
-                          tickLine={false}
-                          width={44}
-                          unit={` ${unidadUso}`}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                            borderColor: 'var(--color-borde)',
-                            borderRadius: '8px',
-                            color: 'var(--color-texto)',
-                          }}
-                          formatter={(valor: any) => [`${valor} ${unidadUso}`, 'Consumo Total']}
-                          labelFormatter={(label) => `Período: ${label}`}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="total_consumido"
-                          stroke={colores.primario}
-                          strokeWidth={2.5}
-                          fillOpacity={1}
-                          fill="url(#colorConsumoHistorico)"
-                          dot={{ r: 4, fill: colores.primario, strokeWidth: 2, stroke: 'var(--color-superficie)' }}
-                          activeDot={{ r: 6, stroke: colores.primario, strokeWidth: 2, fill: 'var(--color-superficie)' }}
-                        />
-                      </AreaChart>
-                    ) : (
-                      <BarChart data={datos?.evolucion || []} margin={{ top: 16, right: 20, left: 6, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                        <XAxis
-                          dataKey="etiqueta"
-                          stroke={colores.textoSec}
-                          fontSize={11.5}
-                          tickLine={false}
-                          interval={(datos?.evolucion?.length ?? 0) > 12 ? 'preserveStartEnd' : 0}
-                          angle={(datos?.evolucion?.length ?? 0) > 8 ? -20 : 0}
-                          textAnchor={(datos?.evolucion?.length ?? 0) > 8 ? 'end' : 'middle'}
-                          height={(datos?.evolucion?.length ?? 0) > 8 ? 40 : 25}
-                        />
-                        <YAxis
-                          stroke={colores.textoSec}
-                          fontSize={11.5}
-                          tickLine={false}
-                          width={44}
-                          unit={` ${unidadUso}`}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                            borderColor: 'var(--color-borde)',
-                            borderRadius: '8px',
-                            color: 'var(--color-texto)',
-                          }}
-                          formatter={(valor: any) => [`${valor} ${unidadUso}`, 'Consumo Total']}
-                          labelFormatter={(label) => `Período: ${label}`}
-                        />
-                        <Bar dataKey="total_consumido" fill={colores.primario} radius={[5, 5, 0, 0]} />
-                      </BarChart>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-              {pestañaGrafico === 'tipo' && (
-                <div style={{ width: '100%', minHeight: 280, marginTop: '8px' }}>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={datos?.por_tipo || []} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                      <XAxis type="number" stroke={colores.textoSec} fontSize={11.5} unit={` ${unidadUso}`} />
-                      <YAxis dataKey="etiqueta" type="category" stroke={colores.textoSec} fontSize={12} tickLine={false} width={95} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                          borderColor: 'var(--color-borde)',
-                          borderRadius: '8px',
-                        }}
-                        formatter={(val: any, _name: any, item: any) => [
-                          `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
-                          'Consumo Acumulado',
-                        ]}
-                      />
-                      <Bar dataKey="cantidad_total" radius={[0, 4, 4, 0]}>
-                        {(datos?.por_tipo || []).map((entry) => (
-                          <Cell
-                            key={entry.clave}
-                            fill={COLORES_TIPO_QUIMICO[entry.clave] || colores.primario}
+              <div ref={graficoAnalisisRef}>
+                {pestañaGrafico === 'evolucion' && (
+                  <div style={{ width: '100%', height: 320, marginTop: '8px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      {tipoGraficoEvolucion === 'lineas' ? (
+                        <AreaChart data={datos?.evolucion || []} margin={{ top: 16, right: 20, left: 6, bottom: 20 }}>
+                          <defs>
+                            <linearGradient id="colorConsumoHistorico" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
+                              <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                          <XAxis
+                            dataKey="etiqueta"
+                            stroke={colores.textoSec}
+                            fontSize={11.5}
+                            tickLine={false}
+                            interval={(datos?.evolucion?.length ?? 0) > 12 ? 'preserveStartEnd' : 0}
+                            angle={(datos?.evolucion?.length ?? 0) > 8 ? -20 : 0}
+                            textAnchor={(datos?.evolucion?.length ?? 0) > 8 ? 'end' : 'middle'}
+                            height={(datos?.evolucion?.length ?? 0) > 8 ? 40 : 25}
                           />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '12px',
-                      justifyContent: 'center',
-                      marginTop: '16px',
-                      paddingTop: '12px',
-                      borderTop: '1px solid var(--color-borde)',
-                    }}
-                  >
-                    {(datos?.por_tipo || []).map((t) => (
-                      <div
-                        key={t.clave}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          fontSize: '12px',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          backgroundColor: 'var(--color-fondo)',
-                          border: '1px solid var(--color-borde)',
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: '10px',
-                            height: '10px',
-                            borderRadius: '50%',
-                            backgroundColor: COLORES_TIPO_QUIMICO[t.clave] || '#64748b',
-                          }}
-                        />
-                        <strong style={{ color: 'var(--text-h)' }}>{t.etiqueta}:</strong>
-                        <span>{t.cantidad_total} {unidadUso}</span>
-                        <span style={{ color: 'var(--color-texto-sec)', fontSize: '11px' }}>({t.porcentaje}%)</span>
-                      </div>
-                    ))}
+                          <YAxis
+                            stroke={colores.textoSec}
+                            fontSize={11.5}
+                            tickLine={false}
+                            width={44}
+                            unit={` ${unidadUso}`}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                              borderColor: 'var(--color-borde)',
+                              borderRadius: '8px',
+                              color: 'var(--color-texto)',
+                            }}
+                            formatter={(valor: any) => [`${valor} ${unidadUso}`, 'Consumo Total']}
+                            labelFormatter={(label) => `Período: ${label}`}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="total_consumido"
+                            stroke={colores.primario}
+                            strokeWidth={2.5}
+                            fillOpacity={1}
+                            fill="url(#colorConsumoHistorico)"
+                            dot={{ r: 4, fill: colores.primario, strokeWidth: 2, stroke: 'var(--color-superficie)' }}
+                            activeDot={{ r: 6, stroke: colores.primario, strokeWidth: 2, fill: 'var(--color-superficie)' }}
+                          />
+                        </AreaChart>
+                      ) : (
+                        <BarChart data={datos?.evolucion || []} margin={{ top: 16, right: 20, left: 6, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                          <XAxis
+                            dataKey="etiqueta"
+                            stroke={colores.textoSec}
+                            fontSize={11.5}
+                            tickLine={false}
+                            interval={(datos?.evolucion?.length ?? 0) > 12 ? 'preserveStartEnd' : 0}
+                            angle={(datos?.evolucion?.length ?? 0) > 8 ? -20 : 0}
+                            textAnchor={(datos?.evolucion?.length ?? 0) > 8 ? 'end' : 'middle'}
+                            height={(datos?.evolucion?.length ?? 0) > 8 ? 40 : 25}
+                          />
+                          <YAxis
+                            stroke={colores.textoSec}
+                            fontSize={11.5}
+                            tickLine={false}
+                            width={44}
+                            unit={` ${unidadUso}`}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                              borderColor: 'var(--color-borde)',
+                              borderRadius: '8px',
+                              color: 'var(--color-texto)',
+                            }}
+                            formatter={(valor: any) => [`${valor} ${unidadUso}`, 'Consumo Total']}
+                            labelFormatter={(label) => `Período: ${label}`}
+                          />
+                          <Bar dataKey="total_consumido" fill={colores.primario} radius={[5, 5, 0, 0]} />
+                        </BarChart>
+                      )}
+                    </ResponsiveContainer>
                   </div>
-                </div>
-              )}
+                )}
 
-              {pestañaGrafico === 'proveedor' && (
-                <div style={{ width: '100%', minHeight: 280, marginTop: '8px' }}>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={datos?.por_proveedor || []} margin={{ top: 10, right: 20, left: 10, bottom: 25 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                      <XAxis
-                        dataKey="etiqueta"
-                        stroke={colores.textoSec}
-                        fontSize={11.5}
-                        tickLine={false}
-                        interval={0}
-                        angle={-15}
-                        textAnchor="end"
-                        height={45}
-                      />
-                      <YAxis stroke={colores.textoSec} fontSize={11.5} tickLine={false} width={44} unit={` ${unidadUso}`} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                          borderColor: 'var(--color-borde)',
-                          borderRadius: '8px',
-                        }}
-                        formatter={(val: any, _name: any, item: any) => [
-                          `${val} ${unidadUso} (${item.payload.porcentaje}%) - ${item.payload.cantidad_movimientos} registros`,
-                          'Consumo Total',
-                        ]}
-                      />
-                      <Bar dataKey="cantidad_total" fill={colores.primario} radius={[5, 5, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+                {pestañaGrafico === 'tipo' && (
+                  <div style={{ width: '100%', minHeight: 280, marginTop: '8px' }}>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={datos?.por_tipo || []} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
+                        <XAxis type="number" stroke={colores.textoSec} fontSize={11.5} unit={` ${unidadUso}`} />
+                        <YAxis dataKey="etiqueta" type="category" stroke={colores.textoSec} fontSize={12} tickLine={false} width={95} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                            borderColor: 'var(--color-borde)',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(val: any, _name: any, item: any) => [
+                            `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
+                            'Consumo Acumulado',
+                          ]}
+                        />
+                        <Bar dataKey="cantidad_total" radius={[0, 4, 4, 0]}>
+                          {(datos?.por_tipo || []).map((entry) => (
+                            <Cell
+                              key={entry.clave}
+                              fill={COLORES_TIPO_QUIMICO[entry.clave] || colores.primario}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '12px',
+                        justifyContent: 'center',
+                        marginTop: '16px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid var(--color-borde)',
+                      }}
+                    >
+                      {(datos?.por_tipo || []).map((t) => (
+                        <div
+                          key={t.clave}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '12px',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            backgroundColor: 'var(--color-fondo)',
+                            border: '1px solid var(--color-borde)',
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '10px',
+                              height: '10px',
+                              borderRadius: '50%',
+                              backgroundColor: COLORES_TIPO_QUIMICO[t.clave] || '#64748b',
+                            }}
+                          />
+                          <strong style={{ color: 'var(--text-h)' }}>{t.etiqueta}:</strong>
+                          <span>{t.cantidad_total} {unidadUso}</span>
+                          <span style={{ color: 'var(--color-texto-sec)', fontSize: '11px' }}>({t.porcentaje}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {pestañaGrafico === 'proveedor' && (
+                  <div style={{ width: '100%', minHeight: 280, marginTop: '8px' }}>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={datos?.por_proveedor || []} margin={{ top: 10, right: 20, left: 10, bottom: 25 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                        <XAxis
+                          dataKey="etiqueta"
+                          stroke={colores.textoSec}
+                          fontSize={11.5}
+                          tickLine={false}
+                          interval={0}
+                          angle={-15}
+                          textAnchor="end"
+                          height={45}
+                        />
+                        <YAxis stroke={colores.textoSec} fontSize={11.5} tickLine={false} width={44} unit={` ${unidadUso}`} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                            borderColor: 'var(--color-borde)',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(val: any, _name: any, item: any) => [
+                            `${val} ${unidadUso} (${item.payload.porcentaje}%) - ${item.payload.cantidad_movimientos} registros`,
+                            'Consumo Total',
+                          ]}
+                        />
+                        <Bar dataKey="cantidad_total" fill={colores.primario} radius={[5, 5, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -1223,6 +1291,15 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
         loading={exportando}
         onConfirm={ejecutarExportacion}
         onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ConfirmExportGraficoDialog
+        open={modalExportGraficoAbierto}
+        tituloGrafico={tituloGraficoActual}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportandoGrafico}
+        onConfirm={ejecutarExportacionGrafico}
+        onCancel={() => setModalExportGraficoAbierto(false)}
       />
 
       <ErrorAlertDialog
