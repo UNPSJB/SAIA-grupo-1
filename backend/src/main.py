@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from sqlalchemy import text
@@ -5,6 +6,7 @@ from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
 from src.rotulado.migraciones import actualizar_tablas_rotulado
+from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 from src.models import ModeloBase
 
 from src.config import settings
@@ -58,6 +60,18 @@ ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
 
 setup_logging()
 
+async def _tarea_diaria_snapshot_vista_publica() -> None:
+    while True:
+        try:
+            await asyncio.sleep(86400)
+            with SessionLocal() as db:
+                regenerar_snapshot_seguro(db)
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            continue
+
+
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
@@ -88,7 +102,17 @@ async def db_creation_lifespan(app: FastAPI):
                 db.commit()
             except Exception:
                 db.rollback()
-    yield
+    with SessionLocal() as db:
+        regenerar_snapshot_seguro(db)
+    tarea_snapshot = asyncio.create_task(_tarea_diaria_snapshot_vista_publica())
+    try:
+        yield
+    finally:
+        tarea_snapshot.cancel()
+        try:
+            await tarea_snapshot
+        except asyncio.CancelledError:
+            pass
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
 

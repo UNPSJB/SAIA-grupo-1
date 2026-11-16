@@ -4,6 +4,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 from src.AcercaDeNostros.models import AcercaDeNosotros
 from src.AcercaDeNostros import schemas, exceptions
+from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 
 
 
@@ -13,6 +14,7 @@ def crearAcercaDeNostros(db:Session, descip:schemas.AcercaDeNosotrosCreate)->sch
     db.add(_descrip)
     db.commit()
     db.refresh(_descrip)
+    regenerar_snapshot_seguro(db)
     return _descrip
 
 
@@ -23,6 +25,7 @@ def actualizarAcercaDeNostros(db: Session, id: int, descrip: schemas.AcercaDeNos
     _descrip.descripcion = descrip.descripcion
     db.commit()
     db.refresh(_descrip)
+    regenerar_snapshot_seguro(db)
     return _descrip
 
 def obtener_acerca_de_nosotros(db: Session):

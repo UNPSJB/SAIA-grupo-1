@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from src.configuracion import exceptions, schemas
 from src.indentificadorDeQR.models import IndentificadorUnico
+from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 
 
 def _identificador_activo(db: Session) -> Optional[IndentificadorUnico]:
@@ -65,4 +66,5 @@ def actualizar_vista_publica(
 
     db.commit()
     db.refresh(ident)
+    regenerar_snapshot_seguro(db)
     return _a_schema(ident if ident.estado else None)

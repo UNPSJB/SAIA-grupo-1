@@ -1190,6 +1190,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                         tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
                       />
                       <PolarRadiusAxis
+                        angle={90}
                         allowDecimals={false}
                         stroke="var(--color-texto-sec, #64748b)"
                         tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}

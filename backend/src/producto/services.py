@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from src.producto import exceptions, schemas
 from src.producto.models import Producto
 from src.unidadesMedida.services import resolver_unidad_medida
+from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 
 
 def _obtener_nombre_receta(receta_obj: Any) -> Optional[str]:
@@ -14,7 +15,6 @@ def _obtener_nombre_receta(receta_obj: Any) -> Optional[str]:
     if isinstance(receta_obj, list):
         return getattr(receta_obj[0], "nombre", None) if receta_obj else None
     return getattr(receta_obj, "nombre", None)
-
 
 def obtener_productos_para_csv(
     db: Session,
@@ -148,6 +148,7 @@ def editar_producto(
         )
         db.commit()
         db.refresh(db_producto)
+        regenerar_snapshot_seguro(db)
 
     if db_producto.receta:
         db_producto.nombre_receta = _obtener_nombre_receta(db_producto.receta)
@@ -160,6 +161,7 @@ def eliminar_producto(db: Session, producto_id: int) -> Producto:
     db_producto.visible_publico = False
     db.commit()
     db.refresh(db_producto)
+    regenerar_snapshot_seguro(db)
     return db_producto
 
 def restaurar_producto(db: Session, producto_id: int) -> Producto:
@@ -180,6 +182,7 @@ def actualizar_visibilidad_publica(db: Session, productos_visibles: List[int]) -
 
     db.execute(update(Producto).values(visible_publico=Producto.id.in_(list(ids))))
     db.commit()
+    regenerar_snapshot_seguro(db)
     return listar_productos(db)
 
 def listar_productos_publicos(db: Session) -> List[Producto]:

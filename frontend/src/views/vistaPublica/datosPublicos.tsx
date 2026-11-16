@@ -25,7 +25,6 @@ import '../../styles/dashboard.css';
 import { useColoresTema } from './useColoresTemas';
 import { useVistaPublica } from './contextDeVistaPublica';
 import { useParams } from 'react-router-dom';
-import { apiFetch } from '../../api/client';
 import { Badge } from '../../components/ui/badge';
 import {
   Card,
@@ -34,7 +33,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
-import type { GraficoCumplimientoResponse } from '../dashboard/tipos';
+import { useSnapshotVistaPublica } from './snapshotClient';
 
 const ETIQUETAS_UNIDAD: Record<string, string> = {
   kilogramos: 'Kilogramos (kg)',
@@ -194,120 +193,47 @@ const CustomTooltipContent = ({ active, payload }: CustomTooltipProps): React.Re
   return null;
 };
 
-const formatearFechaInput = (d: Date): string => {
-  const anio = d.getFullYear();
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
-  return `${anio}-${mes}-${dia}`;
-};
-
-const restarDias = (d: Date, dias: number): Date => {
-  const res = new Date(d);
-  res.setDate(res.getDate() - dias);
-  return res;
-};
-
 export const Panel_Publico: React.FC = () => {
   const colores = useColoresTema();
   const { config, setConfig } = useVistaPublica();
   const { identificadorId } = useParams<{ identificadorId: string }>();
 
-  const [verificando, setVerificando] = useState(true);
-  const [qrValido, setQrValido] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const {
+    snapshot,
+    cargando: verificando,
+    qrValido,
+    errorMsg,
+  } = useSnapshotVistaPublica(identificadorId);
 
   const [agrupacion, setAgrupacion] = useState<'dia' | 'semana'>('dia');
   const [tipoGrafico, setTipoGrafico] = useState<'lineas' | 'barras'>('lineas');
   const [rangoRapido, setRangoRapido] = useState<string>('7');
-  const [cumplimientoData, setCumplimientoData] = useState<GraficoCumplimientoResponse | null>(null);
-  const [cargandoCumplimiento, setCargandoCumplimiento] = useState(false);
-
   const [unidadSeleccionada, setUnidadSeleccionada] = useState<string>('kilogramos');
-
-  const [estadisticas, setEstadisticas] = useState<EstadisticasPublicas>(ESTADISTICAS_INICIALES);
+  const cargandoCumplimiento = false;
 
   useEffect(() => {
-    const verificarIdentificadorQR = async () => {
-      try {
-        setVerificando(true);
-        const res = await apiFetch(`/identificadorQR/verificar/${identificadorId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+    if (!snapshot?.qr || !qrValido) return;
+    const qrCfg = snapshot.qr.config;
+    setConfig(prev => ({
+      ...prev,
+      verGrafico: qrCfg.ver_grafico,
+      verAcercaDeNosotros: qrCfg.verAcercaDeNosotros,
+      verProductos: qrCfg.verProductos,
+      verDiasSinIncidentes: qrCfg.ver_dias_sin_incidentes,
+      verTotalLotes: qrCfg.ver_total_lotes,
+      verVolumenFabricado: qrCfg.ver_volumen_fabricado,
+      verProductoMasElaborado: qrCfg.ver_producto_mas_elaborado,
+      verGraficoTotalesProductos: qrCfg.ver_grafico_totales_productos,
+      verGraficoRedArana: qrCfg.ver_grafico_red_arana,
+    }));
+  }, [snapshot, qrValido, setConfig]);
 
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          let mensaje = 'Este código QR no es válido o ha expirado.';
-          if (typeof errorData.detail === 'string') {
-            mensaje = errorData.detail;
-          } else if (Array.isArray(errorData.detail)) {
-            mensaje = errorData.detail
-              .map((err: { msg?: string }) => err.msg || JSON.stringify(err))
-              .join(', ');
-          }
-          throw new Error(mensaje);
-        }
-
-        const data = await res.json();
-        
-        setConfig(prev => ({
-          ...prev,
-          verGrafico: typeof data.ver_grafico === 'boolean' ? data.ver_grafico : prev.verGrafico,
-          verAcercaDeNosotros: typeof data.verAcercaDeNosotros === 'boolean' ? data.verAcercaDeNosotros : prev.verAcercaDeNosotros,
-          verProductos: typeof data.verProductos === 'boolean' ? data.verProductos : typeof data.ver_productos === 'boolean' ? data.ver_productos : prev.verProductos,
-          verDiasSinIncidentes: typeof data.ver_dias_sin_incidentes === 'boolean' ? data.ver_dias_sin_incidentes : prev.verDiasSinIncidentes,
-          verTotalLotes: typeof data.ver_total_lotes === 'boolean' ? data.ver_total_lotes : prev.verTotalLotes,
-          verVolumenFabricado: typeof data.ver_volumen_fabricado === 'boolean' ? data.ver_volumen_fabricado : prev.verVolumenFabricado,
-          verProductoMasElaborado: typeof data.ver_producto_mas_elaborado === 'boolean' ? data.ver_producto_mas_elaborado : prev.verProductoMasElaborado,
-          verGraficoTotalesProductos: typeof data.ver_grafico_totales_productos === 'boolean' ? data.ver_grafico_totales_productos : prev.verGraficoTotalesProductos,
-          verGraficoRedArana: typeof data.ver_grafico_red_arana === 'boolean' ? data.ver_grafico_red_arana : prev.verGraficoRedArana,
-        }));
-
-        setQrValido(true);
-      } catch (err: unknown) {
-        setErrorMsg(err instanceof Error ? err.message : 'Error de conexión con el servidor.');
-        setQrValido(false);
-      } finally {
-        setVerificando(false);
-      }
-    };
-
-    if (identificadorId) {
-      verificarIdentificadorQR();
-    } else {
-      setVerificando(false);
-      setQrValido(false);
-      setErrorMsg('No se encontró ningún identificador en el enlace.');
+  const estadisticas: EstadisticasPublicas = useMemo(() => {
+    if (!qrValido || !snapshot?.estadisticas) {
+      return ESTADISTICAS_INICIALES;
     }
-  }, [identificadorId, setConfig]);
-
-  useEffect(() => {
-    if (!qrValido || !identificadorId) return;
-
-    const cargarEstadisticas = async () => {
-      try {
-        const res = await apiFetch(`/identificadorQR/${identificadorId}/estadisticas`);
-        if (res.ok) {
-          const data = await res.json();
-          setEstadisticas({
-            dias_sin_incidentes: data.dias_sin_incidentes ?? null,
-            total_lotes: Number(data.total_lotes) || 0,
-            volumen_fabricado: Number(data.volumen_fabricado) || 0,
-            unidad_volumen: data.unidad_volumen || 'kilogramos',
-            producto_mas_elaborado: data.producto_mas_elaborado || null,
-            totales_productos: Array.isArray(data.totales_productos) ? data.totales_productos : [],
-            red_arana_cumplimiento: Array.isArray(data.red_arana_cumplimiento) ? data.red_arana_cumplimiento : [],
-          });
-        }
-      } catch {
-        setEstadisticas(ESTADISTICAS_INICIALES);
-      }
-    };
-
-    void cargarEstadisticas();
-  }, [qrValido, identificadorId]);
+    return snapshot.estadisticas;
+  }, [qrValido, snapshot]);
 
   const unidadesDisponibles = useMemo(() => {
     const setU = new Set<string>();
@@ -339,54 +265,12 @@ export const Panel_Publico: React.FC = () => {
       .sort((a, b) => b.cantidad - a.cantidad);
   }, [estadisticas.totales_productos, unidadSeleccionada]);
 
-  const { desde, hasta } = useMemo(() => {
-    const dias = parseInt(rangoRapido, 10) || 7;
-    const fin = new Date();
-    const inicio = restarDias(fin, dias);
-    return {
-      desde: formatearFechaInput(inicio),
-      hasta: formatearFechaInput(fin),
-    };
-  }, [rangoRapido]);
-
-  useEffect(() => {
-    if (!qrValido || !config.verGrafico) return;
-
-    let cancelado = false;
-    const cargarCumplimiento = async () => {
-      try {
-        setCargandoCumplimiento(true);
-        const query = new URLSearchParams({
-          agrupacion,
-          desde,
-          hasta,
-        }).toString();
-
-        const res = await apiFetch(`/dashboard/grafico-cumplimiento?${query}`);
-        if (!cancelado) {
-          if (res.ok) {
-            const data: GraficoCumplimientoResponse = await res.json();
-            setCumplimientoData(data);
-          } else {
-            setCumplimientoData(null);
-          }
-        }
-      } catch {
-        if (!cancelado) {
-          setCumplimientoData(null);
-        }
-      } finally {
-        if (!cancelado) {
-          setCargandoCumplimiento(false);
-        }
-      }
-    };
-
-    void cargarCumplimiento();
-    return () => {
-      cancelado = true;
-    };
-  }, [qrValido, config.verGrafico, agrupacion, desde, hasta]);
+  const cumplimientoData = useMemo(() => {
+    if (!qrValido || !config.verGrafico || !snapshot?.cumplimiento_limpieza) {
+      return null;
+    }
+    return snapshot.cumplimiento_limpieza[`${rangoRapido}_${agrupacion}`] ?? null;
+  }, [qrValido, config.verGrafico, snapshot, rangoRapido, agrupacion]);
 
   const puntos: PuntoCumplimientoPublico[] = useMemo(() => {
     return cumplimientoData ? cumplimientoData.puntos : [];
@@ -941,7 +825,7 @@ export const Panel_Publico: React.FC = () => {
           {config.verGraficoRedArana && (
             <Card style={{ minHeight: '430px' }}>
               <CardHeader style={{ padding: '20px 24px 12px 24px' }}>
-                <CardTitle style={{ fontSize: '1.05rem' }}>Red de Araña: Cumplimiento de Limpieza</CardTitle>
+                <CardTitle style={{ fontSize: '1.05rem' }}>Cumplimiento de Limpieza por Sector</CardTitle>
                 <CardDescription>Perfil multicriterio de cumplimiento higiénico por sector</CardDescription>
               </CardHeader>
               <CardContent style={{ padding: '0 20px 20px 20px' }}>
@@ -959,7 +843,7 @@ export const Panel_Publico: React.FC = () => {
                           tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
                         />
                         <PolarRadiusAxis
-                          angle={30}
+                          angle={90}
                           domain={[0, 100]}
                           stroke="var(--color-texto-sec, #64748b)"
                           tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
@@ -972,10 +856,15 @@ export const Panel_Publico: React.FC = () => {
                             borderRadius: '8px',
                             color: 'var(--color-texto, #f8fafc)',
                           }}
-                          formatter={(val: TooltipValueType | undefined, name: number | string | undefined, item: { payload?: RadarCumplimientoItem }) => [
-                            `${val ?? 0}% (${item?.payload?.tareas_completadas || 0}/${item?.payload?.total_tareas || 0} tareas)`,
-                            name === 'porcentaje' ? 'Cumplimiento' : 'Meta',
-                          ]}
+                          formatter={(val: TooltipValueType | undefined, name: number | string | undefined, item: { payload?: RadarCumplimientoItem }) => {
+                            const esCumplimiento = name === 'porcentaje' || name === 'Cumplimiento Real';
+                            return [
+                              esCumplimiento
+                                ? `${val ?? 0}% (${item?.payload?.tareas_completadas || 0}/${item?.payload?.total_tareas || 0} tareas)`
+                                : `${val ?? 0}%`,
+                              esCumplimiento ? 'Cumplimiento' : 'Meta',
+                            ];
+                          }}
                         />
                         <Legend
                           verticalAlign="bottom"

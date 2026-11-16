@@ -1070,7 +1070,7 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                           tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
                         />
                         <PolarRadiusAxis
-                          angle={30}
+                          angle={90}
                           stroke="var(--color-texto-sec, #64748b)"
                           tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
                         />
