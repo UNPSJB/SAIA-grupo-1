@@ -174,3 +174,50 @@ class ProduccionDashboardResponse(BaseModel):
     total_lotes: int
     total_cantidad: float
     puntos: List[PuntoProduccion]
+
+class DimensionRadar(BaseModel):
+    dimension: str
+    clave: str
+    actual: float
+    anterior: float
+    meta: float = 100.0
+    evaluados_actual: int
+    evaluados_anterior: int
+    descripcion: str
+    unidad: str = "%"
+
+class MatrizCalidadRadarResponse(BaseModel):
+    sector_id: Optional[int] = None
+    sector_nombre: Optional[str] = None
+    periodo_etiqueta: str
+    comparativa_etiqueta: str
+    indice_global_actual: float
+    indice_global_anterior: float
+    dimensiones: List[DimensionRadar]
+    tiene_datos: bool
+
+class MesDesvioItem(BaseModel):
+    mes: str
+    etiqueta: str
+    conformes: int
+    desvios_leves: int
+    desvios_criticos: int
+    total_eventos: int
+    porcentaje_conformidad: float
+    porcentaje_desvios: float
+
+class ResumenEvolucionDesvios(BaseModel):
+    total_eventos: int
+    total_conformes: int
+    total_desvios: int
+    tasa_conformidad_promedio: float
+    tasa_desvio_promedio: float
+    mes_mayor_desvio: Optional[str] = None
+
+class EvolucionMensualDesviosResponse(BaseModel):
+    meses_evaluados: int
+    sector_id: Optional[int] = None
+    sector_nombre: Optional[str] = None
+    items: List[MesDesvioItem]
+    resumen: ResumenEvolucionDesvios
+    tiene_datos: bool
