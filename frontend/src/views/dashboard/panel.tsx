@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -25,6 +25,14 @@ import { apiFetch } from '../../api/client';
 import '../../styles/dashboard.css';
 import { useColoresTema } from './useColoresTema';
 import { VistaPublicaProvider } from '../vistaPublica/contextDeVistaPublica';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
 
 const PALETA_PRODUCCION = [
   '#3b82f6',
@@ -74,6 +82,18 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
   const [metricasIncidentes, setMetricasIncidentes] = useState<IncidentesMetricasDashboard | null>(null);
   const [loadingIncidentes, setLoadingIncidentes] = useState(true);
 
+  const graficoInsumosRef = useRef<HTMLDivElement | null>(null);
+  const graficoProduccionRef = useRef<HTMLDivElement | null>(null);
+  const getterCumplimientoRef = useRef<(() => ConfiguracionGraficoExportar | null) | null>(null);
+
+  const [exportConfigModal, setExportConfigModal] = useState<{
+    titulo: string;
+    filtros: string;
+    nombreArchivo: string;
+    graficos: ConfiguracionGraficoExportar[];
+  } | null>(null);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
+  const [errorExportGrafico, setErrorExportGrafico] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -254,6 +274,95 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
     };
   }, []);
 
+  const hayProduccionVisible =
+    !loadingProduccion &&
+    datosProduccion.length > 0 &&
+    (lotesProducidos > 0 || datosProduccion.some((p) => p.lotes > 0));
+
+  const obtenerConfigInsumos = (): ConfiguracionGraficoExportar | null => {
+    if (loadingInsumos || consumoInsumos.length === 0 || !graficoInsumosRef.current) return null;
+    const labelPeriodo = periodoInsumos === 'dia' ? 'Diario' : periodoInsumos === 'semana' ? 'Semanal' : 'Mensual';
+    return {
+      id: 'dashboard-insumos',
+      titulo: 'Consumo de Insumos Químicos',
+      subtitulo: `Consumo acumulado en ${unidadInsumos}`,
+      filtros: `Período: ${labelPeriodo} | Unidad: ${unidadInsumos}`,
+      contenedor: graficoInsumosRef.current,
+    };
+  };
+
+  const obtenerConfigProduccion = (): ConfiguracionGraficoExportar | null => {
+    if (!hayProduccionVisible || !graficoProduccionRef.current) return null;
+    const labelPeriodo = periodoProduccion === 'dia' ? 'Últimos 7 días' : periodoProduccion === 'semana' ? 'Últimas 4 semanas' : 'Meses del año';
+    const prodNombre = productoProduccion
+      ? listaProductos.find((p) => String(p.id) === productoProduccion)?.nombre || 'Producto filtrado'
+      : 'Todos los productos';
+    return {
+      id: 'dashboard-produccion',
+      titulo: 'Producción',
+      subtitulo: `Total elaborado: ${lotesProducidos} lotes`,
+      filtros: `Período: ${labelPeriodo} | Producto: ${prodNombre}`,
+      contenedor: graficoProduccionRef.current,
+    };
+  };
+
+  const abrirExportacionIndividual = (cfg: ConfiguracionGraficoExportar | null, nombreArchivo: string) => {
+    if (!cfg) {
+      setErrorExportGrafico('No hay datos visibles en este gráfico para exportar.');
+      return;
+    }
+    setExportConfigModal({
+      titulo: cfg.titulo,
+      filtros: cfg.filtros || '',
+      nombreArchivo,
+      graficos: [cfg],
+    });
+  };
+
+  const abrirExportacionConsolidada = () => {
+    const lista: ConfiguracionGraficoExportar[] = [];
+    const cfgInsumos = obtenerConfigInsumos();
+    const cfgProduccion = obtenerConfigProduccion();
+    const cfgCumplimiento = getterCumplimientoRef.current ? getterCumplimientoRef.current() : null;
+
+    if (cfgInsumos) lista.push(cfgInsumos);
+    if (cfgProduccion) lista.push(cfgProduccion);
+    if (cfgCumplimiento) lista.push(cfgCumplimiento);
+
+    if (lista.length === 0) {
+      setErrorExportGrafico('No hay gráficos con datos visibles en el Dashboard para exportar.');
+      return;
+    }
+
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    setExportConfigModal({
+      titulo: `Dashboard General (${lista.length} gráficos)`,
+      filtros: lista.map((g) => `${g.titulo} (${g.filtros})`).join(' • '),
+      nombreArchivo: `dashboard_graficos_${hoyStr}`,
+      graficos: lista,
+    });
+  };
+
+  const handleConfirmarExportacion = async (formato: FormatoGrafico) => {
+    if (!exportConfigModal) return;
+    try {
+      setExportandoGrafico(true);
+      await exportarGraficos(
+        exportConfigModal.graficos,
+        formato,
+        exportConfigModal.nombreArchivo,
+        'Reporte Estadístico - Panel General'
+      );
+      setExportConfigModal(null);
+    } catch (err) {
+      setErrorExportGrafico(
+        err instanceof Error ? err.message : 'Ocurrió un error al generar el archivo.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
+
   if (vistaDetalle) {
     return <VistaDetalleEstadisticas tipo={vistaDetalle} onVolver={() => setVistaDetalle(null)} />;
   }
@@ -265,12 +374,10 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
       .map((u) => ({ id: u, label: u })),
   ];
 
-
   const incCriticos = metricasIncidentes?.por_antiguedad?.mas_72h || 0;
   const incEnAtencion = metricasIncidentes?.por_antiguedad?.entre_24h_y_72h || 0;
   const incRecientes = metricasIncidentes?.por_antiguedad?.menos_24h || 0;
   const incReabiertos = metricasIncidentes?.por_estado?.reabierto || 0;
-
 
   const renderBadgeVencimiento = (
     vencidos: number,
@@ -322,29 +429,40 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
     <div className="modulo-container dashboard-container">
 
       <div className="dashboard-titulo-fila">
-      <div className="modulo-header dashboard-header-compacto">
-        <h1>Inicio</h1>
-        <div className="subtitulo">Panel de estadísticas y control general</div>
-      </div>
+        <div className="modulo-header dashboard-header-compacto">
+          <h1>Inicio</h1>
+          <div className="subtitulo">Panel de estadísticas y control general</div>
+        </div>
 
-      <div>
-        {vistaHabilitada ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
-            onClick={() => onIrAVistaPublica?.(true)}
-            className="btn-activar"
-            style={{ backgroundColor: '#0284c7' }}
+            type="button"
+            onClick={abrirExportacionConsolidada}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            title="Exportar los gráficos del Dashboard en PNG, JPEG o PDF"
           >
-            Ver QR / Gestionar Vista
+            <ExportIcon size={17} /> Exportar Gráficos
           </button>
-        ) : (
-          <button
-            onClick={() => onIrAVistaPublica?.(false)}
-            className="btn-activar"
-          >
-            Activar Vista Pública
-          </button>
-        )}
-      </div>
+          {vistaHabilitada ? (
+            <button
+              type="button"
+              onClick={() => onIrAVistaPublica?.(true)}
+              className="btn-activar"
+              style={{ backgroundColor: '#0284c7' }}
+            >
+              Ver QR / Gestionar Vista
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onIrAVistaPublica?.(false)}
+              className="btn-activar"
+            >
+              Activar Vista Pública
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="dashboard-fila-1">
@@ -723,6 +841,22 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                   </option>
                 ))}
               </select>
+              {!loadingInsumos && consumoInsumos.length > 0 && (
+                <button
+                  type="button"
+                  className="dashboard-badge dashboard-badge-btn dashboard-badge-al-dia"
+                  onClick={() =>
+                    abrirExportacionIndividual(
+                      obtenerConfigInsumos(),
+                      `consumo_insumos_${periodoInsumos}_${unidadInsumos}`
+                    )
+                  }
+                  title="Exportar gráfico de consumo de insumos (PNG, JPEG o PDF)"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <ExportIcon size={13} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -759,7 +893,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 </div>
               </div>
             ) : (
-              <div className="dashboard-grafico-contenedor">
+              <div ref={graficoInsumosRef} className="dashboard-grafico-contenedor">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart data={consumoInsumos} margin={{ top: 12, right: 18, left: 14, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
@@ -849,6 +983,22 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 <option value="semana">Últimas 4 semanas</option>
                 <option value="mes">Meses del año</option>
               </select>
+              {hayProduccionVisible && (
+                <button
+                  type="button"
+                  className="dashboard-badge dashboard-badge-btn dashboard-badge-al-dia"
+                  onClick={() =>
+                    abrirExportacionIndividual(
+                      obtenerConfigProduccion(),
+                      `produccion_${periodoProduccion}`
+                    )
+                  }
+                  title="Exportar gráfico de producción (PNG, JPEG o PDF)"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <ExportIcon size={13} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -885,7 +1035,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 </div>
               </div>
             ) : (
-              <div className="dashboard-grafico-contenedor">
+              <div ref={graficoProduccionRef} className="dashboard-grafico-contenedor">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart data={datosProduccion} margin={{ top: 12, right: 18, left: 14, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
@@ -960,8 +1110,30 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
       </div>
 
       <div className="dashboard-fila-3">
-        <GraficoCumplimientoLimpieza onVerMas={() => setVistaDetalle('tareas')} />
+        <GraficoCumplimientoLimpieza
+          onVerMas={() => setVistaDetalle('tareas')}
+          onObtenerConfigExportacion={(getter) => {
+            getterCumplimientoRef.current = getter;
+          }}
+        />
       </div>
+
+      <ConfirmExportGraficoDialog
+        open={Boolean(exportConfigModal)}
+        tituloGrafico={exportConfigModal?.titulo || ''}
+        cantidadGraficos={exportConfigModal?.graficos.length || 1}
+        filtrosAplicados={exportConfigModal?.filtros}
+        loading={exportandoGrafico}
+        onConfirm={handleConfirmarExportacion}
+        onCancel={() => setExportConfigModal(null)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportGrafico)}
+        title="No se pudo exportar el gráfico"
+        description={errorExportGrafico || ''}
+        onClose={() => setErrorExportGrafico(null)}
+      />
     </div>
   </VistaPublicaProvider>
   );

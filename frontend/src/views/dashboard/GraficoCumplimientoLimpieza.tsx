@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -16,7 +16,15 @@ import {
 } from 'recharts';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Badge } from '../../components/ui/badge';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
 import type { AgrupacionGrafico, GraficoCumplimientoResponse, PuntoCumplimiento } from './tipos';
 import { useColoresTema } from './useColoresTema';
 
@@ -44,6 +52,7 @@ const formatearFechaVisual = (fechaIso: string): string => {
 
 interface GraficoCumplimientoLimpiezaProps {
   onVerMas?: () => void;
+  onObtenerConfigExportacion?: (getter: () => ConfiguracionGraficoExportar | null) => void;
 }
 
 interface TooltipPayloadItem {
@@ -119,6 +128,7 @@ const CustomTooltipContent = ({ active, payload }: CustomTooltipProps): React.Re
 
 export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaProps> = ({
   onVerMas,
+  onObtenerConfigExportacion,
 }) => {
   const { esAdministrador } = useAuth();
   const colores = useColoresTema();
@@ -133,6 +143,11 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
   const [datos, setDatos] = useState<GraficoCumplimientoResponse | null>(null);
   const [cargando, setCargando] = useState<boolean>(true);
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
+
+  const contenedorGraficoRef = useRef<HTMLDivElement | null>(null);
+  const [modalExportAbierto, setModalExportAbierto] = useState(false);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
+  const [errorExportGrafico, setErrorExportGrafico] = useState<string | null>(null);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -232,6 +247,46 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
         { name: 'Pendientes', value: tareasPendientes, color: colores.alerta },
       ].filter((d) => d.value > 0);
 
+  const construirConfigExportacion = (): ConfiguracionGraficoExportar | null => {
+    if (!hayDatos || !contenedorGraficoRef.current) return null;
+    const etiquetaRango =
+      rangoRapido === 'custom'
+        ? `${formatearFechaVisual(desde)} al ${formatearFechaVisual(hasta)}`
+        : `Últimos ${rangoRapido} días (${formatearFechaVisual(desde)} al ${formatearFechaVisual(hasta)})`;
+    return {
+      id: 'cumplimiento-limpieza',
+      titulo: 'Cumplimiento de Limpieza',
+      subtitulo: `Promedio general: ${datos?.promedio_cumplimiento ?? 0}% (${tareasCompletadas}/${totalTareas} tareas)`,
+      filtros: `Período: ${etiquetaRango} | Agrupación: ${agrupacion === 'dia' ? 'Por día' : 'Por semana'}`,
+      contenedor: contenedorGraficoRef.current,
+      leyenda: [
+        { etiqueta: 'Óptimo (≥ 80%)', color: colores.exito },
+        { etiqueta: 'Atención (50% - 79%)', color: colores.alerta },
+        { etiqueta: 'Crítico (< 50%)', color: colores.error },
+      ],
+    };
+  };
+
+  useEffect(() => {
+    onObtenerConfigExportacion?.(construirConfigExportacion);
+  });
+
+  const handleConfirmarExportacion = async (formato: FormatoGrafico) => {
+    const cfg = construirConfigExportacion();
+    if (!cfg) return;
+    try {
+      setExportandoGrafico(true);
+      await exportarGraficos([cfg], formato, `cumplimiento_limpieza_${desde}_a_${hasta}`);
+      setModalExportAbierto(false);
+    } catch (err) {
+      setErrorExportGrafico(
+        err instanceof Error ? err.message : 'No se pudo exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
+
   if (!esAdministrador) {
     return null;
   }
@@ -315,6 +370,18 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
               Semana
             </button>
           </div>
+
+          {hayDatos && !cargando && (
+            <button
+              type="button"
+              className="dashboard-badge dashboard-badge-btn dashboard-badge-al-dia"
+              onClick={() => setModalExportAbierto(true)}
+              title="Exportar gráfico de cumplimiento (PNG, JPEG o PDF)"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}
+            >
+              <ExportIcon size={13} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -347,7 +414,7 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
             </span>
           </div>
         ) : (
-          <div className="dashboard-cumplimiento-cuerpo">
+          <div className="dashboard-cumplimiento-cuerpo" ref={contenedorGraficoRef}>
             <div className="dashboard-cumplimiento-resumen-bloque">
               <div className="dashboard-cumplimiento-dona-box">
                 <div className="dashboard-cumplimiento-dona-wrapper">
@@ -571,6 +638,22 @@ export const GraficoCumplimientoLimpieza: React.FC<GraficoCumplimientoLimpiezaPr
           )}
         </div>
       </div>
+
+      <ConfirmExportGraficoDialog
+        open={modalExportAbierto}
+        tituloGrafico="Cumplimiento de Limpieza"
+        filtrosAplicados={`Período: ${formatearFechaVisual(desde)} al ${formatearFechaVisual(hasta)} | Agrupación: ${agrupacion === 'dia' ? 'Día' : 'Semana'}`}
+        loading={exportandoGrafico}
+        onConfirm={handleConfirmarExportacion}
+        onCancel={() => setModalExportAbierto(false)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportGrafico)}
+        title="No se pudo exportar el gráfico"
+        description={errorExportGrafico || ''}
+        onClose={() => setErrorExportGrafico(null)}
+      />
     </div>
   );
 };

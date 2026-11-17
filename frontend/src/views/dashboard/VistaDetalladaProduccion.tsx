@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -32,9 +32,15 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { descargarCSV } from '../../utils/exportarCsv';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
 import { descargarPDF } from '../../utils/exportarPdf';
 import type { LoteProduccion, Producto } from '../produccion/tipos';
 import { useColoresTema } from './useColoresTema';
@@ -160,14 +166,6 @@ const ModalDetalleLote: React.FC<ModalDetalleLoteProps> = ({ lote, onClose }) =>
               Elaborado el {formatearFechaVisual(lote.fecha)}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn-secundario"
-            style={{ padding: '6px 12px', fontSize: '13px' }}
-          >
-            ✕ Cerrar
-          </button>
         </div>
 
         <div style={{ padding: '20px 24px' }}>
@@ -304,6 +302,41 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
+
+  const graficoEvolucionRef = useRef<HTMLDivElement | null>(null);
+  const graficoProductosRef = useRef<HTMLDivElement | null>(null);
+  const graficoInsumosRef = useRef<HTMLDivElement | null>(null);
+
+  const [exportGraficoModal, setExportGraficoModal] = useState<{
+    titulo: string;
+    filtros: string;
+    nombreArchivo: string;
+    graficos: ConfiguracionGraficoExportar[];
+  } | null>(null);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
+
+  const tituloGraficoEvolucion = useMemo(() => {
+    if (tipoGraficoEvolucion === 'control_spc') {
+      return 'Control Estadístico de Procesos (CEP / SPC)';
+    }
+    if (tipoGraficoEvolucion === 'radar') {
+      return 'Red de Araña: Perfil Multicriterio de Producción';
+    }
+    if (tipoGraficoEvolucion === 'combinado') {
+      return 'Gráfico Combinado: Lotes y Volumen Fabricado';
+    }
+    return 'Producción de Lotes por Fecha y Producto';
+  }, [tipoGraficoEvolucion]);
+
+  const subtituloGraficoEvolucion = useMemo(() => {
+    if (tipoGraficoEvolucion === 'control_spc') {
+      return `Monitoreo estadístico en ${formatearUnidad(unidadSeleccionada)} (UCL/LCL a ±3σ)`;
+    }
+    if (tipoGraficoEvolucion === 'radar') {
+      return 'Comparativa radial multicriterio entre productos';
+    }
+    return `Agrupado por ${agrupacionTemporal}`;
+  }, [tipoGraficoEvolucion, unidadSeleccionada, agrupacionTemporal]);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -675,8 +708,8 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
 
     const puntos = filtrados.map((l, index) => {
       const cant = Number(l.cantidad) || 0;
-      const esFuera = (n > 1 && sigma > 0) ? (cant > ucl || cant < lcl) : false;
-      const esAdv = (n > 1 && sigma > 0 && !esFuera) ? (cant > uwcl || cant < lwcl) : false;
+      const esFuera = n > 1 && sigma > 0 ? cant > ucl || cant < lcl : false;
+      const esAdv = n > 1 && sigma > 0 && !esFuera ? cant > uwcl || cant < lwcl : false;
 
       if (esFuera) fueraDeControl++;
       else enControl++;
@@ -959,6 +992,71 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
   };
 
+  const abrirExportacionTodosGraficos = () => {
+    const filtros = obtenerResumenFiltros();
+    const lista: ConfiguracionGraficoExportar[] = [];
+
+    if (graficoEvolucionRef.current && datosEvolucionTemporal.length > 0 && kpis.totalLotes > 0) {
+      lista.push({
+        id: 'produccion-evolucion',
+        titulo: tituloGraficoEvolucion,
+        subtitulo: subtituloGraficoEvolucion,
+        filtros,
+        contenedor: graficoEvolucionRef.current,
+      });
+    }
+    if (graficoProductosRef.current && datosProductosPorUnidad.length > 0) {
+      lista.push({
+        id: 'produccion-totales-unidad',
+        titulo: `Totales de Productos Fabricados (${formatearUnidad(unidadSeleccionada)})`,
+        subtitulo: 'Cantidad acumulada elaborada por producto',
+        filtros: `${filtros} | Unidad: ${formatearUnidad(unidadSeleccionada)}`,
+        contenedor: graficoProductosRef.current,
+      });
+    }
+    if (graficoInsumosRef.current && datosInsumosMasUtilizados.length > 0) {
+      lista.push({
+        id: 'produccion-insumos-usados',
+        titulo: 'Insumos Más Utilizados',
+        subtitulo: 'Materias primas con mayor demanda en los lotes del período',
+        filtros,
+        contenedor: graficoInsumosRef.current,
+      });
+    }
+
+    if (lista.length === 0) {
+      setErrorExportDialog('No hay gráficos con datos visibles para exportar.');
+      return;
+    }
+
+    setExportGraficoModal({
+      titulo: `Producción Detallada (${lista.length} gráficos)`,
+      filtros,
+      nombreArchivo: `graficos_produccion_${desde || 'inicio'}_a_${hasta || 'hoy'}`,
+      graficos: lista,
+    });
+  };
+
+  const ejecutarExportacionGrafico = async (formato: FormatoGrafico) => {
+    if (!exportGraficoModal) return;
+    try {
+      setExportandoGrafico(true);
+      await exportarGraficos(
+        exportGraficoModal.graficos,
+        formato,
+        exportGraficoModal.nombreArchivo,
+        'Reporte Gráfico - Producción Detallada'
+      );
+      setExportGraficoModal(null);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error ? err.message : 'Error al exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
+
   return (
     <div className="modulo-container dashboard-vista-detalle">
       <nav className="dashboard-breadcrumb" aria-label="Breadcrumb">
@@ -989,14 +1087,25 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {!cargando && kpis.totalLotes > 0 && (
+              <button
+                type="button"
+                onClick={abrirExportacionTodosGraficos}
+                className="btn-cancelar"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title="Exportar todos los gráficos de producción en PNG, JPEG o PDF"
+              >
+                <ExportIcon size={18} /> Exportar Gráficos
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setDialogExportarAbierto(true)}
               className="btn-cancelar"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              <ExportIcon size={18} /> Exportar
+              <ExportIcon size={18} /> Exportar Datos
             </button>
           </div>
         </div>
@@ -1208,13 +1317,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '14px', width: '100%' }}>
             <div>
               <CardTitle style={{ fontSize: '1.05rem' }}>
-                {tipoGraficoEvolucion === 'control_spc'
-                  ? 'Control Estadístico de Procesos (CEP / SPC)'
-                  : tipoGraficoEvolucion === 'radar'
-                  ? 'Red de Araña: Perfil Multicriterio de Producción'
-                  : tipoGraficoEvolucion === 'combinado'
-                  ? 'Gráfico Combinado: Lotes y Volumen Fabricado'
-                  : 'Producción de Lotes por Fecha y Producto'}
+                {tituloGraficoEvolucion}
               </CardTitle>
               <CardDescription>
                 {tipoGraficoEvolucion === 'control_spc'
@@ -1302,6 +1405,33 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                   </button>
                 ))}
               </div>
+
+              {!cargando && datosEvolucionTemporal.length > 0 && kpis.totalLotes > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExportGraficoModal({
+                      titulo: tituloGraficoEvolucion,
+                      filtros: `${obtenerResumenFiltros()} | ${subtituloGraficoEvolucion}`,
+                      nombreArchivo: `evolucion_produccion_${desde || 'inicio'}_a_${hasta || 'hoy'}`,
+                      graficos: [
+                        {
+                          id: 'produccion-evolucion',
+                          titulo: tituloGraficoEvolucion,
+                          subtitulo: subtituloGraficoEvolucion,
+                          filtros: obtenerResumenFiltros(),
+                          contenedor: graficoEvolucionRef.current,
+                        },
+                      ],
+                    })
+                  }
+                  className="btn-cancelar"
+                  style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  title="Exportar gráfico en PNG, JPEG o PDF"
+                >
+                  <ExportIcon size={14} /> Exportar gráfico
+                </button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -1345,7 +1475,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
               </div>
             </div>
           ) : (
-            <div style={{ width: '100%' }}>
+            <div ref={graficoEvolucionRef} style={{ width: '100%' }}>
               {tipoGraficoEvolucion === 'control_spc' ? (
                 <div>
                   <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '14px', padding: '10px 14px', borderRadius: '8px', backgroundColor: 'var(--color-fondo)', border: '1px solid var(--color-borde)', fontSize: '12px' }}>
@@ -1645,19 +1775,17 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
           gap: '16px',
           marginBottom: '1.5rem',
         }}
       >
         <Card>
-          <CardHeader style={{ padding: '20px 24px 14px 24px' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+          <CardHeader style={{ padding: '20px 24px 12px 24px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
               <div>
                 <CardTitle style={{ fontSize: '1rem' }}>Totales de Productos Fabricados</CardTitle>
-                <CardDescription>
-                  Cantidad acumulada elaborada por producto en la unidad elegida
-                </CardDescription>
+                <CardDescription>Cantidad acumulada elaborada en {formatearUnidad(unidadSeleccionada)}</CardDescription>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1673,7 +1801,6 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                     color: 'var(--color-texto)',
                     fontSize: '12px',
                     outline: 'none',
-                    cursor: 'pointer',
                   }}
                 >
                   {unidadesDisponibles.map((u) => (
@@ -1682,6 +1809,32 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                     </option>
                   ))}
                 </select>
+                {!cargando && datosProductosPorUnidad.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExportGraficoModal({
+                        titulo: `Totales de Productos Fabricados (${formatearUnidad(unidadSeleccionada)})`,
+                        filtros: `${obtenerResumenFiltros()} | Unidad: ${formatearUnidad(unidadSeleccionada)}`,
+                        nombreArchivo: `totales_productos_${unidadSeleccionada}_${desde || 'inicio'}_a_${hasta || 'hoy'}`,
+                        graficos: [
+                          {
+                            id: 'produccion-totales-unidad',
+                            titulo: `Totales de Productos Fabricados (${formatearUnidad(unidadSeleccionada)})`,
+                            subtitulo: 'Cantidad acumulada elaborada por producto',
+                            filtros: `${obtenerResumenFiltros()} | Unidad: ${formatearUnidad(unidadSeleccionada)}`,
+                            contenedor: graficoProductosRef.current,
+                          },
+                        ],
+                      })
+                    }
+                    className="btn-cancelar"
+                    style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                    title="Exportar gráfico en PNG, JPEG o PDF"
+                  >
+                    <ExportIcon size={14} /> Exportar gráfico
+                  </button>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -1691,17 +1844,16 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                 Cargando totales de productos...
               </div>
             ) : datosProductosPorUnidad.length === 0 ? (
-              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
-                <strong style={{ display: 'block', color: 'var(--text-h)', marginBottom: '4px' }}>Sin productos en {formatearUnidad(unidadSeleccionada)}</strong>
-                <span>No se registraron productos producidos en esta unidad durante el período.</span>
+              <div style={{ minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px', textAlign: 'center', padding: '0 16px' }}>
+                No se elaboraron productos medidos en {formatearUnidad(unidadSeleccionada)} en este período.
               </div>
             ) : (
-              <div style={{ width: '100%', height: 340 }}>
+              <div ref={graficoProductosRef} style={{ width: '100%', height: 340 }}>
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart
                     data={datosProductosPorUnidad}
                     layout="vertical"
-                    margin={{ top: 8, right: 30, left: 10, bottom: 8 }}
+                    margin={{ top: 8, right: 24, left: 20, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
                     <XAxis type="number" stroke={colores.textoSec} fontSize={12} unit={` ${abreviarUnidad(unidadSeleccionada)}`} />
@@ -1715,19 +1867,19 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                        backgroundColor: 'var(--color-superficie-elevada)',
                         borderColor: 'var(--color-borde)',
-                        borderRadius: '8px',
                         color: 'var(--color-texto)',
                       }}
-                      formatter={(val: any, _, item: any) => [
-                        `${val} ${abreviarUnidad(unidadSeleccionada)} (${item?.payload?.lotes || 0} lotes)`,
-                        'Total Fabricado',
+                      itemStyle={{ color: 'var(--color-texto)' }}
+                      formatter={(val, _, item) => [
+                        `${val} ${abreviarUnidad(item.payload.unidad)} (${item.payload.lotes} ${item.payload.lotes === 1 ? 'lote' : 'lotes'})`,
+                        'Cantidad Total',
                       ]}
                     />
                     <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
-                      {datosProductosPorUnidad.map((entry, index) => (
-                        <Cell key={`prod-cell-${index}`} fill={entry.color} />
+                      {datosProductosPorUnidad.map((entry, idx) => (
+                        <Cell key={`prod-cell-${idx}`} fill={entry.color} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -1738,11 +1890,39 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
         </Card>
 
         <Card>
-          <CardHeader style={{ padding: '20px 24px 14px 24px' }}>
-            <CardTitle style={{ fontSize: '1rem' }}>Insumos Más Utilizados</CardTitle>
-            <CardDescription>
-              Materias primas con mayor demanda en los lotes del período
-            </CardDescription>
+          <CardHeader style={{ padding: '20px 24px 12px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+              <div>
+                <CardTitle style={{ fontSize: '1rem' }}>Insumos Más Utilizados</CardTitle>
+                <CardDescription>Materias primas con mayor demanda en los lotes del período</CardDescription>
+              </div>
+              {!cargando && datosInsumosMasUtilizados.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExportGraficoModal({
+                      titulo: 'Insumos Más Utilizados',
+                      filtros: obtenerResumenFiltros(),
+                      nombreArchivo: `insumos_mas_utilizados_${desde || 'inicio'}_a_${hasta || 'hoy'}`,
+                      graficos: [
+                        {
+                          id: 'produccion-insumos-usados',
+                          titulo: 'Insumos Más Utilizados',
+                          subtitulo: 'Materias primas con mayor demanda en los lotes del período',
+                          filtros: obtenerResumenFiltros(),
+                          contenedor: graficoInsumosRef.current,
+                        },
+                      ],
+                    })
+                  }
+                  className="btn-cancelar"
+                  style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  title="Exportar gráfico en PNG, JPEG o PDF"
+                >
+                  <ExportIcon size={14} /> Exportar gráfico
+                </button>
+              )}
+            </div>
           </CardHeader>
           <CardContent style={{ padding: '0 24px 20px 24px' }}>
             {cargando ? (
@@ -1750,17 +1930,16 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                 Cargando insumos más utilizados...
               </div>
             ) : datosInsumosMasUtilizados.length === 0 ? (
-              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
-                <strong style={{ display: 'block', color: 'var(--text-h)', marginBottom: '4px' }}>Sin insumos registrados</strong>
-                <span>Los lotes seleccionados no tienen insumos asociados.</span>
+              <div style={{ minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px', textAlign: 'center', padding: '0 16px' }}>
+                No se registró consumo de insumos en los lotes de este período.
               </div>
             ) : (
-              <div style={{ width: '100%', height: 340 }}>
+              <div ref={graficoInsumosRef} style={{ width: '100%', height: 340 }}>
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart
-                    data={datosInsumosMasUtilizados.slice(0, 7)}
+                    data={datosInsumosMasUtilizados.slice(0, 8)}
                     layout="vertical"
-                    margin={{ top: 8, right: 30, left: 10, bottom: 8 }}
+                    margin={{ top: 8, right: 24, left: 20, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
                     <XAxis type="number" stroke={colores.textoSec} fontSize={12} />
@@ -1774,19 +1953,19 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                        backgroundColor: 'var(--color-superficie-elevada)',
                         borderColor: 'var(--color-borde)',
-                        borderRadius: '8px',
                         color: 'var(--color-texto)',
                       }}
-                      formatter={(val: any, _, item: any) => [
-                        `${val} ${abreviarUnidad(item?.payload?.medida)} (en ${item?.payload?.lotesCount} lotes)`,
-                        'Consumo Acumulado',
+                      itemStyle={{ color: 'var(--color-texto)' }}
+                      formatter={(val, _, item) => [
+                        `${val} ${abreviarUnidad(item.payload.medida)} (en ${item.payload.lotesCount} ${item.payload.lotesCount === 1 ? 'lote' : 'lotes'})`,
+                        'Cantidad Usada',
                       ]}
                     />
                     <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
-                      {datosInsumosMasUtilizados.slice(0, 7).map((entry, index) => (
-                        <Cell key={`insumo-cell-${index}`} fill={entry.color} />
+                      {datosInsumosMasUtilizados.slice(0, 8).map((entry, idx) => (
+                        <Cell key={`ins-cell-${idx}`} fill={entry.color} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -1797,165 +1976,155 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
         </Card>
       </div>
 
-      <Card style={{ marginBottom: '1.5rem' }}>
-        <CardHeader style={{ padding: '20px 24px 14px 24px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '14px', width: '100%' }}>
+      <Card style={{ marginBottom: '2rem' }}>
+        <CardHeader style={{ padding: '20px 24px 12px 24px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CardTitle style={{ fontSize: '1.1rem' }}>
-                  Listado Detallado de Lotes de Producción
-                </CardTitle>
-                <Badge variant="outline" style={{ fontSize: '12px' }}>
-                  {lotesFiltrados.length} {lotesFiltrados.length === 1 ? 'lote' : 'lotes'}
-                </Badge>
-              </div>
+              <CardTitle style={{ fontSize: '1.05rem' }}>Listado Detallado de Lotes Elaborados</CardTitle>
               <CardDescription>
-                Trazabilidad completa de lotes registrados con insumos, cantidad y responsable
+                Historial completo de producción y composición de materias primas
               </CardDescription>
             </div>
 
-            <div style={{ position: 'relative', width: '280px', maxWidth: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <input
                 type="text"
-                placeholder="Buscar por código, producto, operador..."
+                placeholder="Buscar por código, producto o responsable..."
                 value={busquedaLote}
-                onChange={(e) => setBusquedaLote(e.target.value)}
+                onChange={(e) => {
+                  setBusquedaLote(e.target.value);
+                  setPaginaActual(1);
+                }}
                 style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '7px 12px 7px 30px',
-                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
                   border: '1px solid var(--color-borde)',
-                  backgroundColor: 'var(--color-fondo)',
+                  backgroundColor: 'var(--color-superficie)',
                   color: 'var(--color-texto)',
                   fontSize: '12.5px',
+                  width: '260px',
+                  maxWidth: '100%',
                   outline: 'none',
                 }}
               />
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--color-texto-sec)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+              <span style={{ fontSize: '12px', color: 'var(--color-texto-sec)' }}>
+                Total: <strong>{totalRegistros}</strong> lotes
+              </span>
             </div>
           </div>
         </CardHeader>
-
-        <CardContent style={{ padding: 0 }}>
+        <CardContent style={{ padding: '0 24px 20px 24px' }}>
           {cargando ? (
-            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
-              Cargando lotes...
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
+              Cargando lotes de producción...
             </div>
           ) : lotesFiltrados.length === 0 ? (
-            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
-              <strong style={{ display: 'block', color: 'var(--text-h)', marginBottom: '4px' }}>
-                No se encontraron lotes de producción
-              </strong>
-              <p style={{ margin: 0, fontSize: '13px' }}>
-                No hay registros que coincidan con los filtros y búsqueda aplicados.
-              </p>
+            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
+              No se encontraron lotes que coincidan con los filtros aplicados.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-borde)', color: 'var(--color-texto-sec)', fontSize: '11.5px', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '10px 14px', width: '15%' }}>Código</th>
-                    <th style={{ padding: '10px 14px', width: '12%' }}>Fecha</th>
-                    <th style={{ padding: '10px 14px', width: '25%' }}>Producto</th>
-                    <th style={{ padding: '10px 14px', width: '15%' }}>Cantidad Fabricada</th>
-                    <th style={{ padding: '10px 14px', width: '18%' }}>Responsable</th>
-                    <th style={{ padding: '10px 14px', width: '15%', textAlign: 'center' }}>Insumos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {itemsPaginados.map((l) => (
-                    <tr
-                      key={l.id}
-                      onClick={() => setLoteParaModal(l)}
-                      style={{ borderBottom: '1px solid var(--color-borde)', cursor: 'pointer' }}
-                      className="fila-incidente-clickeable"
-                      title="Clic para ver detalle completo del lote"
-                    >
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--color-primario)', fontSize: '13px' }}>
-                          {l.codigo}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>
-                          ID #{l.id}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 500, color: 'var(--color-texto)' }}>
-                          {formatearFechaVisual(l.fecha)}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text-h)' }}>
-                          {l.producto?.nombre}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--color-texto)', fontSize: '13px' }}>
-                          {l.cantidad} <span style={{ fontWeight: 500, color: 'var(--color-texto-sec)', fontSize: '12px' }}>{abreviarUnidad(l.producto?.unidadMedida)}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 500, color: 'var(--color-texto)' }}>
-                          {l.nombre_responsable}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>
-                          Legajo #{l.responsable_legajo}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <Badge variant="outline">
-                          {l.insumos.length} {l.insumos.length === 1 ? 'insumo' : 'insumos'}
-                        </Badge>
-                      </td>
+            <>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-borde)', color: 'var(--color-texto-sec)', fontSize: '11.5px', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '10px 12px' }}>Fecha</th>
+                      <th style={{ padding: '10px 12px' }}>Código Lote</th>
+                      <th style={{ padding: '10px 12px' }}>Producto</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right' }}>Cantidad</th>
+                      <th style={{ padding: '10px 12px' }}>Responsable</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center' }}>Insumos</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center' }}>Estado</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right' }}>Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {itemsPaginados.map((l) => (
+                      <tr key={l.id} style={{ borderBottom: '1px solid var(--color-borde)' }}>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-texto)' }}>
+                          {formatearFechaVisual(l.fecha)}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-primario)' }}>
+                          {l.codigo}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-h)' }}>
+                          {l.producto.nombre}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: 'var(--color-texto)' }}>
+                          {l.cantidad} {abreviarUnidad(l.producto.unidadMedida)}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-texto)' }}>
+                          <span>{l.nombre_responsable}</span>
+                          <span style={{ fontSize: '10.5px', color: 'var(--color-texto-sec)', display: 'block' }}>
+                            Legajo #{l.responsable_legajo}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
+                          {l.insumos.length} {l.insumos.length === 1 ? 'insumo' : 'insumos'}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          <Badge variant={l.editable ? 'proximo' : 'al_dia'}>
+                            {l.editable ? 'Abierto' : 'Finalizado'}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="btn-secundario"
+                            style={{ padding: '4px 10px', fontSize: '12px' }}
+                            onClick={() => setLoteParaModal(l)}
+                          >
+                            Ver composición
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-          <div style={{ padding: '12px 18px' }}>
-            <Paginacion
-              paginaActual={paginaActual}
-              totalPaginas={totalPaginas}
-              totalRegistros={totalRegistros}
-              indiceInicio={indiceInicio}
-              indiceFin={indiceFin}
-              filasPorPagina={filasPorPagina}
-              onCambiarPagina={setPaginaActual}
-              onCambiarFilasPorPagina={setFilasPorPagina}
-              etiqueta="lotes"
-            />
-          </div>
+              <div style={{ marginTop: '16px' }}>
+                <Paginacion
+                  paginaActual={paginaActual}
+                  totalPaginas={totalPaginas}
+                  totalRegistros={totalRegistros}
+                  indiceInicio={indiceInicio}
+                  indiceFin={indiceFin}
+                  filasPorPagina={filasPorPagina}
+                  onCambiarPagina={setPaginaActual}
+                  onCambiarFilasPorPagina={setFilasPorPagina}
+                  etiqueta="lotes"
+                />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
       {loteParaModal && (
-        <ModalDetalleLote lote={loteParaModal} onClose={() => setLoteParaModal(null)} />
+        <ModalDetalleLote
+          lote={loteParaModal}
+          onClose={() => setLoteParaModal(null)}
+        />
       )}
 
       <ConfirmExportDialog
         open={dialogExportarAbierto}
-        totalRegistros={lotesFiltrados.length}
+        totalRegistros={totalRegistros}
         filtrosAplicados={obtenerResumenFiltros()}
         loading={exportando}
         onConfirm={ejecutarExportacion}
         onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ConfirmExportGraficoDialog
+        open={Boolean(exportGraficoModal)}
+        tituloGrafico={exportGraficoModal?.titulo || ''}
+        cantidadGraficos={exportGraficoModal?.graficos.length || 1}
+        filtrosAplicados={exportGraficoModal?.filtros || obtenerResumenFiltros()}
+        loading={exportandoGrafico}
+        onConfirm={ejecutarExportacionGrafico}
+        onCancel={() => setExportGraficoModal(null)}
       />
 
       <ErrorAlertDialog

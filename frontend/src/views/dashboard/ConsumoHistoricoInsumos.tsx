@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -32,9 +32,15 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { descargarCSV } from '../../utils/exportarCsv';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
 import { descargarPDF } from '../../utils/exportarPdf';
 import { useColoresTema } from './useColoresTema';
 import {
@@ -113,6 +119,10 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
   const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
+
+  const graficoAnalisisRef = useRef<HTMLDivElement | null>(null);
+  const [modalExportGraficoAbierto, setModalExportGraficoAbierto] = useState(false);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -316,6 +326,73 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
   const hayDatos = (datos?.total_registros ?? 0) > 0;
   const metricas = datos?.metricas;
   const unidadUso = datos?.unidad_seleccionada || 'L';
+
+  const tituloGraficoActual =
+    pestañaGrafico === 'evolucion'
+      ? `Consumo Histórico - Evolución Temporal (${unidadUso})`
+      : pestañaGrafico === 'tipo'
+      ? `Consumo Histórico - Por Tipo de Químico (${unidadUso})`
+      : pestañaGrafico === 'radar'
+      ? `Consumo Histórico - Red de Araña por Tipo (${unidadUso})`
+      : pestañaGrafico === 'pareto'
+      ? `Consumo Histórico - Diagrama de Pareto 80/20 (${unidadUso})`
+      : `Consumo Histórico - Por Proveedor (${unidadUso})`;
+
+  const subtituloGraficoActual =
+    pestañaGrafico === 'evolucion'
+      ? `Evolución del volumen acumulado de químicos (${unidadUso}) a través del tiempo.`
+      : pestañaGrafico === 'tipo'
+      ? `Distribución del consumo según la función química del producto.`
+      : pestañaGrafico === 'radar'
+      ? `Perfil radial multicriterio del consumo de insumos químicos.`
+      : pestañaGrafico === 'pareto'
+      ? `Concentración del volumen consumido por insumo químico (corte acumulado 80%).`
+      : `Comparativa de consumo acumulado según el proveedor suministrador.`;
+
+  const puedeExportarGraficoActual =
+    pestañaGrafico === 'radar'
+      ? (datos?.por_tipo || []).length > 0
+      : pestañaGrafico === 'pareto'
+      ? datosParetoInsumos.length > 0
+      : true;
+
+  const ejecutarExportacionGrafico = async (formato: FormatoGrafico) => {
+    try {
+      setExportandoGrafico(true);
+      const cfg: ConfiguracionGraficoExportar = {
+        id: `consumo-historico-${pestañaGrafico}`,
+        titulo: tituloGraficoActual,
+        subtitulo: subtituloGraficoActual,
+        filtros: obtenerResumenFiltros(),
+        contenedor: graficoAnalisisRef.current,
+        leyenda:
+          pestañaGrafico === 'tipo'
+            ? (datos?.por_tipo || []).map((t) => ({
+                etiqueta: `${t.etiqueta} (${t.porcentaje}%)`,
+                color: COLORES_TIPO_QUIMICO[t.clave] || '#64748b',
+              }))
+            : pestañaGrafico === 'pareto'
+            ? [
+                { etiqueta: `Consumo (${unidadUso})`, color: colores.primario },
+                { etiqueta: '% Acumulado', color: '#f59e0b' },
+                { etiqueta: 'Corte 80% (Pareto)', color: '#ef4444' },
+              ]
+            : undefined,
+      };
+      await exportarGraficos(
+        [cfg],
+        formato,
+        `grafico_consumo_${pestañaGrafico}_${desde}_a_${hasta}`
+      );
+      setModalExportGraficoAbierto(false);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error ? err.message : 'Error al exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
 
   return (
     <div className="modulo-container" style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -803,19 +880,11 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
                 <div>
                   <CardTitle>Análisis y Visualización de Uso</CardTitle>
                   <CardDescription>
-                    {pestañaGrafico === 'evolucion'
-                      ? `Evolución del volumen acumulado de químicos (${unidadUso}) a través del tiempo.`
-                      : pestañaGrafico === 'tipo'
-                      ? `Distribución del consumo según la función química del producto.`
-                      : pestañaGrafico === 'radar'
-                      ? `Perfil radial multicriterio del consumo de insumos químicos.`
-                      : pestañaGrafico === 'pareto'
-                      ? `Diagrama de Pareto (80/20): Concentración del volumen consumido por insumo químico.`
-                      : `Comparativa de consumo acumulado según el proveedor suministrador.`}
+                    {subtituloGraficoActual}
                   </CardDescription>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <div
                     style={{
                       display: 'inline-flex',
@@ -914,13 +983,31 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
                       </button>
                     </div>
                   )}
+
+                  {puedeExportarGraficoActual && (
+                    <button
+                      type="button"
+                      onClick={() => setModalExportGraficoAbierto(true)}
+                      className="btn-cancelar"
+                      style={{
+                        padding: '5px 10px',
+                        fontSize: '12px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                      }}
+                      title="Exportar este gráfico en PNG, JPEG o PDF"
+                    >
+                      <ExportIcon size={14} /> Exportar gráfico
+                    </button>
+                  )}
                 </div>
               </div>
             </CardHeader>
 
             <CardContent>
               {pestañaGrafico === 'evolucion' && (
-                <div style={{ width: '100%', height: 360, marginTop: '8px' }}>
+                <div ref={graficoAnalisisRef} style={{ width: '100%', height: 360, marginTop: '8px' }}>
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     {tipoGraficoEvolucion === 'lineas' ? (
                       <AreaChart data={datos?.evolucion || []} margin={{ top: 16, right: 20, left: 6, bottom: 20 }}>
@@ -1007,33 +1094,35 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
               )}
 
               {pestañaGrafico === 'tipo' && (
-                <div style={{ width: '100%', minHeight: 360, height: 360, marginTop: '8px' }}>
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <BarChart data={datos?.por_tipo || []} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                      <XAxis type="number" stroke={colores.textoSec} fontSize={11.5} unit={` ${unidadUso}`} />
-                      <YAxis dataKey="etiqueta" type="category" stroke={colores.textoSec} fontSize={12} tickLine={false} width={95} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                          borderColor: 'var(--color-borde)',
-                          borderRadius: '8px',
-                        }}
-                        formatter={(val: any, _name: any, item: any) => [
-                          `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
-                          'Consumo Acumulado',
-                        ]}
-                      />
-                      <Bar dataKey="cantidad_total" radius={[0, 4, 4, 0]}>
-                        {(datos?.por_tipo || []).map((entry) => (
-                          <Cell
-                            key={entry.clave}
-                            fill={COLORES_TIPO_QUIMICO[entry.clave] || colores.primario}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div style={{ width: '100%', minHeight: 360, marginTop: '8px' }}>
+                  <div ref={graficoAnalisisRef} style={{ width: '100%', height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <BarChart data={datos?.por_tipo || []} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
+                        <XAxis type="number" stroke={colores.textoSec} fontSize={11.5} unit={` ${unidadUso}`} />
+                        <YAxis dataKey="etiqueta" type="category" stroke={colores.textoSec} fontSize={12} tickLine={false} width={95} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                            borderColor: 'var(--color-borde)',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(val: any, _name: any, item: any) => [
+                            `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
+                            'Consumo Acumulado',
+                          ]}
+                        />
+                        <Bar dataKey="cantidad_total" radius={[0, 4, 4, 0]}>
+                          {(datos?.por_tipo || []).map((entry) => (
+                            <Cell
+                              key={entry.clave}
+                              fill={COLORES_TIPO_QUIMICO[entry.clave] || colores.primario}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
 
                   <div
                     style={{
@@ -1084,47 +1173,49 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
                       Sin datos suficientes para proyectar la red de consumo químico en este período.
                     </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datos?.por_tipo || []}>
-                        <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
-                        <PolarAngleAxis
-                          dataKey="etiqueta"
-                          tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
-                        />
-                        <PolarRadiusAxis
-                          angle={90}
-                          stroke="var(--color-texto-sec, #64748b)"
-                          tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
-                            borderColor: 'var(--color-borde, #334155)',
-                            borderRadius: '8px',
-                            color: 'var(--color-texto, #f8fafc)',
-                          }}
-                          formatter={(val: any, _, item: any) => [
-                            `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
-                            item.payload.etiqueta,
-                          ]}
-                        />
-                        <Legend
-                          verticalAlign="bottom"
-                          height={28}
-                          iconType="circle"
-                          wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
-                        />
-                        <Radar
-                          name="Consumo Acumulado"
-                          dataKey="cantidad_total"
-                          stroke="#3b82f6"
-                          fill="#3b82f6"
-                          fillOpacity={0.4}
-                          strokeWidth={2}
-                          dot={{ r: 4, fill: '#2563eb' }}
-                        />
-                      </RadarChart>
-                    </ResponsiveContainer>
+                    <div ref={graficoAnalisisRef} style={{ width: '100%', height: '100%' }}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datos?.por_tipo || []}>
+                          <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
+                          <PolarAngleAxis
+                            dataKey="etiqueta"
+                            tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
+                          />
+                          <PolarRadiusAxis
+                            angle={90}
+                            stroke="var(--color-texto-sec, #64748b)"
+                            tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                              borderColor: 'var(--color-borde, #334155)',
+                              borderRadius: '8px',
+                              color: 'var(--color-texto, #f8fafc)',
+                            }}
+                            formatter={(val: any, _, item: any) => [
+                              `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
+                              item.payload.etiqueta,
+                            ]}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            height={28}
+                            iconType="circle"
+                            wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
+                          />
+                          <Radar
+                            name="Consumo Acumulado"
+                            dataKey="cantidad_total"
+                            stroke="#3b82f6"
+                            fill="#3b82f6"
+                            fillOpacity={0.4}
+                            strokeWidth={2}
+                            dot={{ r: 4, fill: '#2563eb' }}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
                   )}
                 </div>
               )}
@@ -1136,113 +1227,115 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
                       Sin datos suficientes para calcular el diagrama de Pareto de insumos químicos.
                     </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <ComposedChart data={datosParetoInsumos} margin={{ top: 16, right: 36, left: 10, bottom: 65 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                        <XAxis
-                          dataKey="nombreCorto"
-                          stroke={colores.textoSec}
-                          fontSize={11.5}
-                          tickLine={false}
-                          interval={0}
-                          angle={-25}
-                          textAnchor="end"
-                          height={60}
-                          dx={-4}
-                          dy={4}
-                        />
-                        <YAxis
-                          yAxisId="left"
-                          stroke={colores.textoSec}
-                          fontSize={11.5}
-                          tickLine={false}
-                          width={48}
-                          unit={` ${unidadUso}`}
-                          label={{
-                            value: `Consumo (${unidadUso})`,
-                            angle: -90,
-                            position: 'insideLeft',
-                            offset: 10,
-                            fill: colores.textoSec,
-                            fontSize: 11,
-                          }}
-                        />
-                        <YAxis
-                          yAxisId="right"
-                          orientation="right"
-                          domain={[0, 100]}
-                          unit="%"
-                          stroke="#f59e0b"
-                          fontSize={11.5}
-                          tickLine={false}
-                          width={46}
-                          label={{
-                            value: '% Acumulado',
-                            angle: 90,
-                            position: 'insideRight',
-                            offset: 10,
-                            fill: '#f59e0b',
-                            fontSize: 11,
-                          }}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
-                            borderColor: 'var(--color-borde, #334155)',
-                            borderRadius: '8px',
-                            color: 'var(--color-texto, #f8fafc)',
-                          }}
-                          formatter={(val: any, name: any, item: any) => {
-                            if (name === '% Acumulado') {
-                              return [`${val}%`, '% Acumulado'];
-                            }
-                            return [`${val} ${unidadUso}`, `Consumo de ${item?.payload?.nombre || ''}`];
-                          }}
-                        />
-                        <Legend
-                          verticalAlign="top"
-                          align="right"
-                          height={30}
-                          wrapperStyle={{ fontSize: '12px' }}
-                        />
-                        <ReferenceLine
-                          yAxisId="right"
-                          y={80}
-                          stroke="#ef4444"
-                          strokeDasharray="4 4"
-                          strokeWidth={1.8}
-                          label={{
-                            value: 'Corte 80% (Pareto)',
-                            position: 'left',
-                            fill: '#ef4444',
-                            fontSize: 11,
-                            fontWeight: 600,
-                          }}
-                        />
-                        <Bar
-                          yAxisId="left"
-                          dataKey="cantidad"
-                          name={`Consumo (${unidadUso})`}
-                          fill={colores.primario}
-                          radius={[4, 4, 0, 0]}
-                        />
-                        <Line
-                          yAxisId="right"
-                          type="monotone"
-                          dataKey="porcentajeAcumulado"
-                          name="% Acumulado"
-                          stroke="#f59e0b"
-                          strokeWidth={2.5}
-                          dot={{ r: 3.5, fill: '#f59e0b' }}
-                        />
-                      </ComposedChart>
-                    </ResponsiveContainer>
+                    <div ref={graficoAnalisisRef} style={{ width: '100%', height: '100%' }}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <ComposedChart data={datosParetoInsumos} margin={{ top: 16, right: 36, left: 10, bottom: 65 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                          <XAxis
+                            dataKey="nombreCorto"
+                            stroke={colores.textoSec}
+                            fontSize={11.5}
+                            tickLine={false}
+                            interval={0}
+                            angle={-25}
+                            textAnchor="end"
+                            height={60}
+                            dx={-4}
+                            dy={4}
+                          />
+                          <YAxis
+                            yAxisId="left"
+                            stroke={colores.textoSec}
+                            fontSize={11.5}
+                            tickLine={false}
+                            width={48}
+                            unit={` ${unidadUso}`}
+                            label={{
+                              value: `Consumo (${unidadUso})`,
+                              angle: -90,
+                              position: 'insideLeft',
+                              offset: 10,
+                              fill: colores.textoSec,
+                              fontSize: 11,
+                            }}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            domain={[0, 100]}
+                            unit="%"
+                            stroke="#f59e0b"
+                            fontSize={11.5}
+                            tickLine={false}
+                            width={46}
+                            label={{
+                              value: '% Acumulado',
+                              angle: 90,
+                              position: 'insideRight',
+                              offset: 10,
+                              fill: '#f59e0b',
+                              fontSize: 11,
+                            }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                              borderColor: 'var(--color-borde, #334155)',
+                              borderRadius: '8px',
+                              color: 'var(--color-texto, #f8fafc)',
+                            }}
+                            formatter={(val: any, name: any, item: any) => {
+                              if (name === '% Acumulado') {
+                                return [`${val}%`, '% Acumulado'];
+                              }
+                              return [`${val} ${unidadUso}`, `Consumo de ${item?.payload?.nombre || ''}`];
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="top"
+                            align="right"
+                            height={30}
+                            wrapperStyle={{ fontSize: '12px' }}
+                          />
+                          <ReferenceLine
+                            yAxisId="right"
+                            y={80}
+                            stroke="#ef4444"
+                            strokeDasharray="4 4"
+                            strokeWidth={1.8}
+                            label={{
+                              value: 'Corte 80% (Pareto)',
+                              position: 'left',
+                              fill: '#ef4444',
+                              fontSize: 11,
+                              fontWeight: 600,
+                            }}
+                          />
+                          <Bar
+                            yAxisId="left"
+                            dataKey="cantidad"
+                            name={`Consumo (${unidadUso})`}
+                            fill={colores.primario}
+                            radius={[4, 4, 0, 0]}
+                          />
+                          <Line
+                            yAxisId="right"
+                            type="monotone"
+                            dataKey="porcentajeAcumulado"
+                            name="% Acumulado"
+                            stroke="#f59e0b"
+                            strokeWidth={2.5}
+                            dot={{ r: 3.5, fill: '#f59e0b' }}
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
                   )}
                 </div>
               )}
 
               {pestañaGrafico === 'proveedor' && (
-                <div style={{ width: '100%', minHeight: 360, height: 360, marginTop: '8px' }}>
+                <div ref={graficoAnalisisRef} style={{ width: '100%', minHeight: 360, height: 360, marginTop: '8px' }}>
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <BarChart data={datos?.por_proveedor || []} margin={{ top: 10, right: 20, left: 10, bottom: 25 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
@@ -1431,6 +1524,15 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
         loading={exportando}
         onConfirm={ejecutarExportacion}
         onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ConfirmExportGraficoDialog
+        open={modalExportGraficoAbierto}
+        tituloGrafico={tituloGraficoActual}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportandoGrafico}
+        onConfirm={ejecutarExportacionGrafico}
+        onCancel={() => setModalExportGraficoAbierto(false)}
       />
 
       <ErrorAlertDialog
