@@ -1,4 +1,6 @@
 import json
+import re
+import unicodedata
 from typing import Any, Dict, List, Optional
 from datetime import date, datetime, timedelta
 from sqlalchemy import delete, func, select, update
@@ -478,6 +480,14 @@ def modificar_stock(
     return db_insumo
 
 
+def _normalizar_texto_busqueda(txt: str) -> str:
+    sin_tildes = "".join(
+        c for c in unicodedata.normalize("NFD", txt)
+        if unicodedata.category(c) != "Mn"
+    )
+    return re.sub(r"[^\w\s]", " ", sin_tildes.lower())
+
+
 def buscar_alimentos_sara(
     db: Session,
     busqueda: Optional[str] = None,
@@ -485,18 +495,61 @@ def buscar_alimentos_sara(
 ) -> List[AlimentoReferenciaSARA]:
     migrar_columnas_nutricionales_insumos(db)
     stmt = select(AlimentoReferenciaSARA)
-    if busqueda and busqueda.strip():
-        term = f"%{busqueda.strip().lower()}%"
-        stmt = stmt.where(
-            func.lower(AlimentoReferenciaSARA.nombre).like(term)
-            | func.lower(AlimentoReferenciaSARA.codigo).like(term)
-            | func.lower(AlimentoReferenciaSARA.categoria).like(term)
-        )
     if categoria and categoria.strip() and categoria != "TODAS":
         stmt = stmt.where(AlimentoReferenciaSARA.categoria == categoria.strip())
 
-    stmt = stmt.order_by(AlimentoReferenciaSARA.nombre.asc())
-    return list(db.scalars(stmt).all())
+    todos = list(db.scalars(stmt).all())
+    if not busqueda or not busqueda.strip():
+        todos.sort(key=lambda x: x.nombre.lower())
+        return todos
+
+    q_raw = busqueda.strip()
+    q_norm = _normalizar_texto_busqueda(q_raw)
+    palabras_vacias = {
+        "de", "del", "la", "el", "los", "las", "y", "en", "con", "sin",
+        "para", "por", "al", "o", "un", "una", "unos", "unas", "tipo"
+    }
+    tokens = [t for t in q_norm.split() if len(t) >= 2 and t not in palabras_vacias]
+
+    coincidencias = []
+    for item in todos:
+        nom_norm = _normalizar_texto_busqueda(item.nombre)
+        cod_norm = _normalizar_texto_busqueda(item.codigo)
+        cat_norm = _normalizar_texto_busqueda(item.categoria)
+
+        score = 0
+        if q_norm == nom_norm:
+            score += 200
+        elif q_norm in nom_norm:
+            score += 100
+        elif nom_norm in q_norm:
+            score += 80
+
+        if q_norm in cod_norm:
+            score += 90
+
+        tokens_acertados = 0
+        for tok in tokens:
+            if tok in nom_norm:
+                tokens_acertados += 1
+                if nom_norm.startswith(tok) or f" {tok}" in nom_norm:
+                    score += 25
+                else:
+                    score += 15
+            elif tok in cat_norm:
+                score += 5
+            elif tok in cod_norm:
+                score += 20
+
+        if tokens and tokens_acertados == len(tokens):
+            score += 50
+
+        if score > 0:
+            score -= 0.05 * abs(len(nom_norm) - len(q_norm))
+            coincidencias.append((score, item))
+
+    coincidencias.sort(key=lambda x: (-x[0], x[1].nombre.lower()))
+    return [c[1] for c in coincidencias]
 
 def obtener_alimento_sara_por_codigo(
     db: Session, codigo: str
@@ -538,10 +591,22 @@ def obtener_nutricion_insumo(
         or (insumo.es_aditivo and insumo.fecha_carga_nutricional is not None)
     )
 
+    tipo_nom = insumo.tipo.nombre if getattr(insumo, "tipo", None) else None
+    prov_nom = insumo.proveedor.nombre if getattr(insumo, "proveedor", None) else None
+
+    es_aditivo_val = insumo.es_aditivo
+    if not tiene_datos and not es_aditivo_val and tipo_nom:
+        if any(term in tipo_nom.lower() for term in ["aditivo", "conservante", "leudante", "colorante", "esencia", "aromatizante"]):
+            es_aditivo_val = True
+
     return schemas.DatosNutricionalesInsumoResponse(
         insumo_id=insumo.id,
         nombre_insumo=insumo.nombre,
-        es_aditivo=insumo.es_aditivo,
+        tipo_insumo_id=insumo.tipo_insumo_id,
+        tipo_insumo_nombre=tipo_nom,
+        proveedor_id=insumo.proveedor_id,
+        proveedor_nombre=prov_nom,
+        es_aditivo=es_aditivo_val,
         fuente_datos=insumo.fuente_datos,
         fuente_detalle=insumo.fuente_detalle,
         alimento_referencia_id=insumo.alimento_referencia_id,

@@ -30,16 +30,24 @@ interface DatosNutricionalesModalProps {
 
 const CATEGORIAS_SARA = [
   "TODAS",
-  "Cereales y derivados",
-  "Grasas y aceites",
-  "Azúcares y dulces",
-  "Lácteos y derivados",
-  "Huevos",
   "Aditivos y leudantes",
-  "Semillas y frutos secos",
-  "Cacao y derivados",
-  "Condimentos e ingredientes varios",
+  "Alimentos pre-elaborados",
+  "Azúcares y dulces",
   "Bebidas e ingredientes varios",
+  "Cacao y derivados",
+  "Carnes y derivados",
+  "Cereales, legumbres y derivados",
+  "Condimentos e ingredientes varios",
+  "Condimentos, aderezos y sopas",
+  "Frutas y derivados",
+  "Grasas y aceites",
+  "Hortalizas y legumbres frescas",
+  "Huevos",
+  "Lácteos y derivados",
+  "Pescados y mariscos",
+  "Quesos",
+  "Semillas y frutos secos",
+  "Yogures y leches fermentadas",
 ];
 
 export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = ({
@@ -52,6 +60,13 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
   const [guardando, setGuardando] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [exitoMsg, setExitoMsg] = useState<string | null>(null);
+
+  const [tipoInsumoNombre, setTipoInsumoNombre] = useState<string | null>(
+    insumo.tipo_insumo_nombre || null
+  );
+  const [proveedorNombre, setProveedorNombre] = useState<string | null>(
+    insumo.proveedor_nombre || null
+  );
 
   const [esAditivo, setEsAditivo] = useState<boolean>(false);
   const [fuenteDatos, setFuenteDatos] =
@@ -101,8 +116,18 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
       const res = await apiFetch(`/insumos/${insumo.id}/nutricion`);
       if (res.ok) {
         const data: DatosNutricionalesInsumoResponse = await res.json();
+        if (data.tipo_insumo_nombre) {
+          setTipoInsumoNombre(data.tipo_insumo_nombre);
+        }
+        if (data.proveedor_nombre) {
+          setProveedorNombre(data.proveedor_nombre);
+        }
         setEsAditivo(data.es_aditivo);
-        setFuenteDatos(data.fuente_datos || "SARA_2");
+        setFuenteDatos(
+          data.fuente_datos === "ROTULO_PROVEEDOR"
+            ? "ROTULO_PROVEEDOR"
+            : "SARA_2"
+        );
         setFuenteDetalle(data.fuente_detalle || "");
         setAlimentoReferenciaId(data.alimento_referencia_id || "");
 
@@ -185,13 +210,15 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
     }
   }, [insumo.id, abierto]);
 
-  const ejecutarBusquedaSara = async () => {
+  const ejecutarBusquedaConTermino = async (
+    termino: string,
+    cat: string = categoriaSara
+  ) => {
     setCargandoSara(true);
     try {
       const params = new URLSearchParams();
-      if (busquedaSara.trim()) params.append("busqueda", busquedaSara.trim());
-      if (categoriaSara && categoriaSara !== "TODAS")
-        params.append("categoria", categoriaSara);
+      if (termino.trim()) params.append("busqueda", termino.trim());
+      if (cat && cat !== "TODAS") params.append("categoria", cat);
 
       const res = await apiFetch(
         `/insumos/referencia-sara?${params.toString()}`
@@ -207,9 +234,30 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
     }
   };
 
+  const ejecutarBusquedaSara = () => {
+    ejecutarBusquedaConTermino(busquedaSara, categoriaSara);
+  };
+
+  const obtenerSugerencias = (): string[] => {
+    const sugerencias: string[] = [];
+    if (tipoInsumoNombre && !sugerencias.includes(tipoInsumoNombre)) {
+      sugerencias.push(tipoInsumoNombre);
+    }
+    const palabras = insumo.nombre
+      .split(/[\s,.-]+/)
+      .filter((w) => w.length >= 4)
+      .map((w) => w.trim());
+    for (const p of palabras) {
+      if (!sugerencias.some((s) => s.toLowerCase() === p.toLowerCase())) {
+        sugerencias.push(p);
+      }
+    }
+    return sugerencias.slice(0, 4);
+  };
+
   useEffect(() => {
     if (buscadorSaraAbierto) {
-      ejecutarBusquedaSara();
+      ejecutarBusquedaConTermino(busquedaSara, categoriaSara);
     }
   }, [buscadorSaraAbierto, categoriaSara]);
 
@@ -428,8 +476,39 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
                   Datos Nutricionales por 100 g
                 </DialogTitle>
               </div>
-              <div style={{ fontSize: "0.95rem", color: "var(--color-texto-sec)", marginTop: "4px" }}>
-                Insumo: <strong style={{ color: "var(--color-texto)" }}>{insumo.nombre}</strong> (Lote: {insumo.lote})
+              <div
+                style={{
+                  fontSize: "0.92rem",
+                  color: "var(--color-texto-sec)",
+                  marginTop: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span>
+                  Insumo:{" "}
+                  <strong style={{ color: "var(--color-texto)" }}>
+                    {insumo.nombre}
+                  </strong>{" "}
+                  (Lote: {insumo.lote})
+                </span>
+                {tipoInsumoNombre && (
+                  <Badge variant="outline" style={{ fontSize: "0.78rem" }}>
+                    Tipo: {tipoInsumoNombre}
+                  </Badge>
+                )}
+                {proveedorNombre && (
+                  <span
+                    style={{
+                      fontSize: "0.82rem",
+                      color: "var(--color-texto-sec)",
+                    }}
+                  >
+                    Proveedor: {proveedorNombre}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -579,8 +658,6 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
                   {[
                     { id: "SARA_2", label: "Base SARA 2 (Oficial)", icon: "database" },
                     { id: "ROTULO_PROVEEDOR", label: "Rótulo del Proveedor", icon: "receipt_long" },
-                    { id: "OTRA_BIBLIOGRAFIA", label: "Otra Bibliografía", icon: "menu_book" },
-                    { id: "VALOR_PROPIO", label: "Valor Propio / Análisis", icon: "science" },
                   ].map((f) => (
                     <button
                       key={f.id}
@@ -671,28 +748,60 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
                   </div>
                 )}
 
-                {fuenteDatos !== "SARA_2" && (
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label htmlFor="fuenteDetalle" style={{ fontSize: "0.88rem", fontWeight: 600, marginBottom: "4px" }}>
-                      Detalle de la fuente (lote, certificado, bibliografía o laboratorio):
-                    </label>
-                    <input
-                      id="fuenteDetalle"
-                      type="text"
-                      value={fuenteDetalle}
-                      onChange={(e) => setFuenteDetalle(e.target.value)}
-                      placeholder="Ej. Rótulo proveedor Lote 2026-B, Certificado de Calidad Nº 4521..."
-                      style={{
-                        padding: "8px 12px",
-                        fontSize: "0.9rem",
-                        borderRadius: "6px",
-                        border: "1px solid var(--color-borde)",
-                        backgroundColor: "var(--color-superficie)",
-                        color: "var(--color-texto)",
-                        width: "100%",
-                        boxSizing: "border-box",
-                      }}
-                    />
+                {fuenteDatos === "ROTULO_PROVEEDOR" && (
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      backgroundColor: "var(--color-fondo)",
+                      borderRadius: "8px",
+                      border: "1px solid var(--color-borde)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ fontSize: "20px", color: "var(--color-texto)", marginTop: "2px" }}
+                      >
+                        description
+                      </span>
+                      <div style={{ fontSize: "0.86rem", lineHeight: "1.45" }}>
+                        <div>
+                          <strong>Uso recomendado para Rótulo del Proveedor:</strong>
+                        </div>
+                        <div style={{ color: "var(--color-texto-sec)", marginTop: "2px" }}>
+                          Para insumos industriales o comerciales específicos (ej. Aceite Alto Oleico, premezclas, harinas fortificadas, margarinas especiales o aditivos) que poseen valores nutricionales propios declarados en el envase o ficha técnica del fabricante.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label
+                        htmlFor="fuenteDetalle"
+                        style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: "4px" }}
+                      >
+                        Detalle / Referencia del rótulo del proveedor:
+                      </label>
+                      <input
+                        id="fuenteDetalle"
+                        type="text"
+                        value={fuenteDetalle}
+                        onChange={(e) => setFuenteDetalle(e.target.value)}
+                        placeholder="Ej. Rótulo proveedor Lote 2026-B, Ficha técnica Nº 4521..."
+                        style={{
+                          padding: "8px 12px",
+                          fontSize: "0.9rem",
+                          borderRadius: "6px",
+                          border: "1px solid var(--color-borde)",
+                          backgroundColor: "var(--color-superficie)",
+                          color: "var(--color-texto)",
+                          width: "100%",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -1146,7 +1255,7 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
             </DialogTitle>
           </DialogHeader>
 
-          <div style={{ display: "flex", gap: "10px", marginBottom: "14px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "10px", flexWrap: "wrap" }}>
             <input
               type="text"
               value={busquedaSara}
@@ -1193,13 +1302,91 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
             </button>
           </div>
 
+          <div
+            style={{
+              display: "flex",
+              gap: "6px",
+              alignItems: "center",
+              flexWrap: "wrap",
+              marginBottom: "14px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "0.78rem",
+                color: "var(--color-texto-sec)",
+                fontWeight: 500,
+              }}
+            >
+              Sugerencias de búsqueda:
+            </span>
+            <button
+              type="button"
+              className="btn-secundario"
+              onClick={() => {
+                setBusquedaSara(insumo.nombre);
+                ejecutarBusquedaConTermino(insumo.nombre);
+              }}
+              style={{ fontSize: "0.75rem", padding: "3px 8px" }}
+            >
+              {insumo.nombre}
+            </button>
+            {tipoInsumoNombre && (
+              <button
+                type="button"
+                className="btn-secundario"
+                onClick={() => {
+                  setBusquedaSara(tipoInsumoNombre);
+                  ejecutarBusquedaConTermino(tipoInsumoNombre);
+                }}
+                style={{ fontSize: "0.75rem", padding: "3px 8px" }}
+              >
+                Tipo: {tipoInsumoNombre}
+              </button>
+            )}
+            {obtenerSugerencias().map((sug) => (
+              <button
+                key={sug}
+                type="button"
+                className="btn-secundario"
+                onClick={() => {
+                  setBusquedaSara(sug);
+                  ejecutarBusquedaConTermino(sug);
+                }}
+                style={{ fontSize: "0.75rem", padding: "3px 8px" }}
+              >
+                {sug}
+              </button>
+            ))}
+          </div>
+
           {cargandoSara ? (
             <div style={{ textAlign: "center", padding: "2rem", color: "var(--color-texto-sec)" }}>
               Buscando en base de referencia...
             </div>
           ) : alimentosSara.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "2rem", color: "var(--color-texto-sec)" }}>
-              No se encontraron alimentos en SARA 2 con los criterios indicados.
+            <div
+              style={{
+                textAlign: "center",
+                padding: "2rem 1.5rem",
+                color: "var(--color-texto-sec)",
+                backgroundColor: "var(--color-fondo)",
+                borderRadius: "8px",
+                border: "1px dashed var(--color-borde)",
+              }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: "32px", color: "var(--color-texto-sec)", marginBottom: "8px" }}
+              >
+                search_off
+              </span>
+              <div style={{ fontWeight: 600, color: "var(--color-texto)", marginBottom: "6px" }}>
+                No se encontraron alimentos en SARA 2 con los criterios indicados.
+              </div>
+              <div style={{ fontSize: "0.85rem", maxWidth: "520px", margin: "0 auto", lineHeight: "1.4" }}>
+                Si su insumo posee una fórmula industrial o composición específica de marca que difiere de la tabla genérica oficial (ej. Alto Oleico), utilice la fuente <strong>Rótulo del Proveedor</strong> para transcribir los datos declarados en el envase o ficha técnica del fabricante.
+              </div>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -1251,7 +1438,37 @@ export const DatosNutricionalesModal: React.FC<DatosNutricionalesModalProps> = (
             </div>
           )}
 
-          <DialogFooter style={{ marginTop: "16px" }}>
+          <DialogFooter
+            style={{
+              marginTop: "16px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "8px",
+            }}
+          >
+            <button
+              type="button"
+              className="btn-secundario"
+              onClick={() => {
+                setFuenteDatos("ROTULO_PROVEEDOR");
+                setBuscadorSaraAbierto(false);
+              }}
+              style={{
+                fontSize: "0.85rem",
+                padding: "6px 14px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                receipt_long
+              </span>
+              <span>Usar Rótulo del Proveedor en su lugar</span>
+            </button>
+
             <button
               type="button"
               className="btn-cancelar"

@@ -135,6 +135,10 @@ export interface AlimentoReferenciaSARA {
 export interface DatosNutricionalesInsumoResponse {
   insumo_id: number;
   nombre_insumo: string;
+  tipo_insumo_id?: number | null;
+  tipo_insumo_nombre?: string | null;
+  proveedor_id?: number | null;
+  proveedor_nombre?: string | null;
   es_aditivo: boolean;
   fuente_datos: FuenteDatosNutricionales | null;
   fuente_detalle: string | null;

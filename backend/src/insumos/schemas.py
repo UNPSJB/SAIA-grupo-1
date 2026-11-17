@@ -373,6 +373,10 @@ class DatosNutricionalesInsumoUpdate(BaseModel):
 class DatosNutricionalesInsumoResponse(BaseModel):
     insumo_id: int
     nombre_insumo: str
+    tipo_insumo_id: Optional[int] = None
+    tipo_insumo_nombre: Optional[str] = None
+    proveedor_id: Optional[int] = None
+    proveedor_nombre: Optional[str] = None
     es_aditivo: bool
     fuente_datos: Optional[str] = None
     fuente_detalle: Optional[str] = None
