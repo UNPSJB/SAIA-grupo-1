@@ -221,6 +221,68 @@ def validar_operario_etapa(db: Session, legajo: int) -> Personal:
     return persona
 
 
+def escalar_receta(
+    db: Session,
+    receta_id: int,
+    datos: schemas.RecetaEscalarRequest,
+) -> schemas.RecetaEscaladaResponse:
+    """Calcula proporcionalmente las cantidades de cada ingrediente sin modificar la receta guardada."""
+    receta = db.scalar(select(Receta).where(Receta.id == receta_id, Receta.activo == True))
+    if receta is None:
+        raise exceptions.RecetaNoEncontrada()
+
+    version_vig = receta.version_vigente
+    if version_vig is None:
+        raise exceptions.RecetaSinVersionVigente()
+
+    rendimiento_base = float(version_vig.rendimiento_final or receta.rendimiento_final)
+    if rendimiento_base <= 0:
+        raise exceptions.SeNecesitaRendimiento()
+
+    if datos.cantidad_objetivo is not None:
+        if datos.cantidad_objetivo <= 0:
+            raise exceptions.EscaladoInvalido()
+        cantidad_obj = float(datos.cantidad_objetivo)
+        factor = cantidad_obj / rendimiento_base
+    elif datos.factor is not None:
+        if datos.factor <= 0:
+            raise exceptions.EscaladoInvalido()
+        factor = float(datos.factor)
+        cantidad_obj = round(rendimiento_base * factor, 4)
+    else:
+        raise exceptions.EscaladoInvalido()
+
+    ingredientes_escalados: List[schemas.IngredienteEscaladoItem] = []
+    for det in version_vig.detalles:
+        cant_escalada = round(float(det.cantidad) * factor, 3)
+        ingredientes_escalados.append(
+            schemas.IngredienteEscaladoItem(
+                detalle_id=det.id,
+                nombre_etapa=det.nombre,
+                ingrediente_id=det.ingrediente_id,
+                nombre_ingrediente=det.nombre_ingrediente,
+                es_aditivo=det.es_aditivo,
+                unidad_medida=det.unidad_medida,
+                cantidad_base=float(det.cantidad),
+                cantidad_escalada=cant_escalada,
+                descripcion_pasos=det.descripcion_pasos,
+            )
+        )
+
+    return schemas.RecetaEscaladaResponse(
+        receta_id=receta.id,
+        version_receta_id=version_vig.id,
+        version=version_vig.version,
+        nombre_receta=receta.nombre,
+        id_producto=receta.id_producto,
+        nombre_producto=getattr(receta, "nombre_producto", None),
+        rendimiento_base=rendimiento_base,
+        cantidad_objetivo=round(cantidad_obj, 3),
+        factor=round(factor, 4),
+        ingredientes=ingredientes_escalados,
+    )
+
+
 def generar_checklist_receta(
     db: Session, datos: schemas.ChecklistRecetaGenerar
 ) -> ChecklistReceta:
@@ -230,16 +292,6 @@ def generar_checklist_receta(
 
     responsable = validar_operario_etapa(db, datos.responsable_legajo)
 
-    ya_generado = db.scalar(
-        select(ChecklistReceta.id).where(
-            ChecklistReceta.fecha == fecha,
-            ChecklistReceta.responsable_legajo == responsable.legajo,
-        )
-    )
-    if ya_generado is not None:
-        raise exceptions.ChecklistYaGenerado()
-
-    # Buscamos todas las recetas activas asignadas a este operador
     query_recetas = select(Receta).where(
         Receta.activo == True,
         Receta.operario_legajo == responsable.legajo,
@@ -256,8 +308,18 @@ def generar_checklist_receta(
         if not version_vig:
             continue
 
-        # Se generan como pendientes todas las etapas de la versión vigente de la receta
+        rendimiento_base = float(version_vig.rendimiento_final or receta.rendimiento_final or 1.0)
+
+        # Calculamos el factor proporcional según la cantidad producida del lote (o el factor directo)
+        factor = 1.0
+        if datos.cantidad_objetivo is not None and rendimiento_base > 0:
+            factor = float(datos.cantidad_objetivo) / rendimiento_base
+        elif datos.factor is not None:
+            factor = float(datos.factor)
+
         for detalle in version_vig.detalles:
+            cantidad_calculada = round(float(detalle.cantidad) * factor, 3)
+
             item = ChecklistRecetaItem(
                 receta_id=receta.id,
                 version_receta_id=version_vig.id,
@@ -266,7 +328,7 @@ def generar_checklist_receta(
                 nombre_etapa=detalle.nombre,
                 descripcion_pasos=detalle.descripcion_pasos,
                 ingrediente_id=detalle.ingrediente_id,
-                cantidad=detalle.cantidad,
+                cantidad=cantidad_calculada,  # Guarda la cantidad exacta escalada para este lote
                 unidad_medida=detalle.unidad_medida,
                 estado=EstadoEtapaRecetaItem.PENDIENTE,
                 responsable_legajo=responsable.legajo,

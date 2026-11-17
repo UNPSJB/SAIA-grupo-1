@@ -188,3 +188,13 @@ async def listar_versiones_receta(
     db: Session = Depends(get_db),
 ):
     return services.listar_versiones_receta(db, receta_id)
+
+
+@router.post( "/{receta_id}/escalar",response_model=schemas.RecetaEscaladaResponse,status_code=status.HTTP_200_OK,)
+async def escalar_receta_endpoint(
+    receta_id: int,
+    datos: schemas.RecetaEscalarRequest,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
+):
+    return services.escalar_receta(db, receta_id, datos)

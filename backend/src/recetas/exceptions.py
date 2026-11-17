@@ -73,3 +73,9 @@ class ChecklistNoModificable(BadRequest):
 class PersonalNoOperador(BadRequest):
     DETAIL=ErrorCode.PERSONAL_NO_OPERADOR
 
+class EscaladoInvalido(BadRequest):
+    DETAIL = ErrorCode.ESCALADO_INVALIDO
+
+class RecetaSinVersionVigente(BadRequest):
+    DETAIL = ErrorCode.RECETA_SIN_VIGENTE
+
