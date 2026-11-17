@@ -267,6 +267,8 @@ class Receta(RecetaBase):
 class ChecklistRecetaGenerar(BaseModel):
     responsable_legajo: Optional[int] = None
     id_producto: Optional[int] = None
+    cantidad_objetivo: Optional[float] = None
+    factor: Optional[float] = None
     fecha: Optional[date] = Field(default_factory=date.today)
 
     @field_validator("fecha", mode="before")
@@ -286,6 +288,54 @@ class ChecklistRecetaGenerar(BaseModel):
         if v != date.today():
             raise exceptions.ChecklistFechaInvalida()
         return v
+
+    @model_validator(mode="after")
+    def validar_parametros_escalado(self) -> "ChecklistRecetaGenerar":
+        if self.cantidad_objetivo is not None and self.cantidad_objetivo <= 0:
+            raise exceptions.EscaladoInvalido()
+        if self.factor is not None and self.factor <= 0:
+            raise exceptions.EscaladoInvalido()
+        return self
+
+
+class RecetaEscalarRequest(BaseModel):
+    cantidad_objetivo: Optional[float] = None
+    factor: Optional[float] = None
+
+    @model_validator(mode="after")
+    def validar_objetivo_o_factor(self) -> "RecetaEscalarRequest":
+        if self.cantidad_objetivo is None and self.factor is None:
+            raise exceptions.EscaladoInvalido()
+        if self.cantidad_objetivo is not None and self.cantidad_objetivo <= 0:
+            raise exceptions.EscaladoInvalido()
+        if self.factor is not None and self.factor <= 0:
+            raise exceptions.EscaladoInvalido()
+        return self
+
+
+class IngredienteEscaladoItem(BaseModel):
+    detalle_id: int
+    nombre_etapa: str
+    ingrediente_id: int
+    nombre_ingrediente: str
+    es_aditivo: bool
+    unidad_medida: str
+    cantidad_base: float
+    cantidad_escalada: float
+    descripcion_pasos: str
+
+
+class RecetaEscaladaResponse(BaseModel):
+    receta_id: int
+    version_receta_id: int
+    version: int
+    nombre_receta: str
+    id_producto: int
+    nombre_producto: Optional[str] = None
+    rendimiento_base: float
+    cantidad_objetivo: float
+    factor: float
+    ingredientes: List[IngredienteEscaladoItem]
 
 
 class CompletarEtapaSchema(BaseModel):

@@ -20,7 +20,6 @@ from src.insumos_quimicos.models import InsumoQuimico
 from src.logger import get_logger
 from src.autenticacion.dependencies import es_administrador
 from src.exceptions import PermissionDenied
-from src.dashboard.services import obtener_cumplimiento_detallado
 
 logger = get_logger(__name__)
 
@@ -69,6 +68,7 @@ def obtener_cumplimiento_detallado_para_exportar(
     hasta: Optional[date] = None,
     sector_id: Optional[int] = None,
 ) -> List[dict]:
+    from src.dashboard.services import obtener_cumplimiento_detallado
 
     respuesta = obtener_cumplimiento_detallado(
         db=db,
