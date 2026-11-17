@@ -390,7 +390,7 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
         >
           <div className="form-group">
             <label htmlFor="cantidad">
-              Cantidad objetivo a producir{unidad && ` (${unidad})`}
+              Cantidad objetivo a producir
             </label>
             <input
               id="cantidad"
