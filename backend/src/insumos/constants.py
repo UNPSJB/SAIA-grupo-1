@@ -12,6 +12,12 @@ class ErrorCode:
     VALOR_NUTRICIONAL_NEGATIVO = "Los valores nutricionales no pueden ser negativos."
     DATOS_NUTRICIONALES_REQUERIDOS = "Para ingredientes que no son aditivos, debe completar los datos nutricionales obligatorios."
     ALIMENTO_REFERENCIA_NO_ENCONTRADO = "El alimento de referencia no fue encontrado en la base de composición."
+    TIPO_INSUMO_REQUERIDO = "El tipo de insumo es obligatorio."
+    PROVEEDOR_REQUERIDO = "El proveedor es obligatorio."
+    LOTE_VACIO = "El lote no puede estar vacío."
+    FECHA_RECEPCION_SOLO_HOY = "La fecha de recepción solo puede ser la fecha de hoy."
+    FECHA_VENCIMIENTO_POSTERIOR = "La fecha de vencimiento debe ser posterior a la fecha de recepción (mínimo 7 días)."
+    INSUMO_NO_VENCIDO = "Solo se puede desechar un insumo que se encuentre vencido."
 
 FUENTE_ROTULO_PROVEEDOR = "ROTULO_PROVEEDOR"
 FUENTE_SARA_2 = "SARA_2"

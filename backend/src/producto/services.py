@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from src.producto import exceptions, schemas
 from src.producto.models import Producto
 from src.documentos.models import Documento
+from src.unidadesMedida.services import resolver_unidad_medida
 
 def obtener_productos_para_csv(
     db: Session,
@@ -36,7 +37,7 @@ def obtener_productos_para_csv(
             if not coincide:
                 continue
 
-        unidad = p.unidadMedida.value if hasattr(p.unidadMedida, 'value') else str(p.unidadMedida)
+        unidad = str(p.unidadMedida or "")
         
         filas.append({
             "id": p.id,
@@ -82,10 +83,16 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
     if producto.id_receta:
         validar_receta(db, producto.id_receta)
 
+    unidad = resolver_unidad_medida(
+        db,
+        unidad_medida_id=producto.unidad_medida_id,
+        valor_texto=producto.unidadMedida,
+    )
+
     _producto = Producto(
         nombre=producto.nombre,
         descripcion=producto.descripcion,
-        unidadMedida=producto.unidadMedida,
+        unidad_medida_id=unidad.id,
         id_receta=producto.id_receta,
         activo=True,
     )
@@ -128,6 +135,16 @@ def editar_producto(
     db_producto = obtener_producto(db, producto_id)
 
     datos_actualizar = producto.model_dump(exclude_unset=True)
+
+    unidad_texto = datos_actualizar.pop("unidadMedida", None)
+    unidad_id_val = datos_actualizar.pop("unidad_medida_id", None)
+    if unidad_id_val is not None or unidad_texto is not None:
+        unidad = resolver_unidad_medida(
+            db,
+            unidad_medida_id=unidad_id_val,
+            valor_texto=unidad_texto,
+        )
+        datos_actualizar["unidad_medida_id"] = unidad.id
 
     if "nombre" in datos_actualizar and datos_actualizar["nombre"]:
         validar_nombre_unico(db, datos_actualizar["nombre"], producto_id_actual=producto_id)

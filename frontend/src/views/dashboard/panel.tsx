@@ -68,6 +68,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
   const [vencCalibraciones, setVencCalibraciones] = useState({ vencidos: 0, proximos: 0 });
   const [vencElementos, setVencElementos] = useState({ vencidos: 0, proximos: 0 });
   const [vencDocumentos, setVencDocumentos] = useState({ vencidos: 0, proximos: 0 });
+  const [vencInsumos, setVencInsumos] = useState({ vencidos: 0, proximos: 0 });
   const [loadingVencimientos, setLoadingVencimientos] = useState(true);
 
   const [metricasIncidentes, setMetricasIncidentes] = useState<IncidentesMetricasDashboard | null>(null);
@@ -181,6 +182,10 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
             const docVenc = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'documento' && x.estado === 'vencido').length;
             const docProx = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'documento' && x.estado === 'proximo').length;
             setVencDocumentos({ vencidos: docVenc, proximos: docProx });
+
+            const insVenc = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'insumo' && x.estado === 'vencido').length;
+            const insProx = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'insumo' && x.estado === 'proximo').length;
+            setVencInsumos({ vencidos: insVenc, proximos: insProx });
           }
         }
 
@@ -388,6 +393,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                           if (item.origen === 'personal') onNavegar('personas');
                           else if (item.origen === 'equipo') onNavegar('planDeCalibracion');
                           else if (item.origen === 'documento') onNavegar('documentos');
+                          else if (item.origen === 'insumo') onNavegar('insumos');
                         }
                       }}
                       title="Hacer clic para ver detalle"
@@ -416,6 +422,15 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                               <polyline points="14 2 14 8 20 8" />
                               <line x1="16" y1="13" x2="8" y2="13" />
                               <line x1="16" y1="17" x2="8" y2="17" />
+                            </svg>
+                          </span>
+                        )}
+                        {item.origen === 'insumo' && (
+                          <span className="badge-icono-origen insumo" title="Insumo">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                              <path d="m3.3 7 8.7 5 8.7-5" />
+                              <path d="M12 22V12" />
                             </svg>
                           </span>
                         )}
@@ -518,6 +533,26 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                     () => (onNavegar ? onNavegar('vencimientos', 'documentos', 'VENCIDOS') : setVistaDetalle('vencimientos')),
                     () => (onNavegar ? onNavegar('vencimientos', 'documentos', 'PROXIMOS') : setVistaDetalle('vencimientos')),
                     () => (onNavegar ? onNavegar('vencimientos', 'documentos', 'TODOS') : setVistaDetalle('vencimientos')),
+                  )}
+                </div>
+
+                <div className="dashboard-item-resumen">
+                  <button
+                    type="button"
+                    className="dashboard-item-link"
+                    onClick={() => {
+                      if (onNavegar) onNavegar('vencimientos', 'insumo', '');
+                      else setVistaDetalle('vencimientos');
+                    }}
+                  >
+                    Vencimientos de Insumos
+                  </button>
+                  {renderBadgeVencimiento(
+                    vencInsumos.vencidos,
+                    vencInsumos.proximos,
+                    () => (onNavegar ? onNavegar('vencimientos', 'insumo', 'vencido') : setVistaDetalle('vencimientos')),
+                    () => (onNavegar ? onNavegar('vencimientos', 'insumo', 'proximo') : setVistaDetalle('vencimientos')),
+                    () => (onNavegar ? onNavegar('vencimientos', 'insumo', '') : setVistaDetalle('vencimientos')),
                   )}
                 </div>
               </div>

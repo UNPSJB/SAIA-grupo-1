@@ -8,7 +8,7 @@ from src.models import ModeloBase
 from src.config import settings
 from src.logger import setup_logging
 
-from src.insumos.router import router as insumos_router
+from src.insumos.router import router as insumos_router, operador_router as insumos_operador_router
 from src.equipos.router import router as equipos_router
 from src.personal.router import router as personal_router
 from src.elementosDeLimpieza.router import router as elementoDeLimpieza_router
@@ -42,6 +42,10 @@ from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
 from src.rotulado.router import router as rotulado_router
 from src.rotulado.migraciones import actualizar_tablas_rotulado
+from src.tipoInsumo.router import router as tipo_insumo_router
+from src.proveedores.router import router as proveedores_router
+from src.unidadesMedida.router import router as unidades_medida_router
+from src.unidadesMedida.services import asegurar_unidades_base
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -58,7 +62,8 @@ async def db_creation_lifespan(app: FastAPI):
         if ENV == "DEV":
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
-            asegurar_tipos_base(db)
+            asegurar_unidades_base(db)
+        asegurar_tipos_base(db)
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
@@ -70,10 +75,6 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-   ## allow_origins=[
-    ##    "http://localhost:5173",
-     ##   "http://127.0.0.1:5173",
-   ## ],
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
@@ -85,6 +86,7 @@ SOLO_ADMIN = [Depends(requiere_admin)]
 SESION = [Depends(get_usuario_actual)]
 
 app.include_router(insumos_router, prefix="/insumos", tags=["Insumos"], dependencies=SOLO_ADMIN)
+app.include_router(insumos_operador_router, dependencies=SESION)
 app.include_router(equipos_router, prefix="/equipos", tags=["Equipos"], dependencies=SOLO_ADMIN)
 app.include_router(personal_router, prefix="/personal", tags=["Personal"], dependencies=SOLO_ADMIN)
 app.include_router(elementoDeLimpieza_router, dependencies=SOLO_ADMIN)
@@ -117,3 +119,6 @@ app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SOLO_ADMIN)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
 app.include_router(rotulado_router)
+app.include_router(tipo_insumo_router, dependencies=SESION)
+app.include_router(proveedores_router, dependencies=SESION)
+app.include_router(unidades_medida_router, dependencies=SESION)

@@ -1,11 +1,13 @@
 export type TipoQuimico = 'DETERGENTE' | 'DESINFECTANTE' | 'DESENGRASANTE' | 'SANITIZANTE' | 'OTRO';
-export type UnidadMedida = 'L' | 'ML' | 'KG' | 'G' | 'UN';
+export type UnidadMedida = string;
 
 export interface InsumoQuimico {
   id: number;
   nombre: string;
   tipo: TipoQuimico;
+  unidad_medida_id?: number | null;
   unidad_medida: UnidadMedida;
+  unidad_medida_nombre?: string | null;
   stock_actual: number;
   proveedor?: string | null;
   activo: boolean;
@@ -15,7 +17,8 @@ export interface InsumoQuimico {
 export interface InsumoQuimicoCreateDTO {
   nombre: string;
   tipo: TipoQuimico;
-  unidad_medida: UnidadMedida;
+  unidad_medida_id?: number | null;
+  unidad_medida?: UnidadMedida;
   stock_actual: number;
   proveedor?: string | null;
 }
@@ -23,6 +26,7 @@ export interface InsumoQuimicoCreateDTO {
 export interface InsumoQuimicoUpdateDTO {
   nombre?: string;
   tipo?: TipoQuimico;
+  unidad_medida_id?: number | null;
   unidad_medida?: UnidadMedida;
   stock_actual?: number;
   proveedor?: string | null;
@@ -35,14 +39,6 @@ export const OPCIONES_TIPO: { value: TipoQuimico; label: string }[] = [
   { value: 'DESENGRASANTE', label: 'Desengrasante' },
   { value: 'SANITIZANTE', label: 'Sanitizante' },
   { value: 'OTRO', label: 'Otro' },
-];
-
-export const OPCIONES_UNIDAD: { value: UnidadMedida; label: string }[] = [
-  { value: 'L', label: 'Litros (L)' },
-  { value: 'ML', label: 'Mililitros (ML)' },
-  { value: 'KG', label: 'Kilogramos (KG)' },
-  { value: 'G', label: 'Gramos (G)' },
-  { value: 'UN', label: 'Unidades (UN)' },
 ];
 
 export {

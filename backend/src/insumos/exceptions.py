@@ -5,6 +5,7 @@ from src.exceptions import NotFound, BadRequest
 class InsumoNoEncontrado(NotFound):
     DETAIL = ErrorCode.INSUMO_NO_ENCONTRADO
 
+
 class UnidadMedidaInvalida(ValueError):
     def __init__(self, posibles_unidades: List[str]):
         unidades_str = ", ".join(posibles_unidades)
@@ -14,20 +15,26 @@ class UnidadMedidaInvalida(ValueError):
 class NombreInsumoVacio(BadRequest):
     DETAIL = ErrorCode.NOMBRE_VACIO
 
+
 class FechaRecepcionInvalida(BadRequest):
     DETAIL = ErrorCode.FECHA_RECEPCION_INVALIDA
+
 
 class FechaVencimientoInvalida(BadRequest):
     DETAIL = ErrorCode.FECHA_VENCIMIENTO_INVALIDA
 
+
 class CantidadRecibidaInvalida(BadRequest):
     DETAIL = ErrorCode.CANTIDAD_RECIBIDA_INVALIDA
+
 
 class StockInvalido(BadRequest):
     DETAIL = ErrorCode.STOCK_INVALIDO
 
+
 class StockMayorCantidad(BadRequest):
     DETAIL = ErrorCode.STOCK_MAYOR_CANTIDAD
+
 
 class NombreInsumoDuplicado(BadRequest):
     DETAIL = ErrorCode.NOMBRE_DUPLICADO
@@ -43,3 +50,21 @@ class DatosNutricionalesRequeridos(BadRequest):
 
 class AlimentoReferenciaNoEncontrado(NotFound):
     DETAIL = ErrorCode.ALIMENTO_REFERENCIA_NO_ENCONTRADO
+
+class TipoInsumoRequerido(BadRequest):
+    DETAIL = ErrorCode.TIPO_INSUMO_REQUERIDO
+
+class ProveedorRequerido(BadRequest):
+    DETAIL = ErrorCode.PROVEEDOR_REQUERIDO
+
+class LoteVacio(BadRequest):
+    DETAIL = ErrorCode.LOTE_VACIO
+
+class FechaRecepcionSoloHoy(BadRequest):
+    DETAIL = ErrorCode.FECHA_RECEPCION_SOLO_HOY
+
+class FechaVencimientoPosterior(BadRequest):
+    DETAIL = ErrorCode.FECHA_VENCIMIENTO_POSTERIOR
+
+class InsumoNoVencido(BadRequest):
+    DETAIL = ErrorCode.INSUMO_NO_VENCIDO

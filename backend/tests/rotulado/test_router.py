@@ -1,7 +1,8 @@
 from datetime import date
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from src.insumos.models import Insumo, UnidadMedida
+from src.insumos.models import Insumo
+from src.unidadesMedida.services import resolver_unidad_medida
 from src.main import app
 from src.personal.models import Personal
 from src.personal.schemas import Capacidades
@@ -14,9 +15,10 @@ client = TestClient(app)
 
 
 def crear_producto_aux(session: Session, nombre: str = "Torta Router Test") -> Producto:
+    u_kg = resolver_unidad_medida(session, valor_texto="kilogramos").id
     prod = Producto(
         nombre=nombre,
-        unidadMedida=UnidadMedida.KILOGRAMOS,
+        unidad_medida_id=u_kg,
         activo=True,
     )
     session.add(prod)
@@ -189,7 +191,7 @@ def test_importar_desde_lote_router(session: Session):
         fechaRecepcion=date.today(),
         cantRecibida=100.0,
         stock=100.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="kilogramos").id,
     )
     session.add(ins1)
     session.commit()

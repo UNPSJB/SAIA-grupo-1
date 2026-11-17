@@ -7,6 +7,7 @@ class TipoNotificacion(StrEnum):
     VENCIMIENTO_DOCUMENTO = "vencimiento_documento"
     VENCIMIENTO_ELEMENTO_LIMPIEZA = "vencimiento_elemento_limpieza"
     VENCIMIENTO_PLAGAS_AGUA = "vencimiento_plagas_agua"
+    VENCIMIENTO_INSUMO = "vencimiento_insumo"
     EVENTO_TAREA_REVISION = "evento_tarea_revision"
     EVENTO_TAREA_REASIGNADA = "evento_tarea_reasignada"
     EVENTO_STOCK_QUIMICO = "evento_stock_quimico"

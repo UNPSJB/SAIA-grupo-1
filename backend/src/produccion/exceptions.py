@@ -54,5 +54,9 @@ class InsumoNoAsociado(NotFound):
     DETAIL = ErrorCode.INSUMO_NO_ASOCIADO
 
 
+class InsumoVencido(BadRequest):
+    DETAIL = ErrorCode.INSUMO_VENCIDO
+
+
 class LoteCerrado(BadRequest):
     DETAIL = ErrorCode.LOTE_CERRADO

@@ -809,7 +809,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               style={{
                 width: "100%",
                 maxWidth: "100%",
-                overflow: "hidden",
+                overflowX: "hidden",
                 margin: 0,
                 padding: 0,
                 boxSizing: "border-box",
@@ -827,12 +827,12 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                 }}
               >
                 <colgroup>
-                  <col style={{ width: "55px" }} />
-                  <col style={{ width: "24%" }} />
-                  <col style={{ width: "18%" }} />
-                  <col style={{ width: "85px" }} />
+                  <col style={{ width: "65px" }} />
+                  <col style={{ width: "27%" }} />
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "90px" }} />
                   <col />
-                  <col style={{ width: "70px" }} />
+                  <col style={{ width: "80px" }} />
                 </colgroup>
                 <thead>
                   <tr
@@ -845,12 +845,12 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       style={{
                         textAlign: "center",
                         padding: "10px 4px",
-                        fontSize: "0.72rem",
+                        fontSize: "0.75rem",
                         fontWeight: 700,
                         textTransform: "uppercase",
                         letterSpacing: "0.04em",
                         color: "var(--color-texto)",
-                        whiteSpace: "normal",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       Orden
@@ -858,7 +858,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     <th
                       style={{
                         padding: "10px 8px",
-                        fontSize: "0.72rem",
+                        fontSize: "0.75rem",
                         fontWeight: 700,
                         textTransform: "uppercase",
                         letterSpacing: "0.04em",
@@ -872,7 +872,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     <th
                       style={{
                         padding: "10px 8px",
-                        fontSize: "0.72rem",
+                        fontSize: "0.75rem",
                         fontWeight: 700,
                         textTransform: "uppercase",
                         letterSpacing: "0.04em",
@@ -887,7 +887,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       style={{
                         textAlign: "right",
                         padding: "10px 8px",
-                        fontSize: "0.72rem",
+                        fontSize: "0.75rem",
                         fontWeight: 700,
                         textTransform: "uppercase",
                         letterSpacing: "0.04em",
@@ -900,7 +900,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     <th
                       style={{
                         padding: "10px 8px",
-                        fontSize: "0.72rem",
+                        fontSize: "0.75rem",
                         fontWeight: 700,
                         textTransform: "uppercase",
                         letterSpacing: "0.04em",
@@ -915,13 +915,13 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       style={{
                         textAlign: "center",
                         padding: "10px 4px",
-                        fontSize: "0.72rem",
+                        fontSize: "0.75rem",
                         fontWeight: 700,
                         textTransform: "uppercase",
                         letterSpacing: "0.04em",
                         color: "var(--color-texto)",
                         whiteSpace: "nowrap",
-                        width: "70px",
+                        width: "80px",
                       }}
                     >
                       Acciones
@@ -942,12 +942,12 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                         style={{
                           textAlign: "center",
                           fontWeight: 600,
-                          padding: "0.75rem 0.25rem",
+                          padding: "8px 2px",
                         }}
                       >
                         <div
                           style={{
-                            display: "flex",
+                            display: "inline-flex",
                             alignItems: "center",
                             justifyContent: "center",
                             gap: "4px",
@@ -955,9 +955,10 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                         >
                           <span
                             style={{
-                              minWidth: "20px",
-                              fontSize: "0.9rem",
+                              fontSize: "0.88rem",
                               fontWeight: 700,
+                              minWidth: "20px",
+                              textAlign: "right",
                             }}
                           >
                             #{idx + 1}
@@ -977,8 +978,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                               onClick={() => moverItem(idx, "arriba")}
                               style={{
                                 padding: 0,
-                                width: "20px",
-                                height: "16px",
+                                width: "18px",
+                                height: "15px",
                                 fontSize: "10px",
                                 display: "inline-flex",
                                 alignItems: "center",
@@ -1002,8 +1003,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                               onClick={() => moverItem(idx, "abajo")}
                               style={{
                                 padding: 0,
-                                width: "20px",
-                                height: "16px",
+                                width: "18px",
+                                height: "15px",
                                 fontSize: "10px",
                                 display: "inline-flex",
                                 alignItems: "center",
@@ -1128,7 +1129,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                           textAlign: "right",
                           fontWeight: 700,
                           fontSize: "0.92rem",
-                          padding: "0.75rem 0.65rem",
+                          padding: "8px 8px",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -1152,23 +1153,35 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       <td
                         style={{
                           textAlign: "center",
-                          padding: "10px 4px",
+                          padding: "8px 4px",
                           whiteSpace: "nowrap",
-                          width: "70px",
+                          width: "80px",
                         }}
                       >
                         <div
-                          className="acciones-btns"
-                          style={{ justifyContent: "center", gap: "4px" }}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "6px",
+                          }}
                         >
                           <button
                             type="button"
                             className="btn-icon btn-editar"
                             title="Editar"
                             onClick={() => abrirModalEditar(idx)}
-                            style={{ width: "28px", height: "28px", padding: 0 }}
+                            style={{
+                              width: "30px",
+                              height: "30px",
+                              padding: 0,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              borderRadius: "6px",
+                            }}
                           >
-                            <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
                               edit
                             </span>
                           </button>
@@ -1177,9 +1190,17 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                             className="btn-icon btn-eliminar"
                             title="Eliminar"
                             onClick={() => eliminarItem(idx)}
-                            style={{ width: "28px", height: "28px", padding: 0 }}
+                            style={{
+                              width: "30px",
+                              height: "30px",
+                              padding: 0,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              borderRadius: "6px",
+                            }}
                           >
-                            <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
                               delete
                             </span>
                           </button>

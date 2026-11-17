@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import type { TipoQuimico, UnidadMedida } from './tipos';
-import { OPCIONES_TIPO, OPCIONES_UNIDAD } from './tipos';
+import React, { useEffect, useState } from 'react';
+import type { TipoQuimico } from './tipos';
+import { OPCIONES_TIPO } from './tipos';
+import type { UnidadMedidaItem } from '../unidadesMedida/tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 
@@ -10,19 +11,45 @@ interface Props {
 }
 
 export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
+  const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [formData, setFormData] = useState<{
     nombre: string;
     tipo: TipoQuimico;
-    unidad_medida: UnidadMedida;
+    unidad_medida_id: number | '';
     stock_actual: string;
     proveedor: string;
   }>({
     nombre: '',
     tipo: 'DETERGENTE',
-    unidad_medida: 'L',
+    unidad_medida_id: '',
     stock_actual: '',
     proveedor: '',
   });
+
+  useEffect(() => {
+    let cancelado = false;
+    async function cargarUnidades() {
+      try {
+        const res = await apiFetch('/unidades-medida/?solo_activos=true');
+        if (!cancelado && res.ok) {
+          const data: UnidadMedidaItem[] = await res.json();
+          setUnidades(data);
+          if (data.length > 0) {
+            const predet = data.find((u) => u.abreviatura.toUpperCase() === 'L') ?? data[0];
+            setFormData((prev) =>
+              prev.unidad_medida_id === '' ? { ...prev, unidad_medida_id: predet.id } : prev
+            );
+          }
+        }
+      } catch {
+        if (!cancelado) setUnidades([]);
+      }
+    }
+    cargarUnidades();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -33,6 +60,11 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
 
     if (!formData.nombre.trim()) {
       setError('El nombre del insumo es obligatorio.');
+      return;
+    }
+
+    if (!formData.unidad_medida_id) {
+      setError('Debe seleccionar una unidad de medida.');
       return;
     }
 
@@ -50,7 +82,7 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
         body: JSON.stringify({
           nombre: formData.nombre.trim(),
           tipo: formData.tipo,
-          unidad_medida: formData.unidad_medida,
+          unidad_medida_id: Number(formData.unidad_medida_id),
           stock_actual: valorStock,
           proveedor: formData.proveedor.trim() || null,
         }),
@@ -106,15 +138,17 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="unidad_medida">Unidad de Medida</label>
+          <label htmlFor="unidad_medida_id">Unidad de Medida</label>
           <select
-            id="unidad_medida"
-            value={formData.unidad_medida}
-            onChange={(e) => setFormData({ ...formData, unidad_medida: e.target.value as UnidadMedida })}
+            id="unidad_medida_id"
+            value={formData.unidad_medida_id}
+            onChange={(e) => setFormData({ ...formData, unidad_medida_id: e.target.value ? Number(e.target.value) : '' })}
+            required
           >
-            {OPCIONES_UNIDAD.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
+            <option value="" disabled>Seleccione una unidad</option>
+            {unidades.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.nombre} ({opt.abreviatura})
               </option>
             ))}
           </select>

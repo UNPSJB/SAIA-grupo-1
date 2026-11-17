@@ -6,10 +6,3 @@ class TipoQuimicoEnum(str, Enum):
     DESENGRASANTE = "DESENGRASANTE"
     SANITIZANTE = "SANITIZANTE"
     OTRO = "OTRO"
-
-class UnidadMedidaEnum(str, Enum):
-    LITROS = "L"
-    MILILITROS = "ML"
-    KILOGRAMOS = "KG"
-    GRAMOS = "G"
-    UNIDADES = "UN"

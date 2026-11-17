@@ -1353,3 +1353,105 @@ dialog .btn-guardar{
     white-space: nowrap ;
     width: 100%;
 }
+
+.modulo-insumos-container {
+  max-width: 100%;
+  width: 100%;
+  margin: 0 auto 1.5rem auto;
+  padding: 0;
+}
+
+.modulo-insumos-container .modulo-header h1 {
+  font-size: 1.5rem;
+}
+
+.modulo-insumos-container .listado-top-bar {
+  margin-bottom: 1rem;
+}
+
+.modulo-insumos-container .filtros-top-bar {
+  margin-bottom: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  gap: 0.6rem;
+}
+
+.modulo-insumos-container .input-busqueda {
+  flex: 1 1 14rem;
+  min-width: 0;
+  height: 2.25rem;
+  font-size: 0.85rem;
+}
+
+.modulo-insumos-container .select-filtro {
+  height: 2.25rem;
+  font-size: 0.85rem;
+}
+
+.insumos-grupos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.insumos-grupo-card {
+  border: 1px solid var(--border, #334155);
+  border-radius: 0.5rem;
+  background-color: var(--code-bg, rgba(255, 255, 255, 0.02));
+  overflow: hidden;
+  width: 100%;
+}
+
+.insumos-grupo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  user-select: none;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.insumos-grupo-body {
+  padding: 0.65rem;
+}
+
+.tabla-insumos {
+  width: 100%;
+  table-layout: auto;
+}
+
+.tabla-insumos th {
+  padding: 0.5rem 0.45rem;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  white-space: normal;
+}
+
+.tabla-insumos td {
+  padding: 0.5rem 0.45rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.tabla-insumos .acciones-col {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.tabla-insumos .acciones-btns {
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}
+
+.tabla-insumos .btn-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.8rem;
+  border-radius: 0.4rem;
+}

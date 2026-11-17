@@ -9,11 +9,14 @@ from src.equipos.models import Equipo, Estado as EstadoEquipo
 from src.plan_de_calibracion.models import Plan_de_Calibracion
 from src.documentos.models import Documento
 from src.controlesAmbientales.models import ControlAmbiental
+from src.insumos.models import Insumo
 from src.vencimientos.schemas import (
     EstadoVencimiento,
     OrigenVencimiento,
     VencimientoConsolidadoItem,
 )
+
+DIAS_ALERTA_INSUMO = 7
 
 PESO_ESTADO = {
     EstadoVencimiento.VENCIDO: 0,
@@ -41,6 +44,7 @@ def obtener_vencimientos_consolidados_para_csv(
         OrigenVencimiento.EQUIPO: "Calibración / Mantenimiento",
         OrigenVencimiento.DOCUMENTO: "Documentos",
         OrigenVencimiento.AMBIENTAL: "Controles Ambientales",
+        OrigenVencimiento.INSUMO: "Insumos",
     }
 
     etiquetas_estado = {
@@ -232,6 +236,39 @@ def listar_vencimientos_consolidados(
                     concepto=concepto,
                     responsable="Gestión Calidad / Sanitaria",
                     referencia_id=c.id,
+                    fecha=fecha_v,
+                    dias_restantes=dias,
+                    estado=est,
+                )
+            )
+
+    if origen in (None, OrigenVencimiento.INSUMO):
+        insumos = (
+            db.query(Insumo)
+            .filter(
+                Insumo.activo.is_(True),
+                Insumo.stock > 0,
+                Insumo.fechaVencimiento.isnot(None),
+            )
+            .all()
+        )
+        for ins in insumos:
+            if not ins.fechaVencimiento:
+                continue
+            fecha_v = _a_fecha(ins.fechaVencimiento)
+            dias, est = _calcular_plazo(fecha_v, hoy, dias_alerta=DIAS_ALERTA_INSUMO)
+            concepto = f"{ins.nombre} (Lote {ins.lote})" if ins.lote else ins.nombre
+            tipo_nombre = ins.tipo.nombre if getattr(ins, "tipo", None) else None
+            prov_nombre = ins.proveedor.nombre if getattr(ins, "proveedor", None) else None
+            partes_resp = [p for p in (tipo_nombre, prov_nombre) if p]
+            responsable = " · ".join(partes_resp) if partes_resp else "Inventario de Insumos"
+            items.append(
+                VencimientoConsolidadoItem(
+                    id=f"insumo-{ins.id}",
+                    origen=OrigenVencimiento.INSUMO,
+                    concepto=concepto,
+                    responsable=responsable,
+                    referencia_id=ins.id,
                     fecha=fecha_v,
                     dias_restantes=dias,
                     estado=est,
