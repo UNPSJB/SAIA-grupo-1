@@ -49,6 +49,11 @@ const CONFIGURACION_ICONO: Record<string, ConfiguracionIcono> = {
     color: '#0284c7',
     fondo: 'rgba(2, 132, 199, 0.12)',
   },
+  vencimiento_insumo: {
+    icono: 'inventory_2',
+    color: '#059669',
+    fondo: 'rgba(5, 150, 105, 0.12)',
+  },
   evento_tarea_revision: {
     icono: 'pending_actions',
     color: '#d97706',

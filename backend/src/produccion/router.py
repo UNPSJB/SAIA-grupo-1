@@ -32,8 +32,10 @@ def listar_lotes_endpoint(
 # va antes de /{lote_id} para que "insumos-disponibles" no se tome como un id.
 # /insumos es solo de administradores; el operador necesita ver el maestro para elegir qué usó.
 @lotes_router.get("/insumos-disponibles", response_model=List[schemas.InsumoDisponible])
-def listar_insumos_disponibles_endpoint(db: Session = Depends(get_db)):
-    return services.listar_insumos_disponibles(db)
+def listar_insumos_disponibles_endpoint(
+    tipo_id: Optional[int] = Query(None), db: Session = Depends(get_db)
+):
+    return services.listar_insumos_disponibles(db, tipo_id=tipo_id)
 
 
 @lotes_router.get("/{lote_id}", response_model=schemas.LoteProduccion)

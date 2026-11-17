@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from tests.database import app, session
 from src.autenticacion.dependencies import get_usuario_actual
 from src.checklist.models import Checklist, ChecklistItem, EstadoTareaItem
-from src.insumos_quimicos.constants import TipoQuimicoEnum, UnidadMedidaEnum
+from src.insumos_quimicos.constants import TipoQuimicoEnum
 from src.insumos_quimicos.exceptions import RangoFechasInvalidoException
 from src.insumos_quimicos.models import InsumoQuimico
 from src.insumos_quimicos.schemas import InsumoQuimicoCreate
@@ -63,7 +63,7 @@ def test_historico_consumo_calculo_y_variacion(session: Session) -> None:
         InsumoQuimicoCreate(
             nombre="Lavandina Concentrada Test",
             tipo=TipoQuimicoEnum.DESINFECTANTE,
-            unidad_medida=UnidadMedidaEnum.LITROS,
+            unidad_medida="L",
             stock_actual=50.0,
             proveedor="Clorox Profesional",
         ),
@@ -73,7 +73,7 @@ def test_historico_consumo_calculo_y_variacion(session: Session) -> None:
         InsumoQuimicoCreate(
             nombre="Detergente Industrial Test",
             tipo=TipoQuimicoEnum.DETERGENTE,
-            unidad_medida=UnidadMedidaEnum.LITROS,
+            unidad_medida="L",
             stock_actual=40.0,
             proveedor="Spartan Chemical",
         ),
@@ -158,7 +158,7 @@ def test_filtro_por_insumo_especifico(session: Session) -> None:
         InsumoQuimicoCreate(
             nombre="Lavandina Exclusiva",
             tipo=TipoQuimicoEnum.DESINFECTANTE,
-            unidad_medida=UnidadMedidaEnum.LITROS,
+            unidad_medida="L",
             stock_actual=20.0,
             proveedor="Proveedor A",
         ),
@@ -168,7 +168,7 @@ def test_filtro_por_insumo_especifico(session: Session) -> None:
         InsumoQuimicoCreate(
             nombre="Desengrasante Exclusivo",
             tipo=TipoQuimicoEnum.DESENGRASANTE,
-            unidad_medida=UnidadMedidaEnum.LITROS,
+            unidad_medida="L",
             stock_actual=20.0,
             proveedor="Proveedor B",
         ),
@@ -209,7 +209,7 @@ def test_agrupacion_tiempo_semana_y_mes(session: Session) -> None:
         InsumoQuimicoCreate(
             nombre="Sanitizante Temporal",
             tipo=TipoQuimicoEnum.SANITIZANTE,
-            unidad_medida=UnidadMedidaEnum.LITROS,
+            unidad_medida="L",
             stock_actual=50.0,
         ),
     )

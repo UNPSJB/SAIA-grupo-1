@@ -12,7 +12,7 @@ export interface AlertaItem {
   severidad: SeveridadAlerta;
   titulo: string;
   descripcion: string;
-  origen: 'incidente' | 'personal' | 'equipo' | 'documento';
+  origen: 'incidente' | 'personal' | 'equipo' | 'documento' | 'ambiental' | 'insumo';
   categoria: string;
   categoriaId?: number;
   fecha: string;
@@ -42,7 +42,7 @@ interface IncidenteAbiertoRaw {
 
 interface VencimientoRaw {
   id: string;
-  origen: 'personal' | 'equipo' | 'documento';
+  origen: 'personal' | 'equipo' | 'documento' | 'ambiental' | 'insumo';
   concepto: string;
   responsable: string;
   referencia_id: number;
@@ -50,6 +50,14 @@ interface VencimientoRaw {
   dias_restantes: number;
   estado: 'vencido' | 'proximo' | 'vigente';
 }
+
+const CATEGORIA_ORIGEN: Record<VencimientoRaw['origen'], string> = {
+  personal: 'Personal',
+  equipo: 'Equipo',
+  documento: 'Documento',
+  ambiental: 'Controles Sanitarios',
+  insumo: 'Insumo',
+};
 
 const ORDEN_SEVERIDAD: Record<SeveridadAlerta, number> = {
   critica: 0,
@@ -133,7 +141,7 @@ export function useAlertasSistema() {
             titulo: `${v.concepto}`,
             descripcion: `${v.responsable} · Registro #${v.referencia_id}`,
             origen: v.origen,
-            categoria: v.origen === 'personal' ? 'Personal' : v.origen === 'equipo' ? 'Equipo' : 'Documento',
+            categoria: CATEGORIA_ORIGEN[v.origen] ?? 'Vencimiento',
             fecha: v.fecha,
             diasRestantes: v.dias_restantes,
             tiempoTexto: textoDias,
@@ -163,7 +171,7 @@ export function useAlertasSistema() {
             titulo: `${v.concepto}`,
             descripcion: `${v.responsable} · Registro #${v.referencia_id}`,
             origen: v.origen,
-            categoria: v.origen === 'personal' ? 'Personal' : v.origen === 'equipo' ? 'Equipo' : 'Documento',
+            categoria: CATEGORIA_ORIGEN[v.origen] ?? 'Vencimiento',
             fecha: v.fecha,
             diasRestantes: v.dias_restantes,
             tiempoTexto: textoDias,

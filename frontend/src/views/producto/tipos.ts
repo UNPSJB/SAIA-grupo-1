@@ -7,7 +7,10 @@ export interface DocumentoReceta {
 export interface Producto {
   nombre: string;
   descripcion?: string;
+  unidad_medida_id?: number | null;
   unidadMedida: string;
+  unidad_medida_nombre?: string | null;
+  unidad_medida_abreviatura?: string | null;
   id_receta?: number | null;
   nombre_receta?: string | null;
   receta_id?: number | null;
@@ -23,6 +26,7 @@ export interface ProductoPublico {
   nombre: string;
   descripcion?: string | null;
   unidadMedida: string;
+  unidad_medida_abreviatura?: string | null;
 }
 
 export interface ProductoConId extends Producto {

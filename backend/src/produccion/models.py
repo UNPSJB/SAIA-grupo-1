@@ -49,4 +49,4 @@ class InsumoLote(ModeloBase):
     cantidad: Mapped[float] = mapped_column()
 
     lote: Mapped[LoteProduccion] = relationship(back_populates="insumos")
-    insumo: Mapped[Insumo] = relationship(lazy="joined")
+    insumo: Mapped[Insumo] = relationship(back_populates="lotes_asociados", lazy="joined")
