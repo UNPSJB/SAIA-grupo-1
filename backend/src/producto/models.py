@@ -4,6 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.recetas.models import Receta
 from src.models import ModeloBase
 
+import src.unidadesMedida.models
+
 if TYPE_CHECKING:
     from src.gestion_archivos.models import Documento
     from src.unidadesMedida.models import UnidadMedida
@@ -22,7 +24,7 @@ class Producto(ModeloBase):
     
     receta: Mapped[Optional["Receta"]] = relationship("Receta",back_populates="producto")
     unidad_medida_rel: Mapped["UnidadMedida"] = relationship(
-        "src.unidadesMedida.models.UnidadMedida", lazy="joined"
+        "UnidadMedida", lazy="joined"
     )
 
     tamano_porcion_g: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)

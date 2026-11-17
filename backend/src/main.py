@@ -44,6 +44,8 @@ from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
+from src.rotulado.router import router as rotulado_router
+from src.rotulado.migraciones import actualizar_tablas_rotulado
 from src.tipoInsumo.router import router as tipo_insumo_router
 from src.proveedores.router import router as proveedores_router
 from src.unidadesMedida.router import router as unidades_medida_router
@@ -74,9 +76,12 @@ async def _tarea_diaria_snapshot_vista_publica() -> None:
 
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
+    actualizar_tablas_rotulado(engine)
     ModeloBase.metadata.create_all(bind=engine)
     with SessionLocal() as db:
         asegurar_parametros_rotulado(db)
+        from src.insumos.migraciones import migrar_columnas_nutricionales_insumos
+        migrar_columnas_nutricionales_insumos(db)
     actualizar_tablas_rotulado(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
@@ -170,6 +175,7 @@ app.include_router(AcercaDeNostrosRouter)
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SESION)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
+app.include_router(rotulado_router)
 app.include_router(tipo_insumo_router, dependencies=SESION)
 app.include_router(proveedores_router, dependencies=SESION)
 app.include_router(unidades_medida_router, dependencies=SESION)

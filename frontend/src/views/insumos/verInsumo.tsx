@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { InsumoConId, InsumoDetalleTrazabilidad } from "./tipos";
+import { DatosNutricionalesModal } from "./DatosNutricionalesModal";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 
@@ -27,6 +28,7 @@ const formatDate = (dateStr?: string | null) => {
 };
 
 export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver }: VerInsumoProps) {
+  const [modalNutricionAbierto, setModalNutricionAbierto] = useState<boolean>(false);
   const [trazabilidad, setTrazabilidad] = useState<InsumoDetalleTrazabilidad | null>(null);
   const [cargando, setCargando] = useState(true);
 
@@ -142,7 +144,23 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver
           <div className="subtitulo">Información del lote y trazabilidad en producción</div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn-guardar"
+            onClick={() => setModalNutricionAbierto(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              backgroundColor: "#2563eb",
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+              monitoring
+            </span>
+            Datos Nutricionales
+          </button>
           {onEditarClick && (
             <button
               type="button"
@@ -252,6 +270,12 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver
           </tbody>
         </table>
       </div>
+
+      <DatosNutricionalesModal
+        insumo={insumo}
+        abierto={modalNutricionAbierto}
+        onCerrar={() => setModalNutricionAbierto(false)}
+      />
     </div>
   );
 }

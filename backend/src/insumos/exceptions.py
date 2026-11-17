@@ -2,7 +2,6 @@ from typing import List
 from src.insumos.constants import ErrorCode
 from src.exceptions import NotFound, BadRequest
 
-
 class InsumoNoEncontrado(NotFound):
     DETAIL = ErrorCode.INSUMO_NO_ENCONTRADO
 
@@ -12,7 +11,6 @@ class UnidadMedidaInvalida(ValueError):
         unidades_str = ", ".join(posibles_unidades)
         message = f"{ErrorCode.UNIDAD_MEDIDA_INVALIDA} {unidades_str}."
         super().__init__(message)
-
 
 class NombreInsumoVacio(BadRequest):
     DETAIL = ErrorCode.NOMBRE_VACIO
@@ -41,26 +39,32 @@ class StockMayorCantidad(BadRequest):
 class NombreInsumoDuplicado(BadRequest):
     DETAIL = ErrorCode.NOMBRE_DUPLICADO
 
+class FuenteNutricionalInvalida(BadRequest):
+    DETAIL = ErrorCode.FUENTE_NUTRICIONAL_REQUERIDA
+
+class ValorNutricionalNegativo(BadRequest):
+    DETAIL = ErrorCode.VALOR_NUTRICIONAL_NEGATIVO
+
+class DatosNutricionalesRequeridos(BadRequest):
+    DETAIL = ErrorCode.DATOS_NUTRICIONALES_REQUERIDOS
+
+class AlimentoReferenciaNoEncontrado(NotFound):
+    DETAIL = ErrorCode.ALIMENTO_REFERENCIA_NO_ENCONTRADO
 
 class TipoInsumoRequerido(BadRequest):
     DETAIL = ErrorCode.TIPO_INSUMO_REQUERIDO
 
-
 class ProveedorRequerido(BadRequest):
     DETAIL = ErrorCode.PROVEEDOR_REQUERIDO
-
 
 class LoteVacio(BadRequest):
     DETAIL = ErrorCode.LOTE_VACIO
 
-
 class FechaRecepcionSoloHoy(BadRequest):
     DETAIL = ErrorCode.FECHA_RECEPCION_SOLO_HOY
 
-
 class FechaVencimientoPosterior(BadRequest):
     DETAIL = ErrorCode.FECHA_VENCIMIENTO_POSTERIOR
-
 
 class InsumoNoVencido(BadRequest):
     DETAIL = ErrorCode.INSUMO_NO_VENCIDO

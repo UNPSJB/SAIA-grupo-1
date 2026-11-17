@@ -7,6 +7,8 @@ import { ExportIcon } from '../../components/icons/ExportIcon';
 import { descargarCSV } from '../../utils/exportarCsv';
 import { descargarPDF } from '../../utils/exportarPdf';
 import { apiFetch } from '../../api/client';
+import { Badge } from '../../components/ui/badge';
+import { DatosNutricionalesModal } from './DatosNutricionalesModal';
 
 interface ListadoInsumosProps {
   onNuevoClick?: () => void;
@@ -41,6 +43,9 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+
+  const [insumoNutricion, setInsumoNutricion] = useState<InsumoConId | null>(null);
+  const [modalNutricionAbierto, setModalNutricionAbierto] = useState<boolean>(false);
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('TODOS');
@@ -258,6 +263,10 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     proveedor_nombre: lote.proveedor_nombre,
     estadoVencimiento: lote.estadoVencimiento,
     activo: lote.activo,
+    es_aditivo: lote.es_aditivo,
+    tiene_datos_nutricionales: lote.tiene_datos_nutricionales,
+    modificado_manualmente: lote.modificado_manualmente,
+    fuente_datos: lote.fuente_datos,
   });
 
   const gruposFiltrados = grupos.filter((g) => {
@@ -378,7 +387,9 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                           onVerTipoClick(grupo.tipo_id);
                         }}
                       >
-                        👁
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                          visibility
+                        </span>
                       </button>
                     )}
                   </div>
@@ -403,6 +414,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                               <th>Recibido</th>
                               <th>Stock</th>
                               <th>Estado</th>
+                              <th>Nutrición</th>
                               <th className="acciones-col">Acciones</th>
                             </tr>
                           </thead>
@@ -421,28 +433,60 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                                   {lote.stock} {lote.medida}
                                 </td>
                                 <td>{renderBadge(lote.estadoVencimiento)}</td>
+                                <td>
+                                  {lote.es_aditivo ? (
+                                    <Badge variant="secondary" style={{ fontSize: '0.74rem' }}>
+                                      Aditivo
+                                    </Badge>
+                                  ) : lote.tiene_datos_nutricionales ? (
+                                    lote.modificado_manualmente ? (
+                                      <Badge variant="proximo" style={{ fontSize: '0.74rem' }}>
+                                        Modificado
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="activo" style={{ fontSize: '0.74rem' }}>
+                                        Cargado
+                                      </Badge>
+                                    )
+                                  ) : (
+                                    <Badge variant="outline" style={{ fontSize: '0.74rem', opacity: 0.7 }}>
+                                      Sin datos
+                                    </Badge>
+                                  )}
+                                </td>
                                 <td className="acciones-col">
                                   <div className="acciones-btns">
+                                    <button
+                                      type="button"
+                                      className="btn-icon"
+                                      title="Datos nutricionales por 100g"
+                                      onClick={() => {
+                                        setInsumoNutricion(transformarParaAcciones(lote));
+                                        setModalNutricionAbierto(true);
+                                      }}
+                                    >
+                                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>monitoring</span>
+                                    </button>
                                     <button
                                       className="btn-icon btn-editar"
                                       title="Ver trazabilidad del lote"
                                       onClick={() => onVerClick?.(transformarParaAcciones(lote))}
                                     >
-                                      👁
+                                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>visibility</span>
                                     </button>
                                     <button
                                       className="btn-icon btn-editar"
                                       title="Editar lote"
                                       onClick={() => onEditarClick?.(transformarParaAcciones(lote))}
                                     >
-                                      ✎
+                                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
                                     </button>
                                     <button
                                       className="btn-icon btn-eliminar"
                                       title="Dar de baja lote"
                                       onClick={() => abrirConfirmacionEliminar(lote)}
                                     >
-                                      🗑
+                                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
                                     </button>
                                     {lote.estadoVencimiento === 'VENCIDO' && lote.stock > 0 && (
                                       <button
@@ -451,7 +495,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                                         title="Desechar stock restante de lote vencido"
                                         onClick={() => abrirConfirmacionDesechar(lote)}
                                       >
-                                        ✕
+                                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
                                       </button>
                                     )}
                                   </div>
@@ -509,6 +553,19 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
         onConfirm={ejecutarExportacion}
         onCancel={() => setDialogExportarAbierto(false)}
       />
+      {insumoNutricion && (
+        <DatosNutricionalesModal
+          insumo={insumoNutricion}
+          abierto={modalNutricionAbierto}
+          onCerrar={() => {
+            setModalNutricionAbierto(false);
+            setInsumoNutricion(null);
+          }}
+          onGuardadoExitoso={() => {
+            cargarInsumosAgrupados();
+          }}
+        />
+      )}
     </div>
   );
 };

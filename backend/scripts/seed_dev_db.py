@@ -89,6 +89,9 @@ from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 from src.AcercaDeNostros.models import AcercaDeNosotros
 
 from src.auditoria.models import Auditoria, AccionAuditoria
+from src.rotulado.services import guardar_lista_rotulo
+from src.rotulado.models import FormatoDeclaracionAditivos
+from src.rotulado import schemas as rotulado_schemas
 from src.tipoInsumo.models import TipoInsumo
 from src.tipoInsumo.schemas import TipoInsumoCreate
 from src.tipoInsumo.services import crear_tipo_insumo
@@ -1950,6 +1953,9 @@ def main() -> None:
         )
         obtener_o_crear_borrador(db, prod_rotulo.id)
         autocompletar_datos_borrador(db, prod_rotulo.id, usuario=marcos)
+
+    from src.insumos.migraciones import migrar_columnas_nutricionales_insumos
+    migrar_columnas_nutricionales_insumos(db)
 
     auditorias = [
         Auditoria(
