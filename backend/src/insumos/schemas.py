@@ -61,8 +61,6 @@ class InsumoCreate(InsumoBase):
             if v_naive < manana:
                 raise exceptions.FechaVencimientoInvalida()
         return v
-                raise exceptions.FechaVencimientoInvalida()
-        return v
 
     @field_validator("cantRecibida")
     @classmethod

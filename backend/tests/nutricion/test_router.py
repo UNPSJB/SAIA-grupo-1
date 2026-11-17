@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from src.main import app
-from src.insumos.models import Insumo, UnidadMedida
+from src.insumos.models import Insumo
 from src.producto.models import Producto
 from src.recetas.models import Receta, VersionReceta, RecetaDetalle
 from tests.database import session
@@ -36,7 +36,7 @@ def test_endpoints_nutricion_producto(session: Session):
         fechaRecepcion=datetime.now(),
         cantRecibida=10.0,
         stock=10.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        unidad_medida_id=1,
         energia_kcal=350.0,
         carbohidratos=72.0,
         proteinas=10.0,
@@ -79,7 +79,7 @@ def test_endpoints_nutricion_producto(session: Session):
 
     prod = Producto(
         nombre="Pan Router Test",
-        unidadMedida=UnidadMedida.KILOGRAMOS,
+        unidad_medida_id=1,
         activo=True,
         receta_id=receta.id,
         tamano_porcion_g=50.0,
