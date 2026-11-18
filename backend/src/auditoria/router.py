@@ -5,6 +5,7 @@ from src.database import get_db
 from src.auditoria import schemas, services
 from src.autenticacion.dependencies import get_usuario_actual
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/auditoria", tags=["auditoria"])
 
@@ -13,6 +14,34 @@ router = APIRouter(prefix="/auditoria", tags=["auditoria"])
 # (services.registrar_auditoria) como efecto secundario de otras acciones
 # del sistema, no por un request directo de un cliente.
 
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_auditoria_pdf(
+    busqueda: Optional[str] = None,
+    accion: Optional[str] = None,
+    tabla: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_auditorias_para_exportar(
+        db, busqueda=busqueda, accion=accion, tabla=tabla
+    )
+
+    columnas = {
+        "id": "ID",
+        "tabla": "Tabla",
+        "registro_id": "ID de Registro",
+        "accion": "Acción",
+        "campo": "Campo Modificado",
+        "valor_previo": "Valor Previo",
+        "valor_posterior": "Valor Posterior",
+        "creado_el": "Fecha y Hora"
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Auditoría",
+        nombre_archivo="auditoria.pdf"
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_auditoria_csv(
@@ -22,7 +51,7 @@ def exportar_auditoria_csv(
     db: Session = Depends(get_db)
 ):
     
-    datos = services.obtener_auditorias_para_csv(
+    datos = services.obtener_auditorias_para_exportar(
         db, busqueda=busqueda, accion=accion, tabla=tabla
     )
 

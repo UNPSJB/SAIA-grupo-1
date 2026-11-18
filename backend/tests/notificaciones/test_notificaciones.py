@@ -14,8 +14,10 @@ from src.sectores.models import Sector
 from src.plan_de_calibracion.models import Plan_de_Calibracion
 from src.documentos.models import Documento, VersionDocumento
 from src.elementosDeLimpieza.models import ElementoDeLimpieza
+from src.insumos.models import Insumo
 from src.insumos_quimicos.models import InsumoQuimico
-from src.insumos_quimicos.constants import TipoQuimicoEnum, UnidadMedidaEnum
+from src.insumos_quimicos.constants import TipoQuimicoEnum
+from src.unidadesMedida.services import resolver_unidad_medida
 from src.plan_De_limpieza.models import Plan_de_Limpieza
 from src.tareas.models import Tarea, Frecuencia
 from src.tareas.services import editar_tarea
@@ -249,7 +251,7 @@ def test_evento_stock_bajo_quimico(session: Session):
     quimico = InsumoQuimico(
         nombre="Detergente Industrial Super Concentrado",
         tipo=TipoQuimicoEnum.DETERGENTE,
-        unidad_medida=UnidadMedidaEnum.LITROS,
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="L").id,
         stock_actual=3.0,
         activo=True,
     )
@@ -334,3 +336,62 @@ def test_notificacion_creacion_incidente(session: Session):
     notifs_inc = [n for n in items_admin if n.entidad_tipo == "incidente" and n.entidad_id == inc.id]
     assert len(notifs_inc) >= 1
     assert "Derrame de líquido" in notifs_inc[0].mensaje
+
+
+def test_notificacion_vencimiento_insumo(session: Session):
+    hoy = date.today()
+    admin = session.query(Personal).filter(Personal.legajo == 2).first()
+    assert admin is not None
+    admin.capacidad = Capacidades.ADMINISTRAR
+    session.commit()
+
+    unidad_kg = resolver_unidad_medida(session, valor_texto="KG")
+    ins_proximo = Insumo(
+        nombre="Manteca Test Notif",
+        lote="LOT-MAN-01",
+        fechaRecepcion=datetime.combine(hoy - timedelta(days=10), datetime.min.time()),
+        fechaVencimiento=datetime.combine(hoy + timedelta(days=4), datetime.min.time()),
+        cantRecibida=25.0,
+        stock=12.0,
+        unidad_medida_id=unidad_kg.id,
+        activo=True,
+    )
+    ins_agotado = Insumo(
+        nombre="Manteca Agotada",
+        lote="LOT-MAN-02",
+        fechaRecepcion=datetime.combine(hoy - timedelta(days=10), datetime.min.time()),
+        fechaVencimiento=datetime.combine(hoy - timedelta(days=1), datetime.min.time()),
+        cantRecibida=25.0,
+        stock=0.0,
+        unidad_medida_id=unidad_kg.id,
+        activo=True,
+    )
+    ins_inactivo = Insumo(
+        nombre="Manteca Inactiva",
+        lote="LOT-MAN-03",
+        fechaRecepcion=datetime.combine(hoy - timedelta(days=10), datetime.min.time()),
+        fechaVencimiento=datetime.combine(hoy - timedelta(days=1), datetime.min.time()),
+        cantRecibida=25.0,
+        stock=10.0,
+        unidad_medida_id=unidad_kg.id,
+        activo=False,
+    )
+    session.add_all([ins_proximo, ins_agotado, ins_inactivo])
+    session.commit()
+
+    generadas = services.revisar_y_generar_vencimientos(session, hoy=hoy)
+    assert generadas >= 1
+
+    generadas_rep = services.revisar_y_generar_vencimientos(session, hoy=hoy)
+    assert generadas_rep == 0
+
+    items_admin, _, _ = services.listar_notificaciones(session, admin.legajo)
+    notifs_ins = [n for n in items_admin if n.tipo == TipoNotificacion.VENCIMIENTO_INSUMO]
+    ids_notif = {n.entidad_id for n in notifs_ins}
+    assert ins_proximo.id in ids_notif
+    assert ins_agotado.id not in ids_notif
+    assert ins_inactivo.id not in ids_notif
+    notif = next(n for n in notifs_ins if n.entidad_id == ins_proximo.id)
+    assert notif.entidad_tipo == "insumo"
+    assert "Manteca Test Notif" in notif.mensaje
+    assert "LOT-MAN-01" in notif.mensaje

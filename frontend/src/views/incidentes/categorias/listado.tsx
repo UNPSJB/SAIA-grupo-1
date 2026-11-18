@@ -6,6 +6,10 @@ import { EtiquetaCategoria, type CategoriaIncidente } from '../tipos';
 import { ModalCategoria } from './modalCategoria';
 import '../../../styles/formularioAlta.css';
 import '../../../styles/incidentes.css';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../../components/icons/ExportIcon';
+import { descargarCSV } from '../../../utils/exportarCsv';
+import { descargarPDF } from '../../../utils/exportarPdf';
 
 export interface ListadoCategoriasIncidentesProps {
   onVerAbiertos?: () => void;
@@ -24,6 +28,8 @@ export const ListadoCategoriasIncidentes: React.FC<ListadoCategoriasIncidentesPr
   const [categoriaAEliminar, setCategoriaAEliminar] = useState<CategoriaIncidente | null>(null);
   const [dialogEliminarAbierto, setDialogEliminarAbierto] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   const cargarCategorias = async () => {
     try {
@@ -81,6 +87,38 @@ export const ListadoCategoriasIncidentes: React.FC<ListadoCategoriasIncidentesPr
     }
   };
 
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
+
+      if (formato === 'pdf') {
+        await descargarPDF(`/incidentes/categorias/exportar-pdf${query}`, 'categorias_incidentes.pdf');
+      } else {
+        await descargarCSV(`/incidentes/categorias/exportar-csv${query}`, 'categorias_incidentes.csv');
+      }
+
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar categorías de incidentes a ${formato.toUpperCase()}.`
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    return busqueda.trim() ? `Búsqueda: "${busqueda.trim()}"` : 'Sin filtros aplicados';
+  };
+
   const categoriasFiltradas = categorias.filter((c) => {
     const term = busqueda.toLowerCase().trim();
     if (!term) return true;
@@ -112,9 +150,20 @@ export const ListadoCategoriasIncidentes: React.FC<ListadoCategoriasIncidentesPr
           </div>
         </div>
 
-        <button type="button" onClick={abrirCrear} className="btn-guardar">
-          + Nueva Categoría
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <ExportIcon/> Exportar
+          </button>
+
+          <button type="button" onClick={abrirCrear} className="btn-guardar">
+            + Nueva Categoría
+          </button>
+        </div>
       </div>
 
       <div className="tabs-incidentes-header">
@@ -282,6 +331,15 @@ export const ListadoCategoriasIncidentes: React.FC<ListadoCategoriasIncidentesPr
         cancelText="Cancelar"
         isDestructive={true}
         onConfirm={ejecutarEliminar}
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={categoriasFiltradas.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
     </div>
   );

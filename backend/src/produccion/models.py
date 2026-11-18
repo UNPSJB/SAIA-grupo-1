@@ -1,6 +1,6 @@
 from datetime import date, datetime
-from typing import List
-from sqlalchemy import Date, DateTime, ForeignKey, String, UniqueConstraint
+from typing import List, Optional
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.insumos.models import Insumo
 from src.models import ModeloBase
@@ -15,9 +15,14 @@ class LoteProduccion(ModeloBase):
     codigo: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     producto_id: Mapped[int] = mapped_column(ForeignKey("productos.id"), index=True)
     fecha: Mapped[date] = mapped_column(Date, index=True)
-    # cantidad producida, en la unidad de medida del producto. No se edita una vez registrada.
     cantidad: Mapped[float] = mapped_column()
     responsable_legajo: Mapped[int] = mapped_column(ForeignKey("personal.legajo"), index=True)
+    version_receta_id: Mapped[Optional[int]] = mapped_column(
+        Integer, index=True, nullable=True
+    )
+    checklist_receta_id: Mapped[Optional[int]] = mapped_column(
+        Integer, index=True, nullable=True
+    )
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
     producto: Mapped[Producto] = relationship(lazy="joined")
@@ -49,4 +54,4 @@ class InsumoLote(ModeloBase):
     cantidad: Mapped[float] = mapped_column()
 
     lote: Mapped[LoteProduccion] = relationship(back_populates="insumos")
-    insumo: Mapped[Insumo] = relationship(lazy="joined")
+    insumo: Mapped[Insumo] = relationship(back_populates="lotes_asociados", lazy="joined")

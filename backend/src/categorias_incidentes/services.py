@@ -1,7 +1,32 @@
-from typing import List
+from typing import List, Optional, Dict, Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from src.categorias_incidentes import exceptions, models, schemas
+
+def obtener_categorias_para_exportar(
+    db: Session,
+    busqueda: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    categorias = listar_categorias(db)
+    term = busqueda.lower().strip() if busqueda else None
+    filas: List[Dict[str, Any]] = []
+
+    for cat in categorias:
+        if term:
+            coincide = term in cat.nombre.lower() or (
+                bool(cat.descripcion) and term in cat.descripcion.lower()
+            )
+            if not coincide:
+                continue
+
+        filas.append({
+            "id": cat.id,
+            "nombre": cat.nombre,
+            "descripcion": cat.descripcion or "Sin descripción adicional",
+            "total_incidentes": cat.total_incidentes,
+        })
+
+    return filas
 
 
 def listar_categorias(db: Session) -> List[schemas.CategoriaIncidente]:

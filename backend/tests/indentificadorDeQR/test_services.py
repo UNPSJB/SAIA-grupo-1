@@ -3,7 +3,6 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from src.indentificadorDeQR import exceptions, services
 from src.indentificadorDeQR.schemas import IdentifacadorQRUpdate, IdentificadorQRCreate
-from src.insumos.models import UnidadMedida
 from src.producto.schemas import ProductoCreate
 from src.producto.services import actualizar_visibilidad_publica, crear_producto
 from tests.database import session
@@ -33,7 +32,7 @@ def test_actualizar_ver_productos_qr_inexistente(session: Session) -> None:
 
 def test_productos_publicos_respeta_el_interruptor_general(session: Session) -> None:
     qr = _qr(session)
-    pan = crear_producto(session, ProductoCreate(nombre="Pan de Campo", unidadMedida=UnidadMedida.UNIDADES))
+    pan = crear_producto(session, ProductoCreate(nombre="Pan de Campo", unidadMedida="unidades"))
     actualizar_visibilidad_publica(session, [pan.id])
 
     assert services.listar_productos_publicos(session, qr.id_alfanumerico) == []

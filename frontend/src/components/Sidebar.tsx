@@ -20,6 +20,9 @@ import { useAlertasSistema } from '../hooks/useAlertasSistema';
 export type Modulo =
   | 'dashboard'
   | 'insumos'
+  | 'tipoInsumo'
+  | 'unidadesMedida'
+  | 'proveedores'
   | 'equipos'
   | 'sectores'
   | 'personas'
@@ -39,7 +42,11 @@ export type Modulo =
   | 'productos'
   | 'produccion'
   | 'vistaPublica'
-  | 'controlesAmbientales';
+  | 'controlesAmbientales'
+  | 'receta'
+  | 'checklistRecetas'
+  | 'configuraciones'
+  | 'rotuladoFrontal';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -137,12 +144,42 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <line x1="12" x2="12" y1="22" y2="12" />
     </svg>
   ),
+  tipoInsumo: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h16M4 12h16M4 18h12" />
+      <circle cx="18" cy="18" r="2" />
+    </svg>
+  ),
+  unidadesMedida: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" />
+      <path d="m14.5 12.5 2-2" />
+      <path d="m11.5 9.5 2-2" />
+      <path d="m8.5 6.5 2-2" />
+      <path d="m17.5 15.5 2-2" />
+    </svg>
+  ),
+  proveedores: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="15" height="13" />
+      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  ),
   productos: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="m7.5 4.27 9 5.15" />
       <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
       <path d="m3.3 7 8.7 5 8.7-5" />
       <path d="M12 22V12" />
+    </svg>
+  ),
+  rotuladoFrontal: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="8.1,2 15.9,2 22,8.1 22,15.9 15.9,22 8.1,22 2,15.9 2,8.1" />
+      <path d="M12 7v6" />
+      <path d="M12 17h.01" />
     </svg>
   ),
   personas: (
@@ -207,10 +244,30 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
     </svg>
   ),
+  configuraciones: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
   controlesAmbientales: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.4 19 2c1 2 2 4.1 2 7 0 4.7-4 9-10 9Z" />
       <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+    </svg>
+  ),
+  receta: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+      <path d="M8 7h8M8 11h8M8 15h5" />
+    </svg>
+  ),
+  checklistRecetas: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="16" height="18" x="4" y="4" rx="2" />
+      <path d="M9 2h6v3H9z" />
+      <path d="m9 12 2 2 4-4" />
+      <path d="M9 17h6" />
     </svg>
   ),
 };
@@ -268,7 +325,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       titulo: 'Higiene y POES',
       items: [
         { id: 'checklist', label: 'Checklists Diarios', icono: ICONOS_MODULO.checklist },
-        { id: 'motivos', label: 'Motivos No Realización', icono: ICONOS_MODULO.motivos },
         { id: 'planDeLimpieza', label: 'Plan de Limpieza', icono: ICONOS_MODULO.planDeLimpieza },
         { id: 'insumos_quimicos', label: 'Químicos Limpieza', icono: ICONOS_MODULO.insumos_quimicos },
         { id: 'elementosDeLimpieza', label: 'Elementos de Limpieza', icono: ICONOS_MODULO.elementosDeLimpieza },
@@ -280,8 +336,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       items: [
         { id: 'equipos', label: 'Equipos', icono: ICONOS_MODULO.equipos },
         { id: 'planDeCalibracion', label: 'Plan de Calibración', icono: ICONOS_MODULO.planDeCalibracion },
-        { id: 'sectores', label: 'Sectores', icono: ICONOS_MODULO.sectores },
+        { id: 'tipoInsumo', label: 'Tipos de Insumo', icono: ICONOS_MODULO.tipoInsumo },
         { id: 'insumos', label: 'Ingredientes', icono: ICONOS_MODULO.insumos },
+        { id: 'receta', label: 'Receta', icono: ICONOS_MODULO.receta },
         { id: 'productos', label: 'Productos Elaborados', icono: ICONOS_MODULO.productos },
       ],
     },
@@ -290,7 +347,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       titulo: 'Personal y Habilitaciones',
       items: [
         { id: 'personas', label: 'Personas', icono: ICONOS_MODULO.personas },
-        { id: 'tipoCertificado', label: 'Tipo Certificado', icono: ICONOS_MODULO.tipoCertificado },
       ],
     },
     {
@@ -299,7 +355,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
       items: [
         { id: 'produccion', label: 'Producción', icono: ICONOS_MODULO.produccion },
         { id: 'documentos', label: 'Documentos', icono: ICONOS_MODULO.documentos },
-        { id: 'tipoDocumento', label: 'Tipo Documento', icono: ICONOS_MODULO.tipoDocumento },
+        { id: 'checklistRecetas', label: 'Checklist de Recetas', icono: ICONOS_MODULO.checklistRecetas},
         {
           id: 'incidentes',
           label: esAdministrador ? 'Incidentes' : 'Reportar Incidente',

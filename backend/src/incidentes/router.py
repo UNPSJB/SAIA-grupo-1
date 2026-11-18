@@ -9,19 +9,70 @@ from src.incidentes import schemas, services
 from src.incidentes.constants import EstadoIncidente, TipoIncidente
 from src.personal.models import Personal
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/incidentes", tags=["Incidentes"])
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+async def exportar_incidentes_pdf(
+    busqueda: Optional[str] = Query(None),
+    estado_grupo: Optional[str] = Query(None),
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    tipo: Optional[TipoIncidente] = Query(None),
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(get_usuario_actual),
+):
+    "Exporta el historial de incidentes en PDF"
+    datos = services.obtener_incidentes_para_exportar(
+        db,
+        usuario=usuario,
+        busqueda=busqueda,
+        estado_grupo=estado_grupo,
+        desde=desde,
+        hasta=hasta,
+        tipo=tipo,
+        solo_abiertos=False,
+    )
+
+    columnas = {
+        "id": "ID",
+        "creado_el": "Fecha de Reporte",
+        "reportado_por": "Reportado Por",
+        "descripcion": "Descripción del Incidente",
+        "estado": "Estado Actual",
+        "accion_correctiva": "Acción Correctiva",
+        "cerrado_el": "Fecha de Cierre"
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Historial de Incidentes",
+        nombre_archivo="historial_incidentes.pdf"
+    )
+
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 async def exportar_incidentes_csv(
     busqueda: Optional[str] = Query(None),
     estado_grupo: Optional[str] = Query(None),
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    tipo: Optional[TipoIncidente] = Query(None),
     db: Session = Depends(get_db),
     usuario: Personal = Depends(get_usuario_actual),
 ):
     "Exporta el historial de incidentes"
-    datos = services.obtener_incidentes_para_csv(
-        db, usuario=usuario, busqueda=busqueda, estado_grupo=estado_grupo, solo_abiertos=False
+    datos = services.obtener_incidentes_para_exportar(
+        db,
+        usuario=usuario,
+        busqueda=busqueda,
+        estado_grupo=estado_grupo,
+        desde=desde,
+        hasta=hasta,
+        tipo=tipo,
+        solo_abiertos=False,
     )
 
     columnas = {
@@ -48,7 +99,7 @@ async def exportar_incidentes_abiertos_csv(
     usuario: Personal = Depends(get_usuario_actual),
 ):
     "Exporta incidentes abiertos"
-    datos = services.obtener_incidentes_para_csv(
+    datos = services.obtener_incidentes_para_exportar(
         db, usuario=usuario, busqueda=busqueda, urgencia=urgencia, solo_abiertos=True
     )
 

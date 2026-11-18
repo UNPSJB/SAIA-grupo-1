@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from src.controlesAmbientales import exceptions, models, schemas
 from src.controlesAmbientales.models import ControlAmbiental, VisitaControlAmbiental, TipoControlAmbiental
 
-STORAGE_DIR = Path(__file__).resolve().parent / "certificados"
+STORAGE_DIR = Path(__file__).resolve().parent / "archivos"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 EXTENSIONES_PERMITIDAS = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
@@ -87,7 +87,7 @@ def registrar_visita_control(
     db: Session,
     control_id: int,
     fecha_realizacion: date,
-    file: Optional[UploadFile] = None,  # <--- Obligatorio
+    file: Optional[UploadFile] = None,
     observaciones: Optional[str] = None
 ) -> VisitaControlAmbiental:
     control = db.scalar(select(ControlAmbiental).where(ControlAmbiental.id == control_id))
@@ -191,7 +191,7 @@ def reactivar_control_ambiental(db: Session, control_id: int) -> ControlAmbienta
     return control
 
 
-def obtener_controles_para_csv(
+def obtener_controles_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     tipo: Optional[str] = None,

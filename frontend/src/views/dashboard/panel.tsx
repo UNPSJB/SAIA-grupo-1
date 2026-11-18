@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -25,6 +25,14 @@ import { apiFetch } from '../../api/client';
 import '../../styles/dashboard.css';
 import { useColoresTema } from './useColoresTema';
 import { VistaPublicaProvider } from '../vistaPublica/contextDeVistaPublica';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
 
 const PALETA_PRODUCCION = [
   '#3b82f6',
@@ -68,11 +76,24 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
   const [vencCalibraciones, setVencCalibraciones] = useState({ vencidos: 0, proximos: 0 });
   const [vencElementos, setVencElementos] = useState({ vencidos: 0, proximos: 0 });
   const [vencDocumentos, setVencDocumentos] = useState({ vencidos: 0, proximos: 0 });
+  const [vencInsumos, setVencInsumos] = useState({ vencidos: 0, proximos: 0 });
   const [loadingVencimientos, setLoadingVencimientos] = useState(true);
 
   const [metricasIncidentes, setMetricasIncidentes] = useState<IncidentesMetricasDashboard | null>(null);
   const [loadingIncidentes, setLoadingIncidentes] = useState(true);
 
+  const graficoInsumosRef = useRef<HTMLDivElement | null>(null);
+  const graficoProduccionRef = useRef<HTMLDivElement | null>(null);
+  const getterCumplimientoRef = useRef<(() => ConfiguracionGraficoExportar | null) | null>(null);
+
+  const [exportConfigModal, setExportConfigModal] = useState<{
+    titulo: string;
+    filtros: string;
+    nombreArchivo: string;
+    graficos: ConfiguracionGraficoExportar[];
+  } | null>(null);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
+  const [errorExportGrafico, setErrorExportGrafico] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -87,6 +108,9 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
           setConsumoInsumos(data.consumo || []);
           if (Array.isArray(data.unidades_disponibles)) {
             setUnidadesDisponibles(data.unidades_disponibles);
+            if (data.unidades_disponibles.length > 0 && !data.unidades_disponibles.includes(unidadInsumos)) {
+              setUnidadInsumos(data.unidades_disponibles[0]);
+            }
           }
         }
       } catch (e) {
@@ -181,6 +205,10 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
             const docVenc = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'documento' && x.estado === 'vencido').length;
             const docProx = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'documento' && x.estado === 'proximo').length;
             setVencDocumentos({ vencidos: docVenc, proximos: docProx });
+
+            const insVenc = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'insumo' && x.estado === 'vencido').length;
+            const insProx = itemsVenc.filter((x: { origen: string; estado: string }) => x.origen === 'insumo' && x.estado === 'proximo').length;
+            setVencInsumos({ vencidos: insVenc, proximos: insProx });
           }
         }
 
@@ -246,6 +274,95 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
     };
   }, []);
 
+  const hayProduccionVisible =
+    !loadingProduccion &&
+    datosProduccion.length > 0 &&
+    (lotesProducidos > 0 || datosProduccion.some((p) => p.lotes > 0));
+
+  const obtenerConfigInsumos = (): ConfiguracionGraficoExportar | null => {
+    if (loadingInsumos || consumoInsumos.length === 0 || !graficoInsumosRef.current) return null;
+    const labelPeriodo = periodoInsumos === 'dia' ? 'Diario' : periodoInsumos === 'semana' ? 'Semanal' : 'Mensual';
+    return {
+      id: 'dashboard-insumos',
+      titulo: 'Consumo de Insumos Químicos',
+      subtitulo: `Consumo acumulado en ${unidadInsumos}`,
+      filtros: `Período: ${labelPeriodo} | Unidad: ${unidadInsumos}`,
+      contenedor: graficoInsumosRef.current,
+    };
+  };
+
+  const obtenerConfigProduccion = (): ConfiguracionGraficoExportar | null => {
+    if (!hayProduccionVisible || !graficoProduccionRef.current) return null;
+    const labelPeriodo = periodoProduccion === 'dia' ? 'Últimos 7 días' : periodoProduccion === 'semana' ? 'Últimas 4 semanas' : 'Meses del año';
+    const prodNombre = productoProduccion
+      ? listaProductos.find((p) => String(p.id) === productoProduccion)?.nombre || 'Producto filtrado'
+      : 'Todos los productos';
+    return {
+      id: 'dashboard-produccion',
+      titulo: 'Producción',
+      subtitulo: `Total elaborado: ${lotesProducidos} lotes`,
+      filtros: `Período: ${labelPeriodo} | Producto: ${prodNombre}`,
+      contenedor: graficoProduccionRef.current,
+    };
+  };
+
+  const abrirExportacionIndividual = (cfg: ConfiguracionGraficoExportar | null, nombreArchivo: string) => {
+    if (!cfg) {
+      setErrorExportGrafico('No hay datos visibles en este gráfico para exportar.');
+      return;
+    }
+    setExportConfigModal({
+      titulo: cfg.titulo,
+      filtros: cfg.filtros || '',
+      nombreArchivo,
+      graficos: [cfg],
+    });
+  };
+
+  const abrirExportacionConsolidada = () => {
+    const lista: ConfiguracionGraficoExportar[] = [];
+    const cfgInsumos = obtenerConfigInsumos();
+    const cfgProduccion = obtenerConfigProduccion();
+    const cfgCumplimiento = getterCumplimientoRef.current ? getterCumplimientoRef.current() : null;
+
+    if (cfgInsumos) lista.push(cfgInsumos);
+    if (cfgProduccion) lista.push(cfgProduccion);
+    if (cfgCumplimiento) lista.push(cfgCumplimiento);
+
+    if (lista.length === 0) {
+      setErrorExportGrafico('No hay gráficos con datos visibles en el Dashboard para exportar.');
+      return;
+    }
+
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    setExportConfigModal({
+      titulo: `Dashboard General (${lista.length} gráficos)`,
+      filtros: lista.map((g) => `${g.titulo} (${g.filtros})`).join(' • '),
+      nombreArchivo: `dashboard_graficos_${hoyStr}`,
+      graficos: lista,
+    });
+  };
+
+  const handleConfirmarExportacion = async (formato: FormatoGrafico) => {
+    if (!exportConfigModal) return;
+    try {
+      setExportandoGrafico(true);
+      await exportarGraficos(
+        exportConfigModal.graficos,
+        formato,
+        exportConfigModal.nombreArchivo,
+        'Reporte Estadístico - Panel General'
+      );
+      setExportConfigModal(null);
+    } catch (err) {
+      setErrorExportGrafico(
+        err instanceof Error ? err.message : 'Ocurrió un error al generar el archivo.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
+
   if (vistaDetalle) {
     return <VistaDetalleEstadisticas tipo={vistaDetalle} onVolver={() => setVistaDetalle(null)} />;
   }
@@ -257,12 +374,10 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
       .map((u) => ({ id: u, label: u })),
   ];
 
-
   const incCriticos = metricasIncidentes?.por_antiguedad?.mas_72h || 0;
   const incEnAtencion = metricasIncidentes?.por_antiguedad?.entre_24h_y_72h || 0;
   const incRecientes = metricasIncidentes?.por_antiguedad?.menos_24h || 0;
   const incReabiertos = metricasIncidentes?.por_estado?.reabierto || 0;
-
 
   const renderBadgeVencimiento = (
     vencidos: number,
@@ -314,30 +429,40 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
     <div className="modulo-container dashboard-container">
 
       <div className="dashboard-titulo-fila">
-      <div className="modulo-header dashboard-header-compacto">
-        <h1>Inicio</h1>
-        <div className="subtitulo">Panel de estadísticas y control general</div>
-      </div>
+        <div className="modulo-header dashboard-header-compacto">
+          <h1>Inicio</h1>
+          <div className="subtitulo">Panel de estadísticas y control general</div>
+        </div>
 
-      {/* 🟢 Botón dinámico que cambia según el estado de habilitación global */}
-      <div>
-        {vistaHabilitada ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
-            onClick={() => onIrAVistaPublica?.(true)}
-            className="btn-activar"
-            style={{ backgroundColor: '#0284c7' }}
+            type="button"
+            onClick={abrirExportacionConsolidada}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            title="Exportar los gráficos del Dashboard en PNG, JPEG o PDF"
           >
-            Ver QR / Gestionar Vista
+            <ExportIcon size={17} /> Exportar Gráficos
           </button>
-        ) : (
-          <button
-            onClick={() => onIrAVistaPublica?.(false)}
-            className="btn-activar"
-          >
-            Activar Vista Pública
-          </button>
-        )}
-      </div>
+          {vistaHabilitada ? (
+            <button
+              type="button"
+              onClick={() => onIrAVistaPublica?.(true)}
+              className="btn-activar"
+              style={{ backgroundColor: '#0284c7' }}
+            >
+              Ver QR / Gestionar Vista
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onIrAVistaPublica?.(false)}
+              className="btn-activar"
+            >
+              Activar Vista Pública
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="dashboard-fila-1">
@@ -388,6 +513,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                           if (item.origen === 'personal') onNavegar('personas');
                           else if (item.origen === 'equipo') onNavegar('planDeCalibracion');
                           else if (item.origen === 'documento') onNavegar('documentos');
+                          else if (item.origen === 'insumo') onNavegar('insumos');
                         }
                       }}
                       title="Hacer clic para ver detalle"
@@ -416,6 +542,15 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                               <polyline points="14 2 14 8 20 8" />
                               <line x1="16" y1="13" x2="8" y2="13" />
                               <line x1="16" y1="17" x2="8" y2="17" />
+                            </svg>
+                          </span>
+                        )}
+                        {item.origen === 'insumo' && (
+                          <span className="badge-icono-origen insumo" title="Insumo">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                              <path d="m3.3 7 8.7 5 8.7-5" />
+                              <path d="M12 22V12" />
                             </svg>
                           </span>
                         )}
@@ -518,6 +653,26 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                     () => (onNavegar ? onNavegar('vencimientos', 'documentos', 'VENCIDOS') : setVistaDetalle('vencimientos')),
                     () => (onNavegar ? onNavegar('vencimientos', 'documentos', 'PROXIMOS') : setVistaDetalle('vencimientos')),
                     () => (onNavegar ? onNavegar('vencimientos', 'documentos', 'TODOS') : setVistaDetalle('vencimientos')),
+                  )}
+                </div>
+
+                <div className="dashboard-item-resumen">
+                  <button
+                    type="button"
+                    className="dashboard-item-link"
+                    onClick={() => {
+                      if (onNavegar) onNavegar('vencimientos', 'insumo', '');
+                      else setVistaDetalle('vencimientos');
+                    }}
+                  >
+                    Vencimientos de Insumos
+                  </button>
+                  {renderBadgeVencimiento(
+                    vencInsumos.vencidos,
+                    vencInsumos.proximos,
+                    () => (onNavegar ? onNavegar('vencimientos', 'insumo', 'vencido') : setVistaDetalle('vencimientos')),
+                    () => (onNavegar ? onNavegar('vencimientos', 'insumo', 'proximo') : setVistaDetalle('vencimientos')),
+                    () => (onNavegar ? onNavegar('vencimientos', 'insumo', '') : setVistaDetalle('vencimientos')),
                   )}
                 </div>
               </div>
@@ -686,6 +841,22 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                   </option>
                 ))}
               </select>
+              {!loadingInsumos && consumoInsumos.length > 0 && (
+                <button
+                  type="button"
+                  className="dashboard-badge dashboard-badge-btn dashboard-badge-al-dia"
+                  onClick={() =>
+                    abrirExportacionIndividual(
+                      obtenerConfigInsumos(),
+                      `consumo_insumos_${periodoInsumos}_${unidadInsumos}`
+                    )
+                  }
+                  title="Exportar gráfico de consumo de insumos (PNG, JPEG o PDF)"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <ExportIcon size={13} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -693,18 +864,43 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
             {loadingInsumos ? (
               <p className="dashboard-sin-datos">Cargando consumo de insumos...</p>
             ) : consumoInsumos.length === 0 ? (
-              <p className="dashboard-sin-datos">
-                No hay tareas completadas con consumo en este período.
-              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '16px', textAlign: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--color-texto-sec)', marginBottom: '6px' }}>
+                  science
+                </span>
+                <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: 'var(--color-texto-sec)' }}>
+                  Sin tareas completadas con consumo en este período ({periodoInsumos === 'dia' ? 'diario' : periodoInsumos === 'semana' ? 'semanal' : 'mensual'}).
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {periodoInsumos !== 'mes' && (
+                    <button
+                      type="button"
+                      className="dashboard-btn-detalle"
+                      style={{ fontSize: '11.5px', padding: '3px 8px' }}
+                      onClick={() => setPeriodoInsumos('mes')}
+                    >
+                      Ver mensual
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="dashboard-btn-detalle"
+                    style={{ fontSize: '11.5px', padding: '3px 8px' }}
+                    onClick={() => setVistaDetalle('insumos')}
+                  >
+                    Histórico completo &rarr;
+                  </button>
+                </div>
+              </div>
             ) : (
-              <div className="dashboard-grafico-contenedor">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={consumoInsumos} margin={{ top: 8, right: 16, left: 12, bottom: 4 }}>
+              <div ref={graficoInsumosRef} className="dashboard-grafico-contenedor">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <BarChart data={consumoInsumos} margin={{ top: 12, right: 18, left: 14, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                     <XAxis
                       dataKey="nombre"
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       interval={0}
                       tickLine={false}
                       angle={-22}
@@ -714,7 +910,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                     />
                     <YAxis
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       tickLine={false}
                       width={62}
                       label={{
@@ -723,7 +919,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                         position: 'insideLeft',
                         offset: 12,
                         fill: colores.textoSec,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 500,
                         style: { textAnchor: 'middle' },
                       }}
@@ -783,76 +979,121 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                 onChange={(e) => setPeriodoProduccion(e.target.value as Periodo)}
                 title="Seleccionar período de producción"
               >
-                <option value="dia">Semana</option>
-                <option value="semana">Mes</option>
-                <option value="mes">Año</option>
+                <option value="dia">Últimos 7 días</option>
+                <option value="semana">Últimas 4 semanas</option>
+                <option value="mes">Meses del año</option>
               </select>
+              {hayProduccionVisible && (
+                <button
+                  type="button"
+                  className="dashboard-badge dashboard-badge-btn dashboard-badge-al-dia"
+                  onClick={() =>
+                    abrirExportacionIndividual(
+                      obtenerConfigProduccion(),
+                      `produccion_${periodoProduccion}`
+                    )
+                  }
+                  title="Exportar gráfico de producción (PNG, JPEG o PDF)"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <ExportIcon size={13} />
+                </button>
+              )}
             </div>
           </div>
 
           <div className="dashboard-card-cuerpo">
             {loadingProduccion ? (
               <p className="dashboard-sin-datos">Cargando estadísticas de producción...</p>
+            ) : lotesProducidos === 0 && datosProduccion.every((p) => p.lotes === 0) ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '16px', textAlign: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--color-texto-sec)', marginBottom: '6px' }}>
+                  precision_manufacturing
+                </span>
+                <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: 'var(--color-texto-sec)' }}>
+                  No se registraron lotes producidos en este período.
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {periodoProduccion !== 'mes' && (
+                    <button
+                      type="button"
+                      className="dashboard-btn-detalle"
+                      style={{ fontSize: '11.5px', padding: '3px 8px' }}
+                      onClick={() => setPeriodoProduccion('mes')}
+                    >
+                      Ver todo el año
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="dashboard-btn-detalle"
+                    style={{ fontSize: '11.5px', padding: '3px 8px' }}
+                    onClick={() => setVistaDetalle('produccion')}
+                  >
+                    Detalle de producción &rarr;
+                  </button>
+                </div>
+              </div>
             ) : (
-              <div className="dashboard-grafico-contenedor">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={datosProduccion} margin={{ top: 8, right: 16, left: 12, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                  <XAxis
-                    dataKey="nombre"
-                    stroke={colores.textoSec}
-                    fontSize={11}
-                    interval={0}
-                    tickLine={false}
-                    height={32}
-                    label={{
-                      value: 'Período',
-                      position: 'insideBottom',
-                      offset: -2,
-                      fill: colores.textoSec,
-                      fontSize: 11,
-                      fontWeight: 500,
-                    }}
-                  />
-                  <YAxis
-                    stroke={colores.textoSec}
-                    fontSize={11}
-                    tickLine={false}
-                    width={62}
-                    allowDecimals={false}
-                    label={{
-                      value: 'Lotes producidos',
-                      angle: -90,
-                      position: 'insideLeft',
-                      offset: 12,
-                      fill: colores.textoSec,
-                      fontSize: 11,
-                      fontWeight: 500,
-                      style: { textAnchor: 'middle' },
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--color-superficie-elevada)',
-                      borderColor: 'var(--color-borde)',
-                      color: 'var(--color-texto)',
-                    }}
-                    itemStyle={{ color: 'var(--color-texto)' }}
-                    cursor={{ fill: colores.suave }}
-                    formatter={(valor) => [Number(valor) === 1 ? '1 lote' : `${valor} lotes`, 'Lotes']}
-                    labelFormatter={(nombre) => `Período: ${nombre}`}
-                  />
-                  <Bar dataKey="lotes" radius={[4, 4, 0, 0]}>
-                    {datosProduccion.map((_, index) => (
-                      <Cell
-                        key={`produccion-bar-${index}`}
-                        fill={PALETA_PRODUCCION[index % PALETA_PRODUCCION.length]}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+              <div ref={graficoProduccionRef} className="dashboard-grafico-contenedor">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <BarChart data={datosProduccion} margin={{ top: 12, right: 18, left: 14, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                    <XAxis
+                      dataKey="nombre"
+                      stroke={colores.textoSec}
+                      fontSize={12}
+                      interval={0}
+                      tickLine={false}
+                      height={32}
+                      label={{
+                        value: 'Período',
+                        position: 'insideBottom',
+                        offset: -2,
+                        fill: colores.textoSec,
+                        fontSize: 12,
+                        fontWeight: 500,
+                      }}
+                    />
+                    <YAxis
+                      stroke={colores.textoSec}
+                      fontSize={12}
+                      tickLine={false}
+                      width={62}
+                      allowDecimals={false}
+                      label={{
+                        value: 'Lotes producidos',
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 12,
+                        fill: colores.textoSec,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        style: { textAnchor: 'middle' },
+                      }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--color-superficie-elevada)',
+                        borderColor: 'var(--color-borde)',
+                        color: 'var(--color-texto)',
+                      }}
+                      itemStyle={{ color: 'var(--color-texto)' }}
+                      cursor={{ fill: colores.suave }}
+                      formatter={(valor) => [Number(valor) === 1 ? '1 lote' : `${valor} lotes`, 'Lotes']}
+                      labelFormatter={(nombre) => `Período: ${nombre}`}
+                    />
+                    <Bar dataKey="lotes" radius={[4, 4, 0, 0]}>
+                      {datosProduccion.map((_, index) => (
+                        <Cell
+                          key={`produccion-bar-${index}`}
+                          fill={PALETA_PRODUCCION[index % PALETA_PRODUCCION.length]}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
 
@@ -869,8 +1110,30 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
       </div>
 
       <div className="dashboard-fila-3">
-        <GraficoCumplimientoLimpieza onVerMas={() => setVistaDetalle('tareas')} />
+        <GraficoCumplimientoLimpieza
+          onVerMas={() => setVistaDetalle('tareas')}
+          onObtenerConfigExportacion={(getter) => {
+            getterCumplimientoRef.current = getter;
+          }}
+        />
       </div>
+
+      <ConfirmExportGraficoDialog
+        open={Boolean(exportConfigModal)}
+        tituloGrafico={exportConfigModal?.titulo || ''}
+        cantidadGraficos={exportConfigModal?.graficos.length || 1}
+        filtrosAplicados={exportConfigModal?.filtros}
+        loading={exportandoGrafico}
+        onConfirm={handleConfirmarExportacion}
+        onCancel={() => setExportConfigModal(null)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportGrafico)}
+        title="No se pudo exportar el gráfico"
+        description={errorExportGrafico || ''}
+        onClose={() => setErrorExportGrafico(null)}
+      />
     </div>
   </VistaPublicaProvider>
   );

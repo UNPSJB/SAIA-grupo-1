@@ -1,21 +1,15 @@
 import React, { useEffect, useState } from "react";
 import type { ProductoConId, DocumentoReceta } from "./tipos";
+import type { UnidadMedidaItem } from "../unidadesMedida/tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
-
-const UNIDADES_MEDIDA = [
-  { value: "kilogramos", label: "kilogramos" },
-  { value: "gramos", label: "gramos" },
-  { value: "litros", label: "litros" },
-  { value: "mililitros", label: "mililitros" },
-  { value: "unidades", label: "unidades" },
-];
 
 const PRODUCTO_INICIAL: ProductoConId = {
   id: 0,
   nombre: "",
   descripcion: "",
+  unidad_medida_id: null,
   unidadMedida: "",
   id_receta: null,
   activo: true,
@@ -30,6 +24,7 @@ interface EditarProductoProps {
 export default function EditarProducto({ productoId, onSuccess, onCancel }: EditarProductoProps) {
   const [producto, setProducto] = useState<ProductoConId>(PRODUCTO_INICIAL);
   const [recetas, setRecetas] = useState<DocumentoReceta[]>([]);
+  const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -37,18 +32,24 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
 
   useEffect(() => {
     let cancelado = false;
-    async function cargarRecetas() {
+    async function cargarCatalogos() {
       try {
-        const res = await apiFetch("/documentos/?tipo=Receta");
-        if (res.ok) {
-          const data = await res.json();
-          if (!cancelado) setRecetas(data);
+        const [resRecetas, resUnidades] = await Promise.all([
+          apiFetch("/documentos/?tipo=Receta"),
+          apiFetch("/unidades-medida/?solo_activos=false"),
+        ]);
+        if (!cancelado) {
+          setRecetas(resRecetas.ok ? await resRecetas.json() : []);
+          setUnidades(resUnidades.ok ? await resUnidades.json() : []);
         }
       } catch {
-        if (!cancelado) setRecetas([]);
+        if (!cancelado) {
+          setRecetas([]);
+          setUnidades([]);
+        }
       }
     }
-    cargarRecetas();
+    cargarCatalogos();
     return () => {
       cancelado = true;
     };
@@ -75,7 +76,12 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
     const { name, value } = e.target;
     setProducto({
       ...producto,
-      [name]: name === "id_receta" ? (value ? Number(value) : null) : value,
+      [name]:
+        name === "id_receta" || name === "unidad_medida_id"
+          ? value
+            ? Number(value)
+            : null
+          : value,
     });
   }
 
@@ -89,7 +95,7 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
       return;
     }
 
-    if (!producto.unidadMedida) {
+    if (!producto.unidad_medida_id) {
       setErrorMsg("Debe seleccionar una unidad de medida.");
       return;
     }
@@ -97,8 +103,10 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
     const payload = {
       nombre: producto.nombre.trim(),
       descripcion: producto.descripcion?.trim() || null,
-      unidadMedida: producto.unidadMedida,
+      unidad_medida_id: Number(producto.unidad_medida_id),
       id_receta: producto.id_receta ? Number(producto.id_receta) : null,
+      peso_unidad_g: producto.peso_unidad_g && Number(producto.peso_unidad_g) > 0 ? Number(producto.peso_unidad_g) : null,
+      aplica_rotulado: producto.aplica_rotulado !== false,
     };
 
     setLoading(true);
@@ -157,22 +165,24 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
         </div>
 
         <div className="form-group">
-          <label htmlFor="unidadMedida">
+          <label htmlFor="unidad_medida_id">
             Unidad de Medida <span style={{ color: "var(--color-error-texto)" }}>*</span>
           </label>
           <select
-            id="unidadMedida"
-            name="unidadMedida"
-            value={producto.unidadMedida}
+            id="unidad_medida_id"
+            name="unidad_medida_id"
+            value={producto.unidad_medida_id ?? ""}
             onChange={handleChange}
             required
           >
             <option value="" disabled>Seleccione una unidad</option>
-            {UNIDADES_MEDIDA.map((u) => (
-              <option key={u.value} value={u.value}>
-                {u.label}
-              </option>
-            ))}
+            {unidades
+              .filter((u) => u.activo || u.id === producto.unidad_medida_id)
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre} ({u.abreviatura})
+                </option>
+              ))}
           </select>
         </div>
 
@@ -191,6 +201,46 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="peso_unidad_g">
+            Peso equivalente de 1 unidad de producto (en gramos)
+          </label>
+          <input
+            id="peso_unidad_g"
+            name="peso_unidad_g"
+            type="number"
+            min="1"
+            step="any"
+            placeholder="Sin datos"
+            value={producto.peso_unidad_g ?? ""}
+            onChange={(e) =>
+              setProducto({
+                ...producto,
+                peso_unidad_g: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+          />
+        </div>
+
+        <div className="form-group" style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "0.75rem" }}>
+          <input
+            id="aplica_rotulado"
+            name="aplica_rotulado"
+            type="checkbox"
+            checked={producto.aplica_rotulado !== false}
+            onChange={(e) =>
+              setProducto({
+                ...producto,
+                aplica_rotulado: e.target.checked,
+              })
+            }
+            style={{ width: "18px", height: "18px", cursor: "pointer" }}
+          />
+          <label htmlFor="aplica_rotulado" style={{ margin: 0, cursor: "pointer" }}>
+            Se aplica rotulado y tabla nutricional a este producto
+          </label>
         </div>
 
         <div className="form-group">

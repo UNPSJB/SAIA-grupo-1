@@ -11,11 +11,126 @@ from .schemas import (
     ConsumoHistoricoResponse,
     AgrupacionTiempo,
 )
-from .services import InsumoQuimicoService, obtener_historico_consumo, obtener_para_csv
+from .services import InsumoQuimicoService, obtener_historico_consumo, obtener_para_exportar, obtener_consumo_historico_para_exportar
 from .exceptions import InsumoQuimicoException, RangoFechasInvalidoException
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/api/insumos-quimicos", tags=["Insumos Químicos"])
+
+@router.get("/historico-consumo/exportar-pdf", dependencies=[Depends(requiere_admin)])
+def exportar_historico_consumo_pdf(
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    insumo_id: Optional[int] = Query(None),
+    agrupacion_tiempo: AgrupacionTiempo = Query("dia"),
+    unidad: Optional[str] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        datos = obtener_consumo_historico_para_exportar(
+            db=db,
+            desde=desde,
+            hasta=hasta,
+            insumo_id=insumo_id,
+            agrupacion_tiempo=agrupacion_tiempo,
+            unidad=unidad,
+            busqueda=busqueda,
+        )
+    except RangoFechasInvalidoException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except InsumoQuimicoException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    columnas = {
+        "fecha_hora": "Fecha / Hora",
+        "insumo_nombre": "Insumo Químico",
+        "tipo": "Tipo",
+        "proveedor": "Proveedor",
+        "cantidad": "Cantidad",
+        "responsable": "Responsable",
+        "tarea_plan": "Tarea y Plan",
+        "sector_o_equipo": "Sector / Equipo",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Consumo Histórico de Insumos Químicos",
+        nombre_archivo="consumo_historico_quimicos.pdf",
+    )
+
+
+@router.get("/historico-consumo/exportar-csv", dependencies=[Depends(requiere_admin)])
+def exportar_historico_consumo_csv(
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    insumo_id: Optional[int] = Query(None),
+    agrupacion_tiempo: AgrupacionTiempo = Query("dia"),
+    unidad: Optional[str] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        datos = obtener_consumo_historico_para_exportar(
+            db=db,
+            desde=desde,
+            hasta=hasta,
+            insumo_id=insumo_id,
+            agrupacion_tiempo=agrupacion_tiempo,
+            unidad=unidad,
+            busqueda=busqueda,
+        )
+    except RangoFechasInvalidoException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except InsumoQuimicoException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    columnas = {
+        "fecha_hora": "Fecha / Hora",
+        "insumo_nombre": "Insumo Químico",
+        "tipo": "Tipo",
+        "proveedor": "Proveedor",
+        "cantidad": "Cantidad",
+        "responsable": "Responsable",
+        "tarea_plan": "Tarea y Plan",
+        "sector_o_equipo": "Sector / Equipo",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="consumo_historico_quimicos.csv",
+    )
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_pdf(
+    busqueda: Optional[str] = None,
+    tipo: Optional[str] = None,
+    estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    
+    datos = obtener_para_exportar(
+        db, busqueda=busqueda, tipo=tipo, estado=estado
+    )
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Insumo",
+        "tipo": "Tipo de Insumo",
+        "stock_actual": "Stock Actual",
+        "unidad_medida": "Unidad de Medida",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Insumos Químicos",
+        nombre_archivo="insumos_quimicos.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_csv(
@@ -27,7 +142,7 @@ def exportar_csv(
     """
     Exporta la lista de insumos químicos a formato CSV respetando los filtros activos.
     """
-    datos = obtener_para_csv(
+    datos = obtener_para_exportar(
         db, busqueda=busqueda, tipo=tipo, estado=estado
     )
 

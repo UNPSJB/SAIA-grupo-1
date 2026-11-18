@@ -1,7 +1,40 @@
-from typing import List
+from typing import List, Optional, Dict, Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from src.motivoNoRealizado import exceptions, models, schemas
+
+def obtener_motivos_para_exportar(
+    db: Session,
+    busqueda: Optional[str] = None,
+    estado: Optional[str] = None,
+    ordenar_por: Optional[str] = "id",
+) -> List[Dict[str, Any]]:
+    query = select(models.MotivoNoRealizado)
+
+    if busqueda:
+        termino = f"%{busqueda.strip()}%"
+        query = query.where(models.MotivoNoRealizado.nombre.ilike(termino))
+
+    if estado == "activos":
+        query = query.where(models.MotivoNoRealizado.activo == True)
+    elif estado == "inactivos":
+        query = query.where(models.MotivoNoRealizado.activo == False)
+
+    if ordenar_por == "nombre":
+        query = query.order_by(func.lower(models.MotivoNoRealizado.nombre).asc())
+    else:
+        query = query.order_by(models.MotivoNoRealizado.id.asc())
+
+    motivos = db.scalars(query).all()
+
+    return [
+        {
+            "id": m.id,
+            "nombre": m.nombre,
+            "estado": "Activo" if m.activo else "Inactivo",
+        }
+        for m in motivos
+    ]
 
 def crear_motivo(db: Session, datos: schemas.MotivoCreate) -> models.MotivoNoRealizado:
     nombre_limpio = " ".join(datos.nombre.split())

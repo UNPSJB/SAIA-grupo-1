@@ -1,3 +1,5 @@
+import type { Receta } from "../receta/tipos";
+
 /** Lo que el lote usa del producto; los productos se dan de alta en el ABM de Productos Elaborados */
 export interface Producto {
   id: number;
@@ -21,6 +23,8 @@ export interface InsumoResumen {
 export interface InsumoDisponible extends InsumoResumen {
   stock: number;
   fechaVencimiento: string | null;
+  tipo_insumo_id?: number | null;
+  estadoVencimiento?: string | null;
 }
 
 /** Cuánto se usó de un insumo en el lote, en la unidad del insumo */
@@ -33,11 +37,14 @@ export interface LoteProduccion {
   id: number;
   codigo: string;
   producto: Producto;
+  receta:Receta;
   fecha: string;
   /** en la unidad de medida del producto; no se edita */
   cantidad: number;
   responsable_legajo: number;
   nombre_responsable: string;
+  version_receta_id?: number | null;
+  checklist_receta_id?: number | null;
   creado_en: string;
   /** false para los lotes de días anteriores: quedan de solo lectura */
   editable: boolean;

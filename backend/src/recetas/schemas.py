@@ -1,0 +1,485 @@
+from datetime import date, datetime
+from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from src.recetas import exceptions
+from src.recetas.models import CLASE_FUNCIONAL, EstadoEtapaRecetaItem, EstadoGeneralRecetaChecklist
+
+
+# ==========================================
+# SCHEMAS DE RENGLONES (RecetaDetalle)
+# ==========================================
+
+class ParametroControlReceta(BaseModel):
+    nombre_dato: str
+    unidad_medida: Optional[str] = None
+    umbral_minimo: Optional[float] = None
+    umbral_maximo: Optional[float] = None
+    requerimientos: Optional[str] = None
+
+
+class ValorControlRegistrado(BaseModel):
+    nombre_dato: str
+    unidad_medida: Optional[str] = None
+    valor_registrado: str
+    umbral_minimo: Optional[float] = None
+    umbral_maximo: Optional[float] = None
+    cumple_umbral: bool = True
+
+
+class RecetaDetalleBase(BaseModel):
+    ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
+    aditivo_id: Optional[int] = None
+    nombre: str = Field(max_length=50)
+    cantidad: float
+    unidad_medida_id: Optional[int] = None
+    unidad_medida: Optional[str] = Field(default=None, max_length=20)
+    es_aditivo: bool = False
+    clase_funcional: Optional[str] = None
+    numero_ins: Optional[str] = None
+    descripcion_pasos: str = Field(min_length=1)
+    parametros_control: List[ParametroControlReceta] = Field(default_factory=list)
+
+
+class RecetaDetalleCreate(RecetaDetalleBase):
+
+    @field_validator("cantidad")
+    @classmethod
+    def validar_cantidad(cls, v: float) -> float:
+        if v > 0:
+            return v
+        raise exceptions.CantidadInvalida()
+
+    @field_validator("unidad_medida")
+    @classmethod
+    def validar_unidad_medida(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        limpio = v.strip()
+        return limpio if limpio else None
+
+    @model_validator(mode="after")
+    def validar_reglas_aditivo(self) -> "RecetaDetalleCreate":
+        if (
+            self.ingrediente_id is None
+            and self.tipo_insumo_id is None
+            and self.aditivo_id is None
+            and self.unidad_medida_id is None
+            and not self.unidad_medida
+        ):
+            raise exceptions.UnidadMedidaVacia()
+        if self.es_aditivo:
+            if not self.clase_funcional or not self.clase_funcional.strip():
+                raise exceptions.AditivoClaseFuncional()
+
+            es_aromatizante = "aromatizante" in self.clase_funcional.lower()
+            if not es_aromatizante and (not self.numero_ins or not self.numero_ins.strip()):
+                raise exceptions.AditivoNumeroINS()
+        else:
+            self.clase_funcional = None
+            self.numero_ins = None
+
+        return self
+
+    @field_validator("descripcion_pasos")
+    @classmethod
+    def validar_descripcion(cls, v):
+        if len(v) > 0:
+            return v
+        raise exceptions.DescripcionVacia()
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        if v and all(c.isalnum() or c.isspace() for c in v):
+            return v
+        raise exceptions.NombreInvalido()
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_longitud(cls, v):
+        if len(v) > 1:
+            return v
+        raise exceptions.NombreVacio()
+
+
+class RecetaDetalle(RecetaDetalleBase):
+    id: int
+    version_receta_id: int
+    unidad_medida: str
+    unidad_medida_nombre: Optional[str] = None
+    unidad_medida_abreviatura: Optional[str] = None
+    nombre_ingrediente: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==========================================
+# SCHEMAS DE VERSIONES (VersionReceta)
+# ==========================================
+
+class VersionRecetaBase(BaseModel):
+    rendimiento_final: float
+    tiempo_maximo_dias: int = 1
+    fecha_vigencia: Optional[datetime] = None
+    fecha_vencimiento: Optional[datetime] = None
+
+
+class VersionRecetaCreate(VersionRecetaBase):
+    responsable_legajo: Optional[int] = None
+    detalles: List[RecetaDetalleCreate] = []
+
+    @model_validator(mode="after")
+    def validar_al_menos_un_ingrediente(self) -> "VersionRecetaCreate":
+        if not self.detalles:
+            raise exceptions.AgregueIngredientes()
+        tiene_ingrediente = any(not d.es_aditivo for d in self.detalles)
+        if not tiene_ingrediente:
+            raise exceptions.AgregueIngredientes()
+        return self
+
+    @field_validator("fecha_vigencia", "fecha_vencimiento")
+    @classmethod
+    def validar_fechas_version(cls, v: datetime) -> datetime:
+        if v is not None:
+            v_naive = v.replace(tzinfo=None) if v.tzinfo else v
+            if v_naive.date() < date.today():
+                raise exceptions.FechaAnterior()
+        return v
+
+
+class VersionRecetaResponse(VersionRecetaBase):
+    id: int
+    receta_id: int
+    version: int
+    archivado: bool
+    es_vigente: bool
+    usuario: str
+    creado_el: datetime
+    detalles: Optional[List[RecetaDetalle]] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==========================================
+# SCHEMAS DE LA RECETA (Cabecera con id_producto y operario_legajo)
+# ==========================================
+
+class RecetaBase(BaseModel):
+    nombre: str = Field(max_length=50)
+    rendimiento_final: float
+    tiempo_maximo_dias: int = 1
+    fecha_creacion: datetime = Field(default_factory=datetime.now)
+    id_producto: int
+    operario_legajo: int
+
+
+class RecetaCreate(RecetaBase):
+    detalles: List[RecetaDetalleCreate]
+    fecha_vigencia: Optional[datetime] = None
+    fecha_vencimiento: Optional[datetime] = None
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        caracteres_permitidos = ".,;()-_"
+        if v and all(c.isalnum() or c.isspace() or c in caracteres_permitidos for c in v):
+            return v
+        raise exceptions.NombreInvalido()
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_longitud(cls, v: str) -> str:
+        if len(v.strip()) > 1:
+            return v
+        raise exceptions.NombreInvalido()
+
+    @model_validator(mode="after")
+    def validar_ingredientes_receta(self) -> "RecetaCreate":
+        if not self.detalles:
+            raise exceptions.AgregueIngredientes()
+        tiene_ingrediente = any(not d.es_aditivo for d in self.detalles)
+        if not tiene_ingrediente:
+            raise exceptions.AgregueIngredientes()
+        return self
+
+    @field_validator("fecha_creacion")
+    @classmethod
+    def validar_fecha_creacion(cls, v: datetime) -> datetime:
+        if v is not None:
+            v_naive = v.replace(tzinfo=None) if v.tzinfo else v
+            if v_naive.date() < date.today():
+                raise exceptions.FechaAnterior()
+        return v
+
+    @field_validator("fecha_vigencia", "fecha_vencimiento")
+    @classmethod
+    def validar_fechas_version(cls, v: Optional[datetime]) -> Optional[datetime]:
+        if v is not None:
+            v_naive = v.replace(tzinfo=None) if v.tzinfo else v
+            if v_naive.date() < date.today():
+                raise exceptions.FechaAnterior()
+        return v
+
+
+class RecetaUpdate(BaseModel):
+    nombre: Optional[str] = Field(None, max_length=50)
+    rendimiento_final: Optional[float] = None
+    tiempo_maximo_dias: Optional[int] = None
+    id_producto: Optional[int] = None
+    operario_legajo: Optional[int] = None
+    fecha_creacion: Optional[datetime] = None
+    fecha_vigencia: Optional[datetime] = None
+    fecha_vencimiento: Optional[datetime] = None
+    detalles: Optional[List[RecetaDetalleCreate]] = None
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_nombre(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        caracteres_permitidos = ".,;()-_"
+        if v and all(c.isalnum() or c.isspace() or c in caracteres_permitidos for c in v):
+            return v
+        raise exceptions.NombreInvalido()
+
+    @field_validator("nombre")
+    @classmethod
+    def validar_longitud(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        if len(v.strip()) > 1:
+            return v
+        raise exceptions.NombreInvalido()
+
+    @model_validator(mode="after")
+    def validar_ingredientes_update(self) -> "RecetaUpdate":
+        if not self.detalles:
+            raise exceptions.AgregueIngredientes()
+        tiene_ingrediente = any(not d.es_aditivo for d in self.detalles)
+        if not tiene_ingrediente:
+            raise exceptions.AgregueIngredientes()
+        return self
+
+    @field_validator("fecha_creacion")
+    @classmethod
+    def validar_fecha_creacion(cls, v: Optional[datetime]) -> Optional[datetime]:
+        if v is not None:
+            v_naive = v.replace(tzinfo=None) if v.tzinfo else v
+            if v_naive.date() < date.today():
+                raise exceptions.FechaAnterior()
+        return v
+
+    @field_validator("fecha_vigencia", "fecha_vencimiento")
+    @classmethod
+    def validar_fechas_version(cls, v: Optional[datetime]) -> Optional[datetime]:
+        if v is not None:
+            v_naive = v.replace(tzinfo=None) if v.tzinfo else v
+            if v_naive.date() < date.today():
+                raise exceptions.FechaAnterior()
+        return v
+
+
+class Receta(RecetaBase):
+    id: int
+    activo: bool
+    nombre_operario: Optional[str] = None
+    nombre_producto: Optional[str] = None
+    version_actual: Optional[VersionRecetaResponse] = None
+    version_vigente: Optional[VersionRecetaResponse] = None
+    detalles: Optional[List[RecetaDetalle]] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==========================================
+# SCHEMAS DE CHECKLIST DE RECETAS
+# ==========================================
+
+class ChecklistRecetaGenerar(BaseModel):
+    responsable_legajo: Optional[int] = None
+    id_producto: Optional[int] = None
+    cantidad_objetivo: Optional[float] = None
+    factor: Optional[float] = None
+    fecha: Optional[date] = Field(default_factory=date.today)
+
+    @field_validator("fecha", mode="before")
+    @classmethod
+    def parsear_fecha(cls, v):
+        if v is None:
+            return date.today()
+        if isinstance(v, datetime):
+            return v.date()
+        if isinstance(v, str) and "T" in v:
+            return datetime.fromisoformat(v).date()
+        return v
+
+    @field_validator("fecha")
+    @classmethod
+    def validar_fecha(cls, v: date) -> date:
+        if v != date.today():
+            raise exceptions.ChecklistFechaInvalida()
+        return v
+
+    @model_validator(mode="after")
+    def validar_parametros_escalado(self) -> "ChecklistRecetaGenerar":
+        if self.cantidad_objetivo is not None and self.cantidad_objetivo <= 0:
+            raise exceptions.EscaladoInvalido()
+        if self.factor is not None and self.factor <= 0:
+            raise exceptions.EscaladoInvalido()
+        return self
+
+
+class RecetaEscalarRequest(BaseModel):
+    cantidad_objetivo: Optional[float] = None
+    factor: Optional[float] = None
+
+    @model_validator(mode="after")
+    def validar_objetivo_o_factor(self) -> "RecetaEscalarRequest":
+        if self.cantidad_objetivo is None and self.factor is None:
+            raise exceptions.EscaladoInvalido()
+        if self.cantidad_objetivo is not None and self.cantidad_objetivo <= 0:
+            raise exceptions.EscaladoInvalido()
+        if self.factor is not None and self.factor <= 0:
+            raise exceptions.EscaladoInvalido()
+        return self
+
+
+class IngredienteEscaladoItem(BaseModel):
+    detalle_id: int
+    nombre_etapa: str
+    ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
+    nombre_ingrediente: str
+    es_aditivo: bool
+    unidad_medida: str
+    cantidad_base: float
+    cantidad_escalada: float
+    descripcion_pasos: str
+
+
+class RecetaEscaladaResponse(BaseModel):
+    receta_id: int
+    version_receta_id: int
+    version: int
+    nombre_receta: str
+    id_producto: int
+    nombre_producto: Optional[str] = None
+    rendimiento_base: float
+    cantidad_objetivo: float
+    factor: float
+    ingredientes: List[IngredienteEscaladoItem]
+
+
+class CompletarEtapaSchema(BaseModel):
+    observaciones: Optional[str] = None
+    lote_insumo_id: Optional[int] = None
+    valores_control: List[ValorControlRegistrado] = Field(default_factory=list)
+
+
+class MarcarEtapaNoRealizadaSchema(BaseModel):
+    motivo: str = Field(..., min_length=1, max_length=100)
+    observacion: Optional[str] = None
+
+
+class ChecklistRecetaItemResponse(BaseModel):
+    id: int
+    checklist_id: int
+    orden: int = 1
+    receta_id: Optional[int] = None
+    version_receta_id: Optional[int] = None
+    nombre_receta: str
+    detalle_id: Optional[int] = None
+    nombre_etapa: str
+    descripcion_pasos: str
+    ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
+    lote_insumo_usado_id: Optional[int] = None
+    nombre_ingrediente: Optional[str] = None
+    cantidad: float
+    unidad_medida: str
+    parametros_control: List[ParametroControlReceta] = Field(default_factory=list)
+    valores_registrados: List[ValorControlRegistrado] = Field(default_factory=list)
+    estado: EstadoEtapaRecetaItem
+    responsable_legajo: Optional[int] = None
+    nombre_responsable: Optional[str] = None
+    observaciones: Optional[str] = None
+    fecha_hora_fin: Optional[datetime] = None
+    motivo_no_realizado: Optional[str] = None
+    observacion_no_realizado: Optional[str] = None
+    fecha_hora_no_realizado: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChecklistRecetaResponse(BaseModel):
+    id: int
+    fecha: date
+    creado_en: datetime
+    activo: bool = True
+    responsable_legajo: int
+    nombre_responsable: Optional[str] = None
+    id_producto: Optional[int] = None
+    receta_id: Optional[int] = None
+    version_receta_id: Optional[int] = None
+    cantidad_objetivo: Optional[float] = None
+    tiempo_maximo_dias: int = 1
+    fecha_vencimiento: Optional[date] = None
+    lote_produccion_id: Optional[int] = None
+    estado: EstadoGeneralRecetaChecklist
+    porcentaje_cumplimiento: float
+    total_etapas: int
+    etapas_completadas: int
+    etapas_no_realizadas: int = 0
+    etapas_pendientes: int
+    etapas_vencidas: int = 0
+    items: List[ChecklistRecetaItemResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EquivalenciaFaltanteItem(BaseModel):
+    detalle_id: int
+    ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
+    nombre: str
+    unidad_medida: str
+    mensaje: str
+
+
+class ItemComposicionPorcentual(BaseModel):
+    detalle_id: int
+    ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
+    aditivo_id: Optional[int] = None
+    nombre: str
+    nombre_etapa: str
+    cantidad: float
+    unidad_medida: str
+    gramos_equivalentes: Optional[float] = None
+    porcentaje: Optional[float] = None
+    es_aditivo: bool = False
+    clase_funcional: Optional[str] = None
+    numero_ins: Optional[str] = None
+
+
+class ComposicionPorcentualResponse(BaseModel):
+    receta_id: int
+    nombre_receta: str
+    id_producto: int
+    nombre_producto: Optional[str] = None
+    version_receta_id: int
+    version: int
+    rendimiento_final: float
+    peso_total_gramos: float
+    suma_porcentajes: float
+    diferencia_redondeo: float
+    cumple_cien_por_ciento: bool
+    tiene_equivalencias_faltantes: bool
+    equivalencias_faltantes: List[EquivalenciaFaltanteItem] = Field(default_factory=list)
+    ingredientes: List[ItemComposicionPorcentual] = Field(default_factory=list)
+    aditivos: List[ItemComposicionPorcentual] = Field(default_factory=list)

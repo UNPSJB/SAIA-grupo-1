@@ -4,6 +4,8 @@ import { apiFetch } from '../../api/client';
 import { useVistaPublica } from './contextDeVistaPublica';
 import type { AcercaDeNosotrosConId } from './tipos';
 import ConfiguracionProductosPublicos from './configuracionProductos';
+import { QRCodeCanvas } from 'qrcode.react';
+import { actualizarVistaPublica } from '../configuraciones/vistaPublicaApi';
 
 interface VistaHabilitadaProps{
     qrUrl: string | null;
@@ -130,11 +132,14 @@ const handleCopiarEnlace = () => {
     };
     
 function handleDescargarQR() {
-        if (!qrUrl) return;
+        // si se recargó la página no hay imagen del backend: se usa el QR dibujado en el navegador
+        const canvas = document.getElementById('qr-canvas-activo') as HTMLCanvasElement | null;
+        const href = qrUrl ?? canvas?.toDataURL('image/png');
+        if (!href) return;
 
         // Creamos un elemento <a> temporal en el navegador
         const link = document.createElement('a');
-        link.href = qrUrl;
+        link.href = href;
         link.download = 'codigo-qr-vista-publica.png'; // Nombre con el que se descargará la imagen
         document.body.appendChild(link);
         link.click();
@@ -146,26 +151,9 @@ async function handleDesactivar(){
     setSuccessMsg(null);
 
     try {
-            const res = await apiFetch(`/identificadorQR/${identificadorUnico}/`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-    
-            if(!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                let mensaje = "Error al desactivar la vista publica.";
-                if (typeof errorData.detail === "string") {
-                  mensaje = errorData.detail;
-                } else if (Array.isArray(errorData.detail)) {
-                  mensaje = errorData.detail
-                    .map((err: { msg?: string }) => err.msg || JSON.stringify(err))
-                    .join(", ");
-                }
-                throw new Error(mensaje);
-            }
-    
+            // deshabilita todas las vistas activas (no solo la de este QR)
+            await actualizarVistaPublica({ habilitada: false });
+
             setSuccessMsg("desahabilitado exitosamente.");
             onSuccess?.();
         } catch (err: unknown) {
@@ -191,6 +179,28 @@ async function handleDesactivar(){
         });
     } catch (err) {
         console.error("Error al actualizar el estado del gráfico:", err);
+    }
+}
+
+async function handleToggleProductos(nuevoValor: boolean) {
+    actualizarConfig('verProductos', nuevoValor);
+    try {
+        await actualizarVistaPublica({ verProductos: nuevoValor });
+    } catch (err) {
+        console.error("Error al actualizar la visibilidad de productos:", err);
+    }
+}
+
+async function handleToggleOpcion(
+    campoConfig: 'verDiasSinIncidentes' | 'verTotalLotes' | 'verVolumenFabricado' | 'verProductoMasElaborado' | 'verGraficoTotalesProductos' | 'verGraficoRedArana',
+    campoParametro: 'ver_dias_sin_incidentes' | 'ver_total_lotes' | 'ver_volumen_fabricado' | 'ver_producto_mas_elaborado' | 'ver_grafico_totales_productos' | 'ver_grafico_red_arana',
+    nuevoValor: boolean
+) {
+    actualizarConfig(campoConfig, nuevoValor);
+    try {
+        await actualizarVistaPublica({ [campoParametro]: nuevoValor });
+    } catch (err) {
+        console.error("Error al actualizar la opción:", err);
     }
 }
 
@@ -247,6 +257,84 @@ return (
                     <input 
                         type="checkbox" 
                         className="switch-input"
+                        id="switch-grafico-red-arana"
+                        checked={config.verGraficoRedArana} 
+                        onChange={(e) => handleToggleOpcion('verGraficoRedArana', 'ver_grafico_red_arana', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-grafico-red-arana" className="config-switch-label" onClick={() => handleToggleOpcion('verGraficoRedArana', 'ver_grafico_red_arana', !config.verGraficoRedArana)}>
+                        Mostrar Red de Araña (Limpieza)
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-grafico-totales"
+                        checked={config.verGraficoTotalesProductos} 
+                        onChange={(e) => handleToggleOpcion('verGraficoTotalesProductos', 'ver_grafico_totales_productos', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-grafico-totales" className="config-switch-label" onClick={() => handleToggleOpcion('verGraficoTotalesProductos', 'ver_grafico_totales_productos', !config.verGraficoTotalesProductos)}>
+                        Mostrar Totales de Productos Elaborados
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-dias-sin-incidentes"
+                        checked={config.verDiasSinIncidentes} 
+                        onChange={(e) => handleToggleOpcion('verDiasSinIncidentes', 'ver_dias_sin_incidentes', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-dias-sin-incidentes" className="config-switch-label" onClick={() => handleToggleOpcion('verDiasSinIncidentes', 'ver_dias_sin_incidentes', !config.verDiasSinIncidentes)}>
+                        Tarjeta: Días sin incidentes
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-total-lotes"
+                        checked={config.verTotalLotes} 
+                        onChange={(e) => handleToggleOpcion('verTotalLotes', 'ver_total_lotes', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-total-lotes" className="config-switch-label" onClick={() => handleToggleOpcion('verTotalLotes', 'ver_total_lotes', !config.verTotalLotes)}>
+                        Tarjeta: Total de lotes
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-volumen-fabricado"
+                        checked={config.verVolumenFabricado} 
+                        onChange={(e) => handleToggleOpcion('verVolumenFabricado', 'ver_volumen_fabricado', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-volumen-fabricado" className="config-switch-label" onClick={() => handleToggleOpcion('verVolumenFabricado', 'ver_volumen_fabricado', !config.verVolumenFabricado)}>
+                        Tarjeta: Volumen fabricado
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
+                        id="switch-producto-lider"
+                        checked={config.verProductoMasElaborado} 
+                        onChange={(e) => handleToggleOpcion('verProductoMasElaborado', 'ver_producto_mas_elaborado', e.target.checked)} 
+                    />
+                    <label htmlFor="switch-producto-lider" className="config-switch-label" onClick={() => handleToggleOpcion('verProductoMasElaborado', 'ver_producto_mas_elaborado', !config.verProductoMasElaborado)}>
+                        Tarjeta: Producto más elaborado
+                    </label>
+                </div>
+
+                <div className="config-switch-item">
+                    <input 
+                        type="checkbox" 
+                        className="switch-input"
                         id="switch-nosotros"
                         checked={config.verAcercaDeNosotros} 
                         onChange={(e) => handleToggleAcercaDeNosotros(e.target.checked)}
@@ -261,9 +349,9 @@ return (
                             className="switch-input"
                             id="switch-productos"
                             checked={config.verProductos} 
-                            onChange={(e) => actualizarConfig('verProductos', e.target.checked)}
+                            onChange={(e) => handleToggleProductos(e.target.checked)}
                         />
-                        <label htmlFor="switch-productos" className="config-switch-label" onClick={() => actualizarConfig('verProductos', !config.verProductos)}>
+                        <label htmlFor="switch-productos" className="config-switch-label" onClick={() => handleToggleProductos(!config.verProductos)}>
                             Mostrar listado de productos
                         </label>
                     </div>
@@ -331,6 +419,8 @@ return (
                     <div className="qr-image-box-original">
                         {qrUrl ? (
                             <img src={qrUrl} alt="QR Habilitado" className="qr-imagen-original" />
+                        ) : urlEnlace ? (
+                            <QRCodeCanvas id="qr-canvas-activo" value={urlEnlace} size={290} level="H" marginSize={4} className="qr-imagen-original" />
                         ) : (
                             <p>No hay QR disponible</p>
                         )}

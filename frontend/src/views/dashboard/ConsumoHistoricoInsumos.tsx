@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -6,14 +6,24 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Legend,
+  Line,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { apiFetch } from '../../api/client';
-import { CsvIcon } from '../../components/icons/CsvIcon';
 import { useAuth } from '../../auth/useAuth';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import {
   Card,
   CardContent,
@@ -21,8 +31,17 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
+import { descargarCSV } from '../../utils/exportarCsv';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { useColoresTema } from './useColoresTema';
 import {
   COLORES_TIPO_QUIMICO,
@@ -70,7 +89,12 @@ const formatearFechaHoraVisual = (fechaIso?: string | null): string => {
   }
 };
 
-export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdInicial, textoVolver, mostrarBreadcrumbDashboard }) => {
+export const ConsumoHistoricoInsumos: React.FC<Props> = ({
+  onVolver,
+  insumoIdInicial,
+  textoVolver,
+  mostrarBreadcrumbDashboard,
+}) => {
   const { esAdministrador } = useAuth();
   const colores = useColoresTema();
 
@@ -82,7 +106,7 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
   );
   const [agrupacionTiempo, setAgrupacionTiempo] = useState<AgrupacionTiempo>('dia');
   const [unidadSeleccionada, setUnidadSeleccionada] = useState<string>('');
-  const [pestañaGrafico, setPestañaGrafico] = useState<'evolucion' | 'tipo' | 'proveedor'>('evolucion');
+  const [pestañaGrafico, setPestañaGrafico] = useState<'evolucion' | 'tipo' | 'radar' | 'pareto' | 'proveedor'>('evolucion');
   const [tipoGraficoEvolucion, setTipoGraficoEvolucion] = useState<'lineas' | 'barras'>('lineas');
 
   const [catalogoQuimicos, setCatalogoQuimicos] = useState<InsumoQuimico[]>([]);
@@ -91,6 +115,14 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
 
   const [busquedaMovimiento, setBusquedaMovimiento] = useState<string>('');
+
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+  const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
+
+  const graficoAnalisisRef = useRef<HTMLDivElement | null>(null);
+  const [modalExportGraficoAbierto, setModalExportGraficoAbierto] = useState(false);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -199,48 +231,88 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
     );
   }, [datos?.movimientos, busquedaMovimiento]);
 
+  const datosParetoInsumos = useMemo(() => {
+    if (!datos?.movimientos || datos.movimientos.length === 0) return [];
+    const mapa = new Map<string, number>();
+    for (const m of datos.movimientos) {
+      const nombre = m.insumo_nombre || 'Sin nombre';
+      mapa.set(nombre, (mapa.get(nombre) || 0) + (Number(m.cantidad) || 0));
+    }
+    const ordenados = Array.from(mapa.entries())
+      .map(([nombre, cantidad]) => ({
+        nombre,
+        nombreCorto: nombre.length > 14 ? `${nombre.slice(0, 13)}…` : nombre,
+        cantidad: Math.round(cantidad * 100) / 100,
+      }))
+      .sort((a, b) => b.cantidad - a.cantidad);
+
+    const granTotal = ordenados.reduce((acc, curr) => acc + curr.cantidad, 0);
+    if (granTotal === 0) return [];
+
+    let acumulado = 0;
+    return ordenados.map((item) => {
+      acumulado += item.cantidad;
+      const porcentajeAcumulado = Math.round((acumulado / granTotal) * 1000) / 10;
+      return {
+        ...item,
+        porcentajeAcumulado,
+      };
+    });
+  }, [datos?.movimientos]);
+
   const paginacionMovimientos = usePaginacion(movimientosFiltrados, 10);
 
-  const exportarCSV = () => {
-    if (!movimientosFiltrados || movimientosFiltrados.length === 0) return;
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
 
-    const cabeceras = [
-      'Fecha y Hora',
-      'Insumo Químico',
-      'Tipo',
-      'Proveedor',
-      'Cantidad',
-      'Unidad',
-      'Responsable',
-      'Tarea',
-      'Plan de Limpieza',
-      'Sector / Equipo',
-    ];
+      if (desde) params.append('desde', desde);
+      if (hasta) params.append('hasta', hasta);
+      if (insumoIdSeleccionado) params.append('insumo_id', insumoIdSeleccionado);
+      if (agrupacionTiempo) params.append('agrupacion_tiempo', agrupacionTiempo);
+      if (unidadSeleccionada) params.append('unidad', unidadSeleccionada);
+      if (busquedaMovimiento.trim()) params.append('busqueda', busquedaMovimiento.trim());
 
-    const filas = movimientosFiltrados.map((m) => [
-      `"${formatearFechaHoraVisual(m.fecha_hora || m.fecha)}"`,
-      `"${(m.insumo_nombre || '').replace(/"/g, '""')}"`,
-      `"${(m.tipo || '').replace(/"/g, '""')}"`,
-      `"${(m.proveedor || '').replace(/"/g, '""')}"`,
-      m.cantidad,
-      m.unidad,
-      `"${(m.responsable_nombre || '').replace(/"/g, '""')}"`,
-      `"${(m.tarea_nombre || '').replace(/"/g, '""')}"`,
-      `"${(m.plan_nombre || '').replace(/"/g, '""')}"`,
-      `"${(m.sector_o_equipo || '').replace(/"/g, '""')}"`,
-    ]);
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
 
-    const contenidoCSV = '\uFEFF' + [cabeceras.join(';'), ...filas.map((f) => f.join(';'))].join('\r\n');
-    const blob = new Blob([contenidoCSV], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `consumo_historico_quimicos_${formatearFechaInput(new Date())}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (formato === 'pdf') {
+        await descargarPDF(
+          `/api/insumos-quimicos/historico-consumo/exportar-pdf${query}`,
+          'consumo_historico_quimicos.pdf'
+        );
+      } else {
+        await descargarCSV(
+          `/api/insumos-quimicos/historico-consumo/exportar-csv${query}`,
+          'consumo_historico_quimicos.csv'
+        );
+      }
+
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar el consumo histórico de insumos químicos a ${formato.toUpperCase()}.`
+      );
+    } finally {
+      setExportando(false);
+    }
   };
 
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (desde) partes.push(`Desde: ${desde}`);
+    if (hasta) partes.push(`Hasta: ${hasta}`);
+    if (insumoIdSeleccionado) {
+      const insumo = catalogoQuimicos.find((q) => String(q.id) === insumoIdSeleccionado);
+      partes.push(`Insumo: ${insumo ? insumo.nombre : `#${insumoIdSeleccionado}`}`);
+    }
+    if (unidadSeleccionada) partes.push(`Unidad: ${unidadSeleccionada}`);
+    if (busquedaMovimiento.trim()) partes.push(`Búsqueda: "${busquedaMovimiento.trim()}"`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
 
   if (!esAdministrador) {
     return (
@@ -254,6 +326,73 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
   const hayDatos = (datos?.total_registros ?? 0) > 0;
   const metricas = datos?.metricas;
   const unidadUso = datos?.unidad_seleccionada || 'L';
+
+  const tituloGraficoActual =
+    pestañaGrafico === 'evolucion'
+      ? `Consumo Histórico - Evolución Temporal (${unidadUso})`
+      : pestañaGrafico === 'tipo'
+      ? `Consumo Histórico - Por Tipo de Químico (${unidadUso})`
+      : pestañaGrafico === 'radar'
+      ? `Consumo Histórico - Red de Araña por Tipo (${unidadUso})`
+      : pestañaGrafico === 'pareto'
+      ? `Consumo Histórico - Diagrama de Pareto 80/20 (${unidadUso})`
+      : `Consumo Histórico - Por Proveedor (${unidadUso})`;
+
+  const subtituloGraficoActual =
+    pestañaGrafico === 'evolucion'
+      ? `Evolución del volumen acumulado de químicos (${unidadUso}) a través del tiempo.`
+      : pestañaGrafico === 'tipo'
+      ? `Distribución del consumo según la función química del producto.`
+      : pestañaGrafico === 'radar'
+      ? `Perfil radial multicriterio del consumo de insumos químicos.`
+      : pestañaGrafico === 'pareto'
+      ? `Concentración del volumen consumido por insumo químico (corte acumulado 80%).`
+      : `Comparativa de consumo acumulado según el proveedor suministrador.`;
+
+  const puedeExportarGraficoActual =
+    pestañaGrafico === 'radar'
+      ? (datos?.por_tipo || []).length > 0
+      : pestañaGrafico === 'pareto'
+      ? datosParetoInsumos.length > 0
+      : true;
+
+  const ejecutarExportacionGrafico = async (formato: FormatoGrafico) => {
+    try {
+      setExportandoGrafico(true);
+      const cfg: ConfiguracionGraficoExportar = {
+        id: `consumo-historico-${pestañaGrafico}`,
+        titulo: tituloGraficoActual,
+        subtitulo: subtituloGraficoActual,
+        filtros: obtenerResumenFiltros(),
+        contenedor: graficoAnalisisRef.current,
+        leyenda:
+          pestañaGrafico === 'tipo'
+            ? (datos?.por_tipo || []).map((t) => ({
+                etiqueta: `${t.etiqueta} (${t.porcentaje}%)`,
+                color: COLORES_TIPO_QUIMICO[t.clave] || '#64748b',
+              }))
+            : pestañaGrafico === 'pareto'
+            ? [
+                { etiqueta: `Consumo (${unidadUso})`, color: colores.primario },
+                { etiqueta: '% Acumulado', color: '#f59e0b' },
+                { etiqueta: 'Corte 80% (Pareto)', color: '#ef4444' },
+              ]
+            : undefined,
+      };
+      await exportarGraficos(
+        [cfg],
+        formato,
+        `grafico_consumo_${pestañaGrafico}_${desde}_a_${hasta}`
+      );
+      setModalExportGraficoAbierto(false);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error ? err.message : 'Error al exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
 
   return (
     <div className="modulo-container" style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -318,16 +457,14 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
           </p>
         </div>
 
-        {hayDatos && (
-          <button
-            type="button"
-            onClick={exportarCSV}
-            className="btn-cancelar"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <CsvIcon /> Exportar CSV
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setDialogExportarAbierto(true)}
+          className="btn-cancelar"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <ExportIcon size={18} /> Exportar
+        </button>
       </div>
 
       <Card style={{ marginBottom: '24px' }}>
@@ -743,15 +880,11 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                 <div>
                   <CardTitle>Análisis y Visualización de Uso</CardTitle>
                   <CardDescription>
-                    {pestañaGrafico === 'evolucion'
-                      ? `Evolución del volumen acumulado de químicos (${unidadUso}) a través del tiempo.`
-                      : pestañaGrafico === 'tipo'
-                      ? `Distribución del consumo según la función química del producto.`
-                      : `Comparativa de consumo acumulado según el proveedor suministrador.`}
+                    {subtituloGraficoActual}
                   </CardDescription>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <div
                     style={{
                       display: 'inline-flex',
@@ -764,6 +897,8 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                     {[
                       { id: 'evolucion', label: 'Evolución Temporal' },
                       { id: 'tipo', label: 'Por Tipo' },
+                      { id: 'radar', label: 'Red de Araña' },
+                      { id: 'pareto', label: 'Pareto (80/20)' },
                       { id: 'proveedor', label: 'Por Proveedor' },
                     ].map((tab) => (
                       <button
@@ -848,14 +983,32 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                       </button>
                     </div>
                   )}
+
+                  {puedeExportarGraficoActual && (
+                    <button
+                      type="button"
+                      onClick={() => setModalExportGraficoAbierto(true)}
+                      className="btn-cancelar"
+                      style={{
+                        padding: '5px 10px',
+                        fontSize: '12px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                      }}
+                      title="Exportar este gráfico en PNG, JPEG o PDF"
+                    >
+                      <ExportIcon size={14} /> Exportar gráfico
+                    </button>
+                  )}
                 </div>
               </div>
             </CardHeader>
 
             <CardContent>
               {pestañaGrafico === 'evolucion' && (
-                <div style={{ width: '100%', height: 320, marginTop: '8px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                <div ref={graficoAnalisisRef} style={{ width: '100%', height: 360, marginTop: '8px' }}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     {tipoGraficoEvolucion === 'lineas' ? (
                       <AreaChart data={datos?.evolucion || []} margin={{ top: 16, right: 20, left: 6, bottom: 20 }}>
                         <defs>
@@ -941,33 +1094,35 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
               )}
 
               {pestañaGrafico === 'tipo' && (
-                <div style={{ width: '100%', minHeight: 280, marginTop: '8px' }}>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={datos?.por_tipo || []} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                      <XAxis type="number" stroke={colores.textoSec} fontSize={11.5} unit={` ${unidadUso}`} />
-                      <YAxis dataKey="etiqueta" type="category" stroke={colores.textoSec} fontSize={12} tickLine={false} width={95} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                          borderColor: 'var(--color-borde)',
-                          borderRadius: '8px',
-                        }}
-                        formatter={(val: any, _name: any, item: any) => [
-                          `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
-                          'Consumo Acumulado',
-                        ]}
-                      />
-                      <Bar dataKey="cantidad_total" radius={[0, 4, 4, 0]}>
-                        {(datos?.por_tipo || []).map((entry) => (
-                          <Cell
-                            key={entry.clave}
-                            fill={COLORES_TIPO_QUIMICO[entry.clave] || colores.primario}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div style={{ width: '100%', minHeight: 360, marginTop: '8px' }}>
+                  <div ref={graficoAnalisisRef} style={{ width: '100%', height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <BarChart data={datos?.por_tipo || []} layout="vertical" margin={{ top: 10, right: 30, left: 100, bottom: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
+                        <XAxis type="number" stroke={colores.textoSec} fontSize={11.5} unit={` ${unidadUso}`} />
+                        <YAxis dataKey="etiqueta" type="category" stroke={colores.textoSec} fontSize={12} tickLine={false} width={95} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                            borderColor: 'var(--color-borde)',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(val: any, _name: any, item: any) => [
+                            `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
+                            'Consumo Acumulado',
+                          ]}
+                        />
+                        <Bar dataKey="cantidad_total" radius={[0, 4, 4, 0]}>
+                          {(datos?.por_tipo || []).map((entry) => (
+                            <Cell
+                              key={entry.clave}
+                              fill={COLORES_TIPO_QUIMICO[entry.clave] || colores.primario}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
 
                   <div
                     style={{
@@ -1011,9 +1166,177 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
                 </div>
               )}
 
+              {pestañaGrafico === 'radar' && (
+                <div style={{ width: '100%', minHeight: 360, height: 360, marginTop: '8px' }}>
+                  {(datos?.por_tipo || []).length === 0 ? (
+                    <div style={{ height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
+                      Sin datos suficientes para proyectar la red de consumo químico en este período.
+                    </div>
+                  ) : (
+                    <div ref={graficoAnalisisRef} style={{ width: '100%', height: '100%' }}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datos?.por_tipo || []}>
+                          <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
+                          <PolarAngleAxis
+                            dataKey="etiqueta"
+                            tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
+                          />
+                          <PolarRadiusAxis
+                            angle={90}
+                            stroke="var(--color-texto-sec, #64748b)"
+                            tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                              borderColor: 'var(--color-borde, #334155)',
+                              borderRadius: '8px',
+                              color: 'var(--color-texto, #f8fafc)',
+                            }}
+                            formatter={(val: any, _, item: any) => [
+                              `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
+                              item.payload.etiqueta,
+                            ]}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            height={28}
+                            iconType="circle"
+                            wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
+                          />
+                          <Radar
+                            name="Consumo Acumulado"
+                            dataKey="cantidad_total"
+                            stroke="#3b82f6"
+                            fill="#3b82f6"
+                            fillOpacity={0.4}
+                            strokeWidth={2}
+                            dot={{ r: 4, fill: '#2563eb' }}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {pestañaGrafico === 'pareto' && (
+                <div style={{ width: '100%', minHeight: 360, height: 360, marginTop: '8px' }}>
+                  {datosParetoInsumos.length === 0 ? (
+                    <div style={{ height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
+                      Sin datos suficientes para calcular el diagrama de Pareto de insumos químicos.
+                    </div>
+                  ) : (
+                    <div ref={graficoAnalisisRef} style={{ width: '100%', height: '100%' }}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <ComposedChart data={datosParetoInsumos} margin={{ top: 16, right: 36, left: 10, bottom: 65 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                          <XAxis
+                            dataKey="nombreCorto"
+                            stroke={colores.textoSec}
+                            fontSize={11.5}
+                            tickLine={false}
+                            interval={0}
+                            angle={-25}
+                            textAnchor="end"
+                            height={60}
+                            dx={-4}
+                            dy={4}
+                          />
+                          <YAxis
+                            yAxisId="left"
+                            stroke={colores.textoSec}
+                            fontSize={11.5}
+                            tickLine={false}
+                            width={48}
+                            unit={` ${unidadUso}`}
+                            label={{
+                              value: `Consumo (${unidadUso})`,
+                              angle: -90,
+                              position: 'insideLeft',
+                              offset: 10,
+                              fill: colores.textoSec,
+                              fontSize: 11,
+                            }}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            domain={[0, 100]}
+                            unit="%"
+                            stroke="#f59e0b"
+                            fontSize={11.5}
+                            tickLine={false}
+                            width={46}
+                            label={{
+                              value: '% Acumulado',
+                              angle: 90,
+                              position: 'insideRight',
+                              offset: 10,
+                              fill: '#f59e0b',
+                              fontSize: 11,
+                            }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                              borderColor: 'var(--color-borde, #334155)',
+                              borderRadius: '8px',
+                              color: 'var(--color-texto, #f8fafc)',
+                            }}
+                            formatter={(val: any, name: any, item: any) => {
+                              if (name === '% Acumulado') {
+                                return [`${val}%`, '% Acumulado'];
+                              }
+                              return [`${val} ${unidadUso}`, `Consumo de ${item?.payload?.nombre || ''}`];
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="top"
+                            align="right"
+                            height={30}
+                            wrapperStyle={{ fontSize: '12px' }}
+                          />
+                          <ReferenceLine
+                            yAxisId="right"
+                            y={80}
+                            stroke="#ef4444"
+                            strokeDasharray="4 4"
+                            strokeWidth={1.8}
+                            label={{
+                              value: 'Corte 80% (Pareto)',
+                              position: 'left',
+                              fill: '#ef4444',
+                              fontSize: 11,
+                              fontWeight: 600,
+                            }}
+                          />
+                          <Bar
+                            yAxisId="left"
+                            dataKey="cantidad"
+                            name={`Consumo (${unidadUso})`}
+                            fill={colores.primario}
+                            radius={[4, 4, 0, 0]}
+                          />
+                          <Line
+                            yAxisId="right"
+                            type="monotone"
+                            dataKey="porcentajeAcumulado"
+                            name="% Acumulado"
+                            stroke="#f59e0b"
+                            strokeWidth={2.5}
+                            dot={{ r: 3.5, fill: '#f59e0b' }}
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {pestañaGrafico === 'proveedor' && (
-                <div style={{ width: '100%', minHeight: 280, marginTop: '8px' }}>
-                  <ResponsiveContainer width="100%" height={280}>
+                <div ref={graficoAnalisisRef} style={{ width: '100%', minHeight: 360, height: 360, marginTop: '8px' }}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <BarChart data={datos?.por_proveedor || []} margin={{ top: 10, right: 20, left: 10, bottom: 25 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                       <XAxis
@@ -1193,6 +1516,31 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({ onVolver, insumoIdIni
           </Card>
         </div>
       )}
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={movimientosFiltrados.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ConfirmExportGraficoDialog
+        open={modalExportGraficoAbierto}
+        tituloGrafico={tituloGraficoActual}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportandoGrafico}
+        onConfirm={ejecutarExportacionGrafico}
+        onCancel={() => setModalExportGraficoAbierto(false)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportDialog)}
+        title="No se pudo completar la exportación"
+        description={errorExportDialog || ''}
+        onClose={() => setErrorExportDialog(null)}
+      />
     </div>
   );
 };

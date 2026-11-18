@@ -6,8 +6,32 @@ from src.elementosDeLimpieza import schemas, services
 from typing import Optional
 from src.autenticacion.dependencies import get_usuario_actual
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/elementosDeLimpieza", tags=["elementosDeLimpieza"])
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_elementos_pdf(
+    busqueda: Optional[str] = None,
+    estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_elementos_para_exportar(db, busqueda=busqueda, estado=estado)
+
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Elemento",
+        "frecuenciaDeCambio": "Frecuencia de Cambio",
+        "proximoRecambio": "Próximo Recambio",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Elementos de Limpieza",
+        nombre_archivo="elementos_de_limpieza.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_elementos_csv(
@@ -16,7 +40,7 @@ def exportar_elementos_csv(
     db: Session = Depends(get_db)
 ):
     
-    datos = services.obtener_elementos_para_csv(db, busqueda=busqueda, estado=estado)
+    datos = services.obtener_elementos_para_exportar(db, busqueda=busqueda, estado=estado)
 
     columnas = {
         "id": "ID",

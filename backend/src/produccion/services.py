@@ -1,15 +1,67 @@
-from datetime import date
-from typing import List, Optional
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from src.insumos.models import Insumo
-from src.insumos.services import leer_insumo
+from src.insumos.services import leer_insumo, calcular_estado_vencimiento_insumo
 from src.produccion import exceptions, schemas
 from src.produccion.constants import INTENTOS_CODIGO_LOTE
 from src.produccion.models import InsumoLote, LoteProduccion
 from src.producto.models import Producto
 
+def obtener_lotes_para_exportar(
+    db: Session,
+    producto_id: Optional[int] = None,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    busqueda: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    lotes = listar_lotes(db, producto_id=producto_id, desde=desde, hasta=hasta)
+    term = busqueda.lower().strip() if busqueda else None
+    filas: List[Dict[str, Any]] = []
+
+    for l in lotes:
+        unidad = ""
+        nombre_producto = "-"
+        if getattr(l, "producto", None):
+            nombre_producto = getattr(l.producto, "nombre", "-") or "-"
+            unidad_raw = getattr(l.producto, "unidadMedida", "")
+            unidad = unidad_raw.value if hasattr(unidad_raw, "value") else str(unidad_raw or "")
+
+        responsable = "-"
+        legajo_str = str(getattr(l, "responsable_legajo", "") or "")
+        if getattr(l, "responsable", None):
+            nombre = getattr(l.responsable, "nombre", "") or ""
+            apellido = getattr(l.responsable, "apellido", "") or ""
+            responsable = f"{nombre} {apellido}".strip() or f"Legajo #{legajo_str}"
+        elif legajo_str:
+            responsable = f"Legajo #{legajo_str}"
+
+        if term:
+            coincide = (
+                term in (l.codigo or "").lower()
+                or term in nombre_producto.lower()
+                or term in responsable.lower()
+                or term in legajo_str
+            )
+            if not coincide:
+                continue
+
+        fecha_str = l.fecha.strftime("%d/%m/%Y") if isinstance(l.fecha, date) else str(l.fecha)
+        cantidad_str = f"{l.cantidad} {unidad}".strip()
+
+        filas.append({
+            "codigo": l.codigo,
+            "fecha": fecha_str,
+            "producto": nombre_producto,
+            "cantidad": cantidad_str,
+            "responsable": responsable,
+            "insumos": len(l.insumos) if getattr(l, "insumos", None) else 0,
+            "estado": "Abierto" if l.editable else "Cerrado",
+        })
+
+    return filas
 
 def leer_producto_activo(db: Session, producto_id: int) -> Producto:
     """Los productos se dan de alta en el ABM de productos; a uno dado de baja no se le registran lotes."""
@@ -69,6 +121,7 @@ def listar_lotes(
     producto_id: Optional[int] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    version_receta_id: Optional[int] = None,
 ) -> List[LoteProduccion]:
     if desde is not None and desde < date(2000, 1, 1):
         raise exceptions.RangoFechasInvalido()
@@ -77,6 +130,8 @@ def listar_lotes(
     consulta = select(LoteProduccion)
     if producto_id is not None:
         consulta = consulta.where(LoteProduccion.producto_id == producto_id)
+    if version_receta_id is not None:
+        consulta = consulta.where(LoteProduccion.version_receta_id == version_receta_id)
     if desde is not None:
         consulta = consulta.where(LoteProduccion.fecha >= desde)
     if hasta is not None:
@@ -88,21 +143,41 @@ def listar_lotes(
 # ------------------------------------------------------------------ insumos del lote
 
 
-def listar_insumos_disponibles(db: Session) -> List[Insumo]:
+def listar_insumos_disponibles(db: Session, tipo_id: Optional[int] = None) -> List[Insumo]:
     """Insumos activos del maestro que todavía tienen stock para usar en un lote."""
-    consulta = select(Insumo).where(Insumo.activo, Insumo.stock > 0).order_by(func.lower(Insumo.nombre))
-    return list(db.scalars(consulta).all())
+    consulta = select(Insumo).where(Insumo.activo, Insumo.stock > 0)
+    if tipo_id is not None:
+        consulta = consulta.where(Insumo.tipo_insumo_id == tipo_id)
+    consulta = consulta.order_by(Insumo.fechaVencimiento.asc().nulls_last(), func.lower(Insumo.nombre))
+    insumos = list(db.scalars(consulta).all())
+    disponibles: List[Insumo] = []
+    for i in insumos:
+        estado, _ = calcular_estado_vencimiento_insumo(i.fechaVencimiento, i.stock)
+        if estado == "VENCIDO":
+            continue
+        setattr(i, "estadoVencimiento", estado)
+        disponibles.append(i)
+    return disponibles
 
 
 def asociar_insumos(db: Session, lote_id: int, datos: schemas.AsociarInsumos) -> LoteProduccion:
     """Asocia los insumos al lote y descuenta lo usado del stock. Si alguno falla no se guarda ninguno."""
     lote = _leer_lote_editable(db, lote_id)
     ya_asociados = {i.insumo_id for i in lote.insumos}
+    hoy = date.today()
     try:
         for item in datos.insumos:
             insumo = leer_insumo(db, item.insumo_id)
             if insumo.id in ya_asociados:
                 raise exceptions.InsumoYaAsociado()
+            if insumo.fechaVencimiento:
+                f_venc = (
+                    insumo.fechaVencimiento.date()
+                    if isinstance(insumo.fechaVencimiento, datetime)
+                    else insumo.fechaVencimiento
+                )
+                if f_venc < hoy or (lote.fecha and f_venc < lote.fecha):
+                    raise exceptions.InsumoVencido()
             if item.cantidad > insumo.stock:
                 raise exceptions.StockInsuficiente()
             insumo.stock -= item.cantidad

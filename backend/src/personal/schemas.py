@@ -33,11 +33,16 @@ class TareaAsignada(BaseModel):
     nombre: str
     model_config = ConfigDict(from_attributes=True)
 
+class EtapaRecetaAsignada(BaseModel):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Personal(PersonaBase):
     legajo: int
     usuario: str
     tareas: List[TareaAsignada] = []
+    etapas_recetas: List[EtapaRecetaAsignada] = []
     model_config = ConfigDict(from_attributes=True)
 
 PersonaResponse = Personal

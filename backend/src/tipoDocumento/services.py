@@ -5,9 +5,10 @@ from src.tipoDocumento import exceptions
 from src.tipoDocumento.models import TipoDocumento
 from src.documentos.models import Documento
 
-def obtener_tipos_para_csv(
+def obtener_tipos_para_exportar(
     db: Session,
-    busqueda: Optional[str] = None
+    busqueda: Optional[str] = None,
+    ordenar_por: Optional[str] = "id"
 ) -> List[Dict[str, Any]]:
     query = select(TipoDocumento)
     
@@ -15,7 +16,12 @@ def obtener_tipos_para_csv(
         termino = f"%{busqueda.strip()}%"
         query = query.where(TipoDocumento.nombre.ilike(termino))
         
-    tipos = db.scalars(query.order_by(TipoDocumento.id.asc())).all()
+    if ordenar_por == "nombre":
+        query = query.order_by(func.lower(TipoDocumento.nombre).asc())
+    else:
+        query = query.order_by(TipoDocumento.id.asc())
+        
+    tipos = db.scalars(query).all()
     
     return [
         {

@@ -6,7 +6,7 @@ interface HeaderAppProps {
   onNavegarNotificacion: React.ComponentProps<typeof NotificacionesPopover>['onNavegar'];
   onIrAIncidentes: () => void;
   onIrAVencimientos: () => void;
-  // todavía no hay pantalla de configuración; cuando exista, App pasa la navegación acá
+  // abre el panel de Configuraciones (solo administradores)
   onIrAConfiguracion?: () => void;
 }
 
@@ -100,12 +100,13 @@ export const HeaderApp: React.FC<HeaderAppProps> = ({ onNavegarNotificacion, onI
                   </span>
                   <span className="saia-user-meta">@{usuario.usuario}</span>
                 </div>
+                {esAdministrador && onIrAConfiguracion && (
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => {
                     setMenuAbierto(false);
-                    onIrAConfiguracion?.();
+                    onIrAConfiguracion();
                   }}
                   className="saia-logout-btn saia-menu-opcion"
                 >
@@ -117,6 +118,7 @@ export const HeaderApp: React.FC<HeaderAppProps> = ({ onNavegarNotificacion, onI
                   </span>
                   <span className="saia-logout-label">Configuración</span>
                 </button>
+                )}
                 <button type="button" role="menuitem" onClick={logout} className="saia-logout-btn">
                   <span className="saia-sidebar-menu-icon">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

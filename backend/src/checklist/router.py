@@ -14,9 +14,108 @@ from src.database import get_db
 from src.exceptions import PermissionDenied
 from src.personal.models import Personal
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/checklist", tags=["Checklist"])
 
+@router.get("/cumplimiento-detallado/exportar-pdf", dependencies=[Depends(requiere_admin)])
+async def exportar_cumplimiento_detallado_pdf_endpoint(
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    sector_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_cumplimiento_detallado_para_exportar(
+        db=db,
+        desde=desde,
+        hasta=hasta,
+        sector_id=sector_id,
+    )
+
+    columnas = {
+        "fecha": "Fecha",
+        "checklist_id": "Checklist",
+        "nombre_tarea": "Tarea",
+        "sector_o_equipo": "Sector / Equipo",
+        "tipo_objeto": "Tipo",
+        "responsable": "Responsable",
+        "hora_fin": "Hora Fin",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Cumplimiento Detallado de Checklists y Limpieza",
+        nombre_archivo="cumplimiento_detallado.pdf",
+    )
+
+
+@router.get("/cumplimiento-detallado/exportar-csv", dependencies=[Depends(requiere_admin)])
+async def exportar_cumplimiento_detallado_csv_endpoint(
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    sector_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_cumplimiento_detallado_para_exportar(
+        db=db,
+        desde=desde,
+        hasta=hasta,
+        sector_id=sector_id,
+    )
+
+    columnas = {
+        "fecha": "Fecha",
+        "checklist_id": "Checklist",
+        "nombre_tarea": "Tarea",
+        "sector_o_equipo": "Sector / Equipo",
+        "tipo_objeto": "Tipo",
+        "responsable": "Responsable",
+        "hora_fin": "Hora Fin",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="cumplimiento_detallado.csv",
+    )
+
+@router.get("/exportar-pdf", dependencies=[Depends(requiere_admin)])
+async def exportar_checklists_pdf_endpoint(
+    fecha: Optional[date] = Query(None),
+    fecha_desde: Optional[date] = Query(None),
+    fecha_hasta: Optional[date] = Query(None),
+    estado: Optional[str] = Query(None),
+    responsable_legajo: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_checklists_para_exportar(
+        db,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        estado=estado,
+        responsable_legajo=responsable_legajo,
+    )
+
+    columnas = {
+        "id": "ID Checklist",
+        "fecha": "Fecha",
+        "estado": "Estado",
+        "cumplimiento": "Cumplimiento (%)",
+        "responsable_legajo": "Legajo Responsable",
+        "responsable": "Nombre Responsable",
+        "cantidad_tareas": "Cantidad Tareas",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Historial de Checklists",
+        nombre_archivo="historial_checklists.pdf",
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(requiere_admin)])
 async def exportar_checklists_csv_endpoint(
@@ -27,7 +126,7 @@ async def exportar_checklists_csv_endpoint(
     responsable_legajo: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
-    datos = services.obtener_checklists_para_csv(
+    datos = services.obtener_checklists_para_exportar(
         db,
         fecha=fecha,
         fecha_desde=fecha_desde,

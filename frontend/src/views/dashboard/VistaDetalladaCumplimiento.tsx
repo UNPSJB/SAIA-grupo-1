@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -6,6 +6,12 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -13,7 +19,8 @@ import {
   YAxis,
 } from 'recharts';
 import { apiFetch } from '../../api/client';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Badge } from '../../components/ui/badge';
 import {
   Card,
@@ -22,6 +29,15 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
+import { descargarCSV } from '../../utils/exportarCsv';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
+import { descargarPDF } from '../../utils/exportarPdf';
 import type {
   CumplimientoDetalladoResponse,
 } from './tipos';
@@ -74,9 +90,26 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
   const [datos, setDatos] = useState<CumplimientoDetalladoResponse | null>(null);
   const [cargando, setCargando] = useState<boolean>(true);
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
+  const [pestañaCumplimiento, setPestañaCumplimiento] = useState<'radar' | 'tendencia' | 'sector' | 'equipo'>('radar');
 
   const [paginaActual, setPaginaActual] = useState<number>(1);
   const itemsPorPagina = 10;
+
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+  const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
+
+  const graficoRadarRef = useRef<HTMLDivElement | null>(null);
+  const graficoTendenciaRef = useRef<HTMLDivElement | null>(null);
+  const graficoSectorRef = useRef<HTMLDivElement | null>(null);
+  const graficoEquipoRef = useRef<HTMLDivElement | null>(null);
+
+  const [exportGraficoModal, setExportGraficoModal] = useState<{
+    titulo: string;
+    nombreArchivo: string;
+    graficos: ConfiguracionGraficoExportar[];
+  } | null>(null);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -186,46 +219,6 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
     return 'vencido';
   };
 
-  const exportarCSV = () => {
-    if (!datos || !datos.items_detalle || datos.items_detalle.length === 0) return;
-
-    const cabeceras = [
-      'ID',
-      'Checklist ID',
-      'Fecha',
-      'Tarea',
-      'Frecuencia',
-      'Sector / Equipo',
-      'Tipo',
-      'Responsable',
-      'Estado',
-      'Hora Fin',
-    ];
-
-    const filas = datos.items_detalle.map((it) => [
-      it.id,
-      it.checklist_id,
-      it.fecha,
-      `"${(it.nombre_tarea || '').replace(/"/g, '""')}"`,
-      it.frecuencia,
-      `"${(it.sector_o_equipo || '').replace(/"/g, '""')}"`,
-      it.tipo_objeto,
-      `"${(it.responsable || '').replace(/"/g, '""')}"`,
-      it.estado,
-      it.hora_fin || '',
-    ]);
-
-    const contenidoCSV = '\uFEFF' + [cabeceras.join(';'), ...filas.map((f) => f.join(';'))].join('\r\n');
-    const blob = new Blob([contenidoCSV], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `cumplimiento_detallado_${formatearFechaInput(new Date())}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const items = datos?.items_detalle || [];
   const totalPaginas = Math.ceil(items.length / itemsPorPagina) || 1;
   const itemsPaginados = items.slice(
@@ -233,8 +226,150 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
     paginaActual * itemsPorPagina
   );
 
+  const datosRadarCumplimiento = useMemo(() => {
+    return (datos?.desglose_por_sector || []).map((s) => ({
+      dimension: s.nombre,
+      porcentaje: s.porcentaje,
+      meta: 80,
+      tareas_completadas: s.tareas_completadas,
+      total_tareas: s.total_tareas,
+    }));
+  }, [datos]);
+
   const hayDatos = items.length > 0;
   const kpis = datos?.kpis;
+
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+
+      if (desde) params.append('desde', desde);
+      if (hasta) params.append('hasta', hasta);
+      if (sectorSeleccionado) params.append('sector_id', sectorSeleccionado);
+
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
+
+      if (formato === 'pdf') {
+        await descargarPDF(
+          `/checklist/cumplimiento-detallado/exportar-pdf${query}`,
+          'cumplimiento_detallado.pdf'
+        );
+      } else {
+        await descargarCSV(
+          `/checklist/cumplimiento-detallado/exportar-csv${query}`,
+          'cumplimiento_detallado.csv'
+        );
+      }
+
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar el cumplimiento detallado a ${formato.toUpperCase()}.`
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (desde) partes.push(`Desde: ${formatearFechaVisual(desde)}`);
+    if (hasta) partes.push(`Hasta: ${formatearFechaVisual(hasta)}`);
+    if (sectorSeleccionado) {
+      const sec = sectores.find((s) => String(s.id) === sectorSeleccionado);
+      partes.push(`Sector: ${sec ? sec.nombre : `#${sectorSeleccionado}`}`);
+    }
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
+  const leyendaCumplimiento = [
+    { etiqueta: 'Óptimo (≥ 80%)', color: colores.exito },
+    { etiqueta: 'Atención (50% - 79%)', color: colores.alerta },
+    { etiqueta: 'Crítico (< 50%)', color: colores.error },
+  ];
+
+  const abrirExportacionTodosGraficos = () => {
+    const filtros = obtenerResumenFiltros();
+    const lista: ConfiguracionGraficoExportar[] = [];
+
+    if (graficoRadarRef.current && datosRadarCumplimiento.length > 0) {
+      lista.push({
+        id: 'cumplimiento-radar-sector',
+        titulo: 'Red de Araña de Cumplimiento (Por Sector)',
+        subtitulo: 'Perfil radial de cumplimiento real frente a la meta del 80%',
+        filtros,
+        contenedor: graficoRadarRef.current,
+        leyenda: [
+          { etiqueta: 'Cumplimiento Real (%)', color: '#10b981' },
+          { etiqueta: 'Meta (80%)', color: '#3b82f6' },
+        ],
+      });
+    }
+    if (graficoTendenciaRef.current && (datos?.tendencia_temporal?.length ?? 0) > 0) {
+      lista.push({
+        id: 'cumplimiento-tendencia',
+        titulo: 'Tendencia Temporal de Cumplimiento',
+        subtitulo: 'Evolución cronológica del porcentaje de cumplimiento general',
+        filtros,
+        contenedor: graficoTendenciaRef.current,
+      });
+    }
+    if (graficoSectorRef.current && (datos?.desglose_por_sector?.length ?? 0) > 0) {
+      lista.push({
+        id: 'cumplimiento-sector',
+        titulo: 'Comparativa por Sector Físico',
+        subtitulo: 'Porcentaje de cumplimiento en cada sector de la planta',
+        filtros,
+        contenedor: graficoSectorRef.current,
+        leyenda: leyendaCumplimiento,
+      });
+    }
+    if (graficoEquipoRef.current && (datos?.desglose_por_equipo?.length ?? 0) > 0) {
+      lista.push({
+        id: 'cumplimiento-equipo',
+        titulo: 'Comparativa por Equipo',
+        subtitulo: 'Identificación de equipos de producción críticos',
+        filtros,
+        contenedor: graficoEquipoRef.current,
+        leyenda: leyendaCumplimiento,
+      });
+    }
+
+    if (lista.length === 0) {
+      setErrorExportDialog('No hay gráficos disponibles para exportar con los filtros actuales.');
+      return;
+    }
+
+    setExportGraficoModal({
+      titulo: lista.length === 1 ? lista[0].titulo : `Cumplimiento Detallado (${lista.length} gráficos)`,
+      nombreArchivo: `graficos_cumplimiento_${desde}_a_${hasta}`,
+      graficos: lista,
+    });
+  };
+
+  const ejecutarExportacionGrafico = async (formato: FormatoGrafico) => {
+    if (!exportGraficoModal) return;
+    try {
+      setExportandoGrafico(true);
+      await exportarGraficos(
+        exportGraficoModal.graficos,
+        formato,
+        exportGraficoModal.nombreArchivo,
+        'Reporte Gráfico - Cumplimiento de Limpieza'
+      );
+      setExportGraficoModal(null);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error ? err.message : 'Error al exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
+  };
 
   return (
     <div className="modulo-container dashboard-vista-detalle">
@@ -266,16 +401,16 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
             </div>
           </div>
 
-          {hayDatos && (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={exportarCSV}
+              onClick={() => setDialogExportarAbierto(true)}
               className="btn-cancelar"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              <CsvIcon /> Exportar CSV
+              <ExportIcon/> Exportar Datos
             </button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -561,110 +696,411 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
 
           <Card style={{ marginBottom: '1.5rem' }}>
             <CardHeader>
-              <CardTitle style={{ fontSize: '1rem' }}>Tendencia Temporal de Cumplimiento</CardTitle>
-              <CardDescription>Evolución cronológica del porcentaje de cumplimiento general</CardDescription>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '24px', color: 'var(--color-primario, #3b82f6)' }}>
+                    fact_check
+                  </span>
+                  <div>
+                    <CardTitle style={{ fontSize: '1.1rem' }}>Análisis Integral de Cumplimiento POES y Limpieza</CardTitle>
+                    <CardDescription>
+                      Evaluación multidimensional, evolución temporal y comparativas detalladas por sector y equipo
+                    </CardDescription>
+                  </div>
+                </div>
+
+                <div style={{ display: 'inline-flex', borderRadius: '8px', border: '1px solid var(--border)', padding: '3px', background: 'var(--code-bg)', gap: '4px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: pestañaCumplimiento === 'radar' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                      color: pestañaCumplimiento === 'radar' ? '#ffffff' : 'var(--text-sec)',
+                      fontWeight: pestañaCumplimiento === 'radar' ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    onClick={() => setPestañaCumplimiento('radar')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>radar</span>
+                    Red de Araña
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: pestañaCumplimiento === 'tendencia' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                      color: pestañaCumplimiento === 'tendencia' ? '#ffffff' : 'var(--text-sec)',
+                      fontWeight: pestañaCumplimiento === 'tendencia' ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    onClick={() => setPestañaCumplimiento('tendencia')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>show_chart</span>
+                    Tendencia
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: pestañaCumplimiento === 'sector' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                      color: pestañaCumplimiento === 'sector' ? '#ffffff' : 'var(--text-sec)',
+                      fontWeight: pestañaCumplimiento === 'sector' ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    onClick={() => setPestañaCumplimiento('sector')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>domain</span>
+                    Por Sector
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: pestañaCumplimiento === 'equipo' ? 'var(--color-primario, #3b82f6)' : 'transparent',
+                      color: pestañaCumplimiento === 'equipo' ? '#ffffff' : 'var(--text-sec)',
+                      fontWeight: pestañaCumplimiento === 'equipo' ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    onClick={() => setPestañaCumplimiento('equipo')}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>precision_manufacturing</span>
+                    Por Equipo
+                  </button>
+
+                </div>
+                {hayDatos && !cargando && (
+                  <button
+                    type="button"
+                    onClick={abrirExportacionTodosGraficos}
+                    className="btn-cancelar"
+                    style={{
+                      padding: '5px 10px',
+                      fontSize: '12px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    title="Exportar este gráfico en PNG, JPEG o PDF"
+                  >
+                    <ExportIcon size={14} /> Exportar gráfico
+                  </button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <div style={{ width: '100%', height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={datos?.tendencia_temporal || []} margin={{ top: 12, right: 16, left: 0, bottom: 20 }}>
-                    <defs>
-                      <linearGradient id="gradTendencia" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
-                        <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                    <XAxis dataKey="etiqueta" stroke={colores.textoSec} fontSize={11} tickLine={false} />
-                    <YAxis domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} stroke={colores.textoSec} fontSize={11} tickLine={false} unit="%" width={40} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
-                      formatter={(val) => [`${val}%`, 'Cumplimiento']}
-                    />
-                    <ReferenceLine y={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 10.5 }} />
-                    <Area type="monotone" dataKey="porcentaje" stroke={colores.primario} strokeWidth={2.5} fill="url(#gradTendencia)" dot={{ r: 3, fill: colores.primario }} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+              {pestañaCumplimiento === 'radar' && (
+                <div>
+                  {datosRadarCumplimiento.length === 0 ? (
+                    <div style={{ height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
+                      Sin datos suficientes para proyectar la red de cumplimiento en este rango.
+                    </div>
+                  ) : (
+                    <div ref={graficoRadarRef} style={{ width: '100%', height: 380, minHeight: 380 }}>
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                        <RadarChart cx="50%" cy="50%" outerRadius="68%" data={datosRadarCumplimiento}>
+                          <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
+                          <PolarAngleAxis
+                            dataKey="dimension"
+                            tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
+                          />
+                          <PolarRadiusAxis
+                            angle={90}
+                            domain={[0, 100]}
+                            stroke="var(--color-texto-sec, #64748b)"
+                            tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
+                            tickFormatter={(val) => `${val}%`}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                              borderColor: 'var(--color-borde, #334155)',
+                              borderRadius: '8px',
+                              color: 'var(--color-texto, #f8fafc)',
+                            }}
+                            formatter={(val: any, name: any, item: any) => {
+                              const esCumplimiento = name === 'porcentaje' || name === 'Cumplimiento Real (%)';
+                              return [
+                                esCumplimiento
+                                  ? `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`
+                                  : `${val}%`,
+                                esCumplimiento ? 'Cumplimiento Real' : 'Meta',
+                              ];
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            height={28}
+                            iconType="circle"
+                            wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
+                          />
+                          <Radar
+                            name="Cumplimiento Real (%)"
+                            dataKey="porcentaje"
+                            stroke="#10b981"
+                            fill="#10b981"
+                            fillOpacity={0.35}
+                            strokeWidth={2}
+                            dot={{ r: 3, fill: '#059669' }}
+                          />
+                          <Radar
+                            name="Meta (80%)"
+                            dataKey="meta"
+                            stroke="#3b82f6"
+                            fill="#3b82f6"
+                            fillOpacity={0.08}
+                            strokeDasharray="3 3"
+                            strokeWidth={1.5}
+                            dot={{ r: 2, fill: '#2563eb' }}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
-              gap: '16px',
-              marginBottom: '1.5rem',
-            }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ fontSize: '1rem' }}>Comparativa por Sector Físico</CardTitle>
-                <CardDescription>Porcentaje de cumplimiento en cada sector de la planta</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div style={{ width: '100%', height: 260 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={datos?.desglose_por_sector || []} layout="vertical" margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                      <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={11} unit="%" />
-                      <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={11} tickLine={false} width={90} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
-                        formatter={(val, _, item) => [
-                          `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
-                          'Cumplimiento',
-                        ]}
-                      />
-                      <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" />
-                      <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]}>
-                        {(datos?.desglose_por_sector || []).map((entry, index) => (
-                          <Cell key={`sector-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div
+                    style={{
+                      marginTop: '12px',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                      border: '1px solid rgba(16, 185, 129, 0.25)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#10b981', flexShrink: 0, marginTop: '1px' }}>
+                      checklist_rtl
+                    </span>
+                    <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                      <strong style={{ color: 'var(--text-h)' }}>Diagnóstico POES: </strong>
+                      <span>
+                        La red radial permite detectar asimetrías operativas. Los sectores que se sitúan por debajo del polígono azul (80%) requieren revisión de protocolos de saneamiento y refuerzo de supervisión en planta.
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle style={{ fontSize: '1rem' }}>Comparativa por Equipo</CardTitle>
-                <CardDescription>Identificación de equipos de producción críticos</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div style={{ width: '100%', height: 260 }}>
-                  {datos?.desglose_por_equipo && datos.desglose_por_equipo.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={datos.desglose_por_equipo} layout="vertical" margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                        <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={11} unit="%" />
-                        <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={11} tickLine={false} width={90} />
+              {pestañaCumplimiento === 'tendencia' && (
+                <div>
+                  <div ref={graficoTendenciaRef} style={{ width: '100%', height: 380 }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <AreaChart data={datos?.tendencia_temporal || []} margin={{ top: 12, right: 16, left: 0, bottom: 20 }}>
+                        <defs>
+                          <linearGradient id="gradTendencia" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
+                            <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                        <XAxis dataKey="etiqueta" stroke={colores.textoSec} fontSize={12} tickLine={false} />
+                        <YAxis domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} stroke={colores.textoSec} fontSize={12} tickLine={false} unit="%" width={44} />
                         <Tooltip
                           contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)' }}
+                          formatter={(val) => [`${val}%`, 'Cumplimiento']}
+                        />
+                        <ReferenceLine y={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 11, fontWeight: 600 }} />
+                        <Area type="monotone" dataKey="porcentaje" stroke={colores.primario} strokeWidth={2.5} fill="url(#gradTendencia)" dot={{ r: 3.5, fill: colores.primario }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: '12px',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--color-primario, #3b82f6)', flexShrink: 0, marginTop: '1px' }}>
+                      trending_up
+                    </span>
+                    <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                      <strong style={{ color: 'var(--text-h)' }}>Tendencia Temporal: </strong>
+                      <span>
+                        Evolución periódica del cumplimiento global. Permite verificar si las acciones preventivas logran mantener la ejecución de tareas por encima de la línea verde del 80%.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {pestañaCumplimiento === 'sector' && (
+                <div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+                    <div style={{ flex: '1 1 180px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-superficie)', border: '1px solid var(--color-borde)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>Sectores Evaluados</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-h)' }}>{(datos?.desglose_por_sector || []).length}</div>
+                    </div>
+                    <div style={{ flex: '1 1 180px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-superficie)', border: '1px solid var(--color-borde)' }}>
+                      <div style={{ fontSize: '11px', color: '#10b981' }}>En Meta (&ge;80%)</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10b981' }}>
+                        {(datos?.desglose_por_sector || []).filter((s) => s.porcentaje >= 80).length}
+                      </div>
+                    </div>
+                    <div style={{ flex: '1 1 180px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-superficie)', border: '1px solid var(--color-borde)' }}>
+                      <div style={{ fontSize: '11px', color: '#f59e0b' }}>En Atención (50-79%)</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f59e0b' }}>
+                        {(datos?.desglose_por_sector || []).filter((s) => s.porcentaje >= 50 && s.porcentaje < 80).length}
+                      </div>
+                    </div>
+                    <div style={{ flex: '1 1 180px', padding: '10px 14px', borderRadius: '8px', background: 'var(--color-superficie)', border: '1px solid var(--color-borde)' }}>
+                      <div style={{ fontSize: '11px', color: '#ef4444' }}>Críticos (&lt;50%)</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ef4444' }}>
+                        {(datos?.desglose_por_sector || []).filter((s) => s.porcentaje < 50).length}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div ref={graficoSectorRef} style={{ width: '100%', height: 340 }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <BarChart data={datos?.desglose_por_sector || []} layout="vertical" margin={{ top: 8, right: 30, left: 30, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
+                        <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={12} unit="%" />
+                        <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={12} tickLine={false} width={120} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)', borderRadius: '8px' }}
                           formatter={(val, _, item) => [
                             `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
-                            `Equipo (${item.payload.subtitulo || 'Sector'})`,
+                            'Cumplimiento',
                           ]}
                         />
-                        <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" />
+                        <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 11, fontWeight: 600 }} />
                         <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]}>
-                          {datos.desglose_por_equipo.map((entry, index) => (
-                            <Cell key={`equipo-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
+                          {(datos?.desglose_por_sector || []).map((entry, index) => (
+                            <Cell key={`sector-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
                           ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                  </div>
+
+                  <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                    {(datos?.desglose_por_sector || []).map((s) => (
+                      <div
+                        key={`sector-card-${s.id}`}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--color-borde)',
+                          backgroundColor: 'var(--color-superficie)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-texto)' }}>{s.nombre}</span>
+                          <Badge variant={obtenerBadgeVariante(s.porcentaje)} style={{ fontSize: '11px' }}>
+                            {s.porcentaje >= 80 ? 'Óptimo' : s.porcentaje >= 50 ? 'Regular' : 'Crítico'} ({s.porcentaje}%)
+                          </Badge>
+                        </div>
+                        <div style={{ height: '6px', backgroundColor: 'var(--color-fondo)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                          <div style={{ height: '100%', width: `${s.porcentaje}%`, backgroundColor: obtenerColorPorcentaje(s.porcentaje), borderRadius: '3px' }} />
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{s.tareas_completadas} completadas</span>
+                          <span>{s.total_tareas} programadas</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {pestañaCumplimiento === 'equipo' && (
+                <div>
+                  {datos?.desglose_por_equipo && datos.desglose_por_equipo.length > 0 ? (
+                    <div>
+                      <div ref={graficoEquipoRef} style={{ width: '100%', height: 340 }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <BarChart data={datos.desglose_por_equipo} layout="vertical" margin={{ top: 8, right: 30, left: 30, bottom: 8 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
+                            <XAxis type="number" domain={[0, 100]} stroke={colores.textoSec} fontSize={12} unit="%" />
+                            <YAxis type="category" dataKey="nombre" stroke={colores.textoSec} fontSize={12} tickLine={false} width={130} />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: 'var(--color-superficie-elevada)', borderColor: 'var(--color-borde)', color: 'var(--color-texto)', borderRadius: '8px' }}
+                              formatter={(val, _, item) => [
+                                `${val}% (${item.payload.tareas_completadas}/${item.payload.total_tareas} tareas)`,
+                                `Equipo (${item.payload.subtitulo || 'Sector'})`,
+                              ]}
+                            />
+                            <ReferenceLine x={80} stroke={colores.exito} strokeDasharray="4 4" label={{ value: 'Meta: 80%', fill: colores.exito, fontSize: 11, fontWeight: 600 }} />
+                            <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]}>
+                              {datos.desglose_por_equipo.map((entry, index) => (
+                                <Cell key={`equipo-cell-${index}`} fill={obtenerColorPorcentaje(entry.porcentaje)} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                        {datos.desglose_por_equipo.map((eq) => (
+                          <div
+                            key={`equipo-card-${eq.id}`}
+                            style={{
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              border: '1px solid var(--color-borde)',
+                              backgroundColor: 'var(--color-superficie)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                              <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-texto)' }}>{eq.nombre}</span>
+                              <Badge variant={obtenerBadgeVariante(eq.porcentaje)} style={{ fontSize: '11px' }}>
+                                {eq.porcentaje}%
+                              </Badge>
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)', marginBottom: '6px' }}>{eq.subtitulo || 'Equipo de planta'}</div>
+                            <div style={{ height: '6px', backgroundColor: 'var(--color-fondo)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                              <div style={{ height: '100%', width: `${eq.porcentaje}%`, backgroundColor: obtenerColorPorcentaje(eq.porcentaje), borderRadius: '3px' }} />
+                            </div>
+                            <div style={{ fontSize: '11.5px', color: 'var(--color-texto-sec)', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>{eq.tareas_completadas} completadas</span>
+                              <span>{eq.total_tareas} tareas</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   ) : (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
+                    <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
                       No hay tareas asignadas directamente a equipos en este filtro.
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+
+            </CardContent>
+          </Card>
 
           <Card style={{ marginBottom: '2rem' }}>
             <CardHeader style={{ paddingBottom: '12px' }}>
@@ -760,7 +1196,32 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
           </Card>
         </div>
       )}
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={items.length}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ConfirmExportGraficoDialog
+        open={Boolean(exportGraficoModal)}
+        tituloGrafico={exportGraficoModal?.titulo || ''}
+        cantidadGraficos={exportGraficoModal?.graficos.length || 1}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportandoGrafico}
+        onConfirm={ejecutarExportacionGrafico}
+        onCancel={() => setExportGraficoModal(null)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportDialog)}
+        title="No se pudo completar la exportación"
+        description={errorExportDialog || ''}
+        onClose={() => setErrorExportDialog(null)}
+      />
     </div>
   );
 };
-

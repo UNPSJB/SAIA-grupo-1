@@ -8,6 +8,7 @@ class OrigenVencimiento(str, Enum):
     EQUIPO = "equipo"
     DOCUMENTO = "documento"
     AMBIENTAL = "ambiental"
+    INSUMO = "insumo"
 
 
 class EstadoVencimiento(str, Enum):

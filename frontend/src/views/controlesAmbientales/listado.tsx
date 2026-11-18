@@ -8,10 +8,11 @@ import { Paginacion } from "../../components/ui/paginacion";
 import { usePaginacion } from "../../components/ui/usePaginacion";
 import { Badge } from "../../components/ui/badge";
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
-import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
-import { CsvIcon } from "../../components/icons/CsvIcon";
-import { apiFetch } from "../../api/client";
+import { ConfirmExportDialog, type FormatoExportacion } from "../../components/ui/confirmExportDialog";
+import { ExportIcon } from "../../components/icons/ExportIcon";
 import { descargarCSV } from "../../utils/exportarCsv";
+import { descargarPDF } from "../../utils/exportarPdf";
+import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/useAuth";
 import "../../styles/formularioAlta.css";
 
@@ -173,7 +174,7 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
     return matchTipo && matchVencimiento;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -195,12 +196,21 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
       }
 
       const queryString = params.toString();
-      const url = `/controles-ambientales/exportar-csv${queryString ? `?${queryString}` : ""}`;
+      const query = queryString ? `?${queryString}` : "";
 
-      await descargarCSV(url, "controles_ambientales.csv");
+      if (formato === "pdf") {
+        await descargarPDF(`/controles-ambientales/exportar-pdf${query}`, "controles_ambientales.pdf");
+      } else {
+        await descargarCSV(`/controles-ambientales/exportar-csv${query}`, "controles_ambientales.csv");
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorDialogMsg(err instanceof Error ? err.message : "Error al exportar controles a CSV.");
+      setErrorDialogMsg(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar controles a ${formato.toUpperCase()}.`
+      );
     } finally {
       setExportando(false);
     }
@@ -273,7 +283,7 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
             className="btn-cancelar"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {esAdministrador && onNuevoClick && (

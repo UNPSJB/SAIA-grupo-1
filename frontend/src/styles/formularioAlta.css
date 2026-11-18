@@ -27,7 +27,25 @@
 
 
 .formulario-box {
-  max-width: 500px;
+  max-width: 860px;
+  width: 100%;
+}
+
+.detalle-amplio {
+  max-width: 1120px;
+  width: 100%;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1.5rem;
+}
+
+@media (max-width: 720px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-group {
@@ -298,6 +316,16 @@
   background-color: var(--color-alerta-bg);
   color: var(--color-alerta-texto);
   border-color: color-mix(in srgb, var(--color-alerta) 40%, transparent);
+}
+
+.btn-icon.btn-nutricion {
+  color: #38bdf8;
+}
+
+.btn-icon.btn-nutricion:hover {
+  background-color: var(--color-suave);
+  color: #0284c7;
+  border-color: #38bdf8;
 }
 
 .btn-icon.btn-eliminar {
@@ -1119,42 +1147,40 @@ dialog .btn-guardar{
   color: #fff;
 }
 
-/* Contenedor principal ajustado */
+/* Pantallas de vista pública (habilitar / gestionar).
+   Grilla de dos columnas: a la izquierda el contenido (Acerca de Nosotros, productos),
+   a la derecha la configuración, el QR y el enlace. Las filas del JSX usan display: contents
+   para que sus hijos se ubiquen directamente en la grilla. */
 .vista-publica-config {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 0px 40px 20px 40px !important; 
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    column-gap: 40px;
+    row-gap: 24px;
+    align-items: start;
     width: 100%;
     max-width: 1100px;
-    margin-left: 20px;
+    padding: 0 0 20px 0 !important;
     box-sizing: border-box;
 }
 
-/* Fila superior que contiene el título solo arriba, y empuja el botón hacia abajo */
-.config-top-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    width: 100%;
-    max-width: 100%;
-    gap: 40px;
-    margin-top: 15px;
+.config-top-row,
+.config-bottom-grid {
+    display: contents;
 }
 
-/* Cabecera principal: el título se queda arriba, el botón baja */
+/* Cabecera: título y botón principal en una fila que ocupa todo el ancho */
 .config-header-main {
+    grid-column: 1 / -1;
     display: flex;
-    flex-direction: row;
-    gap: 20px;
+    flex-wrap: wrap;
+    gap: 16px 24px;
     align-items: center;
-    margin-top: -55px;
+    justify-content: space-between;
 }
 
 /* Título principal */
 .config-titulo-principal {
     font-size: 30px !important; 
-    white-space: nowrap;
     margin: 0;
     color: var(--color-texto) !important; /* Dinámico según el tema (negro en modo claro) */
 }
@@ -1164,8 +1190,10 @@ dialog .btn-guardar{
     margin-top: 0 !important;
 }
 
-/* Bloque de Configuración bajado prolijamente */
+/* Bloque de Configuración: arriba de la columna derecha */
 .config-seccion {
+    grid-column: 2;
+    grid-row: 2;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1173,9 +1201,8 @@ dialog .btn-guardar{
     padding: 14px 18px;
     border-radius: 8px;
     border: 1px solid var(--border, #334155);
-    width: 330px;
+    width: 100%;
     box-sizing: border-box;
-    margin-top: 25px;
 }
 
 .config-subtitulo {
@@ -1201,26 +1228,14 @@ dialog .btn-guardar{
     cursor: pointer;
 }
 
-/* Fila inferior en dos columnas */
-.config-bottom-grid {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    width: 100%;
-    max-width: 100%;
-    gap: 40px;
-    margin-top: 15px; 
-}
-
-/* Columna Izquierda (Sube el bloque de Acerca de Nosotros para emparejarlo con la config) */
+/* Columna izquierda: ocupa las dos filas de la derecha (configuración + QR) */
 .columna-izquierda {
+    grid-column: 1;
+    grid-row: 2 / span 2;
     display: flex;
     flex-direction: column;
-    width: 520px;
-    height: 100%;
-    justify-content: flex-start;
     gap: 20px;
-    margin-top: -175px; /* 👈 Cambiado de -105px a -135px para subirlo más */
+    min-width: 0;
 }
 
 .textarea-container-angosto {
@@ -1252,21 +1267,28 @@ dialog .btn-guardar{
 .contenedor-cancelar-izq {
     display: flex;
     justify-content: flex-start;
-    margin-top: 40px; /* Ajustado de forma prolija debajo del contenido izquierdo */
+    margin-top: 8px;
 }
 
-/* Columna Derecha: QR y Previsualización */
+/* El botón Cancelar de la pantalla de habilitación va al pie, a todo el ancho */
+.vista-publica-config > .form-acciones {
+    grid-column: 1 / -1;
+}
+
+/* Columna derecha: QR, descarga y enlace */
 .qr-columna-derecha {
+    grid-column: 2;
+    grid-row: 3;
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 330px;
-    transform: translateY(40px);
+    gap: 16px;
+    width: 100%;
+    min-width: 0;
 }
 
 .qr-preview-container-original {
     text-align: center;
-    padding: 0 0 10px 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1276,7 +1298,7 @@ dialog .btn-guardar{
 .qr-titulo-activo {
     font-size: 13px;
     color: var(--color-texto);
-    margin-bottom: 8px;
+    margin: 0 0 8px;
 }
 
 .qr-image-box-original {
@@ -1286,11 +1308,15 @@ dialog .btn-guardar{
     padding: 8px;
     border-radius: 6px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
+.qr-image-box-original canvas,
 .qr-imagen-original {
-    width: 280px !important; 
-    height: 280px !important;
+    width: 260px !important;
+    height: 260px !important;
+    max-width: 100%;
     display: block;
 }
 
@@ -1298,24 +1324,19 @@ dialog .btn-guardar{
     display: flex;
     justify-content: center;
     width: 100%;
-    margin-top: 25px; 
 }
 
-
 .enlace-acceso-derecha {
-    position: absolute ;
-    top: 50px ;  
-    left: 310px ; 
-    display: flex ;
-    flex-direction: column ;
-    gap: 6px ;
-    width: 260px ;
-    text-align: left ;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
     background-color: var(--color-superficie, rgba(15, 23, 42, 0.9));
     padding: 12px;
     border-radius: 8px;
     border: 1px solid var(--border, #334155);
-    z-index: 10;
 }
 
 .enlace-label-chico {
@@ -1334,8 +1355,9 @@ dialog .btn-guardar{
 /* Estilo del enlace web interactivo */
 .enlace-estilo-link {
     height: 36px ;
-    display: flex ;
-    align-items: center ;
+    min-height: 0; /* el enlace también lleva la clase .descripcion, que pide 90px */
+    display: block;
+    line-height: 36px;
     text-decoration: underline ;
     color: #38bdf8 ;
     overflow: hidden ;
@@ -1345,6 +1367,7 @@ dialog .btn-guardar{
     background-color: var(--color-superficie-elevada, #1e293b) ;
     box-sizing: border-box;
     width: 100%;
+    min-width: 0;
 }
 
 .enlace-btn-copiar {
@@ -1352,4 +1375,120 @@ dialog .btn-guardar{
     padding: 0 12px ;
     white-space: nowrap ;
     width: 100%;
+    margin-top: 0 !important;
+}
+
+.modulo-insumos-container {
+  max-width: 100%;
+  width: 100%;
+  margin: 0 auto 1.5rem auto;
+  padding: 0;
+}
+
+.modulo-insumos-container .modulo-header h1 {
+  font-size: 1.5rem;
+}
+
+.modulo-insumos-container .listado-top-bar {
+  margin-bottom: 1rem;
+}
+
+.modulo-insumos-container .filtros-top-bar {
+  margin-bottom: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  gap: 0.6rem;
+}
+
+.modulo-insumos-container .input-busqueda {
+  flex: 1 1 14rem;
+  min-width: 0;
+  height: 2.25rem;
+  font-size: 0.85rem;
+}
+
+.modulo-insumos-container .select-filtro {
+  height: 2.25rem;
+  font-size: 0.85rem;
+}
+
+.insumos-grupos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.insumos-grupo-card {
+  border: 1px solid var(--border, #334155);
+  border-radius: 0.5rem;
+  background-color: var(--code-bg, rgba(255, 255, 255, 0.02));
+  overflow: hidden;
+  width: 100%;
+}
+
+.insumos-grupo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  user-select: none;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.insumos-grupo-body {
+  padding: 0.65rem;
+}
+
+.tabla-insumos {
+  width: 100%;
+  table-layout: auto;
+}
+
+.tabla-insumos th {
+  padding: 0.5rem 0.45rem;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  white-space: normal;
+}
+
+.tabla-insumos td {
+  padding: 0.5rem 0.45rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.tabla-insumos .acciones-col {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.tabla-insumos .acciones-btns {
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}
+
+.tabla-insumos .btn-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.8rem;
+  border-radius: 0.4rem;
+}
+
+@media (max-width: 900px) {
+    .vista-publica-config {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .config-seccion,
+    .columna-izquierda,
+    .qr-columna-derecha {
+        grid-column: 1;
+        grid-row: auto;
+    }
 }

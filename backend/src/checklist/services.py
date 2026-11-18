@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 TABLA_CHECKLIST = "checklists"
 TABLA_CHECKLIST_ITEM = "checklist_items"
 
-def obtener_checklists_para_csv(
+def obtener_checklists_para_exportar(
     db: Session,
     fecha: Optional[date] = None,
     fecha_desde: Optional[date] = None,
@@ -62,6 +62,48 @@ def obtener_checklists_para_csv(
 
     return filas
 
+def obtener_cumplimiento_detallado_para_exportar(
+    db: Session,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    sector_id: Optional[int] = None,
+) -> List[dict]:
+    from src.dashboard.services import obtener_cumplimiento_detallado
+
+    respuesta = obtener_cumplimiento_detallado(
+        db=db,
+        desde=desde,
+        hasta=hasta,
+        sector_id=sector_id,
+    )
+
+    filas: List[dict] = []
+    for it in respuesta.items_detalle:
+        fecha_raw = getattr(it, "fecha", None)
+        if isinstance(fecha_raw, date):
+            fecha_str = fecha_raw.strftime("%d/%m/%Y")
+        elif isinstance(fecha_raw, str) and len(fecha_raw) == 10 and "-" in fecha_raw:
+            partes = fecha_raw.split("-")
+            fecha_str = f"{partes[2]}/{partes[1]}/{partes[0]}"
+        else:
+            fecha_str = str(fecha_raw or "-")
+
+        estado_raw = getattr(it, "estado", "") or ""
+        estado_str = "Realizado" if str(estado_raw).upper() == "REALIZADO" else "Pendiente"
+
+        filas.append({
+            "fecha": fecha_str,
+            "checklist_id": f"#{it.checklist_id}",
+            "nombre_tarea": it.nombre_tarea or "-",
+            "sector_o_equipo": it.sector_o_equipo or "-",
+            "tipo_objeto": it.tipo_objeto or "-",
+            "responsable": it.responsable or "-",
+            "hora_fin": it.hora_fin or "-",
+            "estado": estado_str,
+        })
+
+    return filas
+
 def _auditar(
     db: Session,
     tabla: str,
@@ -85,7 +127,7 @@ def _auditar(
     )
 
 
-IMAGENES_DIR = Path(__file__).resolve().parent / "imagenes"
+IMAGENES_DIR = Path(__file__).resolve().parent / "archivos"
 IMAGENES_DIR.mkdir(parents=True, exist_ok=True)
 
 

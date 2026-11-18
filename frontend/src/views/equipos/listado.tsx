@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { EquipoConId } from "./tipos";
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
-import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoEquiposProps {
     onNuevoClick?: () => void;
@@ -111,7 +112,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
         return matchBusqueda && matchEstado && matchCat;
     });
 
-    const ejecutarExportacion = async () => {
+    const ejecutarExportacion = async (formato: FormatoExportacion) => {
         try {
             setExportando(true);
             const params = new URLSearchParams();
@@ -121,12 +122,21 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
             if (filtroEstado !== 'TODOS') params.append('estado', filtroEstado);
 
             const queryString = params.toString();
-            const url = `/equipos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+            const query = queryString ? `?${queryString}` : '';
 
-            await descargarCSV(url, 'equipos.csv');
+            if (formato === 'pdf') {
+                await descargarPDF(`/equipos/exportar-pdf${query}`, 'equipos.pdf');
+            } else {
+                await descargarCSV(`/equipos/exportar-csv${query}`, 'equipos.csv');
+            }
+
             setDialogExportarAbierto(false);
         } catch (err) {
-            setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar los equipos a CSV.');
+            setErrorDialogMsg(
+                err instanceof Error
+                    ? err.message
+                    : `Error al exportar los equipos a ${formato.toUpperCase()}.`
+            );
         } finally {
             setExportando(false);
         }
@@ -167,7 +177,7 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                         className="btn-cancelar"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                     >
-                        <CsvIcon /> Exportar CSV
+                        <ExportIcon /> Exportar
                     </button>
 
                     {onNuevoClick && (
