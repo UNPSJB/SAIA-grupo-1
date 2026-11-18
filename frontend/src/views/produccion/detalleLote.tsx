@@ -3,20 +3,20 @@ import { apiFetch } from '../../api/client';
 import { mensajeDeError } from '../incidentes/tipos';
 import { formatearFecha } from './tipos';
 import type { LoteProduccion } from './tipos';
+import { DetalleChecklistReceta } from '../receta/VerEtapaChecklist';
 import '../../styles/formularioAlta.css';
 import '../../styles/produccion.css';
 
 interface DetalleLoteProps {
   loteId: number;
   onVolver: () => void;
-  /** Solo para el personal operativo; igual se muestra únicamente si el lote sigue abierto */
   onGestionarInsumos?: (lote: LoteProduccion) => void;
 }
 
-/** Detalle de un lote en modo solo lectura: qué se produjo, cuándo, quién y con qué insumos. */
 export const DetalleLote: React.FC<DetalleLoteProps> = ({ loteId, onVolver, onGestionarInsumos }) => {
   const [lote, setLote] = useState<LoteProduccion | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [verChecklistId, setVerChecklistId] = useState<number | null>(null);
 
   // se pide de nuevo cada vez (y no se reusa el del listado) por si se le acaban de cambiar los insumos
   useEffect(() => {
@@ -55,6 +55,15 @@ export const DetalleLote: React.FC<DetalleLoteProps> = ({ loteId, onVolver, onGe
     );
   }
 
+  if (verChecklistId !== null) {
+    return (
+      <DetalleChecklistReceta
+        checklistId={verChecklistId}
+        onVolver={() => setVerChecklistId(null)}
+      />
+    );
+  }
+
   return (
     <div className="modulo-container lote-insumos">
       <div className="listado-top-bar">
@@ -67,11 +76,22 @@ export const DetalleLote: React.FC<DetalleLoteProps> = ({ loteId, onVolver, onGe
             </span>
           </div>
         </div>
-        {lote.editable && onGestionarInsumos && (
-          <button type="button" className="btn-agregar" onClick={() => onGestionarInsumos(lote)}>
-            Gestionar insumos
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {lote.checklist_receta_id && (
+            <button
+              type="button"
+              className="btn-cancelar"
+              onClick={() => setVerChecklistId(lote.checklist_receta_id!)}
+            >
+              Ver Checklist de Receta (#{lote.checklist_receta_id})
+            </button>
+          )}
+          {lote.editable && onGestionarInsumos && (
+            <button type="button" className="btn-agregar" onClick={() => onGestionarInsumos(lote)}>
+              Gestionar insumos
+            </button>
+          )}
+        </div>
       </div>
 
       <dl className="lote-detalle-datos">

@@ -662,6 +662,27 @@ def autocompletar_datos_borrador(
 
     if "tabla" in t_campos:
         borrador.tabla_editada_manualmente = False
+        from src.nutricion.models import InformacionNutricionalProducto
+        info_nut = db.scalar(
+            select(InformacionNutricionalProducto).where(
+                InformacionNutricionalProducto.producto_id == producto_id
+            )
+        )
+        if info_nut:
+            borrador.porcion = f"{int(info_nut.tamano_porcion_g)} g" if info_nut.tamano_porcion_g else borrador.porcion
+            if info_nut.porciones_por_envase:
+                borrador.porciones_por_envase = str(int(info_nut.porciones_por_envase))
+            borrador.valor_energetico_kcal = info_nut.energia_kcal_porcion
+            borrador.valor_energetico_kj = info_nut.energia_kj_porcion
+            borrador.carbohidratos = info_nut.carbohidratos_porcion
+            borrador.azucares_totales = info_nut.azucares_totales_porcion
+            borrador.azucares_anadidos = info_nut.azucares_anadidos_porcion
+            borrador.proteinas = info_nut.proteinas_porcion
+            borrador.grasas_totales = info_nut.grasas_totales_porcion
+            borrador.grasas_saturadas = info_nut.grasas_saturadas_porcion
+            borrador.grasas_trans = info_nut.grasas_trans_porcion
+            borrador.fibra_alimentaria = info_nut.fibra_alimentaria_porcion
+            borrador.sodio = info_nut.sodio_mg_porcion
 
     if "ingredientes" in t_campos:
         borrador.ingredientes_editado_manualmente = False
@@ -673,9 +694,86 @@ def autocompletar_datos_borrador(
     return borrador
 
 
+def sincronizar_rotulo_desde_receta(
+    db: Session,
+    producto_id: int,
+    receta_id: Optional[int] = None,
+    usuario: Optional[Any] = None,
+) -> None:
+    from src.recetas.services import obtener_composicion_porcentual_producto
+    from src.nutricion.services import calcular_informacion_nutricional
+
+    producto = db.get(Producto, producto_id)
+    if not producto:
+        return
+
+    comp = obtener_composicion_porcentual_producto(db, producto_id)
+    items_rotulo: List[schemas.ItemIngredienteCreate] = []
+    for ing in comp.ingredientes:
+        pct_val = ing.porcentaje if ing.porcentaje and ing.porcentaje > 0 else 0.01
+        items_rotulo.append(
+            schemas.ItemIngredienteCreate(
+                nombre=ing.nombre,
+                denominacion_rotulo=ing.nombre,
+                porcentaje=pct_val,
+                es_aditivo=False,
+            )
+        )
+    for adit in comp.aditivos:
+        pct_val = adit.porcentaje if adit.porcentaje and adit.porcentaje > 0 else 0.01
+        func_str = adit.clase_funcional or "Aditivo"
+        es_aroma = "aroma" in func_str.lower() or "saboriz" in func_str.lower()
+        items_rotulo.append(
+            schemas.ItemIngredienteCreate(
+                nombre=adit.nombre,
+                denominacion_rotulo=adit.nombre,
+                porcentaje=pct_val,
+                es_aditivo=True,
+                funcion=func_str,
+                numero_ins=adit.numero_ins,
+                es_aromatizante=es_aroma,
+            )
+        )
+
+    if items_rotulo:
+        guardar_lista_rotulo(
+            db=db,
+            producto_id=producto_id,
+            datos=schemas.ListaIngredientesCreate(
+                formato_aditivos=FormatoDeclaracionAditivos.INS_Y_NOMBRE,
+                ajustado_manualmente=False,
+                items=items_rotulo,
+            ),
+            usuario=usuario,
+        )
+
+    if getattr(producto, "aplica_rotulado", True):
+        try:
+            calcular_informacion_nutricional(
+                db,
+                producto_id=producto_id,
+                receta_id=receta_id,
+                usuario_actual=_obtener_nombre_usuario(usuario),
+            )
+        except Exception:
+            pass
+        obtener_o_crear_borrador(db, producto_id)
+        autocompletar_datos_borrador(db, producto_id, usuario=usuario)
+
+
 def calcular_octogonos_e12(
     borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
 ) -> tuple[List[schemas.OctogonoItem], bool, str]:
+    from sqlalchemy.orm import object_session
+    from src.rotulado_frontal.models import EstadoModulo
+    from src.rotulado_frontal.constants import CLAVE_MODULO_OCTOGONOS
+
+    sess = object_session(borrador)
+    if sess is not None:
+        estado_mod = sess.get(EstadoModulo, CLAVE_MODULO_OCTOGONOS)
+        if estado_mod is not None and not estado_mod.activo:
+            return [], False, "El sistema de octógonos y leyendas precautorias se encuentra desactivado en Configuración."
+
     octogonos: List[schemas.OctogonoItem] = []
 
     if borrador.modo_calculo_octogonos == "manual":

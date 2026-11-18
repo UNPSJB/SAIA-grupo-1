@@ -5,7 +5,6 @@ from sqlalchemy import text
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
-from src.rotulado.migraciones import actualizar_tablas_rotulado
 from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 from src.models import ModeloBase
 
@@ -45,7 +44,6 @@ from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
 from src.rotulado.router import router as rotulado_router
-from src.rotulado.migraciones import actualizar_tablas_rotulado
 from src.tipoInsumo.router import router as tipo_insumo_router
 from src.proveedores.router import router as proveedores_router
 from src.unidadesMedida.router import router as unidades_medida_router
@@ -54,7 +52,6 @@ from src.recetas.router import router as recetas_router
 from src.configuracion.router import router as configuracion_router
 from src.rotulado_frontal.router import router as rotulado_frontal_router
 from src.rotulado_frontal.services import asegurar_datos_iniciales as asegurar_parametros_rotulado
-from src.rotulado.router import router as rotulado_router
 from src.nutricion.router import router as nutricion_router
 
 ENV = settings.ENV.upper()
@@ -76,37 +73,17 @@ async def _tarea_diaria_snapshot_vista_publica() -> None:
 
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
-    actualizar_tablas_rotulado(engine)
     ModeloBase.metadata.create_all(bind=engine)
     with SessionLocal() as db:
         asegurar_parametros_rotulado(db)
-        from src.insumos.migraciones import migrar_columnas_nutricionales_insumos
-        migrar_columnas_nutricionales_insumos(db)
-    actualizar_tablas_rotulado(engine)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
             asegurar_unidades_base(db)
-            from src.nutricion.services import migrar_columnas_nutricionales, asegurar_parametros_defecto
-            migrar_columnas_nutricionales(db)
+            from src.nutricion.services import asegurar_parametros_defecto
             asegurar_parametros_defecto(db)
             asegurar_tipos_base(db)
-            try:
-                cols = [c[1] for c in db.execute(text("PRAGMA table_info(Identificador_UnicoDeQR)")).fetchall()]
-                for col in [
-                    "ver_dias_sin_incidentes",
-                    "ver_total_lotes",
-                    "ver_volumen_fabricado",
-                    "ver_producto_mas_elaborado",
-                    "ver_grafico_totales_productos",
-                    "ver_grafico_red_arana",
-                ]:
-                    if col not in cols:
-                        db.execute(text(f"ALTER TABLE Identificador_UnicoDeQR ADD COLUMN {col} BOOLEAN DEFAULT 0"))
-                db.commit()
-            except Exception:
-                db.rollback()
     with SessionLocal() as db:
         regenerar_snapshot_seguro(db)
     tarea_snapshot = asyncio.create_task(_tarea_diaria_snapshot_vista_publica())
@@ -181,5 +158,4 @@ app.include_router(proveedores_router, dependencies=SESION)
 app.include_router(unidades_medida_router, dependencies=SESION)
 app.include_router(recetas_router)
 app.include_router(rotulado_frontal_router, prefix="/rotulado-frontal", tags=["Rotulado frontal"], dependencies=SESION)
-app.include_router(rotulado_router)
 app.include_router(nutricion_router)

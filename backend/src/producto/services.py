@@ -4,17 +4,43 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 from src.producto import exceptions, schemas
 from src.producto.models import Producto
+from src.documentos.models import Documento
+from src.recetas.models import Receta
 from src.unidadesMedida.services import resolver_unidad_medida
 from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 
 
 def _obtener_nombre_receta(receta_obj: Any) -> Optional[str]:
-    """Devuelve el nombre de la receta asociada (soporta objeto único o lista de relaciones)."""
     if not receta_obj:
         return None
     if isinstance(receta_obj, list):
         return getattr(receta_obj[0], "nombre", None) if receta_obj else None
     return getattr(receta_obj, "nombre", None)
+
+
+def _resolver_nombre_receta_producto(db: Session, prod: Producto) -> Optional[str]:
+    if prod.receta:
+        return _obtener_nombre_receta(prod.receta)
+    if prod.documento_receta_id:
+        doc = db.scalar(select(Documento).where(Documento.id == prod.documento_receta_id))
+        if doc:
+            return doc.titulo
+    return None
+
+
+def _validar_id_receta(db: Session, id_receta: Optional[int]) -> Optional[int]:
+    if id_receta is None:
+        return None
+    doc = db.scalar(select(Documento).where(Documento.id == id_receta))
+    if doc is not None:
+        if (doc.tipo or "").strip().lower() != "receta":
+            raise exceptions.DocumentoNoEsReceta()
+        return doc.id
+    rec = db.scalar(select(Receta).where(Receta.id == id_receta))
+    if rec is None:
+        raise exceptions.RecetaNoEncontrada()
+    return rec.id
+
 
 def obtener_productos_para_exportar(
     db: Session,
@@ -33,7 +59,7 @@ def obtener_productos_para_exportar(
     for p in productos:
         nombre = p.nombre or ""
         descripcion = p.descripcion or ""
-        nombre_receta = _obtener_nombre_receta(p.receta) or ""
+        nombre_receta = _resolver_nombre_receta_producto(db, p) or ""
 
         if term:
             coincide = (
@@ -57,6 +83,8 @@ def obtener_productos_para_exportar(
         
     return filas
 
+obtener_productos_para_csv = obtener_productos_para_exportar
+
 def validar_nombre_unico(db: Session, nombre: str, producto_id_actual: Optional[int] = None) -> None:
     nombre_sin_espacios = nombre.replace(" ", "").lower()
     stmt = select(Producto).where(
@@ -72,6 +100,7 @@ def validar_nombre_unico(db: Session, nombre: str, producto_id_actual: Optional[
 
 def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
     validar_nombre_unico(db, producto.nombre)
+    doc_receta_id = _validar_id_receta(db, producto.id_receta)
 
     unidad = resolver_unidad_medida(
         db,
@@ -86,14 +115,16 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
         tamano_porcion_g=producto.tamano_porcion_g,
         porciones_por_envase=producto.porciones_por_envase,
         descripcion_porcion=producto.descripcion_porcion,
+        peso_unidad_g=producto.peso_unidad_g if producto.peso_unidad_g and producto.peso_unidad_g > 0 else 1000.0,
+        aplica_rotulado=producto.aplica_rotulado if producto.aplica_rotulado is not None else True,
+        documento_receta_id=doc_receta_id,
         activo=True,
     )
     db.add(_producto)
     db.commit()
     db.refresh(_producto)
 
-    if _producto.receta:
-        _producto.nombre_receta = _obtener_nombre_receta(_producto.receta)
+    _producto.nombre_receta = _resolver_nombre_receta_producto(db, _producto)
 
     return _producto
 
@@ -101,8 +132,7 @@ def listar_productos(db: Session) -> List[Producto]:
     productos = list(db.scalars(select(Producto).order_by(Producto.id.desc())).all())
 
     for prod in productos:
-        if prod.receta:
-            prod.nombre_receta = _obtener_nombre_receta(prod.receta)
+        prod.nombre_receta = _resolver_nombre_receta_producto(db, prod)
 
     return productos
 
@@ -111,8 +141,7 @@ def obtener_producto(db: Session, producto_id: int) -> Producto:
     if db_producto is None:
         raise exceptions.ProductoNoEncontrado()
 
-    if db_producto.receta:
-        db_producto.nombre_receta = _obtener_nombre_receta(db_producto.receta)
+    db_producto.nombre_receta = _resolver_nombre_receta_producto(db, db_producto)
 
     return db_producto
 
@@ -138,7 +167,9 @@ def editar_producto(
     if "nombre" in datos_actualizar and datos_actualizar["nombre"]:
         validar_nombre_unico(db, datos_actualizar["nombre"], producto_id_actual=producto_id)
 
-    datos_actualizar.pop("id_receta", None)
+    if "id_receta" in datos_actualizar:
+        id_rec = datos_actualizar.pop("id_receta")
+        datos_actualizar["documento_receta_id"] = _validar_id_receta(db, id_rec)
 
     if datos_actualizar:
         db.execute(
@@ -150,8 +181,7 @@ def editar_producto(
         db.refresh(db_producto)
         regenerar_snapshot_seguro(db)
 
-    if db_producto.receta:
-        db_producto.nombre_receta = _obtener_nombre_receta(db_producto.receta)
+    db_producto.nombre_receta = _resolver_nombre_receta_producto(db, db_producto)
 
     return db_producto
 

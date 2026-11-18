@@ -35,6 +35,44 @@ def exportar_tipos_insumos_csv(
 
 
 @router.get(
+    "/aditivos/catalogo",
+    response_model=List[schemas.AditivoResponse],
+    dependencies=[Depends(get_usuario_actual)],
+)
+async def listar_aditivos_endpoint(
+    solo_activos: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    return services.listar_aditivos(db, solo_activos=solo_activos)
+
+
+@router.post(
+    "/aditivos/catalogo",
+    response_model=schemas.AditivoResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requiere_admin)],
+)
+async def crear_aditivo_endpoint(
+    datos: schemas.AditivoCreate,
+    db: Session = Depends(get_db),
+):
+    return services.crear_aditivo(db, datos)
+
+
+@router.put(
+    "/aditivos/catalogo/{aditivo_id}",
+    response_model=schemas.AditivoResponse,
+    dependencies=[Depends(requiere_admin)],
+)
+async def actualizar_aditivo_endpoint(
+    aditivo_id: int,
+    datos: schemas.AditivoUpdate,
+    db: Session = Depends(get_db),
+):
+    return services.actualizar_aditivo(db, aditivo_id, datos)
+
+
+@router.get(
     "/",
     response_model=List[schemas.TipoInsumo],
     dependencies=[Depends(get_usuario_actual)],

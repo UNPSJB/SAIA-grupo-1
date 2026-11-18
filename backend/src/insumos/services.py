@@ -188,6 +188,24 @@ def recibir_lote_insumo(db: Session, datos: schemas.RecepcionInsumoRequest) -> I
         unidad_medida_id=tipo.unidad_medida_id,
         tipo_insumo_id=tipo.id,
         proveedor_id=proveedor.id,
+        es_aditivo=bool(getattr(tipo, "es_aditivo", False)),
+        energia_kcal=getattr(tipo, "energia_kcal", None),
+        energia_kj=getattr(tipo, "energia_kj", None),
+        carbohidratos=getattr(tipo, "carbohidratos", None),
+        azucares_totales=getattr(tipo, "azucares_totales", None),
+        azucares_anadidos=getattr(tipo, "azucares_anadidos", None),
+        proteinas=getattr(tipo, "proteinas", None),
+        grasas_totales=getattr(tipo, "grasas_totales", None),
+        grasas_saturadas=getattr(tipo, "grasas_saturadas", None),
+        grasas_trans=getattr(tipo, "grasas_trans", None),
+        fibra_alimentaria=getattr(tipo, "fibra_alimentaria", None),
+        sodio_mg=getattr(tipo, "sodio_mg", None),
+        fuente_datos=getattr(tipo, "fuente_datos", None),
+        fuente_detalle=getattr(tipo, "fuente_detalle", None),
+        alimento_referencia_id=getattr(tipo, "alimento_referencia_id", None),
+        fecha_carga_nutricional=getattr(tipo, "fecha_carga_nutricional", None),
+        usuario_carga_nutricional=getattr(tipo, "usuario_carga_nutricional", None),
+        modificado_manualmente=bool(getattr(tipo, "modificado_manualmente", False)),
         activo=True,
     )
     db.add(_insumo)
@@ -718,6 +736,67 @@ def guardar_nutricion_insumo(
     insumo.grasas_trans = datos.grasas_trans
     insumo.fibra_alimentaria = datos.fibra_alimentaria
     insumo.sodio_mg = datos.sodio_mg
+
+    if insumo.tipo_insumo_id and getattr(insumo, "tipo", None):
+        tipo_obj = insumo.tipo
+        for campo_sync in (
+            "es_aditivo",
+            "fuente_datos",
+            "fuente_detalle",
+            "alimento_referencia_id",
+            "fecha_carga_nutricional",
+            "usuario_carga_nutricional",
+            "modificado_manualmente",
+            "fecha_modificacion_nutricional",
+            "usuario_modificacion_nutricional",
+            "valores_referencia_json",
+            "energia_kcal",
+            "energia_kj",
+            "carbohidratos",
+            "azucares_totales",
+            "azucares_anadidos",
+            "proteinas",
+            "grasas_totales",
+            "grasas_saturadas",
+            "grasas_trans",
+            "fibra_alimentaria",
+            "sodio_mg",
+        ):
+            setattr(tipo_obj, campo_sync, getattr(insumo, campo_sync))
+
+        otros_lotes = list(
+            db.scalars(
+                select(Insumo).where(
+                    Insumo.tipo_insumo_id == insumo.tipo_insumo_id,
+                    Insumo.id != insumo.id,
+                )
+            ).all()
+        )
+        for otro in otros_lotes:
+            for campo_sync in (
+                "es_aditivo",
+                "fuente_datos",
+                "fuente_detalle",
+                "alimento_referencia_id",
+                "fecha_carga_nutricional",
+                "usuario_carga_nutricional",
+                "modificado_manualmente",
+                "fecha_modificacion_nutricional",
+                "usuario_modificacion_nutricional",
+                "valores_referencia_json",
+                "energia_kcal",
+                "energia_kj",
+                "carbohidratos",
+                "azucares_totales",
+                "azucares_anadidos",
+                "proteinas",
+                "grasas_totales",
+                "grasas_saturadas",
+                "grasas_trans",
+                "fibra_alimentaria",
+                "sodio_mg",
+            ):
+                setattr(otro, campo_sync, getattr(insumo, campo_sync))
 
     db.commit()
     db.refresh(insumo)

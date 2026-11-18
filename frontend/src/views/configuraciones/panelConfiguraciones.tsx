@@ -15,6 +15,8 @@ const MAESTROS_BASICOS: MaestroBasico[] = [
   { modulo: 'tipoCertificado', titulo: 'Tipos de Certificado', descripcion: 'Habilitaciones que se le exigen al personal.' },
   { modulo: 'tipoDocumento', titulo: 'Tipos de Documento', descripcion: 'Clasificación de los documentos versionados.' },
   { modulo: 'motivos', titulo: 'Motivos de No Realización', descripcion: 'Causas para marcar una tarea del checklist como no realizada.' },
+  { modulo: 'unidadesMedida', titulo: 'Unidades de Medida', descripcion: 'Catálogo de unidades de medida para insumos, recetas y productos.' },
+  { modulo: 'proveedores', titulo: 'Proveedores', descripcion: 'Registro y administración de proveedores de insumos.' },
 ];
 
 const PARAMETROS: { campo: keyof Omit<ParametrosVistaPublica, 'habilitada'>; label: string }[] = [
@@ -65,7 +67,7 @@ export function PanelConfiguraciones({
     <div className="modulo-container configuraciones">
       <div className="modulo-header">
         <h1>Configuraciones</h1>
-        <div className="subtitulo">Maestros básicos y parámetros de la vista pública</div>
+        <div className="subtitulo">Maestros básicos, rotulado y parámetros de la vista pública</div>
       </div>
 
       <section className="config-panel-seccion">
@@ -77,6 +79,16 @@ export function PanelConfiguraciones({
               <span className="config-panel-tarjeta-desc">{m.descripcion}</span>
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="config-panel-seccion">
+        <h2 className="config-panel-titulo">Rotulado</h2>
+        <div className="config-panel-grilla">
+          <button type="button" className="config-panel-tarjeta" onClick={() => onAbrirMaestro('rotuladoFrontal')}>
+            <span className="config-panel-tarjeta-titulo">Rotulado Frontal</span>
+            <span className="config-panel-tarjeta-desc">Parámetros normativos, reglas de exceso y activación del módulo de sellos de advertencia.</span>
+          </button>
         </div>
       </section>
 

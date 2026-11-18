@@ -14,6 +14,11 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
     nombre: '',
     descripcion: '',
     unidad_medida_id: '',
+    cantidad_referencia: 1,
+    equivalencia_gramos: '',
+    es_aditivo: false,
+    clase_funcional: '',
+    numero_ins: '',
   });
   const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,6 +85,11 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
         nombre: nombreLimpio,
         descripcion: form.descripcion.trim() || null,
         unidad_medida_id: Number(form.unidad_medida_id),
+        cantidad_referencia: form.cantidad_referencia ? Number(form.cantidad_referencia) : 1.0,
+        equivalencia_gramos: form.equivalencia_gramos !== '' && form.equivalencia_gramos !== undefined ? Number(form.equivalencia_gramos) : null,
+        es_aditivo: Boolean(form.es_aditivo),
+        clase_funcional: form.es_aditivo ? (form.clase_funcional?.trim() || null) : null,
+        numero_ins: form.es_aditivo ? (form.numero_ins?.trim() || null) : null,
       };
 
       const res = await apiFetch('/insumos/tipos/', {
@@ -149,6 +159,25 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="equivalencia_gramos">Equivalencia en Gramos (por 1 unidad de medida)</label>
+          <input
+            id="equivalencia_gramos"
+            name="equivalencia_gramos"
+            type="number"
+            min="0.01"
+            step="any"
+            placeholder="Ej: 60 si 1 unidad pesa 60g, 1000 si es kg/l"
+            value={form.equivalencia_gramos ?? ''}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                equivalencia_gramos: e.target.value ? Number(e.target.value) : '',
+              })
+            }
+          />
         </div>
 
         <div className="form-group">

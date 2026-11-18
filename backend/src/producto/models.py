@@ -17,7 +17,7 @@ class Producto(ModeloBase):
     nombre: Mapped[str] = mapped_column(String(50), index=True, unique=True, nullable=True)
     descripcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     unidad_medida_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("unidades_medida.id"), index=True, nullable=False
+        Integer, ForeignKey("unidades_medida.id"), index=True, nullable=False, default=1
     )
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     visible_publico: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -30,12 +30,38 @@ class Producto(ModeloBase):
     tamano_porcion_g: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
     porciones_por_envase: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
     descripcion_porcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default=None)
+    peso_unidad_g: Mapped[float] = mapped_column(Float, nullable=False, default=1000.0)
+    aplica_rotulado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    documento_receta_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
+
+    @property
+    def id_receta(self) -> Optional[int]:
+        if self.receta:
+            if isinstance(self.receta, list):
+                return getattr(self.receta[0], "id", None) if self.receta else self.documento_receta_id
+            return getattr(self.receta, "id", None)
+        return self.documento_receta_id
 
     @property
     def unidadMedida(self) -> str:
         if self.unidad_medida_rel:
             return self.unidad_medida_rel.nombre.lower()
-        return ""
+        return getattr(self, "_unidad_medida_fallback", "kilogramos")
+
+    @unidadMedida.setter
+    def unidadMedida(self, val: object) -> None:
+        v_str = (val.value if hasattr(val, "value") else str(val or "kilogramos")).strip().lower()
+        self._unidad_medida_fallback = v_str
+        if v_str in ("g", "gr", "gramo", "gramos"):
+            self.unidad_medida_id = 2
+        elif v_str in ("l", "lt", "litro", "litros"):
+            self.unidad_medida_id = 3
+        elif v_str in ("ml", "cc", "mililitro", "mililitros"):
+            self.unidad_medida_id = 4
+        elif v_str in ("u", "un", "unid", "unidad", "unidades"):
+            self.unidad_medida_id = 5
+        else:
+            self.unidad_medida_id = 1
 
     @property
     def unidad_medida_nombre(self) -> str:

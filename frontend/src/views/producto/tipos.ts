@@ -17,6 +17,8 @@ export interface Producto {
   tamano_porcion_g?: number | null;
   porciones_por_envase?: number | null;
   descripcion_porcion?: string | null;
+  peso_unidad_g?: number | null;
+  aplica_rotulado?: boolean;
   activo: boolean;
   visible_publico?: boolean;
 }

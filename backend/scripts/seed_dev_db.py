@@ -464,6 +464,35 @@ def main() -> None:
         if insumo_obj.nombre in datos_nutricionales:
             for c, v in datos_nutricionales[insumo_obj.nombre].items():
                 setattr(insumo_obj, c, v)
+            insumo_obj.fuente_datos = "SARA_2"
+            if insumo_obj.tipo_insumo_id:
+                tipo_db = db.get(TipoInsumo, insumo_obj.tipo_insumo_id)
+                if tipo_db and tipo_db.energia_kcal is None:
+                    for c, v in datos_nutricionales[insumo_obj.nombre].items():
+                        setattr(tipo_db, c, v)
+                    tipo_db.fuente_datos = "SARA_2"
+    tipo_huevos = db.query(TipoInsumo).filter(TipoInsumo.nombre == "Huevos").first()
+    if tipo_huevos:
+        tipo_huevos.cantidad_referencia = 1.0
+        tipo_huevos.equivalencia_gramos = 60.0
+    from src.tipoInsumo.schemas import AditivoCreate
+    from src.tipoInsumo.services import crear_aditivo
+    for ad_nom, ad_func, ad_ins, ad_um, ad_aroma in [
+        ("Esencia de Vainilla", "Aromatizante", None, "mililitros", True),
+        ("Bicarbonato de Sodio (Polvo Leudante)", "Leudante químico", "500ii", "gramos", False),
+        ("Propionato de Calcio", "Conservante", "282", "gramos", False),
+        ("Lecitina de Soja", "Emulsionante", "322", "gramos", False),
+    ]:
+        crear_aditivo(
+            db,
+            AditivoCreate(
+                nombre=ad_nom,
+                clase_funcional=ad_func,
+                numero_ins=ad_ins,
+                unidad_medida_id=unidades_map[ad_um],
+                es_aromatizante=ad_aroma,
+            ),
+        )
     db.commit()
 
     for item in INSUMOS_QUIMICOS:
@@ -1728,6 +1757,11 @@ def main() -> None:
     db.add_all(detalles_torta)
     db.commit()
 
+    for det_db in db.query(RecetaDetalle).all():
+        if det_db.ingrediente and det_db.ingrediente.tipo_insumo_id and not det_db.tipo_insumo_id:
+            det_db.tipo_insumo_id = det_db.ingrediente.tipo_insumo_id
+    db.commit()
+
     p_torta.tamano_porcion_g = 60.0
     p_torta.porciones_por_envase = 23.0
     p_torta.descripcion_porcion = "1 porcion (60g)"
@@ -1788,12 +1822,18 @@ def main() -> None:
 
     for idx, (prod, f_lote, cant, resp, ins_lista) in enumerate(lotes_cronograma, start=1):
         cod = f"L-{f_lote:%Y%m%d}-{idx:02d}"
+        ver_prod_id = None
+        if prod.receta:
+            rec_obj = prod.receta[0] if isinstance(prod.receta, list) else prod.receta
+            if rec_obj and rec_obj.version_actual:
+                ver_prod_id = rec_obj.version_actual.id
         lote_obj = LoteProduccion(
             codigo=cod,
             producto_id=prod.id,
             fecha=f_lote,
             cantidad=cant,
             responsable_legajo=resp,
+            version_receta_id=ver_prod_id,
         )
         for nom_ins, cant_ins in ins_lista:
             ins_db = insumos_map.get(nom_ins)

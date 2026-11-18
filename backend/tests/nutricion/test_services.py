@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime
 from sqlalchemy.orm import Session
-from src.insumos.models import Insumo, UnidadMedida
+from src.insumos.models import Insumo
 from src.producto.models import Producto
 from src.recetas.models import Receta, VersionReceta, RecetaDetalle
 from src.nutricion import services
@@ -90,7 +90,7 @@ def test_actualizar_datos_insumo(session: Session):
         fechaRecepcion=datetime.now(),
         cantRecibida=10.0,
         stock=10.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        medida="kilogramos",
     )
     session.add(insumo)
     session.commit()
@@ -118,7 +118,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         fechaRecepcion=ahora,
         cantRecibida=100.0,
         stock=100.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        medida="kilogramos",
         energia_kcal=350.0,
         energia_kj=1464.4,
         carbohidratos=72.0,
@@ -137,7 +137,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         fechaRecepcion=ahora,
         cantRecibida=100.0,
         stock=100.0,
-        medida=UnidadMedida.LITROS,
+        medida="litros",
         energia_kcal=0.0,
         energia_kj=0.0,
         carbohidratos=0.0,
@@ -156,7 +156,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         fechaRecepcion=ahora,
         cantRecibida=10.0,
         stock=10.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        medida="kilogramos",
         energia_kcal=105.0,
         energia_kj=439.3,
         carbohidratos=11.0,
@@ -175,7 +175,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         fechaRecepcion=ahora,
         cantRecibida=10.0,
         stock=10.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        medida="kilogramos",
         energia_kcal=0.0,
         energia_kj=0.0,
         carbohidratos=0.0,
@@ -194,7 +194,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         fechaRecepcion=ahora,
         cantRecibida=10.0,
         stock=10.0,
-        medida=UnidadMedida.LITROS,
+        medida="litros",
         energia_kcal=900.0,
         energia_kj=3765.6,
         carbohidratos=0.0,
@@ -210,8 +210,21 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
     session.add_all([h_harina, h_agua, h_levadura, h_sal, h_aceite])
     session.flush()
 
+    prod = Producto(
+        nombre="Pan de Campo Certificado",
+        descripcion="500g",
+        unidadMedida="kilogramos",
+        activo=True,
+        tamano_porcion_g=50.0,
+        porciones_por_envase=28.0,
+    )
+    session.add(prod)
+    session.flush()
+
     receta = Receta(
         nombre="Pan de Campo Catedra",
+        id_producto=prod.id,
+        operario_legajo=1,
         rendimiento_final=1400.0,
         activo=True,
     )
@@ -236,7 +249,6 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
             cantidad=1000.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
-            operario_legajo=1,
             descripcion_pasos="Tamizar.",
         ),
         RecetaDetalle(
@@ -246,7 +258,6 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
             cantidad=600.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
-            operario_legajo=1,
             descripcion_pasos="Añadir agua.",
         ),
         RecetaDetalle(
@@ -256,7 +267,6 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
             cantidad=30.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
-            operario_legajo=1,
             descripcion_pasos="Disolver.",
         ),
         RecetaDetalle(
@@ -266,7 +276,6 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
             cantidad=20.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
-            operario_legajo=1,
             descripcion_pasos="Amasar.",
         ),
         RecetaDetalle(
@@ -276,23 +285,10 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
             cantidad=20.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
-            operario_legajo=1,
             descripcion_pasos="Incorporar aceite.",
         ),
     ]
     session.add_all(detalles)
-    session.flush()
-
-    prod = Producto(
-        nombre="Pan de Campo Certificado",
-        descripcion="500g",
-        unidadMedida=UnidadMedida.KILOGRAMOS,
-        activo=True,
-        receta_id=receta.id,
-        tamano_porcion_g=50.0,
-        porciones_por_envase=28.0,
-    )
-    session.add(prod)
     session.commit()
 
     resultado = services.calcular_informacion_nutricional(
@@ -335,7 +331,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
 def test_producto_sin_receta_falla(session: Session):
     prod = Producto(
         nombre="Producto Huerfano",
-        unidadMedida=UnidadMedida.KILOGRAMOS,
+        unidadMedida="kilogramos",
         activo=True,
     )
     session.add(prod)
@@ -345,21 +341,22 @@ def test_producto_sin_receta_falla(session: Session):
         services.calcular_informacion_nutricional(session, prod.id)
 
 def test_receta_sin_ingredientes_falla(session: Session):
+    prod = Producto(
+        nombre="Producto Con Receta Vacia",
+        unidadMedida="kilogramos",
+        activo=True,
+    )
+    session.add(prod)
+    session.flush()
+
     receta = Receta(
         nombre="Receta Vacia",
+        id_producto=prod.id,
+        operario_legajo=1,
         rendimiento_final=100.0,
         activo=True,
     )
     session.add(receta)
-    session.flush()
-
-    prod = Producto(
-        nombre="Producto Con Receta Vacia",
-        unidadMedida=UnidadMedida.KILOGRAMOS,
-        activo=True,
-        receta_id=receta.id,
-    )
-    session.add(prod)
     session.commit()
 
     with pytest.raises(RecetaSinIngredientesError):

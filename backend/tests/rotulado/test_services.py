@@ -1,7 +1,7 @@
 from datetime import date
 import pytest
 from sqlalchemy.orm import Session
-from src.insumos.models import Insumo, UnidadMedida
+from src.insumos.models import Insumo
 from src.personal.models import Personal
 from src.personal.schemas import Capacidades
 from src.produccion.models import InsumoLote, LoteProduccion
@@ -232,7 +232,7 @@ def test_previsualizar_orden():
 def test_guardar_y_obtener_lista_rotulo_db(session: Session):
     prod = Producto(
         nombre="Pan Casero Test",
-        unidadMedida=UnidadMedida.KILOGRAMOS,
+        unidadMedida="kilogramos",
         activo=True,
     )
     session.add(prod)
@@ -458,7 +458,7 @@ def test_cambiar_formato_aditivos(session: Session):
 def test_disponibilidad_para_rotulado_e13(session: Session):
     prod = Producto(
         nombre="Cerveza Test",
-        unidadMedida=UnidadMedida.LITROS,
+        unidadMedida="litros",
         activo=True,
     )
     session.add(prod)
@@ -493,7 +493,7 @@ def test_disponibilidad_para_rotulado_e13(session: Session):
 def test_importar_desde_lote(session: Session):
     prod = Producto(
         nombre="Pan de Molde Lote Test",
-        unidadMedida=UnidadMedida.KILOGRAMOS,
+        unidadMedida="kilogramos",
         activo=True,
     )
     session.add(prod)
@@ -520,7 +520,7 @@ def test_importar_desde_lote(session: Session):
         fechaRecepcion=date.today(),
         cantRecibida=100.0,
         stock=100.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        medida="kilogramos",
     )
     ins2 = Insumo(
         nombre="Esencia de Vainilla",
@@ -528,7 +528,7 @@ def test_importar_desde_lote(session: Session):
         fechaRecepcion=date.today(),
         cantRecibida=10.0,
         stock=10.0,
-        medida=UnidadMedida.LITROS,
+        medida="litros",
     )
     ins3 = Insumo(
         nombre="Polvo de Hornear",
@@ -536,7 +536,7 @@ def test_importar_desde_lote(session: Session):
         fechaRecepcion=date.today(),
         cantRecibida=10.0,
         stock=10.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        medida="kilogramos",
     )
     session.add_all([ins1, ins2, ins3])
     session.commit()
@@ -634,10 +634,10 @@ def test_ramas_auxiliares_cobertura(session: Session):
     assert dec == "Aditivo (Compuesto X)"
 
     prod1 = Producto(
-        nombre="Prod Lote Rama 1", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True
+        nombre="Prod Lote Rama 1", unidadMedida="kilogramos", activo=True
     )
     prod2 = Producto(
-        nombre="Prod Lote Rama 2", unidadMedida=UnidadMedida.KILOGRAMOS, activo=True
+        nombre="Prod Lote Rama 2", unidadMedida="kilogramos", activo=True
     )
     user = Personal(
         legajo=777,
@@ -671,7 +671,7 @@ def test_ramas_auxiliares_cobertura(session: Session):
         fechaRecepcion=date.today(),
         cantRecibida=10.0,
         stock=10.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        medida="kilogramos",
     )
     session.add(ins_cero)
     session.commit()
@@ -697,7 +697,7 @@ def test_ramas_auxiliares_cobertura(session: Session):
         fechaRecepcion=date.today(),
         cantRecibida=10000.0,
         stock=10000.0,
-        medida=UnidadMedida.KILOGRAMOS,
+        medida="kilogramos",
     )
     ins_diminuto = Insumo(
         nombre="Aditivo Diminuto",
@@ -705,7 +705,7 @@ def test_ramas_auxiliares_cobertura(session: Session):
         fechaRecepcion=date.today(),
         cantRecibida=1.0,
         stock=1.0,
-        medida=UnidadMedida.GRAMOS,
+        medida="gramos",
     )
     session.add_all([ins_grande, ins_diminuto])
     session.commit()
@@ -731,7 +731,7 @@ def test_ramas_auxiliares_cobertura(session: Session):
 def _crear_prod_y_user_aux(session: Session, nombre_prod: str):
     prod = Producto(
         nombre=nombre_prod,
-        unidadMedida=UnidadMedida.KILOGRAMOS,
+        unidadMedida="kilogramos",
         activo=True,
     )
     user = Personal(

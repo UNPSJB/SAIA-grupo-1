@@ -127,7 +127,7 @@ def _auditar(
     )
 
 
-IMAGENES_DIR = Path(__file__).resolve().parent / "imagenes"
+IMAGENES_DIR = Path(__file__).resolve().parent / "archivos"
 IMAGENES_DIR.mkdir(parents=True, exist_ok=True)
 
 

@@ -23,7 +23,7 @@ from src.incidentes.constants import (
 )
 from src.personal.models import Personal
 
-IMAGENES_DIR = Path(__file__).resolve().parent / "imagenes"
+IMAGENES_DIR = Path(__file__).resolve().parent / "archivos"
 IMAGENES_DIR.mkdir(parents=True, exist_ok=True)
 
 def obtener_incidentes_para_exportar(

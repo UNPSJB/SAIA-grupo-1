@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from src.controlesAmbientales import exceptions, models, schemas
 from src.controlesAmbientales.models import ControlAmbiental, VisitaControlAmbiental, TipoControlAmbiental
 
-STORAGE_DIR = Path(__file__).resolve().parent / "certificados"
+STORAGE_DIR = Path(__file__).resolve().parent / "archivos"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 EXTENSIONES_PERMITIDAS = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}

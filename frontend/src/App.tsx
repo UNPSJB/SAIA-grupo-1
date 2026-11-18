@@ -501,6 +501,9 @@ interface RegistroVencimientoRef {
     tipoCertificado: 'Tipos de Certificado',
     tipoDocumento: 'Tipos de Documento',
     motivos: 'Motivos de No Realización',
+    unidadesMedida: 'Unidades de Medida',
+    proveedores: 'Proveedores',
+    rotuladoFrontal: 'Rotulado Frontal',
     vistaPublica: 'Vista Pública',
   };
 

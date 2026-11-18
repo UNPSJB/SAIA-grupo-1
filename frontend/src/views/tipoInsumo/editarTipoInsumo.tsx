@@ -45,6 +45,7 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
             nombre: data.nombre,
             descripcion: data.descripcion || '',
             unidad_medida_id: unidadCoincidente,
+            equivalencia_gramos: data.equivalencia_gramos ?? '',
           });
         } else if (!cancelado) {
           setErrorMsg('No se pudo cargar la información del tipo de insumo.');
@@ -94,6 +95,7 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
         nombre: nombreLimpio,
         descripcion: form.descripcion.trim() || null,
         unidad_medida_id: Number(form.unidad_medida_id),
+        equivalencia_gramos: form.equivalencia_gramos !== '' && form.equivalencia_gramos !== undefined ? Number(form.equivalencia_gramos) : null,
       };
 
       const res = await apiFetch(`/insumos/tipos/${id}`, {
@@ -171,6 +173,25 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
                 </option>
               ))}
           </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="equivalencia_gramos">Equivalencia en Gramos (por 1 unidad de medida)</label>
+          <input
+            id="equivalencia_gramos"
+            name="equivalencia_gramos"
+            type="number"
+            min="0.01"
+            step="any"
+            placeholder="Ej: 60 si 1 unidad pesa 60g, 1000 si es kg/l"
+            value={form.equivalencia_gramos ?? ''}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                equivalencia_gramos: e.target.value ? Number(e.target.value) : '',
+              })
+            }
+          />
         </div>
 
         <div className="form-group">

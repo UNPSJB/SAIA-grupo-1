@@ -12,7 +12,7 @@ from src.indentificadorDeQR.models import IndentificadorUnico
 
 logger = logging.getLogger(__name__)
 
-SNAPSHOT_DIR = Path(__file__).resolve().parents[2] / "storage" / "vista_publica"
+SNAPSHOT_DIR = Path(__file__).resolve().parent / "archivos"
 SNAPSHOT_FILE = SNAPSHOT_DIR / "vista_publica.json"
 _SNAPSHOT_LOCK = threading.Lock()
 

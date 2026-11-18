@@ -121,6 +121,7 @@ def listar_lotes(
     producto_id: Optional[int] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    version_receta_id: Optional[int] = None,
 ) -> List[LoteProduccion]:
     if desde is not None and desde < date(2000, 1, 1):
         raise exceptions.RangoFechasInvalido()
@@ -129,6 +130,8 @@ def listar_lotes(
     consulta = select(LoteProduccion)
     if producto_id is not None:
         consulta = consulta.where(LoteProduccion.producto_id == producto_id)
+    if version_receta_id is not None:
+        consulta = consulta.where(LoteProduccion.version_receta_id == version_receta_id)
     if desde is not None:
         consulta = consulta.where(LoteProduccion.fecha >= desde)
     if hasta is not None:

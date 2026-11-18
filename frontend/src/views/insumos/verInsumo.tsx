@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { InsumoConId, InsumoDetalleTrazabilidad } from "./tipos";
 import { DatosNutricionalesModal } from "./DatosNutricionalesModal";
+import { DetalleLote } from "../produccion/detalleLote";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 
@@ -31,6 +32,7 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver
   const [modalNutricionAbierto, setModalNutricionAbierto] = useState<boolean>(false);
   const [trazabilidad, setTrazabilidad] = useState<InsumoDetalleTrazabilidad | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [loteProduccionSeleccionadoId, setLoteProduccionSeleccionadoId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -135,6 +137,15 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver
     estadoVencimiento: insumo.estadoVencimiento || 'VIGENTE',
     lotes_produccion: [],
   };
+
+  if (loteProduccionSeleccionadoId !== null) {
+    return (
+      <DetalleLote
+        loteId={loteProduccionSeleccionadoId}
+        onVolver={() => setLoteProduccionSeleccionadoId(null)}
+      />
+    );
+  }
 
   return (
     <div className="modulo-container">
@@ -257,7 +268,23 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver
             ) : (
               detalle.lotes_produccion.map((lp) => (
                 <tr key={lp.lote_produccion_id}>
-                  <td style={{ fontWeight: 600 }}>{lp.lote_produccion_codigo}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    <button
+                      type="button"
+                      onClick={() => setLoteProduccionSeleccionadoId(lp.lote_produccion_id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        color: '#38bdf8',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      {lp.lote_produccion_codigo}
+                    </button>
+                  </td>
                   <td>{lp.producto_nombre}</td>
                   <td>{formatDate(lp.fecha_produccion)}</td>
                   <td style={{ fontWeight: 600 }}>

@@ -11,10 +11,12 @@ class ProductoBase(BaseModel):
     tamano_porcion_g: Optional[float] = None
     porciones_por_envase: Optional[float] = None
     descripcion_porcion: Optional[str] = None
+    peso_unidad_g: Optional[float] = 1000.0
+    aplica_rotulado: Optional[bool] = True
 
 class ProductoCreate(ProductoBase):
-
-    receta:Optional[RecetaBase] = None
+    id_receta: Optional[int] = None
+    receta: Optional[RecetaBase] = None
     
     @field_validator('nombre')
     @classmethod
@@ -37,10 +39,13 @@ class ProductoUpdate(ProductoBase):
     descripcion: Optional[str] = None
     unidad_medida_id: Optional[int] = None
     unidadMedida: Optional[str] = None
-    receta:Optional[RecetaBase] = None
+    id_receta: Optional[int] = None
+    receta: Optional[RecetaBase] = None
     tamano_porcion_g: Optional[float] = None
     porciones_por_envase: Optional[float] = None
     descripcion_porcion: Optional[str] = None
+    peso_unidad_g: Optional[float] = None
+    aplica_rotulado: Optional[bool] = None
 
     @field_validator('nombre')
     @classmethod
@@ -58,7 +63,10 @@ class ProductoResponse(ProductoBase):
     unidadMedida: str
     unidad_medida_nombre: Optional[str] = None
     unidad_medida_abreviatura: Optional[str] = None
+    id_receta: Optional[int] = None
     nombre_receta: Optional[str] = None
+    peso_unidad_g: float = 1000.0
+    aplica_rotulado: bool = True
     activo: bool
     visible_publico: bool = False
 

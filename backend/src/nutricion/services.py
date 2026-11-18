@@ -179,8 +179,13 @@ def calcular_vd(valor_porcion: float, vdr: Optional[float]) -> tuple[Optional[fl
     return float(vd_redondeado), f"{int(vd_redondeado)}%"
 
 def resolver_receta_para_producto(db: Session, producto: Producto, receta_id: Optional[int] = None) -> Receta:
-    r_id = receta_id or getattr(producto, "receta_id", None)
+    r_id = receta_id or getattr(producto, "id_receta", None) or getattr(producto, "receta_id", None)
     if not r_id:
+        r_by_prod = db.scalar(
+            select(Receta).where(Receta.id_producto == producto.id, Receta.activo == True)
+        )
+        if r_by_prod:
+            return r_by_prod
         r_by_name = db.scalar(
             select(Receta).where(Receta.nombre.ilike(f"%{producto.nombre}%"))
         )
@@ -201,8 +206,8 @@ def calcular_informacion_nutricional(
     porciones_por_envase: Optional[float] = None,
     descripcion_porcion: Optional[str] = None,
     usuario_actual: Optional[str] = None,
+    version_receta_id: Optional[int] = None,
 ) -> InformacionNutricionalResponse:
-    migrar_columnas_nutricionales(db)
     asegurar_parametros_defecto(db)
 
     producto = db.get(Producto, producto_id)
@@ -211,7 +216,16 @@ def calcular_informacion_nutricional(
 
     receta = resolver_receta_para_producto(db, producto, receta_id)
 
-    version: Optional[VersionReceta] = receta.version_actual
+    version: Optional[VersionReceta] = None
+    if version_receta_id is not None:
+        version = db.scalar(
+            select(VersionReceta).where(
+                VersionReceta.id == version_receta_id,
+                VersionReceta.receta_id == receta.id,
+            )
+        )
+    if not version:
+        version = receta.version_actual
     detalles: List[RecetaDetalle] = version.detalles if version else []
     if not detalles:
         raise RecetaSinIngredientesError()
@@ -241,7 +255,6 @@ def calcular_informacion_nutricional(
         or getattr(producto, "descripcion_porcion", None)
     )
 
-    setattr(producto, "receta_id", receta.id)
     setattr(producto, "tamano_porcion_g", porcion)
     if porciones_env is not None:
         setattr(producto, "porciones_por_envase", porciones_env)
@@ -256,29 +269,42 @@ def calcular_informacion_nutricional(
     totales_aportes_lote: Dict[str, float] = {k: 0.0 for k in NUTRIENTES_CAMPOS}
     peso_total_ingredientes = 0.0
 
+    from src.recetas.services import convertir_detalle_a_gramos
+
     for det in detalles:
         insumo = det.ingrediente
-        if not insumo:
+        if not insumo and det.ingrediente_id:
             insumo = db.get(Insumo, det.ingrediente_id)
-        if not insumo:
+        tipo_obj = det.tipo_insumo
+        adit_obj = det.aditivo
+        if not insumo and not tipo_obj and not adit_obj:
             continue
 
-        cant_g = normalizar_a_gramos(det.cantidad, det.unidad_medida)
+        cant_g_calc, _ = convertir_detalle_a_gramos(db, det)
+        cant_g = cant_g_calc if cant_g_calc is not None else normalizar_a_gramos(det.cantidad, det.unidad_medida)
         peso_total_ingredientes += cant_g
 
         aportes_item: Dict[str, float] = {}
         for nutriente in NUTRIENTES_CAMPOS:
-            val_100g_ingrediente = getattr(insumo, nutriente, None)
+            val_100g_ingrediente = None
+            if tipo_obj is not None:
+                val_100g_ingrediente = getattr(tipo_obj, nutriente, None)
+            if val_100g_ingrediente is None and adit_obj is not None:
+                val_100g_ingrediente = getattr(adit_obj, nutriente, None)
+            if val_100g_ingrediente is None and insumo is not None:
+                val_100g_ingrediente = getattr(insumo, nutriente, None)
             if val_100g_ingrediente is None:
                 val_100g_ingrediente = 0.0
             aporte = (cant_g * float(val_100g_ingrediente)) / 100.0
             aportes_item[nutriente] = aporte
             totales_aportes_lote[nutriente] += aporte
 
+        id_ing_ref = (insumo.id if insumo else (tipo_obj.id if tipo_obj else (adit_obj.id if adit_obj else 0)))
+        nom_ing_ref = det.nombre_ingrediente
         detalles_aportes.append(
             DetalleAporteIngrediente(
-                ingrediente_id=insumo.id,
-                nombre_ingrediente=insumo.nombre,
+                ingrediente_id=id_ing_ref,
+                nombre_ingrediente=nom_ing_ref,
                 cantidad_receta=det.cantidad,
                 unidad_medida=det.unidad_medida,
                 cantidad_gramos=cant_g,

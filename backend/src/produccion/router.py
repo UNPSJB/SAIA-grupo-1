@@ -83,9 +83,10 @@ def listar_lotes_endpoint(
     producto_id: Optional[int] = Query(None),
     desde: Optional[date] = Query(None),
     hasta: Optional[date] = Query(None),
+    version_receta_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
-    return services.listar_lotes(db, producto_id, desde, hasta)
+    return services.listar_lotes(db, producto_id, desde, hasta, version_receta_id=version_receta_id)
 
 
 # va antes de /{lote_id} para que "insumos-disponibles" no se tome como un id.

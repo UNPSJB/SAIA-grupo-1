@@ -105,6 +105,8 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
       descripcion: producto.descripcion?.trim() || null,
       unidad_medida_id: Number(producto.unidad_medida_id),
       id_receta: producto.id_receta ? Number(producto.id_receta) : null,
+      peso_unidad_g: producto.peso_unidad_g && Number(producto.peso_unidad_g) > 0 ? Number(producto.peso_unidad_g) : 1000.0,
+      aplica_rotulado: producto.aplica_rotulado !== false,
     };
 
     setLoading(true);
@@ -199,6 +201,46 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="peso_unidad_g">
+            Peso equivalente de 1 unidad de producto (en gramos) <span style={{ color: "var(--color-error-texto)" }}>*</span>
+          </label>
+          <input
+            id="peso_unidad_g"
+            name="peso_unidad_g"
+            type="number"
+            min="1"
+            step="any"
+            value={producto.peso_unidad_g ?? 1000}
+            onChange={(e) =>
+              setProducto({
+                ...producto,
+                peso_unidad_g: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+            required
+          />
+        </div>
+
+        <div className="form-group" style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "0.75rem" }}>
+          <input
+            id="aplica_rotulado"
+            name="aplica_rotulado"
+            type="checkbox"
+            checked={producto.aplica_rotulado !== false}
+            onChange={(e) =>
+              setProducto({
+                ...producto,
+                aplica_rotulado: e.target.checked,
+              })
+            }
+            style={{ width: "18px", height: "18px", cursor: "pointer" }}
+          />
+          <label htmlFor="aplica_rotulado" style={{ margin: 0, cursor: "pointer" }}>
+            Se aplica rotulado y tabla nutricional a este producto
+          </label>
         </div>
 
         <div className="form-group">

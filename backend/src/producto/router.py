@@ -80,6 +80,16 @@ async def read_producto(producto_id: int, db: Session = Depends(get_db)):
     return services.obtener_producto(db, producto_id)
 
 
+@router.get("/{producto_id}/composicion-porcentual", dependencies=[Depends(get_usuario_actual)])
+async def read_composicion_porcentual_producto(
+    producto_id: int,
+    version_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    from src.recetas.services import obtener_composicion_porcentual_producto
+    return obtener_composicion_porcentual_producto(db, producto_id, version_id=version_id)
+
+
 # va antes de PUT /{producto_id} para que "visibilidad-publica" no se tome como un id
 @router.put("/visibilidad-publica", response_model=List[schemas.ProductoResponse], dependencies=[Depends(requiere_admin)])
 async def update_visibilidad_publica(visibilidad: schemas.VisibilidadPublicaUpdate, db: Session = Depends(get_db)):

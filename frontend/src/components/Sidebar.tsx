@@ -337,12 +337,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'equipos', label: 'Equipos', icono: ICONOS_MODULO.equipos },
         { id: 'planDeCalibracion', label: 'Plan de Calibración', icono: ICONOS_MODULO.planDeCalibracion },
         { id: 'tipoInsumo', label: 'Tipos de Insumo', icono: ICONOS_MODULO.tipoInsumo },
-        { id: 'unidadesMedida', label: 'Unidades de Medida', icono: ICONOS_MODULO.unidadesMedida },
-        { id: 'proveedores', label: 'Proveedores', icono: ICONOS_MODULO.proveedores },
         { id: 'insumos', label: 'Ingredientes', icono: ICONOS_MODULO.insumos },
         { id: 'receta', label: 'Receta', icono: ICONOS_MODULO.receta },
         { id: 'productos', label: 'Productos Elaborados', icono: ICONOS_MODULO.productos },
-        { id: 'rotuladoFrontal', label: 'Rotulado Frontal', icono: ICONOS_MODULO.rotuladoFrontal },
       ],
     },
     {

@@ -3,7 +3,8 @@ import type { ProductoConId } from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 import { Badge } from "../../components/ui/badge";
-import { DetalleDocumento } from "../documentos/verDetalle";
+import { VerReceta } from "../receta/VerReceta";
+import { ComposicionPorcentualCard } from "../receta/ComposicionPorcentualCard";
 import { RotuladoProducto } from "../rotuladoFrontal/RotuladoProducto";
 import { InformacionNutricionalModal } from "./InformacionNutricionalModal";
 
@@ -53,10 +54,9 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
 
   if (recetaIdInterno) {
     return (
-      <DetalleDocumento
-        documentoId={recetaIdInterno}
-        onVolver={() => setRecetaIdInterno(null)}
-        textoVolver="Volver al Producto"
+      <VerReceta
+        recetaID={recetaIdInterno}
+        onCancel={() => setRecetaIdInterno(null)}
       />
     );
   }
@@ -154,68 +154,82 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
 
           <div className="form-group">
             <label>Estado</label>
-            <div>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
               <Badge variant={producto.activo ? "activo" : "inactivo"}>
                 {producto.activo ? "Activo" : "Inactivo"}
+              </Badge>
+              <Badge variant={producto.aplica_rotulado !== false ? "al_dia" : "secondary"}>
+                {producto.aplica_rotulado !== false ? "Aplica Rotulado" : "Exento de Rotulado"}
               </Badge>
             </div>
           </div>
 
-          <RotuladoProducto productoId={producto.id} unidadMedida={producto.unidadMedida} />
+          {producto.id_receta && (
+            <ComposicionPorcentualCard
+              productoId={producto.id}
+              titulo="Lista de Ingredientes del Producto (Generada desde Receta)"
+            />
+          )}
 
-          <div
-            style={{
-              margin: "1.5rem 0",
-              padding: "1.25rem",
-              backgroundColor: "#1e293b",
-              borderRadius: "8px",
-              border: "1px solid #334155",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: "1rem",
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "1rem" }}>
-                <span className="material-symbols-outlined" style={{ color: "#38bdf8", fontSize: "22px" }}>
-                  monitoring
-                </span>
-                <span>Información Nutricional y Cálculo Automático</span>
+          {producto.aplica_rotulado !== false && (
+            <>
+              <RotuladoProducto productoId={producto.id} unidadMedida={producto.unidadMedida} />
+
+              <div
+                style={{
+                  margin: "1.5rem 0",
+                  padding: "1.25rem",
+                  backgroundColor: "#1e293b",
+                  borderRadius: "8px",
+                  border: "1px solid #334155",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "1rem",
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "1rem" }}>
+                    <span className="material-symbols-outlined" style={{ color: "#38bdf8", fontSize: "22px" }}>
+                      monitoring
+                    </span>
+                    <span>Información Nutricional y Cálculo Automático</span>
+                  </div>
+                  <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
+                    Calcula los valores por 100g, por porción y % VD a partir de la receta y datos de ingredientes.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn-primario"
+                  onClick={() => setModalNutricionAbierto(true)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "8px 16px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    backgroundColor: "#0284c7",
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                    monitoring
+                  </span>
+                  Ver / Calcular Nutrición
+                </button>
               </div>
-              <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
-                Calcula los valores por 100g, por porción y % VD a partir de la receta y datos de ingredientes.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="btn-primario"
-              onClick={() => setModalNutricionAbierto(true)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 16px",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: "pointer",
-                backgroundColor: "#0284c7",
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                monitoring
-              </span>
-              Ver / Calcular Nutrición
-            </button>
-          </div>
+            </>
+          )}
 
           <div className="form-acciones">
             <button type="button" className="btn-cancelar" onClick={onCancel}>
               Volver
             </button>
-            {onGestionarIngredientes && producto && (
+            {onGestionarIngredientes && producto && producto.aplica_rotulado !== false && (
               <button
                 type="button"
                 className="btn-secundario"
@@ -228,7 +242,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
                 <span>Ordenar ingredientes y aditivos</span>
               </button>
             )}
-            {onVerBorradorRotulo && producto && (
+            {onVerBorradorRotulo && producto && producto.aplica_rotulado !== false && (
               <button
                 type="button"
                 className="btn-guardar"

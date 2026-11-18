@@ -3,13 +3,16 @@ import type { RecetaConId, RecetaDetalleConId, VersionRecetaItem } from './tipos
 import '../../styles/formularioAlta.css';
 import { VerDetalleReceta } from './VerEtapaReceta';
 import { ModalHistorialVersionesReceta } from './ModalHistorialReceta';
+import { ComposicionPorcentualCard } from './ComposicionPorcentualCard';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
 import { Dialog, DialogContent } from '../../components/ui/dialog';
+import type { LoteProduccion } from '../produccion/tipos';
 
 interface DetalleRecetaProps {
   onCancel?: () => void;
   recetaID?: number | null;
+  onVerLoteClick?: (loteId: number) => void;
 }
 
 const formatDate = (dateStr?: string | null) => {
@@ -31,6 +34,7 @@ const formatDate = (dateStr?: string | null) => {
 export const VerReceta: React.FC<DetalleRecetaProps> = ({
   onCancel,
   recetaID,
+  onVerLoteClick,
 }) => {
   const { esAdministrador } = useAuth();
   const [receta, setReceta] = useState<RecetaConId | null>(null);
@@ -41,9 +45,9 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
   const [modalVerEtapa, setModalVerEtapa] = useState(false);
   const [etapaSeleccionada, setEtapaSeleccionada] = useState<RecetaDetalleConId | null>(null);
 
-  // Estado para abrir el Modal de Historial (igual que en Documentos)
   const [modalHistorialAbierto, setModalHistorialAbierto] = useState(false);
   const [versionSeleccionada, setVersionSeleccionada] = useState<VersionRecetaItem | null>(null);
+  const [lotesVersion, setLotesVersion] = useState<LoteProduccion[]>([]);
 
   useEffect(() => {
     if (!recetaID) return;
@@ -90,6 +94,35 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
   const versionVigente = receta?.version_vigente ?? receta?.version_actual;
   const viendoVersionAntigua =
     Boolean(versionMostrada && versionVigente && versionMostrada.id !== versionVigente.id);
+
+  useEffect(() => {
+    if (!receta?.id_producto) return;
+    let cancelado = false;
+    const cargarLotes = async () => {
+      try {
+        const qs = versionMostrada?.id
+          ? `?producto_id=${receta.id_producto}&version_receta_id=${versionMostrada.id}`
+          : `?producto_id=${receta.id_producto}`;
+        let res = await apiFetch(`/lotes/${qs}`);
+        if (res.ok && !cancelado) {
+          let data: LoteProduccion[] = await res.json();
+          if (data.length === 0 && versionMostrada?.es_vigente) {
+            const resTodos = await apiFetch(`/lotes/?producto_id=${receta.id_producto}`);
+            if (resTodos.ok) {
+              data = await resTodos.json();
+            }
+          }
+          setLotesVersion(data);
+        }
+      } catch {
+        if (!cancelado) setLotesVersion([]);
+      }
+    };
+    cargarLotes();
+    return () => {
+      cancelado = true;
+    };
+  }, [receta?.id_producto, versionMostrada?.id, versionMostrada?.es_vigente]);
 
   return (
     <div className="modulo-container formulario-box">
@@ -322,6 +355,71 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {esAdministrador && (
+            <ComposicionPorcentualCard
+              recetaId={receta.id}
+              versionId={versionMostrada?.id ?? null}
+            />
+          )}
+
+          <div className="form-group" style={{ marginTop: '1.5rem' }}>
+            <label>
+              Historial de Lotes de Producto elaborados con esta versión (v{versionMostrada?.version ?? 1})
+            </label>
+            {lotesVersion.length === 0 ? (
+              <div
+                style={{
+                  padding: '0.85rem 1rem',
+                  borderRadius: '6px',
+                  backgroundColor: 'var(--code-bg)',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.85rem',
+                  color: 'var(--color-texto-sec)',
+                }}
+              >
+                No se registran lotes de producción elaborados con esta versión de la receta.
+              </div>
+            ) : (
+              <div className="tabla-wrapper" style={{ margin: 0 }}>
+                <table className="tabla-custom" style={{ fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr>
+                      <th>Código de Lote</th>
+                      <th>Fecha</th>
+                      <th>Cantidad Elaborada</th>
+                      <th>Responsable</th>
+                      {onVerLoteClick && <th className="acciones-col">Acción</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lotesVersion.map((l) => (
+                      <tr key={l.id}>
+                        <td style={{ fontWeight: 600 }}>{l.codigo}</td>
+                        <td>{formatDate(l.fecha)}</td>
+                        <td>
+                          {l.cantidad} {l.producto?.unidadMedida || ''}
+                        </td>
+                        <td>{l.nombre_responsable}</td>
+                        {onVerLoteClick && (
+                          <td className="acciones-col">
+                            <button
+                              type="button"
+                              className="btn-icon btn-ver"
+                              title="Ver detalle del lote"
+                              onClick={() => onVerLoteClick(l.id)}
+                            >
+                              👁
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

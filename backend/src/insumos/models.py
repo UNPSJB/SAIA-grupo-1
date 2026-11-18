@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from src.tipoInsumo.models import TipoInsumo
     from src.unidadesMedida.models import UnidadMedida
 
+
 class Insumo(ModeloBase):
     __tablename__ = "insumos"
 
@@ -25,7 +26,7 @@ class Insumo(ModeloBase):
     cantRecibida: Mapped[float] = mapped_column()
     stock: Mapped[float] = mapped_column()
     unidad_medida_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("unidades_medida.id"), index=True, nullable=False
+        Integer, ForeignKey("unidades_medida.id"), index=True, nullable=False, default=1
     )
     activo: Mapped[bool] = mapped_column(default=True, server_default=true())
 
@@ -78,7 +79,22 @@ class Insumo(ModeloBase):
     def medida(self) -> str:
         if self.unidad_medida_rel:
             return self.unidad_medida_rel.nombre.lower()
-        return ""
+        return getattr(self, "_medida_fallback", "kilogramos")
+
+    @medida.setter
+    def medida(self, val: object) -> None:
+        v_str = (val.value if hasattr(val, "value") else str(val or "kilogramos")).strip().lower()
+        self._medida_fallback = v_str
+        if v_str in ("g", "gr", "gramo", "gramos"):
+            self.unidad_medida_id = 2
+        elif v_str in ("l", "lt", "litro", "litros"):
+            self.unidad_medida_id = 3
+        elif v_str in ("ml", "cc", "mililitro", "mililitros"):
+            self.unidad_medida_id = 4
+        elif v_str in ("u", "un", "unid", "unidad", "unidades"):
+            self.unidad_medida_id = 5
+        else:
+            self.unidad_medida_id = 1
 
     @property
     def unidad_medida_nombre(self) -> str:
