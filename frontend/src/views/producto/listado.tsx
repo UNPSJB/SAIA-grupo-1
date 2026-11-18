@@ -255,25 +255,29 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
-                      <button
-                        className="btn-icon"
-                        title="Previsualizar borrador de rótulo"
-                        onClick={() => onBorradorRotuloClick?.(i.id)}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                          label
-                        </span>
-                      </button>
-                      <button
-                        className="btn-icon"
-                        title="Ordenar ingredientes y aditivos (Rótulo)"
-                        onClick={() => onIngredientesClick?.(i.id)}
-                        style={{ color: "#2563eb" }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                          format_list_numbered
-                        </span>
-                      </button>
+                      {Boolean(i.id_receta) && i.aplica_rotulado !== false && (
+                        <>
+                          <button
+                            className="btn-icon"
+                            title="Previsualizar borrador de rótulo"
+                            onClick={() => onBorradorRotuloClick?.(i.id)}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                              label
+                            </span>
+                          </button>
+                          <button
+                            className="btn-icon"
+                            title="Lista de ingredientes y aditivos (Rótulo)"
+                            onClick={() => onIngredientesClick?.(i.id)}
+                            style={{ color: "#2563eb" }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                              format_list_numbered
+                            </span>
+                          </button>
+                        </>
+                      )}
                       <button
                         className="btn-icon btn-ver"
                         title="Ver detalles"
@@ -288,15 +292,17 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                       >
                         ✎
                       </button>
-                      <button
-                        className="btn-icon btn-nutricion"
-                        title="Información nutricional"
-                        onClick={() => setProductoNutricion(i)}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                          monitoring
-                        </span>
-                      </button>
+                      {Boolean(i.id_receta) && i.aplica_rotulado !== false && (
+                        <button
+                          className="btn-icon btn-nutricion"
+                          title="Información nutricional"
+                          onClick={() => setProductoNutricion(i)}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                            monitoring
+                          </span>
+                        </button>
+                      )}
                       <button
                         className={`btn-icon ${i.activo ? "btn-eliminar" : "btn-reactivar"}`}
                         title={i.activo ? "Dar de baja" : "Restaurar"}

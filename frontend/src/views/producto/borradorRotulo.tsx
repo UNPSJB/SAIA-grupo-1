@@ -512,7 +512,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
               format_list_numbered
             </span>
-            <span>Ordenar Ingredientes</span>
+            <span>Lista de Ingredientes y Aditivos</span>
           </button>
           <button
             type="button"

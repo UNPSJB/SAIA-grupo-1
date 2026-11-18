@@ -125,7 +125,7 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
   }, [receta?.id_producto, versionMostrada?.id, versionMostrada?.es_vigente]);
 
   return (
-    <div className="modulo-container formulario-box">
+    <div className="modulo-container detalle-amplio">
       <div className="modulo-header">
         <h1>
           {esAdministrador ? 'Detalle de Receta' : 'Consulta de Versión Vigente de Receta'}
@@ -169,69 +169,71 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="receta-id">ID</label>
-            <input id="receta-id" type="text" value={receta.id} disabled />
-          </div>
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label htmlFor="receta-id">ID</label>
+              <input id="receta-id" type="text" value={receta.id} disabled />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="nombre">Receta</label>
-            <input id="nombre" name="nombre" type="text" value={receta.nombre} disabled />
-          </div>
+            <div className="form-group">
+              <label htmlFor="nombre">Receta</label>
+              <input id="nombre" name="nombre" type="text" value={receta.nombre} disabled />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="producto">Producto Asociado</label>
-            <input
-              id="producto"
-              type="text"
-              value={receta.nombre_producto ?? `Producto #${receta.id_producto}`}
-              disabled
-            />
-          </div>
+            <div className="form-group">
+              <label htmlFor="producto">Producto Asociado</label>
+              <input
+                id="producto"
+                type="text"
+                value={receta.nombre_producto ?? `Producto #${receta.id_producto}`}
+                disabled
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="operario">Operario a Cargo</label>
-            <input
-              id="operario"
-              type="text"
-              value={
-                receta.nombre_operario
-                  ? `${receta.nombre_operario} (Legajo #${receta.operario_legajo})`
-                  : `Legajo #${receta.operario_legajo}`
-              }
-              disabled
-            />
-          </div>
+            <div className="form-group">
+              <label htmlFor="operario">Operario a Cargo</label>
+              <input
+                id="operario"
+                type="text"
+                value={
+                  receta.nombre_operario
+                    ? `${receta.nombre_operario} (Legajo #${receta.operario_legajo})`
+                    : `Legajo #${receta.operario_legajo}`
+                }
+                disabled
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="rendimiento_final">Rendimiento Final</label>
-            <input
-              id="rendimiento_final"
-              name="rendimiento_final"
-              type="text"
-              value={versionMostrada?.rendimiento_final ?? receta.rendimiento_final}
-              disabled
-            />
-          </div>
+            <div className="form-group">
+              <label htmlFor="rendimiento_final">Rendimiento Final</label>
+              <input
+                id="rendimiento_final"
+                name="rendimiento_final"
+                type="text"
+                value={versionMostrada?.rendimiento_final ?? receta.rendimiento_final}
+                disabled
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="version">
-              {viendoVersionAntigua ? 'Versión Consultada (Histórica)' : 'Versión Vigente'}
-            </label>
-            <input
-              id="version"
-              type="text"
-              value={
-                versionMostrada
-                  ? `v${versionMostrada.version} (${
-                      versionMostrada.es_vigente
-                        ? `vigente desde ${formatDate(versionMostrada.fecha_vigencia || versionMostrada.creado_el)}`
-                        : 'archivada · solo lectura'
-                    })`
-                  : 'Sin versiones registradas'
-              }
-              disabled
-            />
+            <div className="form-group">
+              <label htmlFor="version">
+                {viendoVersionAntigua ? 'Versión Consultada (Histórica)' : 'Versión Vigente'}
+              </label>
+              <input
+                id="version"
+                type="text"
+                value={
+                  versionMostrada
+                    ? `v${versionMostrada.version} (${
+                        versionMostrada.es_vigente
+                          ? `vigente desde ${formatDate(versionMostrada.fecha_vigencia || versionMostrada.creado_el)}`
+                          : 'archivada · solo lectura'
+                      })`
+                    : 'Sin versiones registradas'
+                }
+                disabled
+              />
+            </div>
           </div>
 
           <div className="form-group">

@@ -62,7 +62,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
   }
 
   return (
-    <div className="modulo-container formulario-box">
+    <div className="modulo-container detalle-amplio">
       <div className="modulo-header">
         <h1>Detalle de Producto Elaborado</h1>
         <div className="subtitulo">
@@ -76,68 +76,113 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
         <div className="alerta-error">{error}</div>
       ) : producto ? (
         <form onSubmit={(e) => e.preventDefault()}>
-          <div className="form-group">
-            <label htmlFor="nombre">Nombre</label>
-            <input
-              id="nombre"
-              name="nombre"
-              type="text"
-              value={producto.nombre}
-              disabled
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="unidadMedida">Unidad de Medida</label>
-            <input
-              id="unidadMedida"
-              name="unidadMedida"
-              type="text"
-              value={producto.unidadMedida}
-              disabled
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="receta">Receta Asociada</label>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label htmlFor="nombre">Nombre</label>
               <input
-                id="receta"
-                name="receta"
+                id="nombre"
+                name="nombre"
                 type="text"
-                value={producto.nombre_receta || (producto.id_receta ? `Receta #${producto.id_receta}` : "Sin receta asociada")}
+                value={producto.nombre}
                 disabled
-                style={{ flex: 1 }}
               />
-              {producto.id_receta && (
-                <button
-                  type="button"
-                  className="btn-secundario"
-                  onClick={() => {
-                    if (onVerReceta) {
-                      onVerReceta(producto.id_receta!);
-                    } else {
-                      setRecetaIdInterno(producto.id_receta!);
-                    }
-                  }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "8px 14px",
-                    fontSize: "13px",
-                    fontWeight: 500,
-                    whiteSpace: "nowrap",
-                    cursor: "pointer",
-                  }}
-                  title="Ver detalle completo de la receta"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                    description
-                  </span>
-                  Ver Detalle de Receta &rarr;
-                </button>
-              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="unidadMedida">Unidad de Medida</label>
+              <input
+                id="unidadMedida"
+                name="unidadMedida"
+                type="text"
+                value={producto.unidadMedida}
+                disabled
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="peso_unidad_g">Equivalencia en Gramos (Peso por Unidad)</label>
+              <input
+                id="peso_unidad_g"
+                name="peso_unidad_g"
+                type="text"
+                value={producto.peso_unidad_g != null && producto.peso_unidad_g > 0 ? `${producto.peso_unidad_g} g` : "Sin datos"}
+                disabled
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="receta">Receta Asociada</label>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  id="receta"
+                  name="receta"
+                  type="text"
+                  value={producto.nombre_receta || (producto.id_receta ? `Receta #${producto.id_receta}` : "Sin datos")}
+                  disabled
+                  style={{ flex: "1 1 200px" }}
+                />
+                {producto.id_receta && (
+                  <button
+                    type="button"
+                    className="btn-secundario"
+                    onClick={() => {
+                      if (onVerReceta) {
+                        onVerReceta(producto.id_receta!);
+                      } else {
+                        setRecetaIdInterno(producto.id_receta!);
+                      }
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 14px",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      whiteSpace: "nowrap",
+                      cursor: "pointer",
+                    }}
+                    title="Ver detalle completo de la receta"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                      description
+                    </span>
+                    Ver Detalle de Receta &rarr;
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="tamano_porcion_g">Tamaño de Porción</label>
+              <input
+                id="tamano_porcion_g"
+                name="tamano_porcion_g"
+                type="text"
+                value={
+                  producto.tamano_porcion_g != null && producto.tamano_porcion_g > 0
+                    ? `${producto.tamano_porcion_g} g${producto.descripcion_porcion ? ` (${producto.descripcion_porcion})` : ""}`
+                    : "Sin datos"
+                }
+                disabled
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="porciones_por_envase">Porciones por Envase (Calculado)</label>
+              <input
+                id="porciones_por_envase"
+                name="porciones_por_envase"
+                type="text"
+                value={
+                  producto.peso_unidad_g && producto.peso_unidad_g > 0 && producto.tamano_porcion_g && producto.tamano_porcion_g > 0
+                    ? `${Number((producto.peso_unidad_g / producto.tamano_porcion_g).toFixed(2))}`
+                    : producto.porciones_por_envase != null && producto.porciones_por_envase > 0
+                    ? `${producto.porciones_por_envase}`
+                    : "Sin datos"
+                }
+                disabled
+              />
             </div>
           </div>
 
@@ -147,7 +192,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
               id="descripcion"
               name="descripcion"
               type="text"
-              value={producto.descripcion || "Sin descripción"}
+              value={producto.descripcion || "Sin datos"}
               disabled
             />
           </div>
@@ -164,14 +209,14 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
             </div>
           </div>
 
-          {producto.id_receta && (
+          {Boolean(producto.id_receta) && (
             <ComposicionPorcentualCard
               productoId={producto.id}
               titulo="Lista de Ingredientes del Producto (Generada desde Receta)"
             />
           )}
 
-          {producto.aplica_rotulado !== false && (
+          {Boolean(producto.id_receta) && producto.aplica_rotulado !== false && (
             <>
               <RotuladoProducto productoId={producto.id} unidadMedida={producto.unidadMedida} />
 
@@ -229,7 +274,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
             <button type="button" className="btn-cancelar" onClick={onCancel}>
               Volver
             </button>
-            {onGestionarIngredientes && producto && producto.aplica_rotulado !== false && (
+            {onGestionarIngredientes && producto && Boolean(producto.id_receta) && producto.aplica_rotulado !== false && (
               <button
                 type="button"
                 className="btn-secundario"
@@ -239,10 +284,10 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
                 <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
                   format_list_numbered
                 </span>
-                <span>Ordenar ingredientes y aditivos</span>
+                <span>Lista de ingredientes y aditivos</span>
               </button>
             )}
-            {onVerBorradorRotulo && producto && producto.aplica_rotulado !== false && (
+            {onVerBorradorRotulo && producto && Boolean(producto.id_receta) && producto.aplica_rotulado !== false && (
               <button
                 type="button"
                 className="btn-guardar"

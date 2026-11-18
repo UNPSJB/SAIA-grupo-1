@@ -11,7 +11,7 @@ class ProductoBase(BaseModel):
     tamano_porcion_g: Optional[float] = None
     porciones_por_envase: Optional[float] = None
     descripcion_porcion: Optional[str] = None
-    peso_unidad_g: Optional[float] = 1000.0
+    peso_unidad_g: Optional[float] = None
     aplica_rotulado: Optional[bool] = True
 
 class ProductoCreate(ProductoBase):
@@ -65,7 +65,7 @@ class ProductoResponse(ProductoBase):
     unidad_medida_abreviatura: Optional[str] = None
     id_receta: Optional[int] = None
     nombre_receta: Optional[str] = None
-    peso_unidad_g: float = 1000.0
+    peso_unidad_g: Optional[float] = None
     aplica_rotulado: bool = True
     activo: bool
     visible_publico: bool = False

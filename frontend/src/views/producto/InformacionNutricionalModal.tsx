@@ -25,9 +25,10 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
   const [mostrarParametros, setMostrarParametros] = useState(false);
   const [parametros, setParametros] = useState<ParametroRedondeo[]>([]);
   const [cargandoParametros, setCargandoParametros] = useState(false);
-  const [tamanoPorcion, setTamanoPorcion] = useState<number>(50);
-  const [porcionesEnvase, setPorcionesEnvase] = useState<number>(28);
-  const [descPorcion, setDescPorcion] = useState<string>('1 rebanada (50g)');
+  const [pesoUnidadG, setPesoUnidadG] = useState<number | null>(null);
+  const [tamanoPorcion, setTamanoPorcion] = useState<string>('');
+  const [porcionesEnvase, setPorcionesEnvase] = useState<number | null>(null);
+  const [descPorcion, setDescPorcion] = useState<string>('');
   const [paramEditando, setParamEditando] = useState<ParametroRedondeo | null>(null);
   const [guardandoParam, setGuardandoParam] = useState(false);
 
@@ -35,13 +36,23 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch(`/nutricion/productos/${productoId}`);
+      const [prodRes, res] = await Promise.all([
+        apiFetch(`/productos/${productoId}`),
+        apiFetch(`/nutricion/productos/${productoId}`),
+      ]);
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        setPesoUnidadG(prodData.peso_unidad_g ?? null);
+        if (prodData.tamano_porcion_g != null) setTamanoPorcion(String(prodData.tamano_porcion_g));
+        if (prodData.porciones_por_envase != null) setPorcionesEnvase(prodData.porciones_por_envase);
+        if (prodData.descripcion_porcion != null) setDescPorcion(prodData.descripcion_porcion);
+      }
       if (res.ok) {
         const data = await res.json();
         setInfo(data);
-        if (data.tamano_porcion_g) setTamanoPorcion(data.tamano_porcion_g);
-        if (data.porciones_por_envase) setPorcionesEnvase(data.porciones_por_envase);
-        if (data.descripcion_porcion) setDescPorcion(data.descripcion_porcion);
+        if (data.tamano_porcion_g != null) setTamanoPorcion(String(data.tamano_porcion_g));
+        if (data.porciones_por_envase != null) setPorcionesEnvase(data.porciones_por_envase);
+        if (data.descripcion_porcion != null) setDescPorcion(data.descripcion_porcion);
       } else {
         const err = await res.json().catch(() => ({}));
         setError(err.detail || 'No se pudo obtener la información nutricional.');
@@ -71,8 +82,17 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
     }
   };
 
+  const porcionesCalculadas =
+    pesoUnidadG && pesoUnidadG > 0 && Number(tamanoPorcion) > 0
+      ? Number((pesoUnidadG / Number(tamanoPorcion)).toFixed(2))
+      : porcionesEnvase;
+
   const ejecutarCalculo = async () => {
     if (!esAdministrador) return;
+    if (!tamanoPorcion || Number(tamanoPorcion) <= 0) {
+      setError('Debe indicar un tamaño de porción en gramos mayor a cero.');
+      return;
+    }
     setCalculando(true);
     setError(null);
     setMensajeExito(null);
@@ -81,8 +101,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tamano_porcion_g: Number(tamanoPorcion) || 50,
-          porciones_por_envase: Number(porcionesEnvase) || undefined,
+          tamano_porcion_g: Number(tamanoPorcion),
+          porciones_por_envase: porcionesCalculadas ?? undefined,
           descripcion_porcion: descPorcion || undefined,
         }),
       });
@@ -313,8 +333,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         type="number"
                         min="1"
                         step="1"
+                        placeholder="Sin datos"
                         value={tamanoPorcion}
-                        onChange={(e) => setTamanoPorcion(Number(e.target.value))}
+                        onChange={(e) => setTamanoPorcion(e.target.value)}
                         style={{
                           backgroundColor: '#0f172a',
                           border: '1px solid #475569',
@@ -328,21 +349,20 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
-                        Porciones por envase
+                        Porciones por envase (auto)
                       </label>
                       <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={porcionesEnvase}
-                        onChange={(e) => setPorcionesEnvase(Number(e.target.value))}
+                        type="text"
+                        value={porcionesCalculadas != null ? String(porcionesCalculadas) : 'Sin datos'}
+                        disabled
+                        readOnly
                         style={{
                           backgroundColor: '#0f172a',
                           border: '1px solid #475569',
-                          color: '#f8fafc',
+                          color: '#94a3b8',
                           padding: '0.4rem 0.6rem',
                           borderRadius: '6px',
-                          width: '100px',
+                          width: '115px',
                           fontSize: '0.9rem',
                         }}
                       />
@@ -355,7 +375,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         type="text"
                         value={descPorcion}
                         onChange={(e) => setDescPorcion(e.target.value)}
-                        placeholder="ej: 1 rebanada (50g)"
+                        placeholder="Sin datos"
                         style={{
                           backgroundColor: '#0f172a',
                           border: '1px solid #475569',

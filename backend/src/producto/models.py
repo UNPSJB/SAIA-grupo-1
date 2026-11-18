@@ -28,11 +28,24 @@ class Producto(ModeloBase):
     )
 
     tamano_porcion_g: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
-    porciones_por_envase: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    _porciones_por_envase: Mapped[Optional[float]] = mapped_column("porciones_por_envase", Float, nullable=True, default=None)
     descripcion_porcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default=None)
-    peso_unidad_g: Mapped[float] = mapped_column(Float, nullable=False, default=1000.0)
+    peso_unidad_g: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
     aplica_rotulado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     documento_receta_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
+
+    @property
+    def porciones_por_envase(self) -> Optional[float]:
+        if self.peso_unidad_g and self.peso_unidad_g > 0 and self.tamano_porcion_g and self.tamano_porcion_g > 0:
+            return round(float(self.peso_unidad_g) / float(self.tamano_porcion_g), 2)
+        return self._porciones_por_envase
+
+    @porciones_por_envase.setter
+    def porciones_por_envase(self, val: Optional[float]) -> None:
+        if self.peso_unidad_g and self.peso_unidad_g > 0 and self.tamano_porcion_g and self.tamano_porcion_g > 0:
+            self._porciones_por_envase = round(float(self.peso_unidad_g) / float(self.tamano_porcion_g), 2)
+        else:
+            self._porciones_por_envase = val
 
     @property
     def id_receta(self) -> Optional[int]:

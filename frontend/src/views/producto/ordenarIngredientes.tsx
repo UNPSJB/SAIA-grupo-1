@@ -205,9 +205,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
       if (res.ok) {
         const data = await res.json();
         setTextoRotulo(data.texto_rotulo);
-        if (!ajustadoManualmente) {
-          setItems(data.items);
-        }
+        setItems(data.items);
       }
     } catch {
       return;
@@ -253,38 +251,14 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
     }
   };
 
-  const moverItem = (indice: number, direccion: "arriba" | "abajo") => {
-    if (
-      (direccion === "arriba" && indice === 0) ||
-      (direccion === "abajo" && indice === items.length - 1)
-    ) {
-      return;
-    }
-    const nuevoIndice = direccion === "arriba" ? indice - 1 : indice + 1;
-    const copia = [...items];
-    const [movido] = copia.splice(indice, 1);
-    copia.splice(nuevoIndice, 0, movido);
-
-    const actualizados = copia.map((it, idx) => ({ ...it, orden: idx + 1 }));
-    setItems(actualizados);
-    setAjustadoManualmente(true);
-    const decs = actualizados.map((i) => i.texto_declaracion);
-    setTextoRotulo(`INGREDIENTES: ${decs.join(", ")}.`);
-  };
-
   const eliminarItem = (indice: number) => {
     const filtrados = items.filter((_, idx) => idx !== indice);
-    const actualizados = filtrados.map((it, idx) => ({
-      ...it,
-      orden: idx + 1,
-    }));
-    setItems(actualizados);
-    setAjustadoManualmente(true);
-    if (actualizados.length === 0) {
+    setAjustadoManualmente(false);
+    if (filtrados.length === 0) {
+      setItems([]);
       setTextoRotulo("");
     } else {
-      const decs = actualizados.map((i) => i.texto_declaracion);
-      setTextoRotulo(`INGREDIENTES: ${decs.join(", ")}.`);
+      previsualizar(filtrados, formato);
     }
   };
 
@@ -375,15 +349,8 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
     }
 
     setModalAbierto(false);
-
-    if (!ajustadoManualmente) {
-      previsualizar(copia, formato);
-    } else {
-      const actualizados = copia.map((it, idx) => ({ ...it, orden: idx + 1 }));
-      setItems(actualizados);
-      const decs = actualizados.map((i) => i.texto_declaracion);
-      setTextoRotulo(`INGREDIENTES: ${decs.join(", ")}.`);
-    }
+    setAjustadoManualmente(false);
+    previsualizar(copia, formato);
   };
 
   const ejecutarRestablecerAutomatico = async () => {
@@ -470,7 +437,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             formato_aditivos: formato,
-            ajustado_manualmente: ajustadoManualmente,
+            ajustado_manualmente: false,
             items: items.map((it) => ({
               nombre: it.nombre,
               denominacion_rotulo: it.denominacion_rotulo || it.nombre,
@@ -518,7 +485,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
       <div className="listado-top-bar" style={{ marginBottom: "24px" }}>
         <div className="modulo-header" style={{ marginBottom: 0 }}>
           <h1 style={{ fontSize: "2.1rem", fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>
-            Ordenar Lista de Ingredientes y Aditivos
+            Lista de Ingredientes y Aditivos
           </h1>
           <div className="subtitulo" style={{ fontSize: "1rem", marginTop: "4px" }}>
             {productoNombre
@@ -609,44 +576,16 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.92rem", fontWeight: 600 }}>Estado del Orden:</span>
-            {ajustadoManualmente ? (
-              <Badge variant="proximo" style={{ padding: "5px 10px", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
-                  edit
-                </span>
-                <span>Modificado manualmente</span>
-              </Badge>
-            ) : (
-              <Badge variant="activo" style={{ padding: "5px 10px", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
-                  check_circle
-                </span>
-                <span>Automático (proporción decreciente)</span>
-              </Badge>
-            )}
-            {ajustadoManualmente && fechaAjuste && (
-              <span style={{ fontSize: "0.82rem", color: "var(--color-texto-sec)" }}>
-                Por {usuarioAjuste || "Administrador"} el{" "}
-                {new Date(fechaAjuste).toLocaleString()}
+            <span style={{ fontSize: "0.92rem", fontWeight: 600 }}>Criterio de Orden:</span>
+            <Badge variant="activo" style={{ padding: "5px 10px", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
+                check_circle
               </span>
-            )}
+              <span>Proporción decreciente (mayor a menor)</span>
+            </Badge>
           </div>
 
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-            {ajustadoManualmente && (
-              <button
-                type="button"
-                className="btn-cancelar"
-                style={{ fontSize: "0.88rem", padding: "7px 14px", display: "inline-flex", alignItems: "center", gap: "5px" }}
-                onClick={() => setDialogResetAbierto(true)}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                  restart_alt
-                </span>
-                <span>Restablecer orden automático</span>
-              </button>
-            )}
             <button
               type="button"
               className="btn-cancelar"
@@ -914,79 +853,14 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                           boxSizing: "border-box",
                         }}
                       >
-                        <div
+                        <span
                           style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "4px",
+                            fontSize: "0.92rem",
+                            fontWeight: 700,
                           }}
                         >
-                          <span
-                            style={{
-                              fontSize: "0.92rem",
-                              fontWeight: 700,
-                            }}
-                          >
-                            #{idx + 1}
-                          </span>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "2px",
-                            }}
-                          >
-                            <button
-                              type="button"
-                              className="btn-icon"
-                              title="Subir posición"
-                              disabled={idx === 0}
-                              onClick={() => moverItem(idx, "arriba")}
-                              style={{
-                                padding: 0,
-                                width: "20px",
-                                height: "16px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                borderRadius: "3px",
-                                border: "1px solid var(--color-borde)",
-                                background: "var(--color-superficie)",
-                                cursor: idx === 0 ? "not-allowed" : "pointer",
-                                opacity: idx === 0 ? 0.3 : 1,
-                              }}
-                            >
-                              <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>
-                                keyboard_arrow_up
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-icon"
-                              title="Bajar posición"
-                              disabled={idx === items.length - 1}
-                              onClick={() => moverItem(idx, "abajo")}
-                              style={{
-                                padding: 0,
-                                width: "20px",
-                                height: "16px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                borderRadius: "3px",
-                                border: "1px solid var(--color-borde)",
-                                background: "var(--color-superficie)",
-                                cursor: idx === items.length - 1 ? "not-allowed" : "pointer",
-                                opacity: idx === items.length - 1 ? 0.3 : 1,
-                              }}
-                            >
-                              <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>
-                                keyboard_arrow_down
-                              </span>
-                            </button>
-                          </div>
-                        </div>
+                          #{idx + 1}
+                        </span>
                       </td>
 
                       <td

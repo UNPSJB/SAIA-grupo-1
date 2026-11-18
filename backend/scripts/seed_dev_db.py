@@ -1191,12 +1191,12 @@ def main() -> None:
         ))
     db.commit()
 
-    p_pan = Producto(nombre="Pan de Campo", descripcion="Pan rústico de masa madre 500g", unidad_medida_id=unidades_map["kilogramos"], activo=True, visible_publico=True)
-    p_medialunas = Producto(nombre="Medialunas de Manteca", descripcion="Docena de medialunas dulces hojaldradas", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True)
-    p_baguette = Producto(nombre="Baguette Tradicional", descripcion="Baguette artesanal crujiente 250g", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True)
-    p_torta = Producto(nombre="Torta de Chocolate", descripcion="Torta artesanal húmeda con cobertura semiamarga", unidad_medida_id=unidades_map["kilogramos"], activo=True, visible_publico=True)
-    p_lactal = Producto(nombre="Pan Lactal Blanco", descripcion="Pan de molde enriquecido con leche 450g", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True)
-    p_salvado = Producto(nombre="Pan de Salvado y Semillas", descripcion="Pan integral con mix de semillas 450g", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True)
+    p_pan = Producto(nombre="Pan de Campo", descripcion="Pan rústico de masa madre 500g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=500.0, tamano_porcion_g=50.0, descripcion_porcion="1 rebanada (50g)", activo=True, visible_publico=True)
+    p_medialunas = Producto(nombre="Medialunas de Manteca", descripcion="Docena de medialunas dulces hojaldradas (600g)", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=600.0, tamano_porcion_g=50.0, descripcion_porcion="1 medialuna (50g)", activo=True, visible_publico=True)
+    p_baguette = Producto(nombre="Baguette Tradicional", descripcion="Baguette artesanal crujiente 250g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=250.0, tamano_porcion_g=50.0, descripcion_porcion="1 trozo (50g)", activo=True, visible_publico=True)
+    p_torta = Producto(nombre="Torta de Chocolate", descripcion="Torta artesanal húmeda con cobertura semiamarga 1200g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=1200.0, tamano_porcion_g=60.0, descripcion_porcion="1 porción (60g)", activo=True, visible_publico=True)
+    p_lactal = Producto(nombre="Pan Lactal Blanco", descripcion="Pan de molde enriquecido con leche 450g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=450.0, tamano_porcion_g=50.0, descripcion_porcion="2 rebanadas (50g)", activo=True, visible_publico=True)
+    p_salvado = Producto(nombre="Pan de Salvado y Semillas", descripcion="Pan integral con mix de semillas 450g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=450.0, tamano_porcion_g=50.0, descripcion_porcion="2 rebanadas (50g)", activo=True, visible_publico=True)
     p_facturas = Producto(nombre="Facturas Surtidas", descripcion="Variedad de medialunas, vigilantes y cañoncitos", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=True)
     p_budin = Producto(nombre="Budin de Limon y Glaseado", descripcion="Budín esponjoso con glaseado de limón 350g", unidad_medida_id=unidades_map["unidades"], activo=True, visible_publico=False)
     p_chipa = Producto(nombre="Chipa Tradicional", descripcion="Chipa de queso y almidón de mandioca", unidad_medida_id=unidades_map["kilogramos"], activo=True, visible_publico=True)
@@ -1281,8 +1281,9 @@ def main() -> None:
     db.add_all(detalles_pan)
     db.commit()
 
+    p_pan.peso_unidad_g = 500.0
     p_pan.tamano_porcion_g = 50.0
-    p_pan.porciones_por_envase = 28.0
+    p_pan.porciones_por_envase = 10.0
     p_pan.descripcion_porcion = "1 rebanada (50g)"
     db.commit()
 
@@ -1387,8 +1388,9 @@ def main() -> None:
     db.add_all(detalles_medialunas)
     db.commit()
 
+    p_medialunas.peso_unidad_g = 600.0
     p_medialunas.tamano_porcion_g = 50.0
-    p_medialunas.porciones_por_envase = 22.0
+    p_medialunas.porciones_por_envase = 12.0
     p_medialunas.descripcion_porcion = "1 medialuna (50g)"
     db.commit()
 
@@ -1457,8 +1459,9 @@ def main() -> None:
     db.add_all(detalles_baguette)
     db.commit()
 
+    p_baguette.peso_unidad_g = 250.0
     p_baguette.tamano_porcion_g = 50.0
-    p_baguette.porciones_por_envase = 15.0
+    p_baguette.porciones_por_envase = 5.0
     p_baguette.descripcion_porcion = "1 trozo (50g)"
     db.commit()
 
@@ -1545,8 +1548,9 @@ def main() -> None:
     db.add_all(detalles_lactal)
     db.commit()
 
+    p_lactal.peso_unidad_g = 450.0
     p_lactal.tamano_porcion_g = 50.0
-    p_lactal.porciones_por_envase = 18.0
+    p_lactal.porciones_por_envase = 9.0
     p_lactal.descripcion_porcion = "2 rebanadas (50g)"
     db.commit()
 
@@ -1651,8 +1655,9 @@ def main() -> None:
     db.add_all(detalles_salvado)
     db.commit()
 
+    p_salvado.peso_unidad_g = 450.0
     p_salvado.tamano_porcion_g = 50.0
-    p_salvado.porciones_por_envase = 19.0
+    p_salvado.porciones_por_envase = 9.0
     p_salvado.descripcion_porcion = "2 rebanadas (50g)"
     db.commit()
 
@@ -1762,9 +1767,10 @@ def main() -> None:
             det_db.tipo_insumo_id = det_db.ingrediente.tipo_insumo_id
     db.commit()
 
+    p_torta.peso_unidad_g = 1200.0
     p_torta.tamano_porcion_g = 60.0
-    p_torta.porciones_por_envase = 23.0
-    p_torta.descripcion_porcion = "1 porcion (60g)"
+    p_torta.porciones_por_envase = 20.0
+    p_torta.descripcion_porcion = "1 porción (60g)"
     db.commit()
 
     calcular_informacion_nutricional(db, p_torta.id, receta_id=receta_torta.id, usuario_actual="Marcos Diaz")

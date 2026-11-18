@@ -105,7 +105,7 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
       descripcion: producto.descripcion?.trim() || null,
       unidad_medida_id: Number(producto.unidad_medida_id),
       id_receta: producto.id_receta ? Number(producto.id_receta) : null,
-      peso_unidad_g: producto.peso_unidad_g && Number(producto.peso_unidad_g) > 0 ? Number(producto.peso_unidad_g) : 1000.0,
+      peso_unidad_g: producto.peso_unidad_g && Number(producto.peso_unidad_g) > 0 ? Number(producto.peso_unidad_g) : null,
       aplica_rotulado: producto.aplica_rotulado !== false,
     };
 
@@ -205,7 +205,7 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
 
         <div className="form-group">
           <label htmlFor="peso_unidad_g">
-            Peso equivalente de 1 unidad de producto (en gramos) <span style={{ color: "var(--color-error-texto)" }}>*</span>
+            Peso equivalente de 1 unidad de producto (en gramos)
           </label>
           <input
             id="peso_unidad_g"
@@ -213,14 +213,14 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
             type="number"
             min="1"
             step="any"
-            value={producto.peso_unidad_g ?? 1000}
+            placeholder="Sin datos"
+            value={producto.peso_unidad_g ?? ""}
             onChange={(e) =>
               setProducto({
                 ...producto,
                 peso_unidad_g: e.target.value ? Number(e.target.value) : null,
               })
             }
-            required
           />
         </div>
 

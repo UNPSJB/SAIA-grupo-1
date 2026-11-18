@@ -207,6 +207,22 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
           <p style={{ fontWeight: 600, margin: '4px 0 0', textTransform: 'capitalize' }}>{detalle.unidadMedida}</p>
         </div>
         <div>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Equivalencia en Gramos</span>
+          <p style={{ fontWeight: 600, margin: '4px 0 0' }}>
+            {detalle.equivalencia_gramos != null && detalle.equivalencia_gramos > 0
+              ? `${detalle.cantidad_referencia ?? 1} ${detalle.unidadMedida} = ${detalle.equivalencia_gramos} g`
+              : 'Sin datos'}
+          </p>
+        </div>
+        <div>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Clasificación</span>
+          <p style={{ fontWeight: 600, margin: '4px 0 0' }}>
+            {detalle.es_aditivo
+              ? `Aditivo (${detalle.clase_funcional || 'General'}${detalle.numero_ins ? ` · INS ${detalle.numero_ins}` : ''})`
+              : 'Ingrediente'}
+          </p>
+        </div>
+        <div>
           <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Stock Total Activo</span>
           <p style={{ fontWeight: 600, margin: '4px 0 0' }}>
             {detalle.stock_total ?? 0} {detalle.unidadMedida}
@@ -223,7 +239,7 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
         <div style={{ gridColumn: '1 / -1' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Descripción</span>
           <p style={{ margin: '4px 0 0', color: 'var(--color-texto)' }}>
-            {detalle.descripcion || 'Sin descripción registrada.'}
+            {detalle.descripcion || 'Sin datos'}
           </p>
         </div>
       </div>

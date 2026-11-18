@@ -108,14 +108,22 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
         valor_texto=producto.unidadMedida,
     )
 
+    peso_val = producto.peso_unidad_g if producto.peso_unidad_g and producto.peso_unidad_g > 0 else None
+    porcion_val = producto.tamano_porcion_g if producto.tamano_porcion_g and producto.tamano_porcion_g > 0 else None
+    porciones_calc = (
+        round(float(peso_val) / float(porcion_val), 2)
+        if peso_val and porcion_val
+        else producto.porciones_por_envase
+    )
+
     _producto = Producto(
         nombre=producto.nombre,
         descripcion=producto.descripcion,
         unidad_medida_id=unidad.id,
-        tamano_porcion_g=producto.tamano_porcion_g,
-        porciones_por_envase=producto.porciones_por_envase,
+        tamano_porcion_g=porcion_val,
+        porciones_por_envase=porciones_calc,
         descripcion_porcion=producto.descripcion_porcion,
-        peso_unidad_g=producto.peso_unidad_g if producto.peso_unidad_g and producto.peso_unidad_g > 0 else 1000.0,
+        peso_unidad_g=peso_val,
         aplica_rotulado=producto.aplica_rotulado if producto.aplica_rotulado is not None else True,
         documento_receta_id=doc_receta_id,
         activo=True,
@@ -170,6 +178,14 @@ def editar_producto(
     if "id_receta" in datos_actualizar:
         id_rec = datos_actualizar.pop("id_receta")
         datos_actualizar["documento_receta_id"] = _validar_id_receta(db, id_rec)
+
+    datos_actualizar.pop("porciones_por_envase", None)
+    nuevo_peso = datos_actualizar.get("peso_unidad_g", db_producto.peso_unidad_g)
+    nueva_porcion = datos_actualizar.get("tamano_porcion_g", db_producto.tamano_porcion_g)
+    if nuevo_peso and nuevo_peso > 0 and nueva_porcion and nueva_porcion > 0:
+        datos_actualizar["_porciones_por_envase"] = round(float(nuevo_peso) / float(nueva_porcion), 2)
+    elif "peso_unidad_g" in datos_actualizar or "tamano_porcion_g" in datos_actualizar:
+        datos_actualizar["_porciones_por_envase"] = None
 
     if datos_actualizar:
         db.execute(

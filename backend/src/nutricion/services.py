@@ -246,10 +246,14 @@ def calcular_informacion_nutricional(
     if porcion <= 0:
         raise PorcionInvalidaError()
 
-    porciones_env = (
-        porciones_por_envase
-        or getattr(producto, "porciones_por_envase", None)
-    )
+    peso_prod = getattr(producto, "peso_unidad_g", None)
+    if peso_prod and float(peso_prod) > 0:
+        porciones_env = round(float(peso_prod) / float(porcion), 2)
+    else:
+        porciones_env = (
+            porciones_por_envase
+            or getattr(producto, "porciones_por_envase", None)
+        )
     desc_porcion = (
         descripcion_porcion
         or getattr(producto, "descripcion_porcion", None)
