@@ -124,3 +124,6 @@ class ErrorCode:
     ESTADO_FISICO_INDETERMINADO = (
         "No se puede determinar si el producto es sólido o líquido por su unidad de medida; indicalo"
     )
+    PRODUCTO_NO_APLICA_ROTULADO = (
+        "No corresponde el rotulado frontal porque el producto no se comercializa envasado en ausencia del cliente"
+    )
