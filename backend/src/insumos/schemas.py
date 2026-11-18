@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 from typing import List, Optional, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.insumos import exceptions
+from src.insumos.constants import FUENTES_VALIDAS, CAMPOS_NUTRICIONALES
 
 
 class InsumoBase(BaseModel):
@@ -185,6 +186,24 @@ class Insumo(InsumoBase):
     tipo_insumo_nombre: Optional[str] = None
     estadoVencimiento: Optional[str] = None
 
+    es_aditivo: bool = False
+    fuente_datos: Optional[str] = None
+    fuente_detalle: Optional[str] = None
+    alimento_referencia_id: Optional[str] = None
+    modificado_manualmente: bool = False
+    tiene_datos_nutricionales: bool = False
+    energia_kcal: Optional[float] = None
+    energia_kj: Optional[float] = None
+    carbohidratos: Optional[float] = None
+    azucares_totales: Optional[float] = None
+    azucares_anadidos: Optional[float] = None
+    proteinas: Optional[float] = None
+    grasas_totales: Optional[float] = None
+    grasas_saturadas: Optional[float] = None
+    grasas_trans: Optional[float] = None
+    fibra_alimentaria: Optional[float] = None
+    sodio_mg: Optional[float] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -218,6 +237,10 @@ class InsumoLoteItem(BaseModel):
     estadoVencimiento: str
     dias_para_vencer: Optional[int] = None
     activo: bool
+    es_aditivo: bool = False
+    tiene_datos_nutricionales: bool = False
+    modificado_manualmente: bool = False
+    fuente_datos: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -249,3 +272,133 @@ class TrazabilidadLoteProduccion(BaseModel):
 class InsumoDetalleTrazabilidad(BaseModel):
     insumo: Insumo
     lotes_produccion: List[TrazabilidadLoteProduccion] = []
+
+
+class AlimentoReferenciaSARAResponse(BaseModel):
+    id: int
+    codigo: str
+    nombre: str
+    categoria: str
+    energia_kcal: float
+    energia_kj: float
+    carbohidratos: float
+    azucares_totales: float
+    azucares_anadidos: float
+    proteinas: float
+    grasas_totales: float
+    grasas_saturadas: float
+    grasas_trans: float
+    fibra_alimentaria: float
+    sodio_mg: float
+    fuente: str
+    es_aditivo: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DatosNutricionalesInsumoUpdate(BaseModel):
+    es_aditivo: bool = False
+    fuente_datos: str
+    fuente_detalle: Optional[str] = None
+    alimento_referencia_id: Optional[str] = None
+    energia_kcal: Optional[float] = None
+    energia_kj: Optional[float] = None
+    carbohidratos: Optional[float] = None
+    azucares_totales: Optional[float] = None
+    azucares_anadidos: Optional[float] = None
+    proteinas: Optional[float] = None
+    grasas_totales: Optional[float] = None
+    grasas_saturadas: Optional[float] = None
+    grasas_trans: Optional[float] = None
+    fibra_alimentaria: Optional[float] = None
+    sodio_mg: Optional[float] = None
+
+    @field_validator(
+        "energia_kcal",
+        "energia_kj",
+        "carbohidratos",
+        "azucares_totales",
+        "azucares_anadidos",
+        "proteinas",
+        "grasas_totales",
+        "grasas_saturadas",
+        "grasas_trans",
+        "fibra_alimentaria",
+        "sodio_mg",
+    )
+    @classmethod
+    def validar_no_negativo(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise exceptions.ValorNutricionalNegativo()
+        return v
+
+    @field_validator("fuente_datos")
+    @classmethod
+    def validar_fuente(cls, v: str) -> str:
+        if not v or v.strip() not in FUENTES_VALIDAS:
+            raise exceptions.FuenteNutricionalInvalida()
+        return v.strip()
+
+    @model_validator(mode="after")
+    def validar_aditivo_y_requeridos(self) -> Self:
+        if not self.es_aditivo:
+            if (
+                self.energia_kcal is None
+                or self.carbohidratos is None
+                or self.proteinas is None
+                or self.grasas_totales is None
+                or self.sodio_mg is None
+            ):
+                raise exceptions.DatosNutricionalesRequeridos()
+
+            if self.azucares_totales is None:
+                self.azucares_totales = 0.0
+            if self.azucares_anadidos is None:
+                self.azucares_anadidos = 0.0
+            if self.grasas_saturadas is None:
+                self.grasas_saturadas = 0.0
+            if self.grasas_trans is None:
+                self.grasas_trans = 0.0
+            if self.fibra_alimentaria is None:
+                self.fibra_alimentaria = 0.0
+
+        if self.energia_kcal is not None and self.energia_kj is None:
+            self.energia_kj = round(self.energia_kcal * 4.184, 1)
+        elif self.energia_kj is not None and self.energia_kcal is None:
+            self.energia_kcal = round(self.energia_kj / 4.184, 1)
+
+        return self
+
+
+class DatosNutricionalesInsumoResponse(BaseModel):
+    insumo_id: int
+    nombre_insumo: str
+    tipo_insumo_id: Optional[int] = None
+    tipo_insumo_nombre: Optional[str] = None
+    proveedor_id: Optional[int] = None
+    proveedor_nombre: Optional[str] = None
+    es_aditivo: bool
+    fuente_datos: Optional[str] = None
+    fuente_detalle: Optional[str] = None
+    alimento_referencia_id: Optional[str] = None
+    fecha_carga_nutricional: Optional[datetime] = None
+    usuario_carga_nutricional: Optional[str] = None
+    modificado_manualmente: bool = False
+    fecha_modificacion_nutricional: Optional[datetime] = None
+    usuario_modificacion_nutricional: Optional[str] = None
+    campos_modificados: List[str] = []
+    valores_referencia: Optional[dict] = None
+    energia_kcal: Optional[float] = None
+    energia_kj: Optional[float] = None
+    carbohidratos: Optional[float] = None
+    azucares_totales: Optional[float] = None
+    azucares_anadidos: Optional[float] = None
+    proteinas: Optional[float] = None
+    grasas_totales: Optional[float] = None
+    grasas_saturadas: Optional[float] = None
+    grasas_trans: Optional[float] = None
+    fibra_alimentaria: Optional[float] = None
+    sodio_mg: Optional[float] = None
+    tiene_datos_cargados: bool = False
+
+    model_config = ConfigDict(from_attributes=True)

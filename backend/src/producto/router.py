@@ -6,8 +6,33 @@ from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.database import get_db
 from src.producto import schemas, services
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/productos", tags=["productos"])
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_productos_pdf(
+    activo: Optional[bool] = None,
+    busqueda: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    datos = services.obtener_productos_para_exportar(db, activo=activo, busqueda=busqueda)
+    
+    columnas = {
+        "id": "ID",
+        "nombre": "Nombre del Producto",
+        "unidadMedida": "Unidad de Medida",
+        "receta": "Receta Asociada",
+        "descripcion": "Descripción",
+        "estado": "Estado"
+    }
+    
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Productos Elaborados",
+        nombre_archivo="productos_elaborados.pdf"
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_productos_csv(
@@ -15,7 +40,7 @@ def exportar_productos_csv(
     busqueda: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    datos = services.obtener_productos_para_csv(db, activo=activo, busqueda=busqueda)
+    datos = services.obtener_productos_para_exportar(db, activo=activo, busqueda=busqueda)
     
     columnas = {
         "id": "ID",
@@ -53,6 +78,16 @@ async def read_productos(db: Session = Depends(get_db)):
 @router.get("/{producto_id}", response_model=schemas.ProductoResponse, dependencies=[Depends(get_usuario_actual)])
 async def read_producto(producto_id: int, db: Session = Depends(get_db)):
     return services.obtener_producto(db, producto_id)
+
+
+@router.get("/{producto_id}/composicion-porcentual", dependencies=[Depends(get_usuario_actual)])
+async def read_composicion_porcentual_producto(
+    producto_id: int,
+    version_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    from src.recetas.services import obtener_composicion_porcentual_producto
+    return obtener_composicion_porcentual_producto(db, producto_id, version_id=version_id)
 
 
 # va antes de PUT /{producto_id} para que "visibilidad-publica" no se tome como un id

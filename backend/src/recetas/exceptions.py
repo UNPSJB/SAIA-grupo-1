@@ -79,3 +79,14 @@ class EscaladoInvalido(BadRequest):
 class RecetaSinVersionVigente(BadRequest):
     DETAIL = ErrorCode.RECETA_SIN_VIGENTE
 
+class PasoAnteriorPendiente(BadRequest):
+    DETAIL = "Debe registrar el cumplimiento del paso anterior antes de pasar al siguiente."
+
+class StockInsumoInsuficienteReceta(BadRequest):
+    def __init__(self, detalle: str = "No hay suficiente stock de los insumos necesarios para comenzar la receta."):
+        self.DETAIL = detalle
+        super().__init__(detalle)
+
+class CantidadLoteNoDiscreta(BadRequest):
+    DETAIL = "La cantidad del lote debe ser un número entero discreto de unidades de producto."
+

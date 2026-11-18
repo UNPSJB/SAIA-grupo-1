@@ -25,7 +25,7 @@ const CONFIGURACION_VISTA: Record<
     titulo: 'Estadísticas Detalladas de Cumplimiento de Tareas',
     subtitulo: 'Desglose y evolución temporal del cumplimiento de tareas de checklist',
     descripcion:
-      'Esta vista contendrá métricas por operador, comparativas temporales por turno y porcentajes de cumplimiento por sector.',
+      'Esta vista contendrá métricas por operador, comparativas temporales y porcentajes de cumplimiento por sector.',
   },
   incidentes: {
     titulo: 'Estadísticas Detalladas de Incidentes',

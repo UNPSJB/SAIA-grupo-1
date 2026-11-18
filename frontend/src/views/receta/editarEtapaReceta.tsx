@@ -82,13 +82,16 @@ export default function EditarDetalleReceta({
 
   useEffect(() => {
     if (detalleInicial) {
+      const insumoElegido = insumos.find((i) => i.id === Number(detalleInicial.ingrediente_id));
+      const unidadAutocompletada = obtenerUnidadDeInsumo(insumoElegido);
       setDetalle({
         ...detalleInicial,
+        unidad_medida: unidadAutocompletada || detalleInicial.unidad_medida,
         clase_funcional: detalleInicial.clase_funcional ?? null,
         numero_ins: detalleInicial.numero_ins ?? "",
       });
     }
-  }, [detalleInicial]);
+  }, [detalleInicial, insumos]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -277,8 +280,8 @@ export default function EditarDetalleReceta({
             type="text"
             placeholder="Se autocompleta al elegir insumo"
             value={detalle.unidad_medida}
-            onChange={handleChange}
-            required
+            disabled
+            readOnly
           />
         </div>
 

@@ -93,8 +93,9 @@ class LoteProduccion(BaseModel):
     cantidad: float
     responsable_legajo: int
     nombre_responsable: str
+    version_receta_id: Optional[int] = None
+    checklist_receta_id: Optional[int] = None
     creado_en: datetime
-    # False para los lotes de días anteriores: ya no se les pueden agregar ni quitar insumos
     editable: bool
     insumos: List[InsumoLote]
     model_config = ConfigDict(from_attributes=True)

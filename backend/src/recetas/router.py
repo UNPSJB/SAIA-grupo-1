@@ -190,6 +190,20 @@ async def listar_versiones_receta(
     return services.listar_versiones_receta(db, receta_id)
 
 
+@router.get(
+    "/{receta_id}/composicion-porcentual",
+    response_model=schemas.ComposicionPorcentualResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def obtener_composicion_porcentual_endpoint(
+    receta_id: int,
+    version_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(obtener_usuario_actual),
+):
+    return services.calcular_composicion_porcentual(db, receta_id, version_id=version_id)
+
+
 @router.post( "/{receta_id}/escalar",response_model=schemas.RecetaEscaladaResponse,status_code=status.HTTP_200_OK,)
 async def escalar_receta_endpoint(
     receta_id: int,

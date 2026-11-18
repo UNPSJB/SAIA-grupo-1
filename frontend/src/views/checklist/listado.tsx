@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import type { Checklist, PersonalResumen } from './tipos';
 import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import '../../styles/formularioAlta.css';
@@ -10,6 +10,7 @@ import '../../styles/checklist.css';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
 import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 
 interface ListadoChecklistsProps {
   onDetalleClick: (id: number) => void;
@@ -217,7 +218,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
     await recargarChecklists('', '', '', '');
   };
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -227,12 +228,22 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
       if (responsableFiltro) params.append('responsable_legajo', responsableFiltro);
 
       const queryString = params.toString();
-      const url = `/checklist/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'historial_checklists.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/checklist/exportar-pdf${query}`, 'historial_checklists.pdf');
+      } else {
+        await descargarCSV(`/checklist/exportar-csv${query}`, 'historial_checklists.csv');
+      }
+
       setDialogExportarAbierto(false);
     } catch (err) {
-      mostrarError(err instanceof Error ? err.message : 'Error al exportar el historial a CSV.', 'Error de exportación');
+      mostrarError(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar el historial a ${formato.toUpperCase()}.`,
+        'Error de exportación'
+      );
     } finally {
       setExportando(false);
     }
@@ -301,7 +312,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
               className="btn-cancelar"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              <CsvIcon /> Exportar CSV
+              <ExportIcon /> Exportar
             </button>
           )}
 

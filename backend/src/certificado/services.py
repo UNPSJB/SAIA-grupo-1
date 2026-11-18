@@ -14,7 +14,7 @@ from src.personal.models import Personal
 ARCHIVOS_DIR = Path(__file__).resolve().parent / "archivos"
 ARCHIVOS_DIR.mkdir(parents=True, exist_ok=True)
 
-def obtener_certificados_para_csv(
+def obtener_certificados_para_exportar(
     db: Session,
     legajo_persona: Optional[int] = None,
     busqueda: Optional[str] = None,
@@ -59,19 +59,36 @@ def obtener_certificados_para_csv(
 
         # Cálculo de estado de vencimiento
         f_venc = getattr(c, "fechaVencimiento", None)
-        str_venc = f_venc.strftime("%Y-%m-%d") if hasattr(f_venc, "strftime") and f_venc else "Sin fecha"
-        estado_venc = "AL_DIA"
+        if isinstance(f_venc, datetime):
+            f_venc = f_venc.date()
+        elif isinstance(f_venc, str) and f_venc:
+            try:
+                f_venc = date.fromisoformat(f_venc[:10])
+            except ValueError:
+                f_venc = None
 
-        if f_venc and hasattr(f_venc, "days"):
+        str_venc = f_venc.strftime("%d/%m/%Y") if isinstance(f_venc, date) else "Sin fecha"
+        estado_clave = "AL_DIA"
+        estado_texto = "Al día"
+
+        if isinstance(f_venc, date):
             diff_dias = (f_venc - hoy).days
-            if diff_dias <= 0:
-                estado_venc = "VENCIDO"
-            elif diff_dias <= 15:
-                estado_venc = "PROXIMO"
+            if diff_dias < 0:
+                estado_clave = "VENCIDOS"
+                estado_texto = f"Vencido ({abs(diff_dias)} d)"
+            elif diff_dias < 15:
+                estado_clave = "PROXIMOS"
+                estado_texto = f"Próximo ({diff_dias} d)"
 
-        # Filtro de estado
-        if filtro_estado and filtro_estado != "TODOS":
-            if estado_venc != filtro_estado.upper():
+        # Filtro de estado (coincide con TODOS, VENCIDOS, PROXIMOS, AL_DIA del frontend)
+        if filtro_estado and filtro_estado.upper() != "TODOS":
+            filtro_norm = filtro_estado.upper()
+            if filtro_norm == "VENCIDO":
+                filtro_norm = "VENCIDOS"
+            elif filtro_norm == "PROXIMO":
+                filtro_norm = "PROXIMOS"
+
+            if estado_clave != filtro_norm:
                 continue
 
         filas.append({
@@ -80,7 +97,7 @@ def obtener_certificados_para_csv(
             "nombre_persona": nombre_persona,
             "tipo": tipo_str,
             "fecha_vencimiento": str_venc,
-            "estado_vencimiento": estado_venc.replace("_", " ").capitalize(),
+            "estado_vencimiento": estado_texto,
             "tiene_archivo": "Sí" if getattr(c, "foto_url", None) else "No"
         })
 

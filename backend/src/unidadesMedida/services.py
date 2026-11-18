@@ -103,6 +103,7 @@ def contar_referencias_unidad(db: Session, unidad_id: int) -> int:
     from src.insumos.models import Insumo
     from src.insumos_quimicos.models import InsumoQuimico
     from src.producto.models import Producto
+    from src.recetas.models import ChecklistRecetaItem, RecetaDetalle
     from src.tipoInsumo.models import TipoInsumo
 
     total = 0
@@ -110,6 +111,8 @@ def contar_referencias_unidad(db: Session, unidad_id: int) -> int:
     total += db.scalar(select(func.count(Insumo.id)).where(Insumo.unidad_medida_id == unidad_id)) or 0
     total += db.scalar(select(func.count(Producto.id)).where(Producto.unidad_medida_id == unidad_id)) or 0
     total += db.scalar(select(func.count(InsumoQuimico.id)).where(InsumoQuimico.unidad_medida_id == unidad_id)) or 0
+    total += db.scalar(select(func.count(RecetaDetalle.id)).where(RecetaDetalle.unidad_medida_id == unidad_id)) or 0
+    total += db.scalar(select(func.count(ChecklistRecetaItem.id)).where(ChecklistRecetaItem.unidad_medida_id == unidad_id)) or 0
     return total
 
 

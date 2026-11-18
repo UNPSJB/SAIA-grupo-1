@@ -9,15 +9,36 @@ from src.recetas.models import CLASE_FUNCIONAL, EstadoEtapaRecetaItem, EstadoGen
 # SCHEMAS DE RENGLONES (RecetaDetalle)
 # ==========================================
 
+class ParametroControlReceta(BaseModel):
+    nombre_dato: str
+    unidad_medida: Optional[str] = None
+    umbral_minimo: Optional[float] = None
+    umbral_maximo: Optional[float] = None
+    requerimientos: Optional[str] = None
+
+
+class ValorControlRegistrado(BaseModel):
+    nombre_dato: str
+    unidad_medida: Optional[str] = None
+    valor_registrado: str
+    umbral_minimo: Optional[float] = None
+    umbral_maximo: Optional[float] = None
+    cumple_umbral: bool = True
+
+
 class RecetaDetalleBase(BaseModel):
-    ingrediente_id: int
+    ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
+    aditivo_id: Optional[int] = None
     nombre: str = Field(max_length=50)
     cantidad: float
-    unidad_medida: str = Field(max_length=20)
+    unidad_medida_id: Optional[int] = None
+    unidad_medida: Optional[str] = Field(default=None, max_length=20)
     es_aditivo: bool = False
-    clase_funcional: Optional[CLASE_FUNCIONAL] = None
+    clase_funcional: Optional[str] = None
     numero_ins: Optional[str] = None
     descripcion_pasos: str = Field(min_length=1)
+    parametros_control: List[ParametroControlReceta] = Field(default_factory=list)
 
 
 class RecetaDetalleCreate(RecetaDetalleBase):
@@ -31,13 +52,22 @@ class RecetaDetalleCreate(RecetaDetalleBase):
 
     @field_validator("unidad_medida")
     @classmethod
-    def validar_unidad_medida(cls, v: str) -> str:
-        if v and len(v.strip()) > 0:
-            return v
-        raise exceptions.UnidadMedidaVacia()
+    def validar_unidad_medida(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        limpio = v.strip()
+        return limpio if limpio else None
 
     @model_validator(mode="after")
     def validar_reglas_aditivo(self) -> "RecetaDetalleCreate":
+        if (
+            self.ingrediente_id is None
+            and self.tipo_insumo_id is None
+            and self.aditivo_id is None
+            and self.unidad_medida_id is None
+            and not self.unidad_medida
+        ):
+            raise exceptions.UnidadMedidaVacia()
         if self.es_aditivo:
             if not self.clase_funcional or not self.clase_funcional.strip():
                 raise exceptions.AditivoClaseFuncional()
@@ -78,6 +108,9 @@ class RecetaDetalleCreate(RecetaDetalleBase):
 class RecetaDetalle(RecetaDetalleBase):
     id: int
     version_receta_id: int
+    unidad_medida: str
+    unidad_medida_nombre: Optional[str] = None
+    unidad_medida_abreviatura: Optional[str] = None
     nombre_ingrediente: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -89,6 +122,7 @@ class RecetaDetalle(RecetaDetalleBase):
 
 class VersionRecetaBase(BaseModel):
     rendimiento_final: float
+    tiempo_maximo_dias: int = 1
     fecha_vigencia: Optional[datetime] = None
     fecha_vencimiento: Optional[datetime] = None
 
@@ -136,7 +170,8 @@ class VersionRecetaResponse(VersionRecetaBase):
 class RecetaBase(BaseModel):
     nombre: str = Field(max_length=50)
     rendimiento_final: float
-    fecha_creacion: datetime
+    tiempo_maximo_dias: int = 1
+    fecha_creacion: datetime = Field(default_factory=datetime.now)
     id_producto: int
     operario_legajo: int
 
@@ -194,6 +229,7 @@ class RecetaCreate(RecetaBase):
 class RecetaUpdate(BaseModel):
     nombre: Optional[str] = Field(None, max_length=50)
     rendimiento_final: Optional[float] = None
+    tiempo_maximo_dias: Optional[int] = None
     id_producto: Optional[int] = None
     operario_legajo: Optional[int] = None
     fecha_creacion: Optional[datetime] = None
@@ -316,7 +352,8 @@ class RecetaEscalarRequest(BaseModel):
 class IngredienteEscaladoItem(BaseModel):
     detalle_id: int
     nombre_etapa: str
-    ingrediente_id: int
+    ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
     nombre_ingrediente: str
     es_aditivo: bool
     unidad_medida: str
@@ -340,6 +377,8 @@ class RecetaEscaladaResponse(BaseModel):
 
 class CompletarEtapaSchema(BaseModel):
     observaciones: Optional[str] = None
+    lote_insumo_id: Optional[int] = None
+    valores_control: List[ValorControlRegistrado] = Field(default_factory=list)
 
 
 class MarcarEtapaNoRealizadaSchema(BaseModel):
@@ -350,6 +389,7 @@ class MarcarEtapaNoRealizadaSchema(BaseModel):
 class ChecklistRecetaItemResponse(BaseModel):
     id: int
     checklist_id: int
+    orden: int = 1
     receta_id: Optional[int] = None
     version_receta_id: Optional[int] = None
     nombre_receta: str
@@ -357,9 +397,13 @@ class ChecklistRecetaItemResponse(BaseModel):
     nombre_etapa: str
     descripcion_pasos: str
     ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
+    lote_insumo_usado_id: Optional[int] = None
     nombre_ingrediente: Optional[str] = None
     cantidad: float
     unidad_medida: str
+    parametros_control: List[ParametroControlReceta] = Field(default_factory=list)
+    valores_registrados: List[ValorControlRegistrado] = Field(default_factory=list)
     estado: EstadoEtapaRecetaItem
     responsable_legajo: Optional[int] = None
     nombre_responsable: Optional[str] = None
@@ -379,6 +423,13 @@ class ChecklistRecetaResponse(BaseModel):
     activo: bool = True
     responsable_legajo: int
     nombre_responsable: Optional[str] = None
+    id_producto: Optional[int] = None
+    receta_id: Optional[int] = None
+    version_receta_id: Optional[int] = None
+    cantidad_objetivo: Optional[float] = None
+    tiempo_maximo_dias: int = 1
+    fecha_vencimiento: Optional[date] = None
+    lote_produccion_id: Optional[int] = None
     estado: EstadoGeneralRecetaChecklist
     porcentaje_cumplimiento: float
     total_etapas: int
@@ -389,3 +440,46 @@ class ChecklistRecetaResponse(BaseModel):
     items: List[ChecklistRecetaItemResponse]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EquivalenciaFaltanteItem(BaseModel):
+    detalle_id: int
+    ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
+    nombre: str
+    unidad_medida: str
+    mensaje: str
+
+
+class ItemComposicionPorcentual(BaseModel):
+    detalle_id: int
+    ingrediente_id: Optional[int] = None
+    tipo_insumo_id: Optional[int] = None
+    aditivo_id: Optional[int] = None
+    nombre: str
+    nombre_etapa: str
+    cantidad: float
+    unidad_medida: str
+    gramos_equivalentes: Optional[float] = None
+    porcentaje: Optional[float] = None
+    es_aditivo: bool = False
+    clase_funcional: Optional[str] = None
+    numero_ins: Optional[str] = None
+
+
+class ComposicionPorcentualResponse(BaseModel):
+    receta_id: int
+    nombre_receta: str
+    id_producto: int
+    nombre_producto: Optional[str] = None
+    version_receta_id: int
+    version: int
+    rendimiento_final: float
+    peso_total_gramos: float
+    suma_porcentajes: float
+    diferencia_redondeo: float
+    cumple_cien_por_ciento: bool
+    tiene_equivalencias_faltantes: bool
+    equivalencias_faltantes: List[EquivalenciaFaltanteItem] = Field(default_factory=list)
+    ingredientes: List[ItemComposicionPorcentual] = Field(default_factory=list)
+    aditivos: List[ItemComposicionPorcentual] = Field(default_factory=list)

@@ -2,23 +2,29 @@ import React, { useEffect, useState } from "react";
 import type { ProductoConId } from "./tipos";
 import "../../styles/formularioAlta.css";
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
-import { ConfirmExportDialog } from "../../components/ui/confirmExportDialog";
-import { CsvIcon } from "../../components/icons/CsvIcon";
+import { ConfirmExportDialog, type FormatoExportacion } from "../../components/ui/confirmExportDialog";
+import { ExportIcon } from "../../components/icons/ExportIcon";
+import { descargarCSV } from "../../utils/exportarCsv";
+import { descargarPDF } from "../../utils/exportarPdf";
 import { Paginacion} from "../../components/ui/paginacion";
 import { usePaginacion } from "../../components/ui/usePaginacion"; 
 import { apiFetch } from "../../api/client";
-import { descargarCSV } from "../../utils/exportarCsv"; 
+import { InformacionNutricionalModal } from "./InformacionNutricionalModal";
 
 interface ListadoProductosProps {
   onNuevoClick?: () => void;
   onDetalleClick?: (id: number) => void;
   onEditarClick?: (id: number) => void;
+  onIngredientesClick?: (id: number) => void;
+  onBorradorRotuloClick?: (id: number) => void;
 }
 
 export const ListadoProductos: React.FC<ListadoProductosProps> = ({
   onNuevoClick,
   onDetalleClick,
   onEditarClick,
+  onIngredientesClick,
+  onBorradorRotuloClick,
 }) => {
   const [productos, setProductos] = useState<ProductoConId[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +37,7 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
   const [productoAConfirmar, setProductoAConfirmar] = useState<ProductoConId | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [errorDialogMsg, setErrorDialogMsg] = useState<string | null>(null);
+  const [productoNutricion, setProductoNutricion] = useState<ProductoConId | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -108,7 +115,7 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
     return matchBusqueda && matchEstado;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -124,13 +131,20 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
       }
 
       const queryString = params.toString();
-      const url = `/productos/exportar-csv${queryString ? `?${queryString}` : ""}`;
+      const query = queryString ? `?${queryString}` : "";
 
-      await descargarCSV(url, "productos_elaborados.csv");
+      if (formato === "pdf") {
+        await descargarPDF(`/productos/exportar-pdf${query}`, "productos_elaborados.pdf");
+      } else {
+        await descargarCSV(`/productos/exportar-csv${query}`, "productos_elaborados.csv");
+      }
+
       setDialogExportarAbierto(false);
     } catch (error) {
       setErrorDialogMsg(
-        error instanceof Error ? error.message : "Error al exportar los productos a CSV."
+        error instanceof Error
+          ? error.message
+          : `Error al exportar los productos a ${formato.toUpperCase()}.`
       );
     } finally {
       setExportando(false);
@@ -171,7 +185,7 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
             className="btn-cancelar"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (
@@ -241,6 +255,29 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                   </td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
+                      {Boolean(i.id_receta) && i.aplica_rotulado !== false && (
+                        <>
+                          <button
+                            className="btn-icon"
+                            title="Previsualizar borrador de rótulo"
+                            onClick={() => onBorradorRotuloClick?.(i.id)}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                              label
+                            </span>
+                          </button>
+                          <button
+                            className="btn-icon"
+                            title="Lista de ingredientes y aditivos (Rótulo)"
+                            onClick={() => onIngredientesClick?.(i.id)}
+                            style={{ color: "#2563eb" }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                              format_list_numbered
+                            </span>
+                          </button>
+                        </>
+                      )}
                       <button
                         className="btn-icon btn-ver"
                         title="Ver detalles"
@@ -255,6 +292,17 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                       >
                         ✎
                       </button>
+                      {Boolean(i.id_receta) && i.aplica_rotulado !== false && (
+                        <button
+                          className="btn-icon btn-nutricion"
+                          title="Información nutricional"
+                          onClick={() => setProductoNutricion(i)}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                            monitoring
+                          </span>
+                        </button>
+                      )}
                       <button
                         className={`btn-icon ${i.activo ? "btn-eliminar" : "btn-reactivar"}`}
                         title={i.activo ? "Dar de baja" : "Restaurar"}
@@ -316,6 +364,14 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
         description={errorDialogMsg || ""}
         onClose={() => setErrorDialogMsg(null)}
       />
+
+      {productoNutricion && (
+        <InformacionNutricionalModal
+          productoId={productoNutricion.id}
+          nombreProducto={productoNutricion.nombre}
+          onClose={() => setProductoNutricion(null)}
+        />
+      )}
     </div>
   );
 };

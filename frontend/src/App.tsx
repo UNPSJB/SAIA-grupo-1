@@ -24,7 +24,9 @@ import { VerDetalle as VerDetalleInsumoQuimico } from './views/insumos_quimicos/
 import type { InsumoQuimico } from './views/insumos_quimicos/tipos';
 import { ConsumoHistoricoInsumos } from './views/dashboard/ConsumoHistoricoInsumos';
 import { Panel_Publico } from './views/vistaPublica/datosPublicos';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, type Modulo } from './components/Sidebar';
+import { PanelConfiguraciones } from './views/configuraciones/panelConfiguraciones';
+import { obtenerEstadoVistaPublica, enlaceVistaPublica, type EstadoVistaPublica } from './views/configuraciones/vistaPublicaApi';
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar';
 import { NavbarPublica, type ModuloPublico } from './components/navbarVistaPublica';
 import { ListadoElementosLimpieza } from './views/elementosDeLimpieza/listado';
@@ -54,7 +56,7 @@ import NuevoDocumento from './views/documentos/nuevoDocumento';
 import NuevaVersion from './views/documentos/nuevaVersion';
 import { Login } from './views/auth/login';
 import { useAuth } from './auth/useAuth';
-import { moduloInicial, puedeVerModulo } from './auth/permisos';
+import { MODULOS_DE_CONFIGURACION, moduloInicial, puedeVerModulo } from './auth/permisos';
 import { EditarPlanDeCalibracion } from './views/planDeCalibracion/editarPlanDeCalibracion';
 import { VerPlanDeCalibracion } from './views/planDeCalibracion/verPlanDeCalibracion';
 import { ListadoCertificados } from './views/certificado/listado';
@@ -86,6 +88,8 @@ import { ListadoProductos } from './views/producto/listado';
 import NuevoProducto  from './views/producto/nuevoProducto';
 import EditarProducto from './views/producto/editarDetalle';
 import { DetalleProducto } from './views/producto/verDetalle';
+import { OrdenarIngredientes } from './views/producto/ordenarIngredientes';
+import { BorradorRotulo } from './views/producto/borradorRotulo';
 import { InformeInspeccion } from './views/informes/informeInspeccion';
 import ActivarVista_Publica from './views/vistaPublica/habilitarVista';
 import VistaPublica_Habilitada from './views/vistaPublica/VistaHabilitada';
@@ -94,6 +98,9 @@ import { ListadoControlesAmbientales } from './views/controlesAmbientales/listad
 import NuevoControlAmbiental from './views/controlesAmbientales/nuevoControl';
 import { DetalleControlAmbiental } from './views/controlesAmbientales/verDetalle';
 import { EditarControlAmbiental } from './views/controlesAmbientales/editarDetalle';
+import { ListadoParametros } from './views/rotuladoFrontal/listado';
+import { DetalleConjunto } from './views/rotuladoFrontal/verConjunto';
+import { FormConjunto } from './views/rotuladoFrontal/formConjunto';
 
 import { ListadoTiposInsumos } from './views/tipoInsumo/listado';
 import { NuevoTipoInsumo } from './views/tipoInsumo/nuevoTipoInsumo';
@@ -114,7 +121,6 @@ import { VerReceta } from './views/receta/VerReceta';
 import { ListadoChecklistsReceta } from './views/receta/listadoDeEtapasChecklist';
 import { DetalleChecklistReceta } from './views/receta/VerEtapaChecklist';
 
-type Modulo = 'dashboard' | 'insumos' | 'tipoInsumo' | 'unidadesMedida' | 'proveedores' | 'equipos' | 'sectores' | 'personas' | 'vencimientos' | 'tipoCertificado' | 'tipoDocumento' | 'insumos_quimicos' | 'elementosDeLimpieza' | 'planDeLimpieza' | 'checklist' | 'motivos' | 'documentos' | 'incidentes' | 'auditoria' | 'informes' | 'planDeCalibracion' | 'productos' | 'produccion' | 'vistaPublica' | 'controlesAmbientales'| 'receta'|'checklistRecetas';
 type VistaTipoInsumo = 'listado' | 'alta' | 'editar' | 'detalle';
 type VistaUnidadesMedida = 'listado' | 'alta' | 'editar';
 type VistaProveedores = 'listado' | 'alta' | 'editar';
@@ -133,9 +139,10 @@ type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
 type VistaMotivos = 'listado' | 'alta' | 'detalle';
 type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
-type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar' | 'receta';
+type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar' | 'receta' | 'ingredientes' | 'borradorRotulo';
 type VistaControlesAmbientales = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaRecetas = 'listado' | 'alta' | 'detalle' | 'editar';
+type VistaRotulado = 'listado' | 'alta' | 'detalle' | 'editar';
 
 function Aplicacion() {
   const { esAdministrador, esOperador } = useAuth();
@@ -201,6 +208,8 @@ function Aplicacion() {
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState<number | null>(null);
 
   const [vistaControlesAmbientales, setVistaControlesAmbientales] = useState<VistaControlesAmbientales>('listado');
+  const [vistaRotulado, setVistaRotulado] = useState<VistaRotulado>('listado');
+  const [conjuntoSeleccionado, setConjuntoSeleccionado] = useState<number | null>(null);
   const [controlAmbientalSeleccionado, setControlAmbientalSeleccionado] = useState<number | null>(null);
 
   const [filtroCertificadosInicial, setFiltroCertificadosInicial] = useState<'TODOS' | 'VENCIDOS' | 'PROXIMOS' | 'AL_DIA'>('TODOS');
@@ -239,6 +248,44 @@ function Aplicacion() {
   const [qrUrlPublica, setQrUrlPublica] = useState<string | null>(null);
   const [idAlfanumericoPublico, setIdAlfanumericoPublico] = useState<string | null>(null);
   const [urlTextoPublica, setUrlTextoPublica] = useState<string | null>(null);
+  const [estadoVistaPublica, setEstadoVistaPublica] = useState<EstadoVistaPublica | null>(null);
+  const [errorVistaPublica, setErrorVistaPublica] = useState<string | null>(null);
+  const { setConfig: setConfigVistaPublica } = useVistaPublica();
+
+  // el estado de la vista pública vive en el backend: así sobrevive a recargar la página
+  const aplicarEstadoVistaPublica = (estado: EstadoVistaPublica) => {
+    setEstadoVistaPublica(estado);
+    setErrorVistaPublica(null);
+    setVistaPublicaHabilitada(estado.habilitada);
+    setIdAlfanumericoPublico(estado.id_alfanumerico);
+    setUrlTextoPublica(enlaceVistaPublica(estado));
+    if (!estado.habilitada) setQrUrlPublica(null);
+    setConfigVistaPublica({
+      verGrafico: estado.ver_grafico,
+      verAcercaDeNosotros: estado.verAcercaDeNosotros,
+      verProductos: estado.verProductos,
+      verDiasSinIncidentes: estado.ver_dias_sin_incidentes,
+      verTotalLotes: estado.ver_total_lotes,
+      verVolumenFabricado: estado.ver_volumen_fabricado,
+      verProductoMasElaborado: estado.ver_producto_mas_elaborado,
+      verGraficoTotalesProductos: estado.ver_grafico_totales_productos,
+      verGraficoRedArana: estado.ver_grafico_red_arana,
+    });
+  };
+
+  const cargarEstadoVistaPublica = () => {
+    if (!esAdministrador) return;
+    obtenerEstadoVistaPublica()
+      .then(aplicarEstadoVistaPublica)
+      .catch((err: unknown) => setErrorVistaPublica(err instanceof Error ? err.message : 'Error de conexión con el servidor.'));
+  };
+
+  useEffect(cargarEstadoVistaPublica, [esAdministrador]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const irAConfiguraciones = () => {
+    cambiarModulo('configuraciones');
+    cargarEstadoVistaPublica();
+  };
 
   const cambiarModulo = (nuevoModulo: Modulo, limpiarFiltros: boolean = true, esDesdeDashboard: boolean = false) => {
     setModulo(nuevoModulo);
@@ -280,6 +327,8 @@ function Aplicacion() {
     setVistaControlesAmbientales('listado');
     setControlAmbientalSeleccionado(null);
     setVistaChecklistReceta('listado');
+    setVistaRotulado('listado');
+    setConjuntoSeleccionado(null);
     if (limpiarFiltros) {
       setFiltroCertificadosInicial('TODOS');
       setFiltroCalibracionInicial('TODOS');
@@ -445,6 +494,32 @@ interface RegistroVencimientoRef {
     setNombrePersonaSeleccionada(nombreCompleto);
     setVistaPersonas('certificados');
     setModulo('personas');
+  };
+
+  const ETIQUETAS_CONFIGURACION: Partial<Record<Modulo, string>> = {
+    sectores: 'Sectores',
+    tipoCertificado: 'Tipos de Certificado',
+    tipoDocumento: 'Tipos de Documento',
+    motivos: 'Motivos de No Realización',
+    unidadesMedida: 'Unidades de Medida',
+    proveedores: 'Proveedores',
+    rotuladoFrontal: 'Rotulado Frontal',
+    vistaPublica: 'Vista Pública',
+  };
+
+  const renderBreadcrumbConfiguracion = () => {
+    if (desdeDashboard || !MODULOS_DE_CONFIGURACION.includes(modulo)) return null;
+    return (
+      <div className="dashboard-breadcrumb-wrapper" style={{ maxWidth: '1180px', padding: '0 1.5rem' }}>
+        <nav className="dashboard-breadcrumb" aria-label="Breadcrumb">
+          <button type="button" className="dashboard-breadcrumb-link" onClick={irAConfiguraciones}>
+            Configuraciones
+          </button>
+          <span className="dashboard-breadcrumb-separador">/</span>
+          <span className="dashboard-breadcrumb-actual">{ETIQUETAS_CONFIGURACION[modulo]}</span>
+        </nav>
+      </div>
+    );
   };
 
   const renderBreadcrumb = () => {
@@ -672,6 +747,8 @@ interface RegistroVencimientoRef {
                     ? 'Nuevo Producto'
                     : vistaProductos === 'editar'
                     ? 'Editar Producto'
+                    : vistaProductos === 'ingredientes'
+                    ? 'Ordenar Ingredientes y Aditivos'
                     : 'Detalle de Producto'}
                 </span>
               </>
@@ -785,6 +862,7 @@ const irANotificacion = async (notif: NotificacionItem) => {
           onNavegarNotificacion={irANotificacion}
           onIrAIncidentes={() => cambiarModulo('incidentes')}
           onIrAVencimientos={() => cambiarModulo('vencimientos')}
+          onIrAConfiguracion={irAConfiguraciones}
         />
 
         <div
@@ -798,6 +876,7 @@ const irANotificacion = async (notif: NotificacionItem) => {
           }}
         >
         {renderBreadcrumb()}
+        {renderBreadcrumbConfiguracion()}
         {modulo === 'dashboard' ? (
           <PanelDashboard
             vistaHabilitada={vistaPublicaHabilitada}
@@ -848,6 +927,14 @@ const irANotificacion = async (notif: NotificacionItem) => {
               }
             }}
           />
+          ) : modulo === 'configuraciones' ? (
+          <PanelConfiguraciones
+            estadoVistaPublica={estadoVistaPublica}
+            errorVistaPublica={errorVistaPublica}
+            onEstadoVistaPublica={aplicarEstadoVistaPublica}
+            onAbrirMaestro={(m) => cambiarModulo(m)}
+            onGestionarVistaPublica={() => setModulo('vistaPublica')}
+          />
           ) : modulo === 'vistaPublica' ? (
           vistaPublicaHabilitada ? (
             <VistaPublica_Habilitada
@@ -859,9 +946,9 @@ const irANotificacion = async (notif: NotificacionItem) => {
                 setQrUrlPublica(null);
                 setIdAlfanumericoPublico(null);
                 setUrlTextoPublica(null);
-                setModulo('dashboard');
+                irAConfiguraciones();
               }}
-              onCancel={() => setModulo('dashboard')}
+              onCancel={irAConfiguraciones}
             />
           ) : (
             <ActivarVista_Publica
@@ -870,9 +957,9 @@ const irANotificacion = async (notif: NotificacionItem) => {
                 setIdAlfanumericoPublico(idAlfanumerico);
                 setUrlTextoPublica(urlTexto);
                 setVistaPublicaHabilitada(true);
-                setModulo('dashboard');
+                irAConfiguraciones();
               }}
-              onCancel={() => setModulo('dashboard')}
+              onCancel={irAConfiguraciones}
             />
           )
         ) : modulo === 'vencimientos' ? (
@@ -1478,6 +1565,14 @@ const irANotificacion = async (notif: NotificacionItem) => {
                 setProductoSeleccionado(id);
                 setVistaProductos('editar');
               }}
+              onIngredientesClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('ingredientes');
+              }}
+              onBorradorRotuloClick={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('borradorRotulo');
+              }}
             />
           ) : vistaProductos === 'alta' ? (
             <NuevoProducto
@@ -1492,12 +1587,32 @@ const irANotificacion = async (notif: NotificacionItem) => {
                 setRecetaDesdeProducto(recetaId);
                 setVistaProductos('receta');
               }}
+              onGestionarIngredientes={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('ingredientes');
+              }}
+              onVerBorradorRotulo={(id) => {
+                setProductoSeleccionado(id);
+                setVistaProductos('borradorRotulo');
+              }}
             />
           ) : vistaProductos === 'receta' ? (
             <DetalleDocumento
               documentoId={recetaDesdeProducto}
               onVolver={() => setVistaProductos('detalle')}
               textoVolver="Volver al Producto"
+            />
+          ) : vistaProductos === 'ingredientes' && productoSeleccionado ? (
+            <OrdenarIngredientes
+              productoId={productoSeleccionado}
+              onVolver={() => setVistaProductos('detalle')}
+              onPrevisualizarBorrador={() => setVistaProductos('borradorRotulo')}
+            />
+          ) : vistaProductos === 'borradorRotulo' && productoSeleccionado ? (
+            <BorradorRotulo
+              productoId={productoSeleccionado}
+              onVolver={() => setVistaProductos('detalle')}
+              onIrAIngredientes={() => setVistaProductos('ingredientes')}
             />
           ) : (
             <EditarProducto
@@ -1561,7 +1676,45 @@ const irANotificacion = async (notif: NotificacionItem) => {
               onCancel={() => setVistaRecetas('listado')}
               recetaID={recetaSeleccionada}
             />
-          ):null) : null}
+          ) : null
+        ) : modulo === 'rotuladoFrontal' ? (
+          vistaRotulado === 'listado' ? (
+            <ListadoParametros
+              onNuevoClick={() => {
+                setConjuntoSeleccionado(null);
+                setVistaRotulado('alta');
+              }}
+              onVerClick={(id) => {
+                setConjuntoSeleccionado(id);
+                setVistaRotulado('detalle');
+              }}
+              onEditarClick={(id) => {
+                setConjuntoSeleccionado(id);
+                setVistaRotulado('editar');
+              }}
+            />
+          ) : vistaRotulado === 'detalle' ? (
+            <DetalleConjunto
+              key={conjuntoSeleccionado ?? 0}
+              conjuntoId={conjuntoSeleccionado}
+              onVolver={() => setVistaRotulado('listado')}
+              onEditar={(id) => {
+                setConjuntoSeleccionado(id);
+                setVistaRotulado('editar');
+              }}
+            />
+          ) : (
+            <FormConjunto
+              key={`${vistaRotulado}-${conjuntoSeleccionado ?? 'nuevo'}`}
+              conjuntoId={vistaRotulado === 'editar' ? conjuntoSeleccionado : null}
+              onGuardado={(id) => {
+                setConjuntoSeleccionado(id);
+                setVistaRotulado('detalle');
+              }}
+              onCancel={() => setVistaRotulado('listado')}
+            />
+          )
+        ) : null}
         </div>
       </SidebarInset>
     </SidebarProvider>

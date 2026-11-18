@@ -2,13 +2,72 @@ from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
-from src.autenticacion.dependencies import requiere_operador
 from src.database import get_db
 from src.personal.models import Personal
 from src.produccion import schemas, services
+from src.autenticacion.dependencies import get_usuario_actual, requiere_operador
+from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 lotes_router = APIRouter(prefix="/lotes", tags=["Producción"])
 
+@lotes_router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_lotes_csv(
+    producto_id: Optional[int] = Query(None),
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_lotes_para_exportar(
+        db, producto_id=producto_id, desde=desde, hasta=hasta, busqueda=busqueda
+    )
+
+    columnas = {
+        "codigo": "Código",
+        "fecha": "Fecha",
+        "producto": "Producto",
+        "cantidad": "Cantidad",
+        "responsable": "Responsable",
+        "insumos": "Insumos",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=columnas,
+        nombre_archivo="historial_lotes.csv",
+    )
+
+
+@lotes_router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_lotes_pdf(
+    producto_id: Optional[int] = Query(None),
+    desde: Optional[date] = Query(None),
+    hasta: Optional[date] = Query(None),
+    busqueda: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_lotes_para_exportar(
+        db, producto_id=producto_id, desde=desde, hasta=hasta, busqueda=busqueda
+    )
+
+    columnas = {
+        "codigo": "Código",
+        "fecha": "Fecha",
+        "producto": "Producto",
+        "cantidad": "Cantidad",
+        "responsable": "Responsable",
+        "insumos": "Insumos",
+        "estado": "Estado",
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Historial de Lotes de Producción",
+        nombre_archivo="historial_lotes.pdf",
+    )
 
 @lotes_router.post("/", response_model=schemas.LoteProduccion, status_code=status.HTTP_201_CREATED)
 def registrar_lote_endpoint(
@@ -24,9 +83,10 @@ def listar_lotes_endpoint(
     producto_id: Optional[int] = Query(None),
     desde: Optional[date] = Query(None),
     hasta: Optional[date] = Query(None),
+    version_receta_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
-    return services.listar_lotes(db, producto_id, desde, hasta)
+    return services.listar_lotes(db, producto_id, desde, hasta, version_receta_id=version_receta_id)
 
 
 # va antes de /{lote_id} para que "insumos-disponibles" no se tome como un id.

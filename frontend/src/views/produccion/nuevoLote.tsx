@@ -31,7 +31,7 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
   onVolver,
   onChecklistGenerado,
 }) => {
-  const { usuario } = useAuth();
+  const { usuario, esAdministrador } = useAuth();
   const { productos, cargando, error: errorProductos } = useProductos();
   const [form, setForm] = useState<LoteForm>(formularioInicial);
   const [factorInput, setFactorInput] = useState<string>('1');
@@ -63,12 +63,11 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
     };
   }, []);
 
-  // Recetas activas y con versión vigente asignadas al operador actual
   const recetasDelOperador = recetas.filter(
     (r) =>
       r.activo &&
       Boolean(r.version_vigente) &&
-      Number(r.operario_legajo) === Number(usuario?.legajo)
+      (esAdministrador || Number(r.operario_legajo) === Number(usuario?.legajo))
   );
 
   const idsProductosDelOperador = new Set(
@@ -166,6 +165,8 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
       return 'La cantidad objetivo y el factor no pueden estar vacíos.';
     if (Number(form.cantidad) <= 0 || Number(factorInput) <= 0)
       return 'La cantidad objetivo y el factor multiplicador deben ser mayores a cero.';
+    if (!Number.isInteger(Number(form.cantidad)))
+      return 'La cantidad del lote debe ser un número entero discreto de unidades de producto.';
     return null;
   };
 

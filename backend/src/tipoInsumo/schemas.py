@@ -9,6 +9,28 @@ class TipoInsumoBase(BaseModel):
     descripcion: Optional[str] = Field(default=None, max_length=255)
     unidad_medida_id: Optional[int] = None
     unidadMedida: Optional[str] = None
+    cantidad_referencia: float = 1.0
+    equivalencia_gramos: Optional[float] = None
+    es_aditivo: bool = False
+    clase_funcional: Optional[str] = None
+    numero_ins: Optional[str] = None
+    es_aromatizante: bool = False
+    es_edulcorante: bool = False
+    es_cafeina: bool = False
+    energia_kcal: Optional[float] = None
+    energia_kj: Optional[float] = None
+    carbohidratos: Optional[float] = None
+    azucares_totales: Optional[float] = None
+    azucares_anadidos: Optional[float] = None
+    proteinas: Optional[float] = None
+    grasas_totales: Optional[float] = None
+    grasas_saturadas: Optional[float] = None
+    grasas_trans: Optional[float] = None
+    fibra_alimentaria: Optional[float] = None
+    sodio_mg: Optional[float] = None
+    fuente_datos: Optional[str] = None
+    fuente_detalle: Optional[str] = None
+    alimento_referencia_id: Optional[str] = None
 
     @field_validator("nombre")
     @classmethod
@@ -38,6 +60,28 @@ class TipoInsumoUpdate(BaseModel):
     descripcion: Optional[str] = Field(default=None, max_length=255)
     unidad_medida_id: Optional[int] = None
     unidadMedida: Optional[str] = None
+    cantidad_referencia: Optional[float] = None
+    equivalencia_gramos: Optional[float] = None
+    es_aditivo: Optional[bool] = None
+    clase_funcional: Optional[str] = None
+    numero_ins: Optional[str] = None
+    es_aromatizante: Optional[bool] = None
+    es_edulcorante: Optional[bool] = None
+    es_cafeina: Optional[bool] = None
+    energia_kcal: Optional[float] = None
+    energia_kj: Optional[float] = None
+    carbohidratos: Optional[float] = None
+    azucares_totales: Optional[float] = None
+    azucares_anadidos: Optional[float] = None
+    proteinas: Optional[float] = None
+    grasas_totales: Optional[float] = None
+    grasas_saturadas: Optional[float] = None
+    grasas_trans: Optional[float] = None
+    fibra_alimentaria: Optional[float] = None
+    sodio_mg: Optional[float] = None
+    fuente_datos: Optional[str] = None
+    fuente_detalle: Optional[str] = None
+    alimento_referencia_id: Optional[str] = None
     activo: Optional[bool] = None
 
     @field_validator("nombre")
@@ -84,6 +128,8 @@ class TipoInsumo(TipoInsumoBase):
     unidadMedida: str
     unidad_medida_nombre: Optional[str] = None
     unidad_medida_abreviatura: Optional[str] = None
+    tiene_datos_nutricionales: bool = False
+    modificado_manualmente: bool = False
     activo: bool = True
     total_lotes: int = 0
     cantidad_lotes: int = 0
@@ -95,3 +141,59 @@ class TipoInsumo(TipoInsumoBase):
 class TipoInsumoDetalle(TipoInsumo):
     lotes: List[LoteInsumoHistorico] = []
     lotes_historicos: List[LoteInsumoHistorico] = []
+
+
+class AditivoBase(BaseModel):
+    nombre: str = Field(..., max_length=100)
+    descripcion: Optional[str] = Field(default=None, max_length=255)
+    clase_funcional: str = Field(..., max_length=100)
+    numero_ins: Optional[str] = Field(default=None, max_length=30)
+    unidad_medida_id: Optional[int] = None
+    unidadMedida: Optional[str] = None
+    cantidad_referencia: float = 1.0
+    equivalencia_gramos: Optional[float] = 1.0
+    es_aromatizante: bool = False
+    es_edulcorante: bool = False
+    es_cafeina: bool = False
+    aporta_energia_sodio: bool = False
+    energia_kcal: Optional[float] = None
+    energia_kj: Optional[float] = None
+    sodio_mg: Optional[float] = None
+    fuente_datos: Optional[str] = None
+    fuente_detalle: Optional[str] = None
+
+
+class AditivoCreate(AditivoBase):
+    pass
+
+
+class AditivoUpdate(BaseModel):
+    nombre: Optional[str] = Field(default=None, max_length=100)
+    descripcion: Optional[str] = Field(default=None, max_length=255)
+    clase_funcional: Optional[str] = Field(default=None, max_length=100)
+    numero_ins: Optional[str] = Field(default=None, max_length=30)
+    unidad_medida_id: Optional[int] = None
+    unidadMedida: Optional[str] = None
+    cantidad_referencia: Optional[float] = None
+    equivalencia_gramos: Optional[float] = None
+    es_aromatizante: Optional[bool] = None
+    es_edulcorante: Optional[bool] = None
+    es_cafeina: Optional[bool] = None
+    aporta_energia_sodio: Optional[bool] = None
+    energia_kcal: Optional[float] = None
+    energia_kj: Optional[float] = None
+    sodio_mg: Optional[float] = None
+    fuente_datos: Optional[str] = None
+    fuente_detalle: Optional[str] = None
+    activo: Optional[bool] = None
+
+
+class AditivoResponse(AditivoBase):
+    id: int
+    unidad_medida_id: int
+    unidadMedida: str
+    unidad_medida_nombre: Optional[str] = None
+    unidad_medida_abreviatura: Optional[str] = None
+    activo: bool = True
+
+    model_config = ConfigDict(from_attributes=True)

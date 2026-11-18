@@ -11,9 +11,44 @@ from src.autenticacion.dependencies import requiere_admin, get_usuario_actual
 from src.controlesAmbientales import schemas, services, exceptions
 from src.controlesAmbientales.models import TipoControlAmbiental
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/controles-ambientales", tags=["Controles Ambientales"])
 
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_controles_pdf(
+    busqueda: Optional[str] = Query(None),
+    tipo: Optional[str] = Query(None),
+    filtro_estado: Optional[str] = Query(None),
+    filtro_activo: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_controles_para_exportar(
+        db, 
+        busqueda=busqueda, 
+        tipo=tipo,
+        filtro_estado=filtro_estado, 
+        filtro_activo=filtro_activo
+    )
+
+    columnas = {
+        "id": "ID",
+        "tipo": "Tipo de Control",
+        "estado_registro": "Estado del Registro",
+        "periodicidad": "Periodicidad",
+        "ultima_realizacion": "Última Realización",
+        "proximo_vencimiento": "Próximo Vencimiento",
+        "urgencia": "Control de Vencimiento",
+        "total_visitas": "Total de Visitas",
+        "observaciones": "Observaciones"
+    }
+
+    return generar_respuesta_pdf(
+        datos=datos,
+        columnas=columnas,
+        titulo_reporte="Listado de Controles Sanitarios",
+        nombre_archivo="controles_ambientales.pdf"
+    )
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
 def exportar_controles_csv(
@@ -23,7 +58,7 @@ def exportar_controles_csv(
     filtro_activo: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    datos = services.obtener_controles_para_csv(
+    datos = services.obtener_controles_para_exportar(
         db, 
         busqueda=busqueda, 
         tipo=tipo,

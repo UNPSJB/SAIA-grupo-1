@@ -1,8 +1,11 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
+from sqlalchemy import text
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
+from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 from src.models import ModeloBase
 
 from src.config import settings
@@ -40,27 +43,58 @@ from src.AcercaDeNostros.router import router as AcercaDeNostrosRouter
 from src.produccion.router import lotes_router
 from src.producto.router import router as producto_router
 from src.controlesAmbientales.router import router as controles_ambientales_router
+from src.rotulado.router import router as rotulado_router
 from src.tipoInsumo.router import router as tipo_insumo_router
 from src.proveedores.router import router as proveedores_router
 from src.unidadesMedida.router import router as unidades_medida_router
 from src.unidadesMedida.services import asegurar_unidades_base
 from src.recetas.router import router as recetas_router
+from src.configuracion.router import router as configuracion_router
+from src.rotulado_frontal.router import router as rotulado_frontal_router
+from src.rotulado_frontal.services import asegurar_datos_iniciales as asegurar_parametros_rotulado
+from src.nutricion.router import router as nutricion_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
 
 setup_logging()
 
+async def _tarea_diaria_snapshot_vista_publica() -> None:
+    while True:
+        try:
+            await asyncio.sleep(86400)
+            with SessionLocal() as db:
+                regenerar_snapshot_seguro(db)
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            continue
+
+
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    with SessionLocal() as db:
+        asegurar_parametros_rotulado(db)
     if ENV == "DEV":
         with SessionLocal() as db:
             asegurar_usuarios_dev(db)
             from src.tipoDocumento.services import asegurar_tipos_base
             asegurar_unidades_base(db)
-        asegurar_tipos_base(db)
-    yield
+            from src.nutricion.services import asegurar_parametros_defecto
+            asegurar_parametros_defecto(db)
+            asegurar_tipos_base(db)
+    with SessionLocal() as db:
+        regenerar_snapshot_seguro(db)
+    tarea_snapshot = asyncio.create_task(_tarea_diaria_snapshot_vista_publica())
+    try:
+        yield
+    finally:
+        tarea_snapshot.cancel()
+        try:
+            await tarea_snapshot
+        except asyncio.CancelledError:
+            pass
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)
 
@@ -71,10 +105,6 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-   ## allow_origins=[
-    ##    "http://localhost:5173",
-     ##   "http://127.0.0.1:5173",
-   ## ],
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
@@ -112,14 +142,20 @@ app.include_router(notificaciones_router, dependencies=SESION)
 app.include_router(informes_router, dependencies=SOLO_ADMIN)
 app.include_router(motivo_router, prefix="/checklist/motivos")
 app.include_router(motivo_router, prefix="/motivos")
-app.include_router(qrCode_router)
+# --- Configuración (solo admin) ---
+# generar el QR habilita la vista pública: solo admin
+app.include_router(qrCode_router, dependencies=SOLO_ADMIN)
+# mezcla endpoints públicos (los que usa el QR) y de admin: cada endpoint define su permiso
 app.include_router(IdentificadorQR)
+app.include_router(configuracion_router, dependencies=SOLO_ADMIN)
 app.include_router(AcercaDeNostrosRouter)
-# registrar un lote lo define el endpoint (solo operadores); consultar alcanza con estar logueado
 app.include_router(lotes_router, dependencies=SESION)
 app.include_router(producto_router, dependencies=SESION)
 app.include_router(controles_ambientales_router, dependencies=SOLO_ADMIN)
+app.include_router(rotulado_router)
 app.include_router(tipo_insumo_router, dependencies=SESION)
 app.include_router(proveedores_router, dependencies=SESION)
 app.include_router(unidades_medida_router, dependencies=SESION)
 app.include_router(recetas_router)
+app.include_router(rotulado_frontal_router, prefix="/rotulado-frontal", tags=["Rotulado frontal"], dependencies=SESION)
+app.include_router(nutricion_router)

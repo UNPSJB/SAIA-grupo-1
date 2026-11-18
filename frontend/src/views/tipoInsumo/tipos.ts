@@ -20,6 +20,12 @@ export interface TipoInsumo {
   unidadMedida: string;
   unidad_medida_nombre?: string | null;
   unidad_medida_abreviatura?: string | null;
+  cantidad_referencia?: number;
+  equivalencia_gramos?: number | null;
+  es_aditivo?: boolean;
+  clase_funcional?: string | null;
+  numero_ins?: string | null;
+  tiene_datos_nutricionales?: boolean;
   activo: boolean;
   cantidad_lotes?: number;
   total_lotes?: number;
@@ -35,4 +41,9 @@ export interface TipoInsumoForm {
   nombre: string;
   descripcion: string;
   unidad_medida_id: number | '';
+  cantidad_referencia?: number | '';
+  equivalencia_gramos?: number | '';
+  es_aditivo?: boolean;
+  clase_funcional?: string;
+  numero_ins?: string;
 }

@@ -43,6 +43,8 @@ export interface LoteProduccion {
   cantidad: number;
   responsable_legajo: number;
   nombre_responsable: string;
+  version_receta_id?: number | null;
+  checklist_receta_id?: number | null;
   creado_en: string;
   /** false para los lotes de días anteriores: quedan de solo lectura */
   editable: boolean;

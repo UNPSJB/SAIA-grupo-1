@@ -203,7 +203,6 @@ export interface ItemDetalleChecklist {
   sector_o_equipo: string;
   tipo_objeto: string;
   responsable: string;
-  turno: string;
   estado: string;
   hora_fin?: string | null;
 }
@@ -218,20 +217,16 @@ export interface KpisCumplimientoDetallado {
   porcentaje_sector_menor?: number | null;
   equipo_menor_cumplimiento?: string | null;
   porcentaje_equipo_menor?: number | null;
-  turno_critico?: string | null;
-  porcentaje_turno_critico?: number | null;
 }
 
 export interface CumplimientoDetalladoResponse {
   desde?: string | null;
   hasta?: string | null;
   sector_id?: number | null;
-  turno?: string | null;
   kpis: KpisCumplimientoDetallado;
   tendencia_temporal: PuntoTendenciaCumplimiento[];
   desglose_por_sector: CumplimientoDesgloseItem[];
   desglose_por_equipo: CumplimientoDesgloseItem[];
-  desglose_por_turno: CumplimientoDesgloseItem[];
   items_detalle: ItemDetalleChecklist[];
 }
 
@@ -248,4 +243,56 @@ export interface ProduccionDashboardResponse {
   total_lotes: number;
   total_cantidad: number;
   puntos: PuntoProduccion[];
+}
+
+export interface DimensionRadar {
+  dimension: string;
+  clave: string;
+  actual: number;
+  anterior: number;
+  meta: number;
+  evaluados_actual: number;
+  evaluados_anterior: number;
+  descripcion: string;
+  unidad: string;
+}
+
+export interface MatrizCalidadRadarResponse {
+  sector_id?: number | null;
+  sector_nombre?: string | null;
+  periodo_etiqueta: string;
+  comparativa_etiqueta: string;
+  indice_global_actual: number;
+  indice_global_anterior: number;
+  dimensiones: DimensionRadar[];
+  tiene_datos: boolean;
+}
+
+export interface MesDesvioItem {
+  mes: string;
+  etiqueta: string;
+  conformes: number;
+  desvios_leves: number;
+  desvios_criticos: number;
+  total_eventos: number;
+  porcentaje_conformidad: number;
+  porcentaje_desvios: number;
+}
+
+export interface ResumenEvolucionDesvios {
+  total_eventos: number;
+  total_conformes: number;
+  total_desvios: number;
+  tasa_conformidad_promedio: number;
+  tasa_desvio_promedio: number;
+  mes_mayor_desvio?: string | null;
+}
+
+export interface EvolucionMensualDesviosResponse {
+  meses_evaluados: number;
+  sector_id?: number | null;
+  sector_nombre?: string | null;
+  items: MesDesvioItem[];
+  resumen: ResumenEvolucionDesvios;
+  tiene_datos: boolean;
 }

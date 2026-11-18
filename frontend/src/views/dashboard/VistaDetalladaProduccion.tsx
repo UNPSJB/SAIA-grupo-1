@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -6,13 +6,23 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Legend,
+  Line,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { apiFetch } from '../../api/client';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ErrorAlertDialog } from '../../components/ui/alert-dialog';
 import { Badge } from '../../components/ui/badge';
 import {
   Card,
@@ -21,8 +31,17 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
+import { descargarCSV } from '../../utils/exportarCsv';
+import {
+  exportarGraficos,
+  type ConfiguracionGraficoExportar,
+  type FormatoGrafico,
+} from '../../utils/exportarGraficos';
+import { descargarPDF } from '../../utils/exportarPdf';
 import type { LoteProduccion, Producto } from '../produccion/tipos';
 import { useColoresTema } from './useColoresTema';
 import '../../styles/dashboard.css';
@@ -147,14 +166,6 @@ const ModalDetalleLote: React.FC<ModalDetalleLoteProps> = ({ lote, onClose }) =>
               Elaborado el {formatearFechaVisual(lote.fecha)}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn-secundario"
-            style={{ padding: '6px 12px', fontSize: '13px' }}
-          >
-            ✕ Cerrar
-          </button>
         </div>
 
         <div style={{ padding: '20px 24px' }}>
@@ -283,10 +294,49 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
   const [agrupacionTemporal, setAgrupacionTemporal] = useState<'dia' | 'semana' | 'mes'>('dia');
-  const [tipoGraficoEvolucion, setTipoGraficoEvolucion] = useState<'lineas' | 'barras'>('barras');
+  const [tipoGraficoEvolucion, setTipoGraficoEvolucion] = useState<'lineas' | 'barras' | 'combinado' | 'control_spc' | 'radar'>('combinado');
   const [unidadSeleccionada, setUnidadSeleccionada] = useState<string>('kilogramos');
 
   const [loteParaModal, setLoteParaModal] = useState<LoteProduccion | null>(null);
+
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+  const [errorExportDialog, setErrorExportDialog] = useState<string | null>(null);
+
+  const graficoEvolucionRef = useRef<HTMLDivElement | null>(null);
+  const graficoProductosRef = useRef<HTMLDivElement | null>(null);
+  const graficoInsumosRef = useRef<HTMLDivElement | null>(null);
+
+  const [exportGraficoModal, setExportGraficoModal] = useState<{
+    titulo: string;
+    filtros: string;
+    nombreArchivo: string;
+    graficos: ConfiguracionGraficoExportar[];
+  } | null>(null);
+  const [exportandoGrafico, setExportandoGrafico] = useState(false);
+
+  const tituloGraficoEvolucion = useMemo(() => {
+    if (tipoGraficoEvolucion === 'control_spc') {
+      return 'Control Estadístico de Procesos (CEP / SPC)';
+    }
+    if (tipoGraficoEvolucion === 'radar') {
+      return 'Red de Araña: Perfil Multicriterio de Producción';
+    }
+    if (tipoGraficoEvolucion === 'combinado') {
+      return 'Gráfico Combinado: Lotes y Volumen Fabricado';
+    }
+    return 'Producción de Lotes por Fecha y Producto';
+  }, [tipoGraficoEvolucion]);
+
+  const subtituloGraficoEvolucion = useMemo(() => {
+    if (tipoGraficoEvolucion === 'control_spc') {
+      return `Monitoreo estadístico en ${formatearUnidad(unidadSeleccionada)} (UCL/LCL a ±3σ)`;
+    }
+    if (tipoGraficoEvolucion === 'radar') {
+      return 'Comparativa radial multicriterio entre productos';
+    }
+    return `Agrupado por ${agrupacionTemporal}`;
+  }, [tipoGraficoEvolucion, unidadSeleccionada, agrupacionTemporal]);
 
   const errorRango = useMemo(() => {
     if (desde && desde < '2000-01-01') {
@@ -446,21 +496,22 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     }
 
     if (agrupacionTemporal === 'dia') {
-      const conteos = new Map<string, { lotes: number; productos: Map<string, number> }>();
+      const conteos = new Map<string, { lotes: number; volumen: number; productos: Map<string, number> }>();
       for (const l of lotes) {
         if (l.fecha) {
           const k = l.fecha;
           if (!conteos.has(k)) {
-            conteos.set(k, { lotes: 0, productos: new Map() });
+            conteos.set(k, { lotes: 0, volumen: 0, productos: new Map() });
           }
           const item = conteos.get(k)!;
           item.lotes += 1;
+          item.volumen += Number(l.cantidad) || 0;
           const pNom = l.producto?.nombre || 'Producto';
           item.productos.set(pNom, (item.productos.get(pNom) || 0) + 1);
         }
       }
 
-      const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; lotes: number; detalle: string }[] = [];
+      const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; lotes: number; volumen: number; detalle: string }[] = [];
       const cur = new Date(fechaInicio);
       while (cur <= fechaFin) {
         const anio = cur.getFullYear();
@@ -469,6 +520,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
         const clave = `${anio}-${mes}-${dia}`;
         const dat = conteos.get(clave);
         const lotesCant = dat ? dat.lotes : 0;
+        const volumenCant = dat ? Math.round(dat.volumen * 100) / 100 : 0;
         let detalle = '';
         if (dat && dat.productos.size > 0) {
           detalle = Array.from(dat.productos.entries())
@@ -480,6 +532,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
           etiqueta: `${dia}/${mes}`,
           etiquetaCompleta: `${dia}/${mes}/${anio}`,
           lotes: lotesCant,
+          volumen: volumenCant,
           detalle,
         });
         cur.setDate(cur.getDate() + 1);
@@ -496,7 +549,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
         return r;
       };
 
-      const conteos = new Map<string, { lotes: number; productos: Map<string, number> }>();
+      const conteos = new Map<string, { lotes: number; volumen: number; productos: Map<string, number> }>();
       for (const l of lotes) {
         if (l.fecha) {
           const d = new Date(`${l.fecha}T00:00:00`);
@@ -504,17 +557,18 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
             const sem = obtenerInicioSemana(d);
             const k = `${sem.getFullYear()}-${String(sem.getMonth() + 1).padStart(2, '0')}-${String(sem.getDate()).padStart(2, '0')}`;
             if (!conteos.has(k)) {
-              conteos.set(k, { lotes: 0, productos: new Map() });
+              conteos.set(k, { lotes: 0, volumen: 0, productos: new Map() });
             }
             const item = conteos.get(k)!;
             item.lotes += 1;
+            item.volumen += Number(l.cantidad) || 0;
             const pNom = l.producto?.nombre || 'Producto';
             item.productos.set(pNom, (item.productos.get(pNom) || 0) + 1);
           }
         }
       }
 
-      const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; lotes: number; detalle: string }[] = [];
+      const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; lotes: number; volumen: number; detalle: string }[] = [];
       const cur = obtenerInicioSemana(fechaInicio);
       const finSem = new Date(fechaFin);
 
@@ -533,6 +587,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
 
         const dat = conteos.get(clave);
         const lotesCant = dat ? dat.lotes : 0;
+        const volumenCant = dat ? Math.round(dat.volumen * 100) / 100 : 0;
         let detalle = '';
         if (dat && dat.productos.size > 0) {
           detalle = Array.from(dat.productos.entries())
@@ -545,6 +600,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
           etiqueta: `Sem ${dia}/${mes}`,
           etiquetaCompleta: `Semana del ${dia}/${mes} al ${diaF}/${mesF}/${anioF}`,
           lotes: lotesCant,
+          volumen: volumenCant,
           detalle,
         });
 
@@ -556,21 +612,22 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const mesesLargos = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-    const conteos = new Map<string, { lotes: number; productos: Map<string, number> }>();
+    const conteos = new Map<string, { lotes: number; volumen: number; productos: Map<string, number> }>();
     for (const l of lotes) {
       if (l.fecha && l.fecha.length >= 7) {
         const k = l.fecha.slice(0, 7);
         if (!conteos.has(k)) {
-          conteos.set(k, { lotes: 0, productos: new Map() });
+          conteos.set(k, { lotes: 0, volumen: 0, productos: new Map() });
         }
         const item = conteos.get(k)!;
         item.lotes += 1;
+        item.volumen += Number(l.cantidad) || 0;
         const pNom = l.producto?.nombre || 'Producto';
         item.productos.set(pNom, (item.productos.get(pNom) || 0) + 1);
       }
     }
 
-    const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; lotes: number; detalle: string }[] = [];
+    const puntos: { clave: string; etiqueta: string; etiquetaCompleta: string; lotes: number; volumen: number; detalle: string }[] = [];
     let curAnio = fechaInicio.getFullYear();
     let curMes = fechaInicio.getMonth();
     const finAnio = fechaFin.getFullYear();
@@ -580,6 +637,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
       const clave = `${curAnio}-${String(curMes + 1).padStart(2, '0')}`;
       const dat = conteos.get(clave);
       const lotesCant = dat ? dat.lotes : 0;
+      const volumenCant = dat ? Math.round(dat.volumen * 100) / 100 : 0;
       let detalle = '';
       if (dat && dat.productos.size > 0) {
         detalle = Array.from(dat.productos.entries())
@@ -591,6 +649,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
         etiqueta: `${mesesCortos[curMes]} ${String(curAnio).slice(-2)}`,
         etiquetaCompleta: `${mesesLargos[curMes]} de ${curAnio}`,
         lotes: lotesCant,
+        volumen: volumenCant,
         detalle,
       });
       curMes++;
@@ -601,6 +660,163 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     }
     return puntos;
   }, [lotes, desde, hasta, agrupacionTemporal]);
+
+  const datosControlEstadistico = useMemo(() => {
+    const normUnidad = unidadSeleccionada.toLowerCase().trim();
+    const filtrados = lotes
+      .filter((l) => (l.producto?.unidadMedida || '').toLowerCase().trim() === normUnidad)
+      .sort((a, b) => {
+        const fa = a.fecha || '';
+        const fb = b.fecha || '';
+        if (fa !== fb) return fa.localeCompare(fb);
+        return a.id - b.id;
+      });
+
+    if (filtrados.length === 0) {
+      return {
+        puntos: [],
+        media: 0,
+        sigma: 0,
+        ucl: 0,
+        lcl: 0,
+        uwcl: 0,
+        lwcl: 0,
+        totalLotes: 0,
+        enControl: 0,
+        fueraDeControl: 0,
+      };
+    }
+
+    const n = filtrados.length;
+    const cantidades = filtrados.map((l) => Number(l.cantidad) || 0);
+    const media = cantidades.reduce((a, b) => a + b, 0) / n;
+
+    let varianza = 0;
+    if (n > 1) {
+      const sumaCuadrados = cantidades.reduce((acc, c) => acc + Math.pow(c - media, 2), 0);
+      varianza = sumaCuadrados / (n - 1);
+    }
+    const sigma = Math.sqrt(varianza);
+
+    const ucl = Math.round((media + 3 * sigma) * 100) / 100;
+    const lcl = Math.max(0, Math.round((media - 3 * sigma) * 100) / 100);
+    const uwcl = Math.round((media + 2 * sigma) * 100) / 100;
+    const lwcl = Math.max(0, Math.round((media - 2 * sigma) * 100) / 100);
+
+    let enControl = 0;
+    let fueraDeControl = 0;
+
+    const puntos = filtrados.map((l, index) => {
+      const cant = Number(l.cantidad) || 0;
+      const esFuera = n > 1 && sigma > 0 ? cant > ucl || cant < lcl : false;
+      const esAdv = n > 1 && sigma > 0 && !esFuera ? cant > uwcl || cant < lwcl : false;
+
+      if (esFuera) fueraDeControl++;
+      else enControl++;
+
+      return {
+        index: index + 1,
+        id: l.id,
+        codigo: l.codigo,
+        fecha: formatearFechaVisual(l.fecha),
+        producto: l.producto?.nombre || 'Producto',
+        cantidad: Math.round(cant * 100) / 100,
+        media: Math.round(media * 100) / 100,
+        ucl,
+        lcl,
+        uwcl,
+        lwcl,
+        esFuera,
+        esAdv,
+        estado: esFuera ? 'Fuera de control (±3σ)' : esAdv ? 'Advertencia (±2σ)' : 'Bajo control',
+      };
+    });
+
+    return {
+      puntos,
+      media: Math.round(media * 100) / 100,
+      sigma: Math.round(sigma * 100) / 100,
+      ucl,
+      lcl,
+      uwcl,
+      lwcl,
+      totalLotes: n,
+      enControl,
+      fueraDeControl,
+    };
+  }, [lotes, unidadSeleccionada]);
+
+  const datosRadarProduccion = useMemo(() => {
+    if (lotes.length === 0) return { dimensiones: [], productos: [] };
+    const mapa = new Map<string, {
+      nombre: string;
+      lotes: number;
+      volumen: number;
+      insumosSet: Set<string>;
+    }>();
+
+    for (const l of lotes) {
+      const pNom = l.producto?.nombre || 'Sin producto';
+      if (!mapa.has(pNom)) {
+        mapa.set(pNom, {
+          nombre: pNom,
+          lotes: 0,
+          volumen: 0,
+          insumosSet: new Set<string>(),
+        });
+      }
+      const item = mapa.get(pNom)!;
+      item.lotes += 1;
+      item.volumen += Number(l.cantidad) || 0;
+      for (const ins of l.insumos || []) {
+        if (ins?.insumo?.nombre) item.insumosSet.add(ins.insumo.nombre);
+      }
+    }
+
+    const prods = Array.from(mapa.values());
+    if (prods.length === 0) return { dimensiones: [], productos: [] };
+
+    const maxLotes = Math.max(...prods.map((p) => p.lotes), 1);
+    const maxVol = Math.max(...prods.map((p) => p.volumen), 1);
+    const maxInsumos = Math.max(...prods.map((p) => p.insumosSet.size), 1);
+    const maxProm = Math.max(...prods.map((p) => p.volumen / Math.max(p.lotes, 1)), 1);
+
+    const prodsOrdenados = prods.sort((a, b) => b.lotes - a.lotes).slice(0, 4);
+
+    const configDims = [
+      { metrica: 'Volumen Fabricado', key: 'vol' },
+      { metrica: 'Frecuencia Lotes', key: 'lot' },
+      { metrica: 'Variedad Insumos', key: 'ins' },
+      { metrica: 'Tamaño Medio', key: 'prom' },
+      { metrica: 'Consistencia Operativa', key: 'cons' },
+    ];
+
+    const dimensiones = configDims.map((dim) => {
+      const fila: Record<string, any> = { dimension: dim.metrica };
+      prodsOrdenados.forEach((p, idx) => {
+        let score = 50;
+        if (dim.key === 'vol') score = Math.round((p.volumen / maxVol) * 100);
+        else if (dim.key === 'lot') score = Math.round((p.lotes / maxLotes) * 100);
+        else if (dim.key === 'ins') score = Math.round((p.insumosSet.size / maxInsumos) * 100);
+        else if (dim.key === 'prom') score = Math.round(((p.volumen / Math.max(p.lotes, 1)) / maxProm) * 100);
+        else if (dim.key === 'cons') score = Math.min(100, Math.round(70 + (p.lotes / maxLotes) * 30));
+
+        fila[`prod_${idx}`] = score;
+      });
+      return fila;
+    });
+
+    return {
+      dimensiones,
+      productos: prodsOrdenados.map((p, idx) => ({
+        key: `prod_${idx}`,
+        nombre: p.nombre,
+        color: PALETA_COLORES[idx % PALETA_COLORES.length],
+        lotes: p.lotes,
+        volumen: Math.round(p.volumen * 100) / 100,
+      })),
+    };
+  }, [lotes]);
 
   const datosProductosPorUnidad = useMemo(() => {
     const normUnidad = unidadSeleccionada.toLowerCase().trim();
@@ -733,43 +949,112 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     indiceFin,
   } = usePaginacion(lotesFiltrados, 10);
 
-  const exportarCSV = () => {
-    if (lotesFiltrados.length === 0) return;
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
 
-    const cabeceras = [
-      'ID',
-      'Código',
-      'Fecha',
-      'Producto',
-      'Cantidad',
-      'Unidad',
-      'Responsable',
-      'Legajo',
-      'Insumos Usados',
-    ];
+      if (desde) params.append('desde', desde);
+      if (hasta) params.append('hasta', hasta);
+      if (productoSeleccionado) params.append('producto_id', productoSeleccionado);
+      if (busquedaLote.trim()) params.append('busqueda', busquedaLote.trim());
 
-    const filas = lotesFiltrados.map((l) => [
-      l.id,
-      `"${(l.codigo || '').replace(/"/g, '""')}"`,
-      l.fecha,
-      `"${(l.producto?.nombre || '').replace(/"/g, '""')}"`,
-      l.cantidad,
-      `"${(l.producto?.unidadMedida || '').replace(/"/g, '""')}"`,
-      `"${(l.nombre_responsable || '').replace(/"/g, '""')}"`,
-      l.responsable_legajo,
-      `"${l.insumos.map((i) => `${i.insumo.nombre}: ${i.cantidad} ${abreviarUnidad(i.insumo.medida)}`).join(', ')}"`,
-    ]);
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
 
-    const contenidoCSV =
-      '\uFEFF' + [cabeceras.join(';'), ...filas.map((f) => f.join(';'))].join('\r\n');
-    const blob = new Blob([contenidoCSV], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `produccion_detallada_${formatearFechaInput(new Date())}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (formato === 'pdf') {
+        await descargarPDF(`/lotes/exportar-pdf${query}`, 'produccion_detallada.pdf');
+      } else {
+        await descargarCSV(`/lotes/exportar-csv${query}`, 'produccion_detallada.csv');
+      }
+
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error
+          ? err.message
+          : `Error al exportar producción detallada a ${formato.toUpperCase()}.`
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const obtenerResumenFiltros = () => {
+    const partes: string[] = [];
+    if (desde) partes.push(`Desde: ${formatearFechaVisual(desde)}`);
+    if (hasta) partes.push(`Hasta: ${formatearFechaVisual(hasta)}`);
+    if (productoSeleccionado) {
+      const prod = productosCatalogo.find((p) => String(p.id) === productoSeleccionado);
+      partes.push(`Producto: ${prod ? prod.nombre : `#${productoSeleccionado}`}`);
+    }
+    if (busquedaLote.trim()) partes.push(`Búsqueda: "${busquedaLote.trim()}"`);
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
+  };
+
+  const abrirExportacionTodosGraficos = () => {
+    const filtros = obtenerResumenFiltros();
+    const lista: ConfiguracionGraficoExportar[] = [];
+
+    if (graficoEvolucionRef.current && datosEvolucionTemporal.length > 0 && kpis.totalLotes > 0) {
+      lista.push({
+        id: 'produccion-evolucion',
+        titulo: tituloGraficoEvolucion,
+        subtitulo: subtituloGraficoEvolucion,
+        filtros,
+        contenedor: graficoEvolucionRef.current,
+      });
+    }
+    if (graficoProductosRef.current && datosProductosPorUnidad.length > 0) {
+      lista.push({
+        id: 'produccion-totales-unidad',
+        titulo: `Totales de Productos Fabricados (${formatearUnidad(unidadSeleccionada)})`,
+        subtitulo: 'Cantidad acumulada elaborada por producto',
+        filtros: `${filtros} | Unidad: ${formatearUnidad(unidadSeleccionada)}`,
+        contenedor: graficoProductosRef.current,
+      });
+    }
+    if (graficoInsumosRef.current && datosInsumosMasUtilizados.length > 0) {
+      lista.push({
+        id: 'produccion-insumos-usados',
+        titulo: 'Insumos Más Utilizados',
+        subtitulo: 'Materias primas con mayor demanda en los lotes del período',
+        filtros,
+        contenedor: graficoInsumosRef.current,
+      });
+    }
+
+    if (lista.length === 0) {
+      setErrorExportDialog('No hay gráficos con datos visibles para exportar.');
+      return;
+    }
+
+    setExportGraficoModal({
+      titulo: `Producción Detallada (${lista.length} gráficos)`,
+      filtros,
+      nombreArchivo: `graficos_produccion_${desde || 'inicio'}_a_${hasta || 'hoy'}`,
+      graficos: lista,
+    });
+  };
+
+  const ejecutarExportacionGrafico = async (formato: FormatoGrafico) => {
+    if (!exportGraficoModal) return;
+    try {
+      setExportandoGrafico(true);
+      await exportarGraficos(
+        exportGraficoModal.graficos,
+        formato,
+        exportGraficoModal.nombreArchivo,
+        'Reporte Gráfico - Producción Detallada'
+      );
+      setExportGraficoModal(null);
+    } catch (err) {
+      setErrorExportDialog(
+        err instanceof Error ? err.message : 'Error al exportar el gráfico.'
+      );
+    } finally {
+      setExportandoGrafico(false);
+    }
   };
 
   return (
@@ -802,17 +1087,26 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {lotesFiltrados.length > 0 && (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {!cargando && kpis.totalLotes > 0 && (
               <button
                 type="button"
-                onClick={exportarCSV}
+                onClick={abrirExportacionTodosGraficos}
                 className="btn-cancelar"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title="Exportar todos los gráficos de producción en PNG, JPEG o PDF"
               >
-                <CsvIcon /> Exportar CSV
+                <ExportIcon size={18} /> Exportar Gráficos
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setDialogExportarAbierto(true)}
+              className="btn-cancelar"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <ExportIcon size={18} /> Exportar Datos
+            </button>
           </div>
         </div>
       </div>
@@ -1022,15 +1316,60 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
         <CardHeader style={{ padding: '20px 24px 14px 24px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '14px', width: '100%' }}>
             <div>
-              <CardTitle style={{ fontSize: '1rem' }}>Producción de Lotes por Fecha y Producto</CardTitle>
+              <CardTitle style={{ fontSize: '1.05rem' }}>
+                {tituloGraficoEvolucion}
+              </CardTitle>
               <CardDescription>
-                {productoSeleccionado
-                  ? `Evolución temporal de lotes elaborados del producto seleccionado`
+                {tipoGraficoEvolucion === 'control_spc'
+                  ? 'Monitoreo estadístico de tamaño de lote con límites superior e inferior (UCL/LCL a ±3σ) y media'
+                  : tipoGraficoEvolucion === 'radar'
+                  ? 'Comparativa radial multicriterio entre productos (volumen, lotes, insumos, regularidad)'
+                  : tipoGraficoEvolucion === 'combinado'
+                  ? `Lotes elaborados (barras) y volumen total en ${formatearUnidad(unidadSeleccionada)} (línea)`
+                  : productoSeleccionado
+                  ? 'Evolución temporal de lotes elaborados del producto seleccionado'
                   : 'Cantidad de lotes producidos a lo largo del tiempo clasificados por período'}
               </CardDescription>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {(tipoGraficoEvolucion === 'lineas' || tipoGraficoEvolucion === 'barras' || tipoGraficoEvolucion === 'combinado') && (
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    borderRadius: '8px',
+                    padding: '3px',
+                    backgroundColor: 'var(--color-fondo)',
+                    border: '1px solid var(--color-borde)',
+                  }}
+                >
+                  {[
+                    { id: 'dia', label: 'Día' },
+                    { id: 'semana', label: 'Semana' },
+                    { id: 'mes', label: 'Mes' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setAgrupacionTemporal(tab.id as 'dia' | 'semana' | 'mes')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        fontWeight: agrupacionTemporal === tab.id ? 600 : 500,
+                        backgroundColor: agrupacionTemporal === tab.id ? 'var(--color-superficie)' : 'transparent',
+                        color: agrupacionTemporal === tab.id ? 'var(--text-h)' : 'var(--color-texto-sec)',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        boxShadow: agrupacionTemporal === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div
                 style={{
                   display: 'inline-flex',
@@ -1041,193 +1380,393 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                 }}
               >
                 {[
-                  { id: 'dia', label: 'Día' },
-                  { id: 'semana', label: 'Semana' },
-                  { id: 'mes', label: 'Mes' },
-                ].map((tab) => (
+                  { id: 'combinado', label: 'Combinado' },
+                  { id: 'barras', label: 'Barras' },
+                  { id: 'lineas', label: 'Líneas' },
+                  { id: 'control_spc', label: 'Control (CEP)' },
+                  { id: 'radar', label: 'Red de Araña' },
+                ].map((modo) => (
                   <button
-                    key={tab.id}
+                    key={modo.id}
                     type="button"
-                    onClick={() => setAgrupacionTemporal(tab.id as 'dia' | 'semana' | 'mes')}
+                    onClick={() => setTipoGraficoEvolucion(modo.id as any)}
                     style={{
-                      padding: '4px 10px',
+                      padding: '4px 9px',
                       fontSize: '12px',
-                      fontWeight: agrupacionTemporal === tab.id ? 600 : 500,
-                      backgroundColor: agrupacionTemporal === tab.id ? 'var(--color-superficie)' : 'transparent',
-                      color: agrupacionTemporal === tab.id ? 'var(--text-h)' : 'var(--color-texto-sec)',
+                      fontWeight: tipoGraficoEvolucion === modo.id ? 600 : 500,
+                      backgroundColor: tipoGraficoEvolucion === modo.id ? 'var(--color-superficie)' : 'transparent',
+                      color: tipoGraficoEvolucion === modo.id ? 'var(--text-h)' : 'var(--color-texto-sec)',
                       borderRadius: '6px',
                       border: 'none',
                       cursor: 'pointer',
-                      boxShadow: agrupacionTemporal === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                     }}
                   >
-                    {tab.label}
+                    {modo.label}
                   </button>
                 ))}
               </div>
 
-              <div
-                style={{
-                  display: 'inline-flex',
-                  borderRadius: '8px',
-                  padding: '3px',
-                  backgroundColor: 'var(--color-fondo)',
-                  border: '1px solid var(--color-borde)',
-                }}
-              >
+              {!cargando && datosEvolucionTemporal.length > 0 && kpis.totalLotes > 0 && (
                 <button
                   type="button"
-                  onClick={() => setTipoGraficoEvolucion('lineas')}
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '12px',
-                    fontWeight: tipoGraficoEvolucion === 'lineas' ? 600 : 500,
-                    backgroundColor: tipoGraficoEvolucion === 'lineas' ? 'var(--color-superficie)' : 'transparent',
-                    color: tipoGraficoEvolucion === 'lineas' ? 'var(--text-h)' : 'var(--color-texto-sec)',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                  }}
-                  title="Gráfico de líneas"
+                  onClick={() =>
+                    setExportGraficoModal({
+                      titulo: tituloGraficoEvolucion,
+                      filtros: `${obtenerResumenFiltros()} | ${subtituloGraficoEvolucion}`,
+                      nombreArchivo: `evolucion_produccion_${desde || 'inicio'}_a_${hasta || 'hoy'}`,
+                      graficos: [
+                        {
+                          id: 'produccion-evolucion',
+                          titulo: tituloGraficoEvolucion,
+                          subtitulo: subtituloGraficoEvolucion,
+                          filtros: obtenerResumenFiltros(),
+                          contenedor: graficoEvolucionRef.current,
+                        },
+                      ],
+                    })
+                  }
+                  className="btn-cancelar"
+                  style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  title="Exportar gráfico en PNG, JPEG o PDF"
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 3v18h18" />
-                    <path d="m19 9-5 5-4-4-3 3" />
-                  </svg>
-                  Líneas
+                  <ExportIcon size={14} /> Exportar gráfico
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setTipoGraficoEvolucion('barras')}
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '12px',
-                    fontWeight: tipoGraficoEvolucion === 'barras' ? 600 : 500,
-                    backgroundColor: tipoGraficoEvolucion === 'barras' ? 'var(--color-superficie)' : 'transparent',
-                    color: tipoGraficoEvolucion === 'barras' ? 'var(--text-h)' : 'var(--color-texto-sec)',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                  }}
-                  title="Gráfico de barras"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="20" x2="18" y2="10" />
-                    <line x1="12" y1="20" x2="12" y2="4" />
-                    <line x1="6" y1="20" x2="6" y2="14" />
-                  </svg>
-                  Barras
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </CardHeader>
         <CardContent style={{ padding: '0 24px 20px 24px' }}>
           {cargando ? (
-            <div style={{ minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)' }}>
-              Cargando gráfico de producción de lotes...
+            <div style={{ minHeight: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)' }}>
+              Cargando estadísticas de producción de lotes...
             </div>
           ) : datosEvolucionTemporal.length === 0 || kpis.totalLotes === 0 ? (
-            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
+            <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '36px', color: 'var(--color-texto-sec)', marginBottom: '8px' }}>
+                precision_manufacturing
+              </span>
               <strong style={{ display: 'block', color: 'var(--text-h)', marginBottom: '4px' }}>Sin lotes registrados</strong>
-              <span>No se encontraron lotes producidos en el rango de fechas seleccionado.</span>
+              <span style={{ fontSize: '13px' }}>No se encontraron lotes producidos en el rango de fechas seleccionado.</span>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="dashboard-btn-detalle"
+                  style={{ fontSize: '12px', padding: '4px 10px' }}
+                  onClick={() => aplicarAtajo(90)}
+                >
+                  Ver últimos 90 días
+                </button>
+                <button
+                  type="button"
+                  className="dashboard-btn-detalle"
+                  style={{ fontSize: '12px', padding: '4px 10px' }}
+                  onClick={aplicarAtajoAnio}
+                >
+                  Ver este año
+                </button>
+                <button
+                  type="button"
+                  className="dashboard-btn-detalle"
+                  style={{ fontSize: '12px', padding: '4px 10px' }}
+                  onClick={aplicarAtajoTodo}
+                >
+                  Ver todo el histórico
+                </button>
+              </div>
             </div>
           ) : (
-            <div style={{ width: '100%', height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                {tipoGraficoEvolucion === 'lineas' ? (
-                  <AreaChart data={datosEvolucionTemporal} margin={{ top: 12, right: 16, left: -10, bottom: 20 }}>
-                    <defs>
-                      <linearGradient id="gradEvolucionLotes" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
-                        <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                    <XAxis
-                      dataKey="etiqueta"
-                      stroke={colores.textoSec}
-                      fontSize={11}
-                      tickLine={false}
-                      interval={datosEvolucionTemporal.length > 15 ? 'preserveStartEnd' : 0}
-                      angle={datosEvolucionTemporal.length > 8 ? -20 : 0}
-                      textAnchor={datosEvolucionTemporal.length > 8 ? 'end' : 'middle'}
-                      height={datosEvolucionTemporal.length > 8 ? 35 : 25}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      stroke={colores.textoSec}
-                      fontSize={11}
-                      tickLine={false}
-                      width={36}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                        borderColor: 'var(--color-borde)',
-                        borderRadius: '8px',
-                        color: 'var(--color-texto)',
-                      }}
-                      formatter={(valor: any, _, item: any) => [
-                        `${valor} ${valor === 1 ? 'lote' : 'lotes'}${item?.payload?.detalle ? ` (${item.payload.detalle})` : ''}`,
-                        'Lotes Producidos',
-                      ]}
-                      labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="lotes"
-                      stroke={colores.primario}
-                      strokeWidth={2.5}
-                      fillOpacity={1}
-                      fill="url(#gradEvolucionLotes)"
-                      dot={{ r: 3.5, fill: colores.primario, strokeWidth: 2, stroke: 'var(--color-superficie)' }}
-                      activeDot={{ r: 6, stroke: colores.primario, strokeWidth: 2, fill: 'var(--color-superficie)' }}
-                    />
-                  </AreaChart>
-                ) : (
-                  <BarChart data={datosEvolucionTemporal} margin={{ top: 12, right: 16, left: -10, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                    <XAxis
-                      dataKey="etiqueta"
-                      stroke={colores.textoSec}
-                      fontSize={11}
-                      tickLine={false}
-                      interval={datosEvolucionTemporal.length > 15 ? 'preserveStartEnd' : 0}
-                      angle={datosEvolucionTemporal.length > 8 ? -20 : 0}
-                      textAnchor={datosEvolucionTemporal.length > 8 ? 'end' : 'middle'}
-                      height={datosEvolucionTemporal.length > 8 ? 35 : 25}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      stroke={colores.textoSec}
-                      fontSize={11}
-                      tickLine={false}
-                      width={36}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                        borderColor: 'var(--color-borde)',
-                        borderRadius: '8px',
-                        color: 'var(--color-texto)',
-                      }}
-                      formatter={(valor: any, _, item: any) => [
-                        `${valor} ${valor === 1 ? 'lote' : 'lotes'}${item?.payload?.detalle ? ` (${item.payload.detalle})` : ''}`,
-                        'Lotes Producidos',
-                      ]}
-                      labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
-                    />
-                    <Bar dataKey="lotes" fill={colores.primario} radius={[5, 5, 0, 0]} />
-                  </BarChart>
-                )}
-              </ResponsiveContainer>
+            <div ref={graficoEvolucionRef} style={{ width: '100%' }}>
+              {tipoGraficoEvolucion === 'control_spc' ? (
+                <div>
+                  <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '14px', padding: '10px 14px', borderRadius: '8px', backgroundColor: 'var(--color-fondo)', border: '1px solid var(--color-borde)', fontSize: '12px' }}>
+                    <div><span style={{ color: 'var(--color-texto-sec)' }}>Media (X̄):</span> <strong style={{ color: 'var(--text-h)' }}>{datosControlEstadistico.media} {abreviarUnidad(unidadSeleccionada)}</strong></div>
+                    <div><span style={{ color: 'var(--color-texto-sec)' }}>Desvío (σ):</span> <strong style={{ color: 'var(--text-h)' }}>±{datosControlEstadistico.sigma}</strong></div>
+                    <div><span style={{ color: 'var(--color-texto-sec)' }}>Límite Sup. (UCL +3σ):</span> <strong style={{ color: '#ef4444' }}>{datosControlEstadistico.ucl}</strong></div>
+                    <div><span style={{ color: 'var(--color-texto-sec)' }}>Límite Inf. (LCL -3σ):</span> <strong style={{ color: '#ef4444' }}>{datosControlEstadistico.lcl}</strong></div>
+                    <div><span style={{ color: 'var(--color-texto-sec)' }}>Bajo Control:</span> <strong style={{ color: '#10b981' }}>{datosControlEstadistico.enControl} / {datosControlEstadistico.totalLotes}</strong></div>
+                    {datosControlEstadistico.fueraDeControl > 0 && (
+                      <div><strong style={{ color: '#ef4444' }}>⚠ {datosControlEstadistico.fueraDeControl} desvío(s) fuera de límites normativos</strong></div>
+                    )}
+                  </div>
+                  <div style={{ width: '100%', height: 360 }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <ComposedChart data={datosControlEstadistico.puntos} margin={{ top: 16, right: 30, left: 10, bottom: 25 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                        <XAxis
+                          dataKey="codigo"
+                          stroke={colores.textoSec}
+                          fontSize={12}
+                          tickLine={false}
+                          interval={0}
+                          angle={datosControlEstadistico.puntos.length > 8 ? -20 : 0}
+                          textAnchor={datosControlEstadistico.puntos.length > 8 ? 'end' : 'middle'}
+                          height={datosControlEstadistico.puntos.length > 8 ? 40 : 25}
+                        />
+                        <YAxis
+                          stroke={colores.textoSec}
+                          fontSize={12}
+                          tickLine={false}
+                          width={48}
+                          unit={` ${abreviarUnidad(unidadSeleccionada)}`}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                            borderColor: 'var(--color-borde)',
+                            borderRadius: '8px',
+                            color: 'var(--color-texto)',
+                          }}
+                          formatter={(valor: any, _name: any, item: any) => [
+                            `${valor} ${abreviarUnidad(unidadSeleccionada)} (${item?.payload?.producto || ''}) - ${item?.payload?.estado || ''}`,
+                            `Lote ${item?.payload?.codigo || ''}`,
+                          ]}
+                          labelFormatter={(_, items) => `Fecha: ${items?.[0]?.payload?.fecha || ''}`}
+                        />
+                        <Legend verticalAlign="top" align="right" height={30} wrapperStyle={{ fontSize: '12px' }} />
+                        <ReferenceLine
+                          y={datosControlEstadistico.ucl}
+                          stroke="#ef4444"
+                          strokeDasharray="4 4"
+                          strokeWidth={1.8}
+                          label={{ value: `UCL (+3σ): ${datosControlEstadistico.ucl}`, position: 'insideTopRight', fill: '#ef4444', fontSize: 11, fontWeight: 600 }}
+                        />
+                        <ReferenceLine
+                          y={datosControlEstadistico.media}
+                          stroke="#3b82f6"
+                          strokeDasharray="3 3"
+                          strokeWidth={1.5}
+                          label={{ value: `Media (X̄): ${datosControlEstadistico.media}`, position: 'insideTopLeft', fill: '#3b82f6', fontSize: 11, fontWeight: 600 }}
+                        />
+                        <ReferenceLine
+                          y={datosControlEstadistico.lcl}
+                          stroke="#ef4444"
+                          strokeDasharray="4 4"
+                          strokeWidth={1.8}
+                          label={{ value: `LCL (-3σ): ${datosControlEstadistico.lcl}`, position: 'insideBottomRight', fill: '#ef4444', fontSize: 11, fontWeight: 600 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="cantidad"
+                          name={`Volumen por Lote (${abreviarUnidad(unidadSeleccionada)})`}
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          dot={(dotProps: any) => {
+                            const { cx, cy, payload } = dotProps;
+                            const fill = payload?.esFuera ? '#ef4444' : payload?.esAdv ? '#f59e0b' : '#10b981';
+                            return <circle key={`dot-${cx}-${cy}`} cx={cx} cy={cy} r={payload?.esFuera ? 6 : 4} fill={fill} stroke="#ffffff" strokeWidth={1.5} />;
+                          }}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              ) : tipoGraficoEvolucion === 'radar' ? (
+                <div style={{ width: '100%', height: 360 }}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datosRadarProduccion.dimensiones}>
+                      <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
+                      <PolarAngleAxis
+                        dataKey="dimension"
+                        tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
+                      />
+                      <PolarRadiusAxis
+                        angle={90}
+                        domain={[0, 100]}
+                        stroke="var(--color-texto-sec, #64748b)"
+                        tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                          borderColor: 'var(--color-borde, #334155)',
+                          borderRadius: '8px',
+                          color: 'var(--color-texto, #f8fafc)',
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="bottom"
+                        height={28}
+                        iconType="circle"
+                        wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
+                      />
+                      {datosRadarProduccion.productos.map((prod) => (
+                        <Radar
+                          key={prod.key}
+                          name={`${prod.nombre} (${prod.lotes} lotes)`}
+                          dataKey={prod.key}
+                          stroke={prod.color}
+                          fill={prod.color}
+                          fillOpacity={0.25}
+                          strokeWidth={2}
+                          dot={{ r: 3, fill: prod.color }}
+                        />
+                      ))}
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : tipoGraficoEvolucion === 'combinado' ? (
+                <div style={{ width: '100%', height: 360 }}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <ComposedChart data={datosEvolucionTemporal} margin={{ top: 16, right: 30, left: 10, bottom: 25 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                      <XAxis
+                        dataKey="etiqueta"
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        interval={datosEvolucionTemporal.length > 15 ? 'preserveStartEnd' : 0}
+                        angle={datosEvolucionTemporal.length > 8 ? -20 : 0}
+                        textAnchor={datosEvolucionTemporal.length > 8 ? 'end' : 'middle'}
+                        height={datosEvolucionTemporal.length > 8 ? 38 : 25}
+                      />
+                      <YAxis
+                        yAxisId="left"
+                        allowDecimals={false}
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        width={42}
+                        label={{
+                          value: 'Lotes Producidos',
+                          angle: -90,
+                          position: 'insideLeft',
+                          offset: 10,
+                          fill: colores.textoSec,
+                          fontSize: 11,
+                        }}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        stroke="#f59e0b"
+                        fontSize={12}
+                        tickLine={false}
+                        width={54}
+                        unit={` ${abreviarUnidad(unidadSeleccionada)}`}
+                        label={{
+                          value: `Volumen (${abreviarUnidad(unidadSeleccionada)})`,
+                          angle: 90,
+                          position: 'insideRight',
+                          offset: 10,
+                          fill: '#f59e0b',
+                          fontSize: 11,
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                          borderColor: 'var(--color-borde)',
+                          borderRadius: '8px',
+                          color: 'var(--color-texto)',
+                        }}
+                        formatter={(valor: any, nombre: any, item: any) => {
+                          if (nombre.includes('Volumen')) {
+                            return [`${valor} ${abreviarUnidad(unidadSeleccionada)}`, nombre];
+                          }
+                          return [`${valor} ${valor === 1 ? 'lote' : 'lotes'}${item?.payload?.detalle ? ` (${item.payload.detalle})` : ''}`, nombre];
+                        }}
+                        labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
+                      />
+                      <Legend verticalAlign="top" align="right" height={30} wrapperStyle={{ fontSize: '12px' }} />
+                      <Bar yAxisId="left" dataKey="lotes" name="Lotes Producidos" fill={colores.primario} radius={[4, 4, 0, 0]} />
+                      <Line yAxisId="right" type="monotone" dataKey="volumen" name={`Volumen Fabricado (${abreviarUnidad(unidadSeleccionada)})`} stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3.5, fill: '#f59e0b' }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : tipoGraficoEvolucion === 'lineas' ? (
+                <div style={{ width: '100%', height: 360 }}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <AreaChart data={datosEvolucionTemporal} margin={{ top: 12, right: 16, left: -10, bottom: 20 }}>
+                      <defs>
+                        <linearGradient id="gradEvolucionLotes" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
+                          <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                      <XAxis
+                        dataKey="etiqueta"
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        interval={datosEvolucionTemporal.length > 15 ? 'preserveStartEnd' : 0}
+                        angle={datosEvolucionTemporal.length > 8 ? -20 : 0}
+                        textAnchor={datosEvolucionTemporal.length > 8 ? 'end' : 'middle'}
+                        height={datosEvolucionTemporal.length > 8 ? 35 : 25}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        width={42}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                          borderColor: 'var(--color-borde)',
+                          borderRadius: '8px',
+                          color: 'var(--color-texto)',
+                        }}
+                        formatter={(valor: any, _, item: any) => [
+                          `${valor} ${valor === 1 ? 'lote' : 'lotes'}${item?.payload?.detalle ? ` (${item.payload.detalle})` : ''}`,
+                          'Lotes Producidos',
+                        ]}
+                        labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="lotes"
+                        stroke={colores.primario}
+                        strokeWidth={2.5}
+                        fillOpacity={1}
+                        fill="url(#gradEvolucionLotes)"
+                        dot={{ r: 3.5, fill: colores.primario, strokeWidth: 2, stroke: 'var(--color-superficie)' }}
+                        activeDot={{ r: 6, stroke: colores.primario, strokeWidth: 2, fill: 'var(--color-superficie)' }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div style={{ width: '100%', height: 360 }}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <BarChart data={datosEvolucionTemporal} margin={{ top: 12, right: 16, left: -10, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                      <XAxis
+                        dataKey="etiqueta"
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        interval={datosEvolucionTemporal.length > 15 ? 'preserveStartEnd' : 0}
+                        angle={datosEvolucionTemporal.length > 8 ? -20 : 0}
+                        textAnchor={datosEvolucionTemporal.length > 8 ? 'end' : 'middle'}
+                        height={datosEvolucionTemporal.length > 8 ? 35 : 25}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        width={42}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                          borderColor: 'var(--color-borde)',
+                          borderRadius: '8px',
+                          color: 'var(--color-texto)',
+                        }}
+                        formatter={(valor: any, _, item: any) => [
+                          `${valor} ${valor === 1 ? 'lote' : 'lotes'}${item?.payload?.detalle ? ` (${item.payload.detalle})` : ''}`,
+                          'Lotes Producidos',
+                        ]}
+                        labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
+                      />
+                      <Bar dataKey="lotes" fill={colores.primario} radius={[5, 5, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -1236,19 +1775,17 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
           gap: '16px',
           marginBottom: '1.5rem',
         }}
       >
         <Card>
-          <CardHeader style={{ padding: '20px 24px 14px 24px' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+          <CardHeader style={{ padding: '20px 24px 12px 24px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
               <div>
                 <CardTitle style={{ fontSize: '1rem' }}>Totales de Productos Fabricados</CardTitle>
-                <CardDescription>
-                  Cantidad acumulada elaborada por producto en la unidad elegida
-                </CardDescription>
+                <CardDescription>Cantidad acumulada elaborada en {formatearUnidad(unidadSeleccionada)}</CardDescription>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1264,7 +1801,6 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                     color: 'var(--color-texto)',
                     fontSize: '12px',
                     outline: 'none',
-                    cursor: 'pointer',
                   }}
                 >
                   {unidadesDisponibles.map((u) => (
@@ -1273,52 +1809,77 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                     </option>
                   ))}
                 </select>
+                {!cargando && datosProductosPorUnidad.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExportGraficoModal({
+                        titulo: `Totales de Productos Fabricados (${formatearUnidad(unidadSeleccionada)})`,
+                        filtros: `${obtenerResumenFiltros()} | Unidad: ${formatearUnidad(unidadSeleccionada)}`,
+                        nombreArchivo: `totales_productos_${unidadSeleccionada}_${desde || 'inicio'}_a_${hasta || 'hoy'}`,
+                        graficos: [
+                          {
+                            id: 'produccion-totales-unidad',
+                            titulo: `Totales de Productos Fabricados (${formatearUnidad(unidadSeleccionada)})`,
+                            subtitulo: 'Cantidad acumulada elaborada por producto',
+                            filtros: `${obtenerResumenFiltros()} | Unidad: ${formatearUnidad(unidadSeleccionada)}`,
+                            contenedor: graficoProductosRef.current,
+                          },
+                        ],
+                      })
+                    }
+                    className="btn-cancelar"
+                    style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                    title="Exportar gráfico en PNG, JPEG o PDF"
+                  >
+                    <ExportIcon size={14} /> Exportar gráfico
+                  </button>
+                )}
               </div>
             </div>
           </CardHeader>
           <CardContent style={{ padding: '0 24px 20px 24px' }}>
             {cargando ? (
-              <div style={{ minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)' }}>
+              <div style={{ minHeight: '340px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)' }}>
                 Cargando totales de productos...
               </div>
             ) : datosProductosPorUnidad.length === 0 ? (
-              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
-                <strong style={{ display: 'block', color: 'var(--text-h)', marginBottom: '4px' }}>Sin productos en {formatearUnidad(unidadSeleccionada)}</strong>
-                <span>No se registraron productos producidos en esta unidad durante el período.</span>
+              <div style={{ minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px', textAlign: 'center', padding: '0 16px' }}>
+                No se elaboraron productos medidos en {formatearUnidad(unidadSeleccionada)} en este período.
               </div>
             ) : (
-              <div style={{ width: '100%', height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div ref={graficoProductosRef} style={{ width: '100%', height: 340 }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart
                     data={datosProductosPorUnidad}
                     layout="vertical"
-                    margin={{ top: 8, right: 30, left: 10, bottom: 8 }}
+                    margin={{ top: 8, right: 24, left: 20, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                    <XAxis type="number" stroke={colores.textoSec} fontSize={11} unit={` ${abreviarUnidad(unidadSeleccionada)}`} />
+                    <XAxis type="number" stroke={colores.textoSec} fontSize={12} unit={` ${abreviarUnidad(unidadSeleccionada)}`} />
                     <YAxis
                       type="category"
                       dataKey="nombre"
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       tickLine={false}
-                      width={120}
+                      width={130}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                        backgroundColor: 'var(--color-superficie-elevada)',
                         borderColor: 'var(--color-borde)',
-                        borderRadius: '8px',
                         color: 'var(--color-texto)',
                       }}
-                      formatter={(val: any, _, item: any) => [
-                        `${val} ${abreviarUnidad(unidadSeleccionada)} (${item?.payload?.lotes || 0} lotes)`,
-                        'Total Fabricado',
+                      itemStyle={{ color: 'var(--color-texto)' }}
+                      formatter={(val, _, item) => [
+                        `${val} ${abreviarUnidad(item.payload.unidad)} (${item.payload.lotes} ${item.payload.lotes === 1 ? 'lote' : 'lotes'})`,
+                        'Cantidad Total',
                       ]}
                     />
                     <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
-                      {datosProductosPorUnidad.map((entry, index) => (
-                        <Cell key={`prod-cell-${index}`} fill={entry.color} />
+                      {datosProductosPorUnidad.map((entry, idx) => (
+                        <Cell key={`prod-cell-${idx}`} fill={entry.color} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -1329,55 +1890,82 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
         </Card>
 
         <Card>
-          <CardHeader style={{ padding: '20px 24px 14px 24px' }}>
-            <CardTitle style={{ fontSize: '1rem' }}>Insumos Más Utilizados</CardTitle>
-            <CardDescription>
-              Materias primas con mayor demanda en los lotes del período
-            </CardDescription>
+          <CardHeader style={{ padding: '20px 24px 12px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+              <div>
+                <CardTitle style={{ fontSize: '1rem' }}>Insumos Más Utilizados</CardTitle>
+                <CardDescription>Materias primas con mayor demanda en los lotes del período</CardDescription>
+              </div>
+              {!cargando && datosInsumosMasUtilizados.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExportGraficoModal({
+                      titulo: 'Insumos Más Utilizados',
+                      filtros: obtenerResumenFiltros(),
+                      nombreArchivo: `insumos_mas_utilizados_${desde || 'inicio'}_a_${hasta || 'hoy'}`,
+                      graficos: [
+                        {
+                          id: 'produccion-insumos-usados',
+                          titulo: 'Insumos Más Utilizados',
+                          subtitulo: 'Materias primas con mayor demanda en los lotes del período',
+                          filtros: obtenerResumenFiltros(),
+                          contenedor: graficoInsumosRef.current,
+                        },
+                      ],
+                    })
+                  }
+                  className="btn-cancelar"
+                  style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  title="Exportar gráfico en PNG, JPEG o PDF"
+                >
+                  <ExportIcon size={14} /> Exportar gráfico
+                </button>
+              )}
+            </div>
           </CardHeader>
           <CardContent style={{ padding: '0 24px 20px 24px' }}>
             {cargando ? (
-              <div style={{ minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)' }}>
+              <div style={{ minHeight: '340px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)' }}>
                 Cargando insumos más utilizados...
               </div>
             ) : datosInsumosMasUtilizados.length === 0 ? (
-              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
-                <strong style={{ display: 'block', color: 'var(--text-h)', marginBottom: '4px' }}>Sin insumos registrados</strong>
-                <span>Los lotes seleccionados no tienen insumos asociados.</span>
+              <div style={{ minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px', textAlign: 'center', padding: '0 16px' }}>
+                No se registró consumo de insumos en los lotes de este período.
               </div>
             ) : (
-              <div style={{ width: '100%', height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div ref={graficoInsumosRef} style={{ width: '100%', height: 340 }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart
-                    data={datosInsumosMasUtilizados.slice(0, 7)}
+                    data={datosInsumosMasUtilizados.slice(0, 8)}
                     layout="vertical"
-                    margin={{ top: 8, right: 30, left: 10, bottom: 8 }}
+                    margin={{ top: 8, right: 24, left: 20, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
-                    <XAxis type="number" stroke={colores.textoSec} fontSize={11} />
+                    <XAxis type="number" stroke={colores.textoSec} fontSize={12} />
                     <YAxis
                       type="category"
                       dataKey="nombre"
                       stroke={colores.textoSec}
-                      fontSize={11}
+                      fontSize={12}
                       tickLine={false}
-                      width={120}
+                      width={130}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                        backgroundColor: 'var(--color-superficie-elevada)',
                         borderColor: 'var(--color-borde)',
-                        borderRadius: '8px',
                         color: 'var(--color-texto)',
                       }}
-                      formatter={(val: any, _, item: any) => [
-                        `${val} ${abreviarUnidad(item?.payload?.medida)} (en ${item?.payload?.lotesCount} lotes)`,
-                        'Consumo Acumulado',
+                      itemStyle={{ color: 'var(--color-texto)' }}
+                      formatter={(val, _, item) => [
+                        `${val} ${abreviarUnidad(item.payload.medida)} (en ${item.payload.lotesCount} ${item.payload.lotesCount === 1 ? 'lote' : 'lotes'})`,
+                        'Cantidad Usada',
                       ]}
                     />
                     <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
-                      {datosInsumosMasUtilizados.slice(0, 7).map((entry, index) => (
-                        <Cell key={`insumo-cell-${index}`} fill={entry.color} />
+                      {datosInsumosMasUtilizados.slice(0, 8).map((entry, idx) => (
+                        <Cell key={`ins-cell-${idx}`} fill={entry.color} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -1388,158 +1976,163 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
         </Card>
       </div>
 
-      <Card style={{ marginBottom: '1.5rem' }}>
-        <CardHeader style={{ padding: '20px 24px 14px 24px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '14px', width: '100%' }}>
+      <Card style={{ marginBottom: '2rem' }}>
+        <CardHeader style={{ padding: '20px 24px 12px 24px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CardTitle style={{ fontSize: '1.1rem' }}>
-                  Listado Detallado de Lotes de Producción
-                </CardTitle>
-                <Badge variant="outline" style={{ fontSize: '12px' }}>
-                  {lotesFiltrados.length} {lotesFiltrados.length === 1 ? 'lote' : 'lotes'}
-                </Badge>
-              </div>
+              <CardTitle style={{ fontSize: '1.05rem' }}>Listado Detallado de Lotes Elaborados</CardTitle>
               <CardDescription>
-                Trazabilidad completa de lotes registrados con insumos, cantidad y responsable
+                Historial completo de producción y composición de materias primas
               </CardDescription>
             </div>
 
-            <div style={{ position: 'relative', width: '280px', maxWidth: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <input
                 type="text"
-                placeholder="Buscar por código, producto, operador..."
+                placeholder="Buscar por código, producto o responsable..."
                 value={busquedaLote}
-                onChange={(e) => setBusquedaLote(e.target.value)}
+                onChange={(e) => {
+                  setBusquedaLote(e.target.value);
+                  setPaginaActual(1);
+                }}
                 style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '7px 12px 7px 30px',
-                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
                   border: '1px solid var(--color-borde)',
-                  backgroundColor: 'var(--color-fondo)',
+                  backgroundColor: 'var(--color-superficie)',
                   color: 'var(--color-texto)',
                   fontSize: '12.5px',
+                  width: '260px',
+                  maxWidth: '100%',
                   outline: 'none',
                 }}
               />
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--color-texto-sec)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+              <span style={{ fontSize: '12px', color: 'var(--color-texto-sec)' }}>
+                Total: <strong>{totalRegistros}</strong> lotes
+              </span>
             </div>
           </div>
         </CardHeader>
-
-        <CardContent style={{ padding: 0 }}>
+        <CardContent style={{ padding: '0 24px 20px 24px' }}>
           {cargando ? (
-            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
-              Cargando lotes...
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
+              Cargando lotes de producción...
             </div>
           ) : lotesFiltrados.length === 0 ? (
-            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
-              <strong style={{ display: 'block', color: 'var(--text-h)', marginBottom: '4px' }}>
-                No se encontraron lotes de producción
-              </strong>
-              <p style={{ margin: 0, fontSize: '13px' }}>
-                No hay registros que coincidan con los filtros y búsqueda aplicados.
-              </p>
+            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
+              No se encontraron lotes que coincidan con los filtros aplicados.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-borde)', color: 'var(--color-texto-sec)', fontSize: '11.5px', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '10px 14px', width: '15%' }}>Código</th>
-                    <th style={{ padding: '10px 14px', width: '12%' }}>Fecha</th>
-                    <th style={{ padding: '10px 14px', width: '25%' }}>Producto</th>
-                    <th style={{ padding: '10px 14px', width: '15%' }}>Cantidad Fabricada</th>
-                    <th style={{ padding: '10px 14px', width: '18%' }}>Responsable</th>
-                    <th style={{ padding: '10px 14px', width: '15%', textAlign: 'center' }}>Insumos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {itemsPaginados.map((l) => (
-                    <tr
-                      key={l.id}
-                      onClick={() => setLoteParaModal(l)}
-                      style={{ borderBottom: '1px solid var(--color-borde)', cursor: 'pointer' }}
-                      className="fila-incidente-clickeable"
-                      title="Clic para ver detalle completo del lote"
-                    >
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--color-primario)', fontSize: '13px' }}>
-                          {l.codigo}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>
-                          ID #{l.id}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 500, color: 'var(--color-texto)' }}>
-                          {formatearFechaVisual(l.fecha)}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text-h)' }}>
-                          {l.producto?.nombre}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--color-texto)', fontSize: '13px' }}>
-                          {l.cantidad} <span style={{ fontWeight: 500, color: 'var(--color-texto-sec)', fontSize: '12px' }}>{abreviarUnidad(l.producto?.unidadMedida)}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 500, color: 'var(--color-texto)' }}>
-                          {l.nombre_responsable}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--color-texto-sec)' }}>
-                          Legajo #{l.responsable_legajo}
-                        </div>
-                      </td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <Badge variant="outline">
-                          {l.insumos.length} {l.insumos.length === 1 ? 'insumo' : 'insumos'}
-                        </Badge>
-                      </td>
+            <>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-borde)', color: 'var(--color-texto-sec)', fontSize: '11.5px', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '10px 12px' }}>Fecha</th>
+                      <th style={{ padding: '10px 12px' }}>Código Lote</th>
+                      <th style={{ padding: '10px 12px' }}>Producto</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right' }}>Cantidad</th>
+                      <th style={{ padding: '10px 12px' }}>Responsable</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center' }}>Insumos</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center' }}>Estado</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right' }}>Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {itemsPaginados.map((l) => (
+                      <tr key={l.id} style={{ borderBottom: '1px solid var(--color-borde)' }}>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-texto)' }}>
+                          {formatearFechaVisual(l.fecha)}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--color-primario)' }}>
+                          {l.codigo}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-h)' }}>
+                          {l.producto.nombre}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: 'var(--color-texto)' }}>
+                          {l.cantidad} {abreviarUnidad(l.producto.unidadMedida)}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: 'var(--color-texto)' }}>
+                          <span>{l.nombre_responsable}</span>
+                          <span style={{ fontSize: '10.5px', color: 'var(--color-texto-sec)', display: 'block' }}>
+                            Legajo #{l.responsable_legajo}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--color-texto-sec)' }}>
+                          {l.insumos.length} {l.insumos.length === 1 ? 'insumo' : 'insumos'}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          <Badge variant={l.editable ? 'proximo' : 'al_dia'}>
+                            {l.editable ? 'Abierto' : 'Finalizado'}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="btn-secundario"
+                            style={{ padding: '4px 10px', fontSize: '12px' }}
+                            onClick={() => setLoteParaModal(l)}
+                          >
+                            Ver composición
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-          <div style={{ padding: '12px 18px' }}>
-            <Paginacion
-              paginaActual={paginaActual}
-              totalPaginas={totalPaginas}
-              totalRegistros={totalRegistros}
-              indiceInicio={indiceInicio}
-              indiceFin={indiceFin}
-              filasPorPagina={filasPorPagina}
-              onCambiarPagina={setPaginaActual}
-              onCambiarFilasPorPagina={setFilasPorPagina}
-              etiqueta="lotes"
-            />
-          </div>
+              <div style={{ marginTop: '16px' }}>
+                <Paginacion
+                  paginaActual={paginaActual}
+                  totalPaginas={totalPaginas}
+                  totalRegistros={totalRegistros}
+                  indiceInicio={indiceInicio}
+                  indiceFin={indiceFin}
+                  filasPorPagina={filasPorPagina}
+                  onCambiarPagina={setPaginaActual}
+                  onCambiarFilasPorPagina={setFilasPorPagina}
+                  etiqueta="lotes"
+                />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
       {loteParaModal && (
-        <ModalDetalleLote lote={loteParaModal} onClose={() => setLoteParaModal(null)} />
+        <ModalDetalleLote
+          lote={loteParaModal}
+          onClose={() => setLoteParaModal(null)}
+        />
       )}
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={totalRegistros}
+        filtrosAplicados={obtenerResumenFiltros()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
+      />
+
+      <ConfirmExportGraficoDialog
+        open={Boolean(exportGraficoModal)}
+        tituloGrafico={exportGraficoModal?.titulo || ''}
+        cantidadGraficos={exportGraficoModal?.graficos.length || 1}
+        filtrosAplicados={exportGraficoModal?.filtros || obtenerResumenFiltros()}
+        loading={exportandoGrafico}
+        onConfirm={ejecutarExportacionGrafico}
+        onCancel={() => setExportGraficoModal(null)}
+      />
+
+      <ErrorAlertDialog
+        open={Boolean(errorExportDialog)}
+        title="No se pudo completar la exportación"
+        description={errorExportDialog || ''}
+        onClose={() => setErrorExportDialog(null)}
+      />
     </div>
   );
 };
-

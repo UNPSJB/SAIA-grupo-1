@@ -1,11 +1,22 @@
+import json
+import re
+import unicodedata
 from typing import Any, Dict, List, Optional
 from datetime import date, datetime, timedelta
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
-from src.insumos.models import Insumo
+from src.insumos.models import Insumo, AlimentoReferenciaSARA
 from src.insumos import schemas, exceptions
+from src.insumos.constants import (
+    CAMPOS_NUTRICIONALES,
+    FUENTE_SARA_2,
+    FUENTE_ROTULO_PROVEEDOR,
+    FUENTE_VALOR_PROPIO,
+    FUENTE_OTRA_BIBLIOGRAFIA,
+    FUENTES_VALIDAS,
+)
+from src.insumos.migraciones import migrar_columnas_nutricionales_insumos
 from src.unidadesMedida.services import resolver_unidad_medida
-
 
 def _validar_nombre_unico(db: Session, nombre: str, excluir_id: Optional[int] = None) -> None:
     consulta = select(Insumo.id).where(
@@ -15,7 +26,6 @@ def _validar_nombre_unico(db: Session, nombre: str, excluir_id: Optional[int] = 
         consulta = consulta.where(Insumo.id != excluir_id)
     if db.scalar(consulta) is not None:
         raise exceptions.NombreInsumoDuplicado()
-
 
 def calcular_estado_vencimiento_insumo(
     fecha_vencimiento: Optional[datetime | date], stock: float
@@ -38,16 +48,18 @@ def calcular_estado_vencimiento_insumo(
     return ("VIGENTE", dias)
 
 
-def obtener_insumos_para_csv(
+def obtener_insumos_para_exportar(
     db: Session,
     busqueda: Optional[str] = None,
     unidad: Optional[str] = None,
     vencimiento: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    query = select(Insumo)
+    migrar_columnas_nutricionales_insumos(db)
+    query = select(Insumo).where(Insumo.activo)
     insumos = db.scalars(query).all()
     filas = []
     term = busqueda.lower().strip() if busqueda else None
+    hoy = date.today()
 
     for i in insumos:
         nombre = getattr(i, "nombre", "") or ""
@@ -71,12 +83,12 @@ def obtener_insumos_para_csv(
         f_rec = getattr(i, "fechaRecepcion", None)
 
         str_venc = (
-            f_venc.strftime("%Y-%m-%d")
+            f_venc.strftime("%d/%m/%Y")
             if isinstance(f_venc, (datetime, date))
             else "No aplica"
         )
         str_rec = (
-            f_rec.strftime("%Y-%m-%d")
+            f_rec.strftime("%d/%m/%Y")
             if isinstance(f_rec, (datetime, date))
             else "No aplica"
         )
@@ -110,6 +122,7 @@ def obtener_insumos_para_csv(
 
 
 def crear_insumo(db: Session, insumo: schemas.InsumoCreate) -> Insumo:
+    migrar_columnas_nutricionales_insumos(db)
     if not insumo.nombre or insumo.nombre.strip() == "":
         raise exceptions.NombreInsumoVacio()
     _validar_nombre_unico(db, insumo.nombre)
@@ -175,6 +188,24 @@ def recibir_lote_insumo(db: Session, datos: schemas.RecepcionInsumoRequest) -> I
         unidad_medida_id=tipo.unidad_medida_id,
         tipo_insumo_id=tipo.id,
         proveedor_id=proveedor.id,
+        es_aditivo=bool(getattr(tipo, "es_aditivo", False)),
+        energia_kcal=getattr(tipo, "energia_kcal", None),
+        energia_kj=getattr(tipo, "energia_kj", None),
+        carbohidratos=getattr(tipo, "carbohidratos", None),
+        azucares_totales=getattr(tipo, "azucares_totales", None),
+        azucares_anadidos=getattr(tipo, "azucares_anadidos", None),
+        proteinas=getattr(tipo, "proteinas", None),
+        grasas_totales=getattr(tipo, "grasas_totales", None),
+        grasas_saturadas=getattr(tipo, "grasas_saturadas", None),
+        grasas_trans=getattr(tipo, "grasas_trans", None),
+        fibra_alimentaria=getattr(tipo, "fibra_alimentaria", None),
+        sodio_mg=getattr(tipo, "sodio_mg", None),
+        fuente_datos=getattr(tipo, "fuente_datos", None),
+        fuente_detalle=getattr(tipo, "fuente_detalle", None),
+        alimento_referencia_id=getattr(tipo, "alimento_referencia_id", None),
+        fecha_carga_nutricional=getattr(tipo, "fecha_carga_nutricional", None),
+        usuario_carga_nutricional=getattr(tipo, "usuario_carga_nutricional", None),
+        modificado_manualmente=bool(getattr(tipo, "modificado_manualmente", False)),
         activo=True,
     )
     db.add(_insumo)
@@ -229,6 +260,10 @@ def listar_insumos_agrupados_por_tipo(
                 estadoVencimiento=estado_v,
                 dias_para_vencer=dias,
                 activo=l.activo,
+                es_aditivo=bool(l.es_aditivo),
+                tiene_datos_nutricionales=bool(l.tiene_datos_nutricionales),
+                modificado_manualmente=bool(l.modificado_manualmente),
+                fuente_datos=l.fuente_datos,
             )
             if l.stock > 0:
                 lotes_disponibles.append(item)
@@ -377,15 +412,15 @@ def obtener_trazabilidad_insumo(
 
 
 def listar_insumos(db: Session) -> List[Insumo]:
+    migrar_columnas_nutricionales_insumos(db)
     return list(db.scalars(select(Insumo).where(Insumo.activo)).all())
 
-
 def leer_insumo(db: Session, insumo_id: int) -> Insumo:
+    migrar_columnas_nutricionales_insumos(db)
     db_insumo = db.scalar(select(Insumo).where(Insumo.id == insumo_id, Insumo.activo))
     if db_insumo is None:
         raise exceptions.InsumoNoEncontrado()
     return db_insumo
-
 
 def modificar_insumo(
     db: Session, insumo_id: int, insumo: schemas.InsumoUpdate
@@ -443,7 +478,6 @@ def modificar_insumo(
         db.refresh(db_insumo)
     return db_insumo
 
-
 def eliminar_insumo(db: Session, insumo_id: int) -> Insumo:
     db_insumo = leer_insumo(db, insumo_id)
     db_insumo.activo = False
@@ -462,3 +496,309 @@ def modificar_stock(
     db.commit()
     db.refresh(db_insumo)
     return db_insumo
+
+
+def _normalizar_texto_busqueda(txt: str) -> str:
+    sin_tildes = "".join(
+        c for c in unicodedata.normalize("NFD", txt)
+        if unicodedata.category(c) != "Mn"
+    )
+    return re.sub(r"[^\w\s]", " ", sin_tildes.lower())
+
+
+def buscar_alimentos_sara(
+    db: Session,
+    busqueda: Optional[str] = None,
+    categoria: Optional[str] = None,
+) -> List[AlimentoReferenciaSARA]:
+    migrar_columnas_nutricionales_insumos(db)
+    stmt = select(AlimentoReferenciaSARA)
+    if categoria and categoria.strip() and categoria != "TODAS":
+        stmt = stmt.where(AlimentoReferenciaSARA.categoria == categoria.strip())
+
+    todos = list(db.scalars(stmt).all())
+    if not busqueda or not busqueda.strip():
+        todos.sort(key=lambda x: x.nombre.lower())
+        return todos
+
+    q_raw = busqueda.strip()
+    q_norm = _normalizar_texto_busqueda(q_raw)
+    palabras_vacias = {
+        "de", "del", "la", "el", "los", "las", "y", "en", "con", "sin",
+        "para", "por", "al", "o", "un", "una", "unos", "unas", "tipo"
+    }
+    tokens = [t for t in q_norm.split() if len(t) >= 2 and t not in palabras_vacias]
+
+    coincidencias = []
+    for item in todos:
+        nom_norm = _normalizar_texto_busqueda(item.nombre)
+        cod_norm = _normalizar_texto_busqueda(item.codigo)
+        cat_norm = _normalizar_texto_busqueda(item.categoria)
+
+        score = 0
+        if q_norm == nom_norm:
+            score += 200
+        elif q_norm in nom_norm:
+            score += 100
+        elif nom_norm in q_norm:
+            score += 80
+
+        if q_norm in cod_norm:
+            score += 90
+
+        tokens_acertados = 0
+        for tok in tokens:
+            if tok in nom_norm:
+                tokens_acertados += 1
+                if nom_norm.startswith(tok) or f" {tok}" in nom_norm:
+                    score += 25
+                else:
+                    score += 15
+            elif tok in cat_norm:
+                score += 5
+            elif tok in cod_norm:
+                score += 20
+
+        if tokens and tokens_acertados == len(tokens):
+            score += 50
+
+        if score > 0:
+            score -= 0.05 * abs(len(nom_norm) - len(q_norm))
+            coincidencias.append((score, item))
+
+    coincidencias.sort(key=lambda x: (-x[0], x[1].nombre.lower()))
+    return [c[1] for c in coincidencias]
+
+def obtener_alimento_sara_por_codigo(
+    db: Session, codigo: str
+) -> AlimentoReferenciaSARA:
+    migrar_columnas_nutricionales_insumos(db)
+    item = db.scalar(
+        select(AlimentoReferenciaSARA).where(
+            AlimentoReferenciaSARA.codigo == codigo.strip()
+        )
+    )
+    if not item:
+        raise exceptions.AlimentoReferenciaNoEncontrado()
+    return item
+
+def obtener_nutricion_insumo(
+    db: Session, insumo_id: int
+) -> schemas.DatosNutricionalesInsumoResponse:
+    insumo = leer_insumo(db, insumo_id)
+
+    campos_modificados: List[str] = []
+    valores_ref_dict = None
+    if insumo.valores_referencia_json:
+        try:
+            valores_ref_dict = json.loads(insumo.valores_referencia_json)
+            for c in CAMPOS_NUTRICIONALES:
+                val_insumo = getattr(insumo, c)
+                val_ref = valores_ref_dict.get(c)
+                if val_ref is not None and val_insumo is not None:
+                    if abs(float(val_insumo) - float(val_ref)) > 0.001:
+                        campos_modificados.append(c)
+                elif (val_ref is None and val_insumo is not None) or (val_ref is not None and val_insumo is None):
+                    campos_modificados.append(c)
+        except Exception:
+            valores_ref_dict = None
+
+    tiene_datos = (
+        insumo.fuente_datos is not None
+        or insumo.energia_kcal is not None
+        or (insumo.es_aditivo and insumo.fecha_carga_nutricional is not None)
+    )
+
+    tipo_nom = insumo.tipo.nombre if getattr(insumo, "tipo", None) else None
+    prov_nom = insumo.proveedor.nombre if getattr(insumo, "proveedor", None) else None
+
+    es_aditivo_val = insumo.es_aditivo
+    if not tiene_datos and not es_aditivo_val and tipo_nom:
+        if any(term in tipo_nom.lower() for term in ["aditivo", "conservante", "leudante", "colorante", "esencia", "aromatizante"]):
+            es_aditivo_val = True
+
+    return schemas.DatosNutricionalesInsumoResponse(
+        insumo_id=insumo.id,
+        nombre_insumo=insumo.nombre,
+        tipo_insumo_id=insumo.tipo_insumo_id,
+        tipo_insumo_nombre=tipo_nom,
+        proveedor_id=insumo.proveedor_id,
+        proveedor_nombre=prov_nom,
+        es_aditivo=es_aditivo_val,
+        fuente_datos=insumo.fuente_datos,
+        fuente_detalle=insumo.fuente_detalle,
+        alimento_referencia_id=insumo.alimento_referencia_id,
+        fecha_carga_nutricional=insumo.fecha_carga_nutricional,
+        usuario_carga_nutricional=insumo.usuario_carga_nutricional,
+        modificado_manualmente=insumo.modificado_manualmente,
+        fecha_modificacion_nutricional=insumo.fecha_modificacion_nutricional,
+        usuario_modificacion_nutricional=insumo.usuario_modificacion_nutricional,
+        campos_modificados=campos_modificados,
+        valores_referencia=valores_ref_dict,
+        energia_kcal=insumo.energia_kcal,
+        energia_kj=insumo.energia_kj,
+        carbohidratos=insumo.carbohidratos,
+        azucares_totales=insumo.azucares_totales,
+        azucares_anadidos=insumo.azucares_anadidos,
+        proteinas=insumo.proteinas,
+        grasas_totales=insumo.grasas_totales,
+        grasas_saturadas=insumo.grasas_saturadas,
+        grasas_trans=insumo.grasas_trans,
+        fibra_alimentaria=insumo.fibra_alimentaria,
+        sodio_mg=insumo.sodio_mg,
+        tiene_datos_cargados=tiene_datos,
+    )
+
+def guardar_nutricion_insumo(
+    db: Session,
+    insumo_id: int,
+    datos: schemas.DatosNutricionalesInsumoUpdate,
+    usuario: Optional[str] = None,
+) -> schemas.DatosNutricionalesInsumoResponse:
+    insumo = leer_insumo(db, insumo_id)
+    ahora = datetime.now()
+    usuario_str = usuario or "Administrador"
+
+    if insumo.fecha_carga_nutricional is None:
+        insumo.fecha_carga_nutricional = ahora
+        insumo.usuario_carga_nutricional = usuario_str
+
+    insumo.es_aditivo = datos.es_aditivo
+    insumo.fuente_datos = datos.fuente_datos
+    insumo.fuente_detalle = datos.fuente_detalle
+    insumo.alimento_referencia_id = datos.alimento_referencia_id
+
+    valores_ref_dict = None
+    if datos.fuente_datos == FUENTE_SARA_2:
+        if datos.alimento_referencia_id:
+            ref_alimento = db.scalar(
+                select(AlimentoReferenciaSARA).where(
+                    AlimentoReferenciaSARA.codigo == datos.alimento_referencia_id.strip()
+                )
+            )
+            if ref_alimento:
+                valores_ref_dict = {
+                    "energia_kcal": ref_alimento.energia_kcal,
+                    "energia_kj": ref_alimento.energia_kj,
+                    "carbohidratos": ref_alimento.carbohidratos,
+                    "azucares_totales": ref_alimento.azucares_totales,
+                    "azucares_anadidos": ref_alimento.azucares_anadidos,
+                    "proteinas": ref_alimento.proteinas,
+                    "grasas_totales": ref_alimento.grasas_totales,
+                    "grasas_saturadas": ref_alimento.grasas_saturadas,
+                    "grasas_trans": ref_alimento.grasas_trans,
+                    "fibra_alimentaria": ref_alimento.fibra_alimentaria,
+                    "sodio_mg": ref_alimento.sodio_mg,
+                }
+                insumo.valores_referencia_json = json.dumps(valores_ref_dict)
+
+        if valores_ref_dict:
+            hubo_cambio = False
+            for c in CAMPOS_NUTRICIONALES:
+                val_ingresado = getattr(datos, c)
+                val_ref = valores_ref_dict.get(c)
+                if val_ingresado is not None and val_ref is not None:
+                    if abs(float(val_ingresado) - float(val_ref)) > 0.001:
+                        hubo_cambio = True
+                        break
+                elif (val_ref is None and val_ingresado is not None) or (val_ref is not None and val_ingresado is None):
+                    hubo_cambio = True
+                    break
+
+            if hubo_cambio:
+                insumo.modificado_manualmente = True
+                insumo.fecha_modificacion_nutricional = ahora
+                insumo.usuario_modificacion_nutricional = usuario_str
+            else:
+                insumo.modificado_manualmente = False
+                insumo.fecha_modificacion_nutricional = None
+                insumo.usuario_modificacion_nutricional = None
+        else:
+            insumo.modificado_manualmente = False
+            insumo.valores_referencia_json = None
+    else:
+        if insumo.valores_referencia_json:
+            insumo.valores_referencia_json = None
+
+        if insumo.fecha_carga_nutricional is not None and insumo.fecha_carga_nutricional != ahora:
+            insumo.fecha_modificacion_nutricional = ahora
+            insumo.usuario_modificacion_nutricional = usuario_str
+        insumo.modificado_manualmente = False
+
+    insumo.energia_kcal = datos.energia_kcal
+    insumo.energia_kj = datos.energia_kj
+    insumo.carbohidratos = datos.carbohidratos
+    insumo.azucares_totales = datos.azucares_totales
+    insumo.azucares_anadidos = datos.azucares_anadidos
+    insumo.proteinas = datos.proteinas
+    insumo.grasas_totales = datos.grasas_totales
+    insumo.grasas_saturadas = datos.grasas_saturadas
+    insumo.grasas_trans = datos.grasas_trans
+    insumo.fibra_alimentaria = datos.fibra_alimentaria
+    insumo.sodio_mg = datos.sodio_mg
+
+    if insumo.tipo_insumo_id and getattr(insumo, "tipo", None):
+        tipo_obj = insumo.tipo
+        for campo_sync in (
+            "es_aditivo",
+            "fuente_datos",
+            "fuente_detalle",
+            "alimento_referencia_id",
+            "fecha_carga_nutricional",
+            "usuario_carga_nutricional",
+            "modificado_manualmente",
+            "fecha_modificacion_nutricional",
+            "usuario_modificacion_nutricional",
+            "valores_referencia_json",
+            "energia_kcal",
+            "energia_kj",
+            "carbohidratos",
+            "azucares_totales",
+            "azucares_anadidos",
+            "proteinas",
+            "grasas_totales",
+            "grasas_saturadas",
+            "grasas_trans",
+            "fibra_alimentaria",
+            "sodio_mg",
+        ):
+            setattr(tipo_obj, campo_sync, getattr(insumo, campo_sync))
+
+        otros_lotes = list(
+            db.scalars(
+                select(Insumo).where(
+                    Insumo.tipo_insumo_id == insumo.tipo_insumo_id,
+                    Insumo.id != insumo.id,
+                )
+            ).all()
+        )
+        for otro in otros_lotes:
+            for campo_sync in (
+                "es_aditivo",
+                "fuente_datos",
+                "fuente_detalle",
+                "alimento_referencia_id",
+                "fecha_carga_nutricional",
+                "usuario_carga_nutricional",
+                "modificado_manualmente",
+                "fecha_modificacion_nutricional",
+                "usuario_modificacion_nutricional",
+                "valores_referencia_json",
+                "energia_kcal",
+                "energia_kj",
+                "carbohidratos",
+                "azucares_totales",
+                "azucares_anadidos",
+                "proteinas",
+                "grasas_totales",
+                "grasas_saturadas",
+                "grasas_trans",
+                "fibra_alimentaria",
+                "sodio_mg",
+            ):
+                setattr(otro, campo_sync, getattr(insumo, campo_sync))
+
+    db.commit()
+    db.refresh(insumo)
+
+    return obtener_nutricion_insumo(db, insumo_id)
