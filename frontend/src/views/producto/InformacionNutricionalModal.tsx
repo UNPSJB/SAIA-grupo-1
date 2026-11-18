@@ -209,7 +209,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
               monitoring
             </span>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#f8fafc' }}>
                 Información Nutricional Oficial
               </h2>
               <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>

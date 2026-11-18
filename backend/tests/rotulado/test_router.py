@@ -237,3 +237,129 @@ def test_e13_endpoint_router(session: Session):
     assert data["disponible"] is True
     assert data["texto_rotulo"] == "INGREDIENTES: Cacao."
     assert len(data["items"]) == 1
+
+
+def test_borrador_rotulo_endpoints_router(session: Session):
+    prod = crear_producto_aux(session, "Borrador Router Test")
+
+    res_get = client.get(f"/productos/{prod.id}/borrador-rotulo")
+    assert res_get.status_code == 200
+    data_get = res_get.json()
+    assert data_get["producto_id"] == prod.id
+    assert data_get["denominacion_venta"] == "Borrador Router Test"
+    assert "BORRADOR: debe ser revisado" in data_get["leyenda_obligatoria"]
+
+    update_payload = {
+        "denominacion_venta": "Pan de Molde Especial Test",
+        "contenido_neto": "600 g",
+        "rnpa_rppa": "RNPA 02-999888",
+        "rne": "RNE 02-111222",
+        "porcion": "50 g",
+        "valor_energetico_kcal": 150.0,
+        "carbohidratos": 25.0,
+        "proteinas": 5.0,
+        "grasas_totales": 2.0,
+        "sodio": 200.0,
+        "tiene_exceso_sodio": True,
+        "modo_calculo_octogonos": "manual",
+    }
+    res_put = client.put(f"/productos/{prod.id}/borrador-rotulo", json=update_payload)
+    assert res_put.status_code == 200
+    data_put = res_put.json()
+    assert data_put["denominacion_venta"] == "Pan de Molde Especial Test"
+    assert data_put["contenido_neto"] == "600 g"
+    assert data_put["tiene_octogonos"] is True
+
+    res_exp_err = client.post(
+        f"/productos/{prod.id}/borrador-rotulo/exportar",
+        json={"incluir_leyenda": False},
+    )
+    assert res_exp_err.status_code == 400
+
+    res_exp_ok = client.post(
+        f"/productos/{prod.id}/borrador-rotulo/exportar",
+        json={"incluir_leyenda": True},
+    )
+    assert res_exp_ok.status_code == 200
+    data_exp = res_exp_ok.json()
+    assert data_exp["leyenda_incluida"] is True
+    assert "BORRADOR NO COMERCIAL" in data_exp["contenido_html"]
+
+    res_put_imp = client.put(
+        f"/productos/{prod.id}/borrador-rotulo",
+        json={
+            "es_importado": True,
+            "razon_social_importador": "Importadora Global S.A.",
+            "domicilio_importador": "Calle Falsa 123",
+            "lote": "LOTE-EDIT-01",
+        },
+    )
+    assert res_put_imp.status_code == 200
+    data_imp = res_put_imp.json()
+    assert data_imp["es_importado"] is True
+    assert data_imp["razon_social_importador"] == "Importadora Global S.A."
+    assert data_imp["lote_editado_manualmente"] is True
+
+    res_auto = client.post(
+        f"/productos/{prod.id}/borrador-rotulo/autocompletar",
+        json={"campos": ["lote", "denominacion"]},
+    )
+    assert res_auto.status_code == 200
+    data_auto = res_auto.json()
+    assert data_auto["denominacion_venta"] == "Borrador Router Test"
+    assert data_auto["lote_editado_manualmente"] is False
+    assert data_auto["denominacion_editada_manualmente"] is False
+
+
+def test_sincronizar_receta_router(session: Session):
+    from src.recetas.models import Receta, VersionReceta, RecetaDetalle
+    from src.insumos.models import Insumo
+
+    ins = Insumo(
+        nombre="Harina Centeno Test",
+        lote="L-CEN",
+        fechaRecepcion=date.today(),
+        cantRecibida=50.0,
+        stock=50.0,
+        unidad_medida_id=resolver_unidad_medida(session, valor_texto="kilogramos").id,
+        activo=True,
+    )
+    session.add(ins)
+    session.commit()
+
+    receta = Receta(nombre="Receta Centeno Test", rendimiento_final=500.0, activo=True)
+    session.add(receta)
+    session.commit()
+
+    version = VersionReceta(receta_id=receta.id, version=1, rendimiento_final=500.0, es_vigente=True)
+    session.add(version)
+    session.commit()
+
+    det = RecetaDetalle(
+        nombre="Etapa Centeno",
+        version_receta_id=version.id,
+        ingrediente_id=ins.id,
+        cantidad=500.0,
+        unidad_medida="GRAMOS",
+        es_aditivo=False,
+        operario_legajo=1,
+        descripcion_pasos="Mezclar",
+    )
+    session.add(det)
+    session.commit()
+
+    prod = crear_producto_aux(session, "Pan Centeno Router Test")
+    prod.receta_id = receta.id
+    session.commit()
+
+    res_sync = client.post(f"/productos/{prod.id}/ingredientes-rotulo/sincronizar-receta")
+    assert res_sync.status_code == 200
+    data_sync = res_sync.json()
+    assert len(data_sync["items"]) == 1
+    assert data_sync["items"][0]["nombre"] == "Harina Centeno Test"
+    assert "Harina Centeno Test" in data_sync["texto_rotulo"]
+
+    res_reset = client.post(f"/productos/{prod.id}/ingredientes-rotulo/restablecer-automatico")
+    assert res_reset.status_code == 200
+    data_reset = res_reset.json()
+    assert data_reset["ajustado_manualmente"] is False

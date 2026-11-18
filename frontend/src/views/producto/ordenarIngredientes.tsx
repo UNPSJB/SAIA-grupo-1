@@ -10,6 +10,7 @@ import "../../styles/formularioAlta.css";
 interface OrdenarIngredientesProps {
   productoId: number;
   onVolver: () => void;
+  onPrevisualizarBorrador?: () => void;
 }
 
 const FUNCIONES_COMUNES = [
@@ -29,6 +30,7 @@ const FUNCIONES_COMUNES = [
 export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
   productoId,
   onVolver,
+  onPrevisualizarBorrador,
 }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [guardando, setGuardando] = useState<boolean>(false);
@@ -315,37 +317,57 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
     }
   };
 
+  const sincronizarConReceta = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    setExitoMsg(null);
+    try {
+      const res = await apiFetch(
+        `/productos/${productoId}/ingredientes-rotulo/sincronizar-receta`,
+        { method: "POST" }
+      );
+      if (res.ok) {
+        const data: ListaIngredientesRotuloResponse = await res.json();
+        setItems(data.items);
+        setFormato(data.formato_aditivos);
+        setTextoRotulo(data.texto_rotulo || "");
+        setAjustadoManualmente(false);
+        setFechaAjuste(null);
+        setUsuarioAjuste(null);
+        setExitoMsg("Se sincronizaron con éxito los ingredientes y proporciones de la receta estructurada.");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorMsg(err.detail || "No se pudo sincronizar con la receta.");
+      }
+    } catch {
+      setErrorMsg("Error de conexión al sincronizar con la receta.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const ejecutarRestablecerAutomatico = async () => {
     setDialogResetAbierto(false);
     setLoading(true);
+    setErrorMsg(null);
+    setExitoMsg(null);
     try {
       const res = await apiFetch(
-        `/productos/${productoId}/ingredientes-rotulo/previsualizar`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            formato_aditivos: formato,
-            items: items.map((it) => ({
-              nombre: it.nombre,
-              denominacion_rotulo: it.denominacion_rotulo || it.nombre,
-              porcentaje: it.porcentaje,
-              es_aditivo: it.es_aditivo,
-              funcion: it.funcion || null,
-              numero_ins: it.numero_ins || null,
-              es_aromatizante: it.es_aromatizante || false,
-            })),
-          }),
-        }
+        `/productos/${productoId}/ingredientes-rotulo/restablecer-automatico`,
+        { method: "POST" }
       );
       if (res.ok) {
-        const data = await res.json();
+        const data: ListaIngredientesRotuloResponse = await res.json();
         setItems(data.items);
-        setTextoRotulo(data.texto_rotulo);
+        setFormato(data.formato_aditivos);
+        setTextoRotulo(data.texto_rotulo || "");
         setAjustadoManualmente(false);
         setFechaAjuste(null);
         setUsuarioAjuste(null);
         setExitoMsg("Se restableció el orden automático según proporción.");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorMsg(err.detail || "No se pudo restablecer el orden automático.");
       }
     } catch {
       setErrorMsg("Error al restablecer el orden automático.");
@@ -473,6 +495,25 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
             </span>
             Volver al producto
           </button>
+          {onPrevisualizarBorrador && (
+            <button
+              type="button"
+              className="btn-secundario"
+              onClick={onPrevisualizarBorrador}
+              style={{
+                fontSize: "0.95rem",
+                padding: "10px 18px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                label
+              </span>
+              Previsualizar Borrador
+            </button>
+          )}
           <button
             type="button"
             className="btn-guardar"
@@ -624,6 +665,23 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               Restablecer orden automático
             </button>
           )}
+          <button
+            type="button"
+            className="btn-cancelar"
+            style={{
+              fontSize: "0.9rem",
+              padding: "8px 16px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+            onClick={sincronizarConReceta}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+              sync
+            </span>
+            Sincronizar con receta
+          </button>
           <button
             type="button"
             className="btn-cancelar"

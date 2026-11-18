@@ -3,6 +3,7 @@ from fastapi import Depends, FastAPI
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
+from src.rotulado.migraciones import actualizar_tablas_rotulado
 from src.models import ModeloBase
 
 from src.config import settings
@@ -69,6 +70,8 @@ async def db_creation_lifespan(app: FastAPI):
             from src.nutricion.services import migrar_columnas_nutricionales, asegurar_parametros_defecto
             migrar_columnas_nutricionales(db)
             asegurar_parametros_defecto(db)
+            from src.recetas.seeder import asegurar_recetas_y_productos_base
+            asegurar_recetas_y_productos_base(db)
     yield
 
 app = FastAPI(root_path=ROOT_PATH, lifespan=db_creation_lifespan)

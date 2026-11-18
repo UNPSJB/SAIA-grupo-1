@@ -6,11 +6,18 @@ from src.personal.models import Personal
 from src.produccion.models import InsumoLote, LoteProduccion
 from src.producto.models import Producto
 from src.rotulado import exceptions, schemas
+from src.rotulado.constants import (
+    LEYENDA_BORRADOR_OBLIGATORIA,
+    MENSAJE_SIN_OCTOGONOS,
+)
 from src.rotulado.models import (
+    BorradorRotulo,
     FormatoDeclaracionAditivos,
     ItemIngredienteRotulo,
     ListaIngredientesRotulo,
 )
+from src.recetas.models import Receta, VersionReceta, RecetaDetalle
+from src.nutricion.services import normalizar_a_gramos, obtener_informacion_nutricional_producto
 
 
 def _obtener_nombre_usuario(usuario: Optional[Any]) -> Optional[str]:
@@ -190,6 +197,117 @@ def previsualizar_orden(
     )
 
 
+def generar_lista_desde_receta(
+    db: Session,
+    producto_id: int,
+    formato: Optional[FormatoDeclaracionAditivos] = None,
+    usuario: Optional[Personal] = None,
+) -> Optional[ListaIngredientesRotulo]:
+    producto = obtener_producto_o_404(db, producto_id)
+    receta = None
+    if producto.receta_id:
+        receta = db.get(Receta, producto.receta_id)
+    if not receta and getattr(producto, "receta_estructurada", None):
+        receta = producto.receta_estructurada
+    if not receta:
+        receta = db.scalar(
+            select(Receta).where(Receta.nombre.ilike(f"%{producto.nombre}%"))
+        )
+    if not receta:
+        return None
+
+    version = receta.version_actual
+    detalles = version.detalles if version else []
+    if not detalles:
+        return None
+
+    pesos = []
+    for d in detalles:
+        p = normalizar_a_gramos(float(d.cantidad), d.unidad_medida)
+        pesos.append(p)
+
+    tot = sum(pesos)
+    if tot <= 0:
+        tot = 1.0
+
+    items_create: List[schemas.ItemIngredienteCreate] = []
+    for idx, d in enumerate(detalles):
+        p_g = pesos[idx]
+        pct = round((p_g / tot) * 100, 2)
+        insumo = getattr(d, "ingrediente", None)
+        es_adit = bool(d.es_aditivo or (insumo and insumo.es_aditivo))
+
+        func_str = None
+        if es_adit:
+            if d.clase_funcional:
+                func_str = (
+                    d.clase_funcional.value
+                    if hasattr(d.clase_funcional, "value")
+                    else str(d.clase_funcional)
+                )
+            if not func_str and insumo:
+                t_nom = (
+                    getattr(insumo, "tipo_insumo_nombre", None)
+                    or (insumo.tipo.nombre if getattr(insumo, "tipo", None) else "")
+                ).lower()
+                if "leudante" in t_nom:
+                    func_str = "Leudante químico"
+                elif "conserv" in t_nom:
+                    func_str = "Conservante"
+                elif "color" in t_nom:
+                    func_str = "Colorante"
+                elif "aroma" in t_nom or "esencia" in t_nom:
+                    func_str = "Aromatizante"
+                elif "emul" in t_nom:
+                    func_str = "Emulsionante"
+            if not func_str:
+                n_lower = d.nombre_ingrediente.lower()
+                if "vainilla" in n_lower or "esencia" in n_lower or "aroma" in n_lower:
+                    func_str = "Aromatizante"
+                elif "hornear" in n_lower or "leudante" in n_lower:
+                    func_str = "Leudante químico"
+                elif "conservante" in n_lower:
+                    func_str = "Conservante"
+                else:
+                    func_str = "Aditivo"
+
+        ins_str = d.numero_ins
+        if es_adit and not ins_str:
+            n_lower = d.nombre_ingrediente.lower()
+            if "hornear" in n_lower:
+                ins_str = "500ii"
+            elif "leudante" in n_lower:
+                ins_str = "300"
+            elif "vainilla" in n_lower:
+                ins_str = "150d"
+
+        es_aroma = (
+            bool(func_str and ("aroma" in func_str.lower() or "saboriz" in func_str.lower()))
+            or "esencia" in d.nombre_ingrediente.lower()
+            or "vainilla" in d.nombre_ingrediente.lower()
+        )
+
+        items_create.append(
+            schemas.ItemIngredienteCreate(
+                nombre=d.nombre_ingrediente,
+                denominacion_rotulo=d.nombre_ingrediente,
+                porcentaje=pct,
+                es_aditivo=es_adit,
+                funcion=func_str,
+                numero_ins=ins_str,
+                es_aromatizante=es_aroma,
+            )
+        )
+
+    formato_final = formato or FormatoDeclaracionAditivos.INS_Y_NOMBRE
+    datos_guardar = schemas.ListaIngredientesCreate(
+        formato_aditivos=formato_final,
+        items=items_create,
+        ajustado_manualmente=False,
+    )
+    return guardar_lista_rotulo(db, producto_id, datos_guardar, usuario)
+
+
 def obtener_lista_rotulo(
     db: Session, producto_id: int
 ) -> Optional[ListaIngredientesRotulo]:
@@ -197,7 +315,14 @@ def obtener_lista_rotulo(
     consulta = select(ListaIngredientesRotulo).where(
         ListaIngredientesRotulo.producto_id == producto_id
     )
-    return db.scalars(consulta).first()
+    lista = db.scalars(consulta).first()
+    if lista and lista.items and len(lista.items) > 0:
+        return lista
+    if lista is None or not lista.ajustado_manualmente:
+        lista_receta = generar_lista_desde_receta(db, producto_id)
+        if lista_receta:
+            return lista_receta
+    return lista
 
 
 def guardar_lista_rotulo(
@@ -315,23 +440,44 @@ def restablecer_automatico(
     producto_id: int,
     usuario: Optional[Personal] = None,
 ) -> ListaIngredientesRotulo:
-    lista = obtener_lista_rotulo(db, producto_id)
-    if lista is None or not lista.items:
+    obtener_producto_o_404(db, producto_id)
+    lista_existente = (
+        db.scalars(
+            select(ListaIngredientesRotulo).where(
+                ListaIngredientesRotulo.producto_id == producto_id
+            )
+        ).first()
+    )
+    formato = (
+        lista_existente.formato_aditivos
+        if lista_existente
+        else FormatoDeclaracionAditivos.INS_Y_NOMBRE
+    )
+    lista_receta = generar_lista_desde_receta(
+        db, producto_id, formato=formato, usuario=usuario
+    )
+    if lista_receta:
+        lista_receta.ajustado_manualmente = False
+        lista_receta.fecha_ajuste_manual = None
+        lista_receta.usuario_ajuste_manual = None
+        db.commit()
+        db.refresh(lista_receta)
+        return lista_receta
+
+    if lista_existente is None or not lista_existente.items:
         raise exceptions.ListaIngredientesNoEncontrada()
 
-    formato = lista.formato_aditivos or FormatoDeclaracionAditivos.INS_Y_NOMBRE
-    ordenados = ordenar_items_logica(list(lista.items), formato)
-
-    lista.items = ordenados
-    lista.ajustado_manualmente = False
-    lista.fecha_ajuste_manual = None
-    lista.usuario_ajuste_manual = None
-    lista.texto_rotulo = construir_texto_rotulo(ordenados)
-    lista.actualizado_el = datetime.now()
+    ordenados = ordenar_items_logica(list(lista_existente.items), formato)
+    lista_existente.items = ordenados
+    lista_existente.ajustado_manualmente = False
+    lista_existente.fecha_ajuste_manual = None
+    lista_existente.usuario_ajuste_manual = None
+    lista_existente.texto_rotulo = construir_texto_rotulo(ordenados)
+    lista_existente.actualizado_el = datetime.now()
 
     db.commit()
-    db.refresh(lista)
-    return lista
+    db.refresh(lista_existente)
+    return lista_existente
 
 
 def cambiar_formato_aditivos(
@@ -505,3 +651,864 @@ def mapear_respuesta_lista(
         items=resp_items,
     )
 
+
+def _obtener_abreviatura_unidad(producto: Producto) -> str:
+    abrev = getattr(producto, "unidad_medida_abreviatura", None)
+    if abrev:
+        return str(abrev).strip()
+    u_med = getattr(producto, "unidadMedida", None)
+    if not u_med:
+        return "kg"
+    val = (
+        u_med.value
+        if hasattr(u_med, "value")
+        else str(u_med).replace("UnidadMedida.", "")
+    ).lower().strip()
+    mapa = {
+        "kilogramos": "kg",
+        "gramos": "g",
+        "litros": "l",
+        "mililitros": "ml",
+        "unidades": "un",
+        "kilogramo": "kg",
+        "gramo": "g",
+        "litro": "l",
+        "mililitro": "ml",
+        "unidad": "un",
+    }
+    return mapa.get(val, val or "kg")
+
+
+def obtener_o_crear_borrador(
+    db: Session, producto_id: int
+) -> BorradorRotulo:
+    producto = obtener_producto_o_404(db, producto_id)
+    borrador = (
+        db.query(BorradorRotulo)
+        .filter(BorradorRotulo.producto_id == producto_id)
+        .first()
+    )
+    if not borrador:
+        u_lote = (
+            db.query(LoteProduccion)
+            .filter(LoteProduccion.producto_id == producto_id)
+            .order_by(LoteProduccion.fecha.desc(), LoteProduccion.id.desc())
+            .first()
+        )
+        cod_lote = u_lote.codigo if u_lote else "L-001"
+        unidad_str = _obtener_abreviatura_unidad(producto)
+
+        borrador = BorradorRotulo(
+            producto_id=producto_id,
+            denominacion_venta=producto.nombre,
+            contenido_neto=f"1 {unidad_str}",
+            rnpa_rppa=None,
+            rne=None,
+            razon_social="SAIA Alimentos S.A.",
+            direccion_origen="Parque Industrial Trelew, Chubut, Argentina",
+            pais_origen="Industria Argentina",
+            lote=cod_lote,
+            fecha_duracion="Consumir preferentemente antes de la fecha indicada en el envase",
+            instrucciones_conservacion="Conservar en lugar fresco, seco y protegido de la luz directa",
+            modo_empleo=None,
+            porcion=None,
+            porciones_por_envase=None,
+            tabla_marcada_incompleta=False,
+            modo_calculo_octogonos="automatico",
+        )
+        db.add(borrador)
+        db.commit()
+        db.refresh(borrador)
+
+    if borrador.valor_energetico_kcal is None or not borrador.tabla_editada_manualmente:
+        try:
+            info_nutri = obtener_informacion_nutricional_producto(db, producto_id)
+            if info_nutri and info_nutri.tabla_nutricional:
+                mapa = {f.nutriente: f.valor_100g for f in info_nutri.tabla_nutricional}
+                borrador.valor_energetico_kcal = mapa.get("energia_kcal")
+                borrador.valor_energetico_kj = mapa.get("energia_kj")
+                borrador.carbohidratos = mapa.get("carbohidratos")
+                borrador.azucares_totales = mapa.get("azucares_totales")
+                borrador.azucares_anadidos = mapa.get("azucares_anadidos")
+                borrador.proteinas = mapa.get("proteinas")
+                borrador.grasas_totales = mapa.get("grasas_totales")
+                borrador.grasas_saturadas = mapa.get("grasas_saturadas")
+                borrador.grasas_trans = mapa.get("grasas_trans")
+                borrador.fibra_alimentaria = mapa.get("fibra_alimentaria")
+                borrador.sodio = mapa.get("sodio_mg")
+                if info_nutri.descripcion_porcion and not borrador.porcion:
+                    borrador.porcion = info_nutri.descripcion_porcion
+                elif info_nutri.tamano_porcion_g and not borrador.porcion:
+                    borrador.porcion = f"{int(info_nutri.tamano_porcion_g)} g"
+                if info_nutri.porciones_por_envase and not borrador.porciones_por_envase:
+                    p_env = info_nutri.porciones_por_envase
+                    borrador.porciones_por_envase = (
+                        str(int(p_env)) if float(p_env).is_integer() else str(p_env)
+                    )
+                db.commit()
+                db.refresh(borrador)
+        except Exception:
+            pass
+
+    obtener_lista_rotulo(db, producto_id)
+    return borrador
+
+
+def guardar_borrador(
+    db: Session,
+    producto_id: int,
+    datos: schemas.BorradorRotuloUpdate,
+    usuario: Optional[Any] = None,
+) -> BorradorRotulo:
+    borrador = obtener_o_crear_borrador(db, producto_id)
+    payload = datos.model_dump(exclude_unset=True)
+
+    if "lote" in payload and payload["lote"] != borrador.lote and "lote_editado_manualmente" not in payload:
+        borrador.lote_editado_manualmente = True
+
+    if "denominacion_venta" in payload and payload["denominacion_venta"] != borrador.denominacion_venta and "denominacion_editada_manualmente" not in payload:
+        borrador.denominacion_editada_manualmente = True
+
+    if "contenido_neto" in payload and payload["contenido_neto"] != borrador.contenido_neto and "contenido_neto_editado_manualmente" not in payload:
+        borrador.contenido_neto_editado_manualmente = True
+
+    if ("modo_calculo_octogonos" in payload or any(k.startswith("tiene_exceso_") or k.startswith("contiene_") for k in payload)) and "sellos_editados_manualmente" not in payload:
+        nuevo_modo = payload.get("modo_calculo_octogonos", borrador.modo_calculo_octogonos)
+        borrador.sellos_editados_manualmente = (nuevo_modo == "manual")
+
+    nutri_keys = [
+        "porcion", "porciones_por_envase", "valor_energetico_kcal", "valor_energetico_kj",
+        "carbohidratos", "azucares_totales", "azucares_anadidos", "proteinas",
+        "grasas_totales", "grasas_saturadas", "grasas_trans", "fibra_alimentaria",
+        "sodio", "tabla_marcada_incompleta"
+    ]
+    if any(nk in payload for nk in nutri_keys) and "tabla_editada_manualmente" not in payload:
+        borrador.tabla_editada_manualmente = True
+
+    for k, v in payload.items():
+        setattr(borrador, k, v)
+
+    borrador.usuario_actualizacion = _obtener_nombre_usuario(usuario)
+    borrador.actualizado_el = datetime.now()
+    db.commit()
+    db.refresh(borrador)
+    return borrador
+
+
+def autocompletar_datos_borrador(
+    db: Session,
+    producto_id: int,
+    campos: Optional[List[str]] = None,
+    usuario: Optional[Any] = None,
+) -> BorradorRotulo:
+    producto = obtener_producto_o_404(db, producto_id)
+    borrador = obtener_o_crear_borrador(db, producto_id)
+
+    u_lote = (
+        db.query(LoteProduccion)
+        .filter(LoteProduccion.producto_id == producto_id)
+        .order_by(LoteProduccion.fecha.desc(), LoteProduccion.id.desc())
+        .first()
+    )
+    cod_lote = u_lote.codigo if u_lote else "L-001"
+    unidad_str = _obtener_abreviatura_unidad(producto)
+
+    t_campos = set(campos) if campos else {"lote", "denominacion", "contenido_neto", "sellos", "tabla", "ingredientes"}
+
+    if "lote" in t_campos:
+        borrador.lote = cod_lote
+        borrador.lote_editado_manualmente = False
+
+    if "denominacion" in t_campos:
+        borrador.denominacion_venta = producto.nombre
+        borrador.denominacion_editada_manualmente = False
+
+    if "contenido_neto" in t_campos:
+        borrador.contenido_neto = f"1 {unidad_str}"
+        borrador.contenido_neto_editado_manualmente = False
+
+    if "sellos" in t_campos:
+        borrador.modo_calculo_octogonos = "automatico"
+        borrador.sellos_editados_manualmente = False
+
+    if "tabla" in t_campos:
+        borrador.tabla_editada_manualmente = False
+        try:
+            info_nutri = obtener_informacion_nutricional_producto(db, producto_id)
+            if info_nutri and info_nutri.tabla_nutricional:
+                mapa = {f.nutriente: f.valor_100g for f in info_nutri.tabla_nutricional}
+                borrador.valor_energetico_kcal = mapa.get("energia_kcal")
+                borrador.valor_energetico_kj = mapa.get("energia_kj")
+                borrador.carbohidratos = mapa.get("carbohidratos")
+                borrador.azucares_totales = mapa.get("azucares_totales")
+                borrador.azucares_anadidos = mapa.get("azucares_anadidos")
+                borrador.proteinas = mapa.get("proteinas")
+                borrador.grasas_totales = mapa.get("grasas_totales")
+                borrador.grasas_saturadas = mapa.get("grasas_saturadas")
+                borrador.grasas_trans = mapa.get("grasas_trans")
+                borrador.fibra_alimentaria = mapa.get("fibra_alimentaria")
+                borrador.sodio = mapa.get("sodio_mg")
+                if info_nutri.descripcion_porcion:
+                    borrador.porcion = info_nutri.descripcion_porcion
+                elif info_nutri.tamano_porcion_g:
+                    borrador.porcion = f"{int(info_nutri.tamano_porcion_g)} g"
+                if info_nutri.porciones_por_envase:
+                    p_env = info_nutri.porciones_por_envase
+                    borrador.porciones_por_envase = (
+                        str(int(p_env)) if float(p_env).is_integer() else str(p_env)
+                    )
+        except Exception:
+            pass
+
+    if "ingredientes" in t_campos:
+        borrador.ingredientes_editado_manualmente = False
+        generar_lista_desde_receta(db, producto_id)
+
+    borrador.usuario_actualizacion = _obtener_nombre_usuario(usuario)
+    borrador.actualizado_el = datetime.now()
+    db.commit()
+    db.refresh(borrador)
+    return borrador
+
+
+def calcular_octogonos_e12(
+    borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
+) -> tuple[List[schemas.OctogonoItem], bool, str]:
+    octogonos: List[schemas.OctogonoItem] = []
+
+    if borrador.modo_calculo_octogonos == "manual":
+        if borrador.tiene_exceso_azucares:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="azucares", texto="EXCESO EN AZÚCARES", tipo="octogono"
+                )
+            )
+        if borrador.tiene_exceso_grasas_totales:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="grasas_totales",
+                    texto="EXCESO EN GRASAS TOTALES",
+                    tipo="octogono",
+                )
+            )
+        if borrador.tiene_exceso_grasas_saturadas:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="grasas_saturadas",
+                    texto="EXCESO EN GRASAS SATURADAS",
+                    tipo="octogono",
+                )
+            )
+        if borrador.tiene_exceso_calorias:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="calorias", texto="EXCESO EN CALORÍAS", tipo="octogono"
+                )
+            )
+        if borrador.tiene_exceso_sodio:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="sodio", texto="EXCESO EN SODIO", tipo="octogono"
+                )
+            )
+        if borrador.contiene_edulcorantes:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="edulcorantes",
+                    texto="CONTIENE EDULCORANTES: NO RECOMENDABLE EN NIÑOS/AS",
+                    tipo="micro_sello",
+                )
+            )
+        if borrador.contiene_cafeina:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="cafeina",
+                    texto="CONTIENE CAFEÍNA: EVITAR EN NIÑOS/AS",
+                    tipo="micro_sello",
+                )
+            )
+    else:
+        kcal = borrador.valor_energetico_kcal or 0.0
+        gt = borrador.grasas_totales or 0.0
+        gs = borrador.grasas_saturadas or 0.0
+        az_anad = borrador.azucares_anadidos or 0.0
+        sodio_mg = borrador.sodio or 0.0
+
+        exceso_az = (
+            (az_anad * 4 >= kcal * 0.10) if (kcal > 0 and az_anad > 0) else False
+        )
+        exceso_gt = (
+            (gt * 9 >= kcal * 0.30) if (kcal > 0 and gt > 0) else False
+        )
+        exceso_gs = (
+            (gs * 9 >= kcal * 0.10) if (kcal > 0 and gs > 0) else False
+        )
+        exceso_sodio = (
+            ((sodio_mg >= kcal and kcal > 0) or (sodio_mg >= 300))
+            if sodio_mg > 0
+            else False
+        )
+        exceso_cal = (
+            (kcal >= 275 and (exceso_az or exceso_gt or exceso_gs))
+            if kcal > 0
+            else False
+        )
+
+        tiene_edulc = borrador.contiene_edulcorantes
+        tiene_caf = borrador.contiene_cafeina
+
+        if lista and lista.items:
+            palabras_edulcorantes = (
+                "edulcorante",
+                "sucralosa",
+                "aspartamo",
+                "stevia",
+                "estevia",
+                "ciclamato",
+                "acesulfamo",
+                "sacarina",
+                "ins 950",
+                "ins 951",
+                "ins 952",
+                "ins 954",
+                "ins 955",
+                "ins 960",
+            )
+            palabras_cafeina = (
+                "cafeina",
+                "cafeína",
+                "café",
+                "cafe",
+                "guaraná",
+                "guarana",
+            )
+            for it in lista.items:
+                nom_low = (it.nombre or "").lower()
+                func_low = (it.funcion or "").lower()
+                ins_low = (it.numero_ins or "").lower()
+                texto_item = f"{nom_low} {func_low} {ins_low}"
+                if any(p in texto_item for p in palabras_edulcorantes):
+                    tiene_edulc = True
+                if any(p in texto_item for p in palabras_cafeina):
+                    tiene_caf = True
+
+        if exceso_az or borrador.tiene_exceso_azucares:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="azucares", texto="EXCESO EN AZÚCARES", tipo="octogono"
+                )
+            )
+        if exceso_gt or borrador.tiene_exceso_grasas_totales:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="grasas_totales",
+                    texto="EXCESO EN GRASAS TOTALES",
+                    tipo="octogono",
+                )
+            )
+        if exceso_gs or borrador.tiene_exceso_grasas_saturadas:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="grasas_saturadas",
+                    texto="EXCESO EN GRASAS SATURADAS",
+                    tipo="octogono",
+                )
+            )
+        if exceso_cal or borrador.tiene_exceso_calorias:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="calorias", texto="EXCESO EN CALORÍAS", tipo="octogono"
+                )
+            )
+        if exceso_sodio or borrador.tiene_exceso_sodio:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="sodio", texto="EXCESO EN SODIO", tipo="octogono"
+                )
+            )
+        if tiene_edulc:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="edulcorantes",
+                    texto="CONTIENE EDULCORANTES: NO RECOMENDABLE EN NIÑOS/AS",
+                    tipo="micro_sello",
+                )
+            )
+        if tiene_caf:
+            octogonos.append(
+                schemas.OctogonoItem(
+                    id="cafeina",
+                    texto="CONTIENE CAFEÍNA: EVITAR EN NIÑOS/AS",
+                    tipo="micro_sello",
+                )
+            )
+
+    tiene_oct = len(octogonos) > 0
+    msg = (
+        f"Corresponde la inclusión de {len(octogonos)} sello(s) de advertencia nutricional."
+        if tiene_oct
+        else MENSAJE_SIN_OCTOGONOS
+    )
+    return octogonos, tiene_oct, msg
+
+
+def detectar_datos_faltantes_y_tabla(
+    borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
+) -> tuple[List[str], bool, List[str], bool, int, int, int]:
+    datos_faltantes: List[str] = []
+
+    if not borrador.denominacion_venta or not borrador.denominacion_venta.strip():
+        datos_faltantes.append(
+            "Falta especificar la denominación de venta del producto (nombre legal que describe el alimento)"
+        )
+
+    if not lista or not lista.items or len(lista.items) == 0:
+        datos_faltantes.append(
+            "Falta confeccionar la lista de ingredientes y aditivos del rótulo"
+        )
+
+    if not borrador.contenido_neto or not borrador.contenido_neto.strip():
+        datos_faltantes.append(
+            "Falta indicar el contenido neto del producto (peso o volumen neto)"
+        )
+
+    if not borrador.rnpa_rppa or not borrador.rnpa_rppa.strip():
+        datos_faltantes.append(
+            "Falta ingresar el número de registro del producto (RNPA o RPPA)"
+        )
+
+    if not borrador.rne or not borrador.rne.strip():
+        datos_faltantes.append(
+            "Falta ingresar el número de registro del establecimiento (RNE o RPE)"
+        )
+
+    if not borrador.razon_social or not borrador.razon_social.strip():
+        datos_faltantes.append(
+            "Falta indicar la razón social o titular del establecimiento elaborador"
+        )
+
+    if not borrador.direccion_origen or not borrador.direccion_origen.strip():
+        datos_faltantes.append(
+            "Falta indicar la dirección o domicilio del establecimiento elaborador"
+        )
+
+    if not borrador.pais_origen or not borrador.pais_origen.strip():
+        datos_faltantes.append(
+            "Falta indicar el país de origen del producto"
+        )
+
+    if not borrador.lote or not borrador.lote.strip():
+        datos_faltantes.append("Falta indicar la identificación del lote")
+
+    if not borrador.fecha_duracion or not borrador.fecha_duracion.strip():
+        datos_faltantes.append("Falta indicar la fecha de duración o vencimiento")
+
+    if borrador.es_importado:
+        if not borrador.razon_social_importador or not borrador.razon_social_importador.strip():
+            datos_faltantes.append(
+                "Falta indicar la razón social o titular del importador (obligatorio para producto importado)"
+            )
+        if not borrador.domicilio_importador or not borrador.domicilio_importador.strip():
+            datos_faltantes.append(
+                "Falta indicar el domicilio fiscal o legal del importador (obligatorio para producto importado)"
+            )
+
+    motivos_incompleta: List[str] = []
+    if borrador.tabla_marcada_incompleta:
+        motivos_incompleta.append(
+            "La tabla nutricional está marcada expresamente como incompleta"
+        )
+
+    if not borrador.porcion or not borrador.porcion.strip():
+        motivos_incompleta.append("Falta indicar el tamaño de porción de referencia")
+
+    if borrador.valor_energetico_kcal is None:
+        motivos_incompleta.append("Falta el valor energético (kcal)")
+    if borrador.carbohidratos is None:
+        motivos_incompleta.append("Falta declarar carbohidratos (g)")
+    if borrador.proteinas is None:
+        motivos_incompleta.append("Falta declarar proteínas (g)")
+    if borrador.grasas_totales is None:
+        motivos_incompleta.append("Falta declarar grasas totales (g)")
+    if borrador.sodio is None:
+        motivos_incompleta.append("Falta declarar sodio (mg)")
+
+    tabla_incompleta = len(motivos_incompleta) > 0
+    if tabla_incompleta:
+        datos_faltantes.append(
+            "La tabla de información nutricional está incompleta o faltan nutrientes obligatorios"
+        )
+
+    campos_totales = 13 if borrador.es_importado else 11
+    faltantes_count = len(datos_faltantes)
+    completados = max(0, campos_totales - faltantes_count)
+    porcentaje_completitud = int(round((completados / campos_totales) * 100))
+    es_completo = (faltantes_count == 0) and not tabla_incompleta
+
+    return (
+        datos_faltantes,
+        tabla_incompleta,
+        motivos_incompleta,
+        es_completo,
+        porcentaje_completitud,
+        campos_totales,
+        completados,
+    )
+
+
+def generar_filas_tabla_nutricional(
+    borrador: BorradorRotulo,
+) -> List[schemas.FilaTablaNutricional]:
+    def _fmt(val: Optional[float], unidad: str = "g") -> Optional[str]:
+        if val is None:
+            return None
+        return f"{val:.1f} {unidad}" if val != int(val) else f"{int(val)} {unidad}"
+
+    def _calc_vd(val: Optional[float], ref: float) -> Optional[str]:
+        if val is None or ref <= 0:
+            return None
+        pct = (val / ref) * 100.0
+        return f"{round(pct)} %"
+
+    filas: List[schemas.FilaTablaNutricional] = []
+
+    kcal = borrador.valor_energetico_kcal
+    kj = borrador.valor_energetico_kj
+    texto_kcal = f"{int(kcal)} kcal" if kcal is not None else None
+    if kcal is not None and kj is not None:
+        texto_kcal = f"{int(kcal)} kcal / {int(kj)} kJ"
+    vd_kcal = _calc_vd(kcal, 2000.0)
+    filas.append(
+        schemas.FilaTablaNutricional(
+            nutriente="Valor energético",
+            por_100g=texto_kcal,
+            por_porcion=texto_kcal,
+            porcentaje_vd=vd_kcal,
+            es_subitem=False,
+        )
+    )
+
+    carb = borrador.carbohidratos
+    filas.append(
+        schemas.FilaTablaNutricional(
+            nutriente="Carbohidratos",
+            por_100g=_fmt(carb),
+            por_porcion=_fmt(carb),
+            porcentaje_vd=_calc_vd(carb, 300.0),
+            es_subitem=False,
+        )
+    )
+
+    az_tot = borrador.azucares_totales
+    if az_tot is not None:
+        filas.append(
+            schemas.FilaTablaNutricional(
+                nutriente="Azúcares totales",
+                por_100g=_fmt(az_tot),
+                por_porcion=_fmt(az_tot),
+                porcentaje_vd=None,
+                es_subitem=True,
+            )
+        )
+
+    az_anad = borrador.azucares_anadidos
+    if az_anad is not None:
+        filas.append(
+            schemas.FilaTablaNutricional(
+                nutriente="Azúcares añadidos",
+                por_100g=_fmt(az_anad),
+                por_porcion=_fmt(az_anad),
+                porcentaje_vd=_calc_vd(az_anad, 50.0),
+                es_subitem=True,
+            )
+        )
+
+    prot = borrador.proteinas
+    filas.append(
+        schemas.FilaTablaNutricional(
+            nutriente="Proteínas",
+            por_100g=_fmt(prot),
+            por_porcion=_fmt(prot),
+            porcentaje_vd=_calc_vd(prot, 75.0),
+            es_subitem=False,
+        )
+    )
+
+    gt = borrador.grasas_totales
+    filas.append(
+        schemas.FilaTablaNutricional(
+            nutriente="Grasas totales",
+            por_100g=_fmt(gt),
+            por_porcion=_fmt(gt),
+            porcentaje_vd=_calc_vd(gt, 55.0),
+            es_subitem=False,
+        )
+    )
+
+    gs = borrador.grasas_saturadas
+    if gs is not None:
+        filas.append(
+            schemas.FilaTablaNutricional(
+                nutriente="Grasas saturadas",
+                por_100g=_fmt(gs),
+                por_porcion=_fmt(gs),
+                porcentaje_vd=_calc_vd(gs, 22.0),
+                es_subitem=True,
+            )
+        )
+
+    gtr = borrador.grasas_trans
+    if gtr is not None:
+        filas.append(
+            schemas.FilaTablaNutricional(
+                nutriente="Grasas trans",
+                por_100g=_fmt(gtr),
+                por_porcion=_fmt(gtr),
+                porcentaje_vd=None,
+                es_subitem=True,
+            )
+        )
+
+    fibra = borrador.fibra_alimentaria
+    if fibra is not None:
+        filas.append(
+            schemas.FilaTablaNutricional(
+                nutriente="Fibra alimentaria",
+                por_100g=_fmt(fibra),
+                por_porcion=_fmt(fibra),
+                porcentaje_vd=_calc_vd(fibra, 25.0),
+                es_subitem=False,
+            )
+        )
+
+    sodio = borrador.sodio
+    filas.append(
+        schemas.FilaTablaNutricional(
+            nutriente="Sodio",
+            por_100g=_fmt(sodio, "mg"),
+            por_porcion=_fmt(sodio, "mg"),
+            porcentaje_vd=_calc_vd(sodio, 2000.0),
+            es_subitem=False,
+        )
+    )
+
+    return filas
+
+
+def mapear_respuesta_borrador(
+    borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
+) -> schemas.BorradorRotuloResponse:
+    prod_nom = borrador.producto.nombre if borrador.producto else ""
+    texto_ingredientes = (
+        lista.texto_rotulo if lista and lista.texto_rotulo else None
+    )
+    tiene_ingr = bool(lista and lista.items and len(lista.items) > 0)
+
+    octogonos, tiene_oct, msg_oct = calcular_octogonos_e12(borrador, lista)
+    faltantes, tabla_inc, motivos_inc, es_compl, pct, tot, comp = (
+        detectar_datos_faltantes_y_tabla(borrador, lista)
+    )
+    filas_nutri = generar_filas_tabla_nutricional(borrador)
+
+    return schemas.BorradorRotuloResponse(
+        id=borrador.id,
+        producto_id=borrador.producto_id,
+        producto_nombre=prod_nom,
+        denominacion_venta=borrador.denominacion_venta,
+        contenido_neto=borrador.contenido_neto,
+        rnpa_rppa=borrador.rnpa_rppa,
+        rne=borrador.rne,
+        razon_social=borrador.razon_social,
+        direccion_origen=borrador.direccion_origen,
+        pais_origen=borrador.pais_origen,
+        es_importado=borrador.es_importado,
+        razon_social_importador=borrador.razon_social_importador,
+        domicilio_importador=borrador.domicilio_importador,
+        lote=borrador.lote,
+        fecha_duracion=borrador.fecha_duracion,
+        instrucciones_conservacion=borrador.instrucciones_conservacion,
+        modo_empleo=borrador.modo_empleo,
+        lista_ingredientes_texto=texto_ingredientes,
+        tiene_lista_ingredientes=tiene_ingr,
+        porcion=borrador.porcion,
+        porciones_por_envase=borrador.porciones_por_envase,
+        valor_energetico_kcal=borrador.valor_energetico_kcal,
+        valor_energetico_kj=borrador.valor_energetico_kj,
+        carbohidratos=borrador.carbohidratos,
+        azucares_totales=borrador.azucares_totales,
+        azucares_anadidos=borrador.azucares_anadidos,
+        proteinas=borrador.proteinas,
+        grasas_totales=borrador.grasas_totales,
+        grasas_saturadas=borrador.grasas_saturadas,
+        grasas_trans=borrador.grasas_trans,
+        fibra_alimentaria=borrador.fibra_alimentaria,
+        sodio=borrador.sodio,
+        tabla_marcada_incompleta=borrador.tabla_marcada_incompleta,
+        tiene_exceso_azucares=borrador.tiene_exceso_azucares,
+        tiene_exceso_sodio=borrador.tiene_exceso_sodio,
+        tiene_exceso_grasas_saturadas=borrador.tiene_exceso_grasas_saturadas,
+        tiene_exceso_grasas_totales=borrador.tiene_exceso_grasas_totales,
+        tiene_exceso_calorias=borrador.tiene_exceso_calorias,
+        contiene_edulcorantes=borrador.contiene_edulcorantes,
+        contiene_cafeina=borrador.contiene_cafeina,
+        modo_calculo_octogonos=borrador.modo_calculo_octogonos,
+        lote_editado_manualmente=borrador.lote_editado_manualmente,
+        ingredientes_editado_manualmente=borrador.ingredientes_editado_manualmente,
+        denominacion_editada_manualmente=borrador.denominacion_editada_manualmente,
+        contenido_neto_editado_manualmente=borrador.contenido_neto_editado_manualmente,
+        sellos_editados_manualmente=borrador.sellos_editados_manualmente,
+        tabla_editada_manualmente=borrador.tabla_editada_manualmente,
+        porcentaje_completitud=pct,
+        campos_obligatorios_totales=tot,
+        campos_obligatorios_completados=comp,
+        octogonos=octogonos,
+        tiene_octogonos=tiene_oct,
+        mensaje_octogonos=msg_oct,
+        datos_faltantes=faltantes,
+        tabla_nutricional_incompleta=tabla_inc,
+        motivos_tabla_incompleta=motivos_inc,
+        filas_tabla_nutricional=filas_nutri,
+        leyenda_obligatoria=LEYENDA_BORRADOR_OBLIGATORIA,
+        es_completo_para_tramite=es_compl,
+        actualizado_el=borrador.actualizado_el,
+        usuario_actualizacion=borrador.usuario_actualizacion,
+    )
+
+
+def exportar_borrador(
+    db: Session, producto_id: int, req: schemas.ExportarBorradorRequest
+) -> schemas.ExportarBorradorResponse:
+    if not req.incluir_leyenda:
+        raise exceptions.ExportacionSinLeyendaError()
+
+    borrador = obtener_o_crear_borrador(db, producto_id)
+    lista = obtener_lista_rotulo(db, producto_id)
+    datos_rotulo = mapear_respuesta_borrador(borrador, lista)
+
+    octogonos_html = ""
+    if datos_rotulo.tiene_octogonos:
+        bloques = []
+        for o in datos_rotulo.octogonos:
+            if o.tipo == "micro_sello":
+                bloques.append(
+                    f'<div style="background:#000;color:#fff;border:2px solid #fff;border-radius:4px;padding:6px 12px;font-size:11px;font-weight:800;letter-spacing:0.5px;text-align:center;max-width:220px;margin:4px;">{o.texto}</div>'
+                )
+            else:
+                bloques.append(
+                    f'<div style="background:#000;color:#fff;border:3px solid #fff;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:900;letter-spacing:0.5px;text-align:center;width:110px;height:110px;display:flex;align-items:center;justify-content:center;margin:4px;box-shadow:0 2px 6px rgba(0,0,0,0.4);">{o.texto}</div>'
+                )
+        octogonos_html = f'<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:16px 0;">{"".join(bloques)}</div>'
+    else:
+        octogonos_html = f'<div style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;padding:8px 14px;border-radius:6px;font-size:12px;margin:12px 0;text-align:center;">{MENSAJE_SIN_OCTOGONOS}</div>'
+
+    filas_nutri_html = ""
+    for f in datos_rotulo.filas_tabla_nutricional:
+        sub = (
+            "padding-left:20px;font-style:italic;"
+            if f.es_subitem
+            else "font-weight:600;"
+        )
+        filas_nutri_html += f"""
+        <tr>
+            <td style="border:1px solid #cbd5e1;padding:6px 10px;{sub}">{f.nutriente}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px 10px;text-align:right;">{f.por_porcion or '-'}</td>
+            <td style="border:1px solid #cbd5e1;padding:6px 10px;text-align:right;">{f.porcentaje_vd or '-'}</td>
+        </tr>
+        """
+
+    tabla_nutri_html = f"""
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;">
+        <thead>
+            <tr style="background:#f1f5f9;">
+                <th style="border:1px solid #cbd5e1;padding:6px 10px;text-align:left;">Nutriente</th>
+                <th style="border:1px solid #cbd5e1;padding:6px 10px;text-align:right;">Por porción</th>
+                <th style="border:1px solid #cbd5e1;padding:6px 10px;text-align:right;">% VD*</th>
+            </tr>
+        </thead>
+        <tbody>{filas_nutri_html}</tbody>
+    </table>
+    <div style="font-size:10px;color:#64748b;margin-top:4px;">* Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ.</div>
+    """
+
+    ingredientes_html = (
+        datos_rotulo.lista_ingredientes_texto
+        or "Lista de ingredientes no definida."
+    )
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Borrador de Rótulo - {datos_rotulo.producto_nombre}</title>
+<style>
+* {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
+body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 20px; color: #1e293b; background: #fff; }}
+.watermark {{ position: fixed; top: 45%; left: 10%; transform: rotate(-30deg); font-size: 42px; font-weight: 900; color: rgba(220, 38, 38, 0.12); pointer-events: none; z-index: 1000; border: 4px dashed rgba(220, 38, 38, 0.2); padding: 10px 30px; }}
+.banner-borrador {{ background: #fef2f2; border: 2px solid #ef4444; color: #b91c1c; padding: 12px 18px; border-radius: 8px; font-weight: 800; font-size: 13px; text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px; }}
+.rotulo-card {{ border: 2px solid #000; border-radius: 10px; padding: 24px; max-width: 780px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }}
+.rotulo-header {{ text-align: center; border-bottom: 2px solid #000; padding-bottom: 14px; margin-bottom: 16px; }}
+.denominacion {{ font-size: 18px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; }}
+.nombre-fantasia {{ font-size: 26px; font-weight: 900; color: #0f172a; margin-bottom: 8px; }}
+.neto {{ font-size: 15px; font-weight: 700; }}
+.grid-rotulo {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px; }}
+.seccion-titulo {{ font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px; }}
+.texto-regular {{ font-size: 12px; line-height: 1.5; color: #334155; }}
+.footer-borrador {{ margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 11px; color: #64748b; }}
+@media print {{
+  body {{ margin: 10mm; background: #fff; }}
+  .rotulo-card {{ box-shadow: none; border: 2px solid #000; }}
+  .banner-borrador {{ border: 2px solid #ef4444; background: #fef2f2 !important; color: #b91c1c !important; }}
+}}
+</style>
+</head>
+<body>
+<div class="watermark">BORRADOR NO COMERCIAL</div>
+<div class="banner-borrador">
+    ⚠️ {LEYENDA_BORRADOR_OBLIGATORIA}
+</div>
+<div class="rotulo-card">
+    <div class="rotulo-header">
+        <div class="nombre-fantasia">{datos_rotulo.producto_nombre}</div>
+        <div class="denominacion">{datos_rotulo.denominacion_venta or datos_rotulo.producto_nombre}</div>
+        <div class="neto">CONTENIDO NETO: {datos_rotulo.contenido_neto or 'No especificado'}</div>
+        {octogonos_html}
+    </div>
+    <div class="grid-rotulo">
+        <div>
+            <div class="seccion-titulo">Información del Producto</div>
+            <div class="texto-regular">
+                <strong>Ingredientes:</strong> {ingredientes_html}<br><br>
+                <strong>Elaborado por:</strong> {datos_rotulo.razon_social or 'No especificada'}<br>
+                <strong>Dirección:</strong> {datos_rotulo.direccion_origen or 'No especificada'}<br>
+                <strong>Origen:</strong> {datos_rotulo.pais_origen}<br>
+                <strong>RNE:</strong> {datos_rotulo.rne or 'Trámite pendiente'}<br>
+                <strong>RNPA/RPPA:</strong> {datos_rotulo.rnpa_rppa or 'Trámite pendiente'}<br>
+                {f"<strong>Importador:</strong> {datos_rotulo.razon_social_importador or 'No declarado'}<br><strong>Domicilio importador:</strong> {datos_rotulo.domicilio_importador or 'No declarado'}<br>" if datos_rotulo.es_importado else ""}
+                <strong>Lote:</strong> {datos_rotulo.lote or 'Sin lote'}<br>
+                <strong>Duración:</strong> {datos_rotulo.fecha_duracion or 'Ver envase'}<br>
+                <strong>Conservación:</strong> {datos_rotulo.instrucciones_conservacion or 'Lugar fresco y seco'}
+            </div>
+        </div>
+        <div>
+            <div class="seccion-titulo">Información Nutricional</div>
+            <div class="texto-regular">
+                Porción: {datos_rotulo.porcion or 'No indicada'} | Porciones por envase: {datos_rotulo.porciones_por_envase or 'No indicadas'}
+            </div>
+            {tabla_nutri_html}
+        </div>
+    </div>
+    <div class="footer-borrador">
+        Documento generado automáticamente por SAIA · {datetime.now().strftime('%d/%m/%Y %H:%M')}<br>
+        <strong>{LEYENDA_BORRADOR_OBLIGATORIA}</strong>
+    </div>
+</div>
+</body>
+</html>"""
+
+    return schemas.ExportarBorradorResponse(
+        producto_id=producto_id,
+        producto_nombre=datos_rotulo.producto_nombre,
+        contenido_html=html,
+        leyenda_incluida=True,
+        timestamp=datetime.now(),
+    )
