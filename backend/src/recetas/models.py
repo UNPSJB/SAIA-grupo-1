@@ -4,9 +4,11 @@ from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from src.insumos.models import Insumo
 from src.models import ModeloBase
 from src.personal.models import Personal
+
+if TYPE_CHECKING:
+    from src.insumos.models import Insumo
 
 class EstadoEtapaRecetaItem(StrEnum):
     PENDIENTE = auto()

@@ -113,7 +113,6 @@ def asegurar_recetas_y_productos_base(db: Session) -> None:
             fechaRecepcion=ahora,
             cantRecibida=1000.0,
             stock=1000.0,
-            medida="LITROS",
             unidad_medida_id=3,
             activo=True,
             energia_kcal=0.0,

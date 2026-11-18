@@ -49,6 +49,8 @@ from src.tipoInsumo.router import router as tipo_insumo_router
 from src.proveedores.router import router as proveedores_router
 from src.unidadesMedida.router import router as unidades_medida_router
 from src.unidadesMedida.services import asegurar_unidades_base
+from src.rotulado_frontal.router import router as rotulado_frontal_router
+from src.rotulado_frontal.services import asegurar_datos_iniciales as asegurar_parametros_rotulado
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -60,6 +62,7 @@ async def db_creation_lifespan(app: FastAPI):
     actualizar_tablas_rotulado(engine)
     ModeloBase.metadata.create_all(bind=engine)
     with SessionLocal() as db:
+        asegurar_parametros_rotulado(db)
         from src.insumos.migraciones import migrar_columnas_nutricionales_insumos
         migrar_columnas_nutricionales_insumos(db)
         if ENV == "DEV":
@@ -132,3 +135,4 @@ app.include_router(rotulado_router)
 app.include_router(tipo_insumo_router, dependencies=SESION)
 app.include_router(proveedores_router, dependencies=SESION)
 app.include_router(unidades_medida_router, dependencies=SESION)
+app.include_router(rotulado_frontal_router, prefix="/rotulado-frontal", tags=["Rotulado frontal"], dependencies=SESION)

@@ -7,6 +7,7 @@ from src.models import ModeloBase
 import src.unidadesMedida.models
 import src.tipoInsumo.models
 import src.proveedores.models
+import src.produccion.models
 
 from src.unidadesMedida.models import UnidadMedida
 

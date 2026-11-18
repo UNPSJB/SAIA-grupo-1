@@ -1,11 +1,13 @@
 from datetime import date, datetime
-from typing import List
+from typing import TYPE_CHECKING, List
 from sqlalchemy import Date, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from src.insumos.models import Insumo
 from src.models import ModeloBase
 from src.personal.models import Personal
 from src.producto.models import Producto
+
+if TYPE_CHECKING:
+    from src.insumos.models import Insumo
 
 
 class LoteProduccion(ModeloBase):
@@ -49,4 +51,4 @@ class InsumoLote(ModeloBase):
     cantidad: Mapped[float] = mapped_column()
 
     lote: Mapped[LoteProduccion] = relationship(back_populates="insumos")
-    insumo: Mapped[Insumo] = relationship(back_populates="lotes_asociados", lazy="joined")
+    insumo: Mapped["Insumo"] = relationship("Insumo", back_populates="lotes_asociados", lazy="joined")

@@ -209,10 +209,20 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
               monitoring
             </span>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#f8fafc' }}>
+              <div
+                role="heading"
+                aria-level={2}
+                style={{
+                  margin: 0,
+                  fontSize: '1.35rem',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  letterSpacing: '-0.01em',
+                }}
+              >
                 Información Nutricional Oficial
-              </h2>
-              <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+              </div>
+              <div style={{ fontSize: '0.875rem', color: '#94a3b8', marginTop: '0.2rem' }}>
                 Producto: <strong style={{ color: '#f1f5f9' }}>{nombreProducto}</strong>
                 {info?.nombre_receta && (
                   <span> · Receta vinculada: <span style={{ color: '#38bdf8' }}>{info.nombre_receta}</span></span>

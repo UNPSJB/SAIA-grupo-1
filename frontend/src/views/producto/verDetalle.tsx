@@ -5,6 +5,7 @@ import { apiFetch } from "../../api/client";
 import { Badge } from "../../components/ui/badge";
 import { DetalleDocumento } from "../documentos/verDetalle";
 import { InformacionNutricionalModal } from "./InformacionNutricionalModal";
+import { RotuladoProducto } from "../rotuladoFrontal/RotuladoProducto";
 
 interface DetalleProductoProps {
   onCancel?: () => void;
@@ -207,6 +208,8 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
               Ver / Calcular Nutrición
             </button>
           </div>
+
+          <RotuladoProducto productoId={producto.id} unidadMedida={producto.unidadMedida} />
 
           <div className="form-acciones">
             <button type="button" className="btn-cancelar" onClick={onCancel}>

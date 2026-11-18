@@ -7,10 +7,11 @@ import src.unidadesMedida.models
 import src.documentos.models
 import src.recetas.models
 
+from src.unidadesMedida.models import UnidadMedida
+
 if TYPE_CHECKING:
     from src.documentos.models import Documento
     from src.recetas.models import Receta
-    from src.unidadesMedida.models import UnidadMedida
 
 class Producto(ModeloBase):
     __tablename__ = "productos"
