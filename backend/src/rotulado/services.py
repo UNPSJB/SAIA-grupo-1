@@ -774,6 +774,13 @@ def calcular_octogonos_e12(
         if estado_mod is not None and not estado_mod.activo:
             return [], False, "El sistema de octógonos y leyendas precautorias se encuentra desactivado en Configuración."
 
+        if borrador.producto is not None and not borrador.producto.aplica_rotulado:
+            return (
+                [],
+                False,
+                "No corresponde el rotulado frontal porque el producto no se comercializa envasado en ausencia del cliente.",
+            )
+
     octogonos: List[schemas.OctogonoItem] = []
 
     if borrador.modo_calculo_octogonos == "manual":
