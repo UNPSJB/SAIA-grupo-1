@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from src.alergenos.models import Alergeno
 from src.models import ModeloBase
 
 if TYPE_CHECKING:
@@ -26,6 +27,11 @@ class TipoInsumo(ModeloBase):
         "src.insumos.models.Insumo", back_populates="tipo"
     )
 
+    alergeno_id: Mapped[int]= mapped_column(Integer, ForeignKey("alergenos.id"), index=True, nullable=False
+        )
+
+    alergeno:Mapped[List["Alergeno"]] =  relationship("Alergeno", back_populates="T_insumo")
+
     @property
     def unidadMedida(self) -> str:
         if self.unidad_medida_rel:
@@ -43,3 +49,7 @@ class TipoInsumo(ModeloBase):
         if self.unidad_medida_rel:
             return self.unidad_medida_rel.abreviatura
         return ""
+
+    @property
+    def nombre_alergeno(self):
+        return self.alergeno.nombre
