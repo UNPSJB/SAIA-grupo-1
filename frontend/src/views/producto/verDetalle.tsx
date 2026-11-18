@@ -216,6 +216,34 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
             />
           )}
 
+          {Boolean(producto.id_receta) && producto.aplica_rotulado === false && (
+            <div
+              style={{
+                margin: "1.5rem 0",
+                padding: "1rem 1.25rem",
+                backgroundColor: "var(--color-superficie)",
+                border: "1px solid var(--color-borde)",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                color: "var(--color-texto-sec)",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "24px" }}>
+                info
+              </span>
+              <div>
+                <strong style={{ color: "var(--color-texto)" }}>
+                  Producto exceptuado del rotulado frontal
+                </strong>
+                <div style={{ fontSize: "0.9rem", marginTop: "2px" }}>
+                  No corresponde el rotulado frontal ni la declaración de octógonos porque el producto no se comercializa envasado en ausencia del cliente.
+                </div>
+              </div>
+            </div>
+          )}
+
           {Boolean(producto.id_receta) && producto.aplica_rotulado !== false && (
             <>
               <RotuladoProducto productoId={producto.id} unidadMedida={producto.unidadMedida} />
