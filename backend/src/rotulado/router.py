@@ -132,7 +132,7 @@ def obtener_borrador_rotulo_endpoint(
 ):
     borrador = services.obtener_o_crear_borrador(db, producto_id)
     lista = services.obtener_lista_rotulo(db, producto_id)
-    return services.mapear_respuesta_borrador(borrador, lista)
+    return services.mapear_respuesta_borrador(db,borrador, lista)
 
 
 @router.put(

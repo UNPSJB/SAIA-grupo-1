@@ -3,28 +3,29 @@ import type { ClaseFuncional, RecetaDetalleConId, RecetaDetalleForm } from "./ti
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 
-interface InsumoOption {
+interface TipoInsumoOption {
   id: number;
   nombre: string;
-  medida?: string;
-  unidad_medida?: string;
-  unidad_medida_nombre?: string | null;
+  unidadMedida?: string;
   unidad_medida_abreviatura?: string | null;
+  unidad_medida_nombre?: string | null;
+  es_aditivo?: boolean;
+  clase_funcional?: string | null;
+  numero_ins?: string | null;
 }
 
-const obtenerUnidadDeInsumo = (insumo?: InsumoOption): string => {
-  if (!insumo) return "";
+const obtenerUnidadDeTipo = (tipo?: TipoInsumoOption): string => {
+  if (!tipo) return "";
   return (
-    insumo.unidad_medida_abreviatura ||
-    insumo.medida ||
-    insumo.unidad_medida ||
-    insumo.unidad_medida_nombre ||
+    tipo.unidad_medida_abreviatura ||
+    tipo.unidadMedida ||
+    tipo.unidad_medida_nombre ||
     ""
   );
 };
 
 const DETALLE_INICIAL: RecetaDetalleForm = {
-  ingrediente_id: "",
+  tipo_insumo_id: "",
   nombre: "",
   cantidad: "",
   unidad_medida: "",
@@ -53,22 +54,22 @@ export default function NuevoDetalleReceta({
   onCancel,
 }: NuevoDetalleRecetaProps) {
   const [detalle, setDetalle] = useState<RecetaDetalleForm>(DETALLE_INICIAL);
-  const [insumos, setInsumos] = useState<InsumoOption[]>([]);
+  const [tiposInsumos, setTiposInsumos] = useState<TipoInsumoOption[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
-    const fetchInsumos = async () => {
+    const fetchTiposInsumos = async () => {
       try {
-        const res = await apiFetch(`/insumos/`);
+        const res = await apiFetch(`/insumos/tipos/`);
         if (!cancelado && res.ok) {
-          setInsumos(await res.json());
+          setTiposInsumos(await res.json());
         }
       } catch {
-        if (!cancelado) setInsumos([]);
+        if (!cancelado) setTiposInsumos([]);
       }
     };
-    fetchInsumos();
+    fetchTiposInsumos();
     return () => {
       cancelado = true;
     };
@@ -90,13 +91,17 @@ export default function NuevoDetalleReceta({
       return;
     }
 
-    if (name === "ingrediente_id") {
-      const insumoElegido = insumos.find((i) => i.id === Number(value));
-      const unidadAutocompletada = obtenerUnidadDeInsumo(insumoElegido);
+    if (name === "tipo_insumo_id") {
+      const tipoElegido = tiposInsumos.find((i) => i.id === Number(value));
+      const unidadAutocompletada = obtenerUnidadDeTipo(tipoElegido);
+      
       setDetalle((prev) => ({
         ...prev,
-        ingrediente_id: value ? Number(value) : "",
+        tipo_insumo_id: value ? Number(value) : "",
         unidad_medida: unidadAutocompletada || prev.unidad_medida,
+        es_aditivo: tipoElegido ? Boolean(tipoElegido.es_aditivo) : prev.es_aditivo,
+        clase_funcional: (tipoElegido?.clase_funcional as ClaseFuncional) || prev.clase_funcional,
+        numero_ins: tipoElegido?.numero_ins || prev.numero_ins,
       }));
       return;
     }
@@ -128,8 +133,8 @@ export default function NuevoDetalleReceta({
       return;
     }
 
-    if (!detalle.ingrediente_id) {
-      setErrorMsg("Debe seleccionar un ingrediente / insumo.");
+    if (!detalle.tipo_insumo_id) {
+      setErrorMsg("Debe seleccionar un tipo de insumo.");
       return;
     }
 
@@ -160,14 +165,14 @@ export default function NuevoDetalleReceta({
       return;
     }
 
-    const insumoSeleccionado = insumos.find((i) => i.id === Number(detalle.ingrediente_id));
+    const tipoSeleccionado = tiposInsumos.find((i) => i.id === Number(detalle.tipo_insumo_id));
 
     onAgregarLocal?.({
       id: Date.now(),
       version_receta_id: 0,
       nombre: detalle.nombre.trim(),
-      ingrediente_id: Number(detalle.ingrediente_id),
-      nombre_ingrediente: insumoSeleccionado ? insumoSeleccionado.nombre : null,
+      tipo_insumo_id: Number(detalle.tipo_insumo_id),
+      nombre_ingrediente: tipoSeleccionado ? tipoSeleccionado.nombre : null,
       cantidad: Number(detalle.cantidad),
       unidad_medida: detalle.unidad_medida.trim(),
       es_aditivo: detalle.es_aditivo,
@@ -209,22 +214,22 @@ export default function NuevoDetalleReceta({
         </div>
 
         <div className="form-group">
-          <label htmlFor="ingrediente_id">Ingrediente / Insumo</label>
+          <label htmlFor="tipo_insumo_id">Tipo de Insumo</label>
           <select
-            id="ingrediente_id"
-            name="ingrediente_id"
-            value={detalle.ingrediente_id}
+            id="tipo_insumo_id"
+            name="tipo_insumo_id"
+            value={detalle.tipo_insumo_id}
             onChange={handleChange}
             required
           >
             <option value="" disabled>
-              Seleccione un insumo
+              Seleccione un tipo de insumo
             </option>
-            {insumos.map((ins) => {
-              const unidad = obtenerUnidadDeInsumo(ins);
+            {tiposInsumos.map((tipo) => {
+              const unidad = obtenerUnidadDeTipo(tipo);
               return (
-                <option key={ins.id} value={ins.id}>
-                  {ins.nombre} {unidad ? `(${unidad})` : ""}
+                <option key={tipo.id} value={tipo.id}>
+                  {tipo.nombre} {unidad ? `(${unidad})` : ""}
                 </option>
               );
             })}
@@ -252,7 +257,7 @@ export default function NuevoDetalleReceta({
             id="unidad_medida"
             name="unidad_medida"
             type="text"
-            placeholder="Se autocompleta al elegir insumo (ej: kg, g, ml, l)"
+            placeholder="Se autocompleta al elegir el tipo de insumo"
             value={detalle.unidad_medida}
             onChange={handleChange}
             disabled

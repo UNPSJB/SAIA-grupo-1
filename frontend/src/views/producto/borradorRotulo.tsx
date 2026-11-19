@@ -1145,7 +1145,24 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               >
                 {borrador.lista_ingredientes_texto || "Sin ingredientes configurados."}
               </p>
+
+              <div
+                style={{
+                  marginTop: "12px",
+                  paddingTop: "10px",
+                  borderTop: "1px dashed var(--color-borde)",
+                  fontSize: "0.92rem",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  color: "var(--color-texto)",
+                  letterSpacing: "0.3px",
+                }}
+              >
+                {borrador.texto_alergenos || "CONTIENE: —"}
+              </div>
             </div>
+
+            
 
             <div
               style={{

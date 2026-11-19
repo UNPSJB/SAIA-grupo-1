@@ -3,6 +3,13 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from src.tipoInsumo import exceptions
 
+class AlergenoSimple(BaseModel):
+    id: int
+    nombre: str
+    simbolo: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class TipoInsumoBase(BaseModel):
     nombre: str = Field(..., max_length=100)
@@ -31,6 +38,8 @@ class TipoInsumoBase(BaseModel):
     fuente_datos: Optional[str] = None
     fuente_detalle: Optional[str] = None
     alimento_referencia_id: Optional[str] = None
+    alergenos: List[AlergenoSimple] = []
+    nombres_alergenos: str = ""
 
     @field_validator("nombre")
     @classmethod
@@ -52,7 +61,7 @@ class TipoInsumoBase(BaseModel):
 
 
 class TipoInsumoCreate(TipoInsumoBase):
-    pass
+    alergeno_ids: Optional[List[int]] = []
 
 
 class TipoInsumoUpdate(BaseModel):
@@ -83,6 +92,7 @@ class TipoInsumoUpdate(BaseModel):
     fuente_detalle: Optional[str] = None
     alimento_referencia_id: Optional[str] = None
     activo: Optional[bool] = None
+    alergeno_ids: Optional[List[int]] = None
 
     @field_validator("nombre")
     @classmethod

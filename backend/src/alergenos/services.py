@@ -22,7 +22,7 @@ def crear_alergeno(db: Session, alerg:schemas.AlergenoCreate) -> schemas.Alergen
     return _alerg
 
 
-def leer_alergenos(db:Session)-> List[schemas.Alergeno]:
+def listar_alergenos(db:Session)-> List[schemas.Alergeno]:
     return list(db.scalars(select(Alergeno)).all())
 
 

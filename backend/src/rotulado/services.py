@@ -1195,13 +1195,66 @@ def generar_filas_tabla_nutricional(
     return filas
 
 
+def calcular_declaracion_alergenos(db: Session, producto_id: int) -> dict:
+    """
+    Analiza la receta vigente del producto, recorre sus etapas (TipoInsumo) 
+    y recopila todos los alérgenos asociados para armar las leyendas de rotulado.
+    """
+    from src.recetas.models import Receta
+    
+    # Buscamos la receta vigente del producto
+    receta = db.scalar(
+        select(Receta).where(Receta.id_producto == producto_id, Receta.activo == True)
+    )
+    
+    alergenos_encontrados = set()
+    contiene_gluten = False
+    
+    if receta and receta.version_vigente:
+        for detalle in receta.version_vigente.detalles:
+            # Buscamos a través del TipoInsumo de la etapa (que es donde configuramos la relación con Alérgenos)
+            tipo_insumo = getattr(detalle, "tipo_insumo", None)
+            if tipo_insumo and hasattr(tipo_insumo, "alergenos"):
+                for alg in tipo_insumo.alergenos:
+                    if alg and alg.nombre:
+                        nombre_alg = alg.nombre.upper()
+                        alergenos_encontrados.add(nombre_alg)
+                        if "GLUTEN" in nombre_alg or "TRIGO" in nombre_alg:
+                            contiene_gluten = True
+
+            # (Opcional por compatibilidad) Si algún detalle todavía usa insumo directo
+            insumo = getattr(detalle, "insumo", None)
+            if insumo:
+                if getattr(insumo, "contiene_gluten", False):
+                    contiene_gluten = True
+                for alg in getattr(insumo, "alergenos", []):
+                    if alg and alg.nombre:
+                        alergenos_encontrados.add(alg.nombre.upper())
+
+    # Armamos la frase obligatoria "CONTIENE..."
+    elementos_contiene = sorted(list(alergenos_encontrados))
+
+    if elementos_contiene:
+        texto_contiene = f"CONTIENE: {', '.join(elementos_contiene)}."
+    else:
+        texto_contiene = "SIN ALÉRGENOS DECLARADOS."
+
+    return {
+        "contiene_gluten": contiene_gluten,
+        "alergenos_lista": elementos_contiene,
+        "texto_contiene_alergenos": texto_contiene,
+    }
+
+
 def mapear_respuesta_borrador(
-    borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
+    db: Session, borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
 ) -> schemas.BorradorRotuloResponse:
     prod_nom = borrador.producto.nombre if borrador.producto else ""
     texto_ingredientes = (
         lista.texto_rotulo if lista and lista.texto_rotulo else None
     )
+
+    info_alergenos = calcular_declaracion_alergenos(db, borrador.producto_id)
     tiene_ingr = bool(lista and lista.items and len(lista.items) > 0)
 
     octogonos, tiene_oct, msg_oct = calcular_octogonos_e12(borrador, lista)
@@ -1230,6 +1283,7 @@ def mapear_respuesta_borrador(
         modo_empleo=borrador.modo_empleo,
         lista_ingredientes_texto=texto_ingredientes,
         tiene_lista_ingredientes=tiene_ingr,
+        texto_alergenos=info_alergenos["texto_contiene_alergenos"],
         porcion=borrador.porcion,
         porciones_por_envase=borrador.porciones_por_envase,
         valor_energetico_kcal=borrador.valor_energetico_kcal,
@@ -1283,7 +1337,11 @@ def exportar_borrador(
 
     borrador = obtener_o_crear_borrador(db, producto_id)
     lista = obtener_lista_rotulo(db, producto_id)
-    datos_rotulo = mapear_respuesta_borrador(borrador, lista)
+    datos_rotulo = mapear_respuesta_borrador(db, borrador, lista)
+
+    # Obtenemos el texto formateado de alérgenos calculados a partir de la receta vigente
+    info_alergenos = calcular_declaracion_alergenos(db, producto_id)
+    alergenos_html = f'<div style="margin-top: 6px; font-weight: 800; text-transform: uppercase;">{info_alergenos["texto_contiene_alergenos"]}</div>'
 
     octogonos_html = ""
     if datos_rotulo.tiene_octogonos:
@@ -1377,7 +1435,8 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Aria
         <div>
             <div class="seccion-titulo">Información del Producto</div>
             <div class="texto-regular">
-                <strong>Ingredientes:</strong> {ingredientes_html}<br><br>
+                <strong>Ingredientes:</strong> {ingredientes_html}<br>
+                {alergenos_html}<br>
                 <strong>Elaborado por:</strong> {datos_rotulo.razon_social or 'No especificada'}<br>
                 <strong>Dirección:</strong> {datos_rotulo.direccion_origen or 'No especificada'}<br>
                 <strong>Origen:</strong> {datos_rotulo.pais_origen}<br>
@@ -1412,5 +1471,3 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Aria
         leyenda_incluida=True,
         timestamp=datetime.now(),
     )
-
-

@@ -168,6 +168,7 @@ class BorradorRotuloResponse(BaseModel):
     modo_empleo: Optional[str] = None
     lista_ingredientes_texto: Optional[str] = None
     tiene_lista_ingredientes: bool = False
+    texto_alergenos: Optional[str] = None
     porcion: Optional[str] = None
     porciones_por_envase: Optional[str] = None
     valor_energetico_kcal: Optional[float] = None

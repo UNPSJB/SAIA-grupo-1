@@ -4,13 +4,19 @@ import { apiFetch } from '../../api/client';
 import type { TipoInsumoForm } from './tipos';
 import type { UnidadMedidaItem } from '../unidadesMedida/tipos';
 
+interface AlergenoItem {
+  id: number;
+  nombre: string;
+  simbolo?: string;
+}
+
 interface NuevoTipoInsumoProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
 export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onCancel }) => {
-  const [form, setForm] = useState<TipoInsumoForm>({
+  const [form, setForm] = useState<TipoInsumoForm & { alergeno_ids: number[] }>({
     nombre: '',
     descripcion: '',
     unidad_medida_id: '',
@@ -19,33 +25,44 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
     es_aditivo: false,
     clase_funcional: '',
     numero_ins: '',
+    alergeno_ids: [],
   });
   const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
+  const [alergenosDisponibles, setAlergenosDisponibles] = useState<AlergenoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
-    async function cargarUnidades() {
+    async function cargarDatosAuxiliares() {
       try {
-        const res = await apiFetch('/unidades-medida/?solo_activos=true');
-        if (!cancelado && res.ok) {
-          const data: UnidadMedidaItem[] = await res.json();
-          setUnidades(data);
-          if (data.length > 0) {
-            const predet =
-              data.find((u) => u.nombre.toLowerCase() === 'kilogramos') ?? data[0];
-            setForm((prev) =>
-              prev.unidad_medida_id === '' ? { ...prev, unidad_medida_id: predet.id } : prev
-            );
+        const [resUnidades, resAlergenos] = await Promise.all([
+          apiFetch('/unidades-medida/?solo_activos=true'),
+          apiFetch('/alergenos/'),
+        ]);
+        if (!cancelado) {
+          if (resUnidades.ok) {
+            const dataU: UnidadMedidaItem[] = await resUnidades.json();
+            setUnidades(dataU);
+            if (dataU.length > 0) {
+              const predet = dataU.find((u) => u.nombre.toLowerCase() === 'kilogramos') ?? dataU[0];
+              setForm((prev) => (prev.unidad_medida_id === '' ? { ...prev, unidad_medida_id: predet.id } : prev));
+            }
+          }
+          if (resAlergenos.ok) {
+            const dataA: AlergenoItem[] = await resAlergenos.json();
+            setAlergenosDisponibles(dataA);
           }
         }
       } catch {
-        if (!cancelado) setUnidades([]);
+        if (!cancelado) {
+          setUnidades([]);
+          setAlergenosDisponibles([]);
+        }
       }
     }
-    cargarUnidades();
+    cargarDatosAuxiliares();
     return () => {
       cancelado = true;
     };
@@ -59,7 +76,19 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
     });
   };
 
-  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
+  const handleToggleAlergeno = (alergenoId: number) => {
+    setForm((prev) => {
+      const existe = prev.alergeno_ids.includes(alergenoId);
+      return {
+        ...prev,
+        alergeno_ids: existe
+          ? prev.alergeno_ids.filter((id) => id !== alergenoId)
+          : [...prev.alergeno_ids, alergenoId],
+      };
+    });
+  };
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -69,11 +98,6 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
       setErrorMsg('El nombre del tipo de insumo no puede estar vacío.');
       return;
     }
-    if (nombreLimpio.length < 2) {
-      setErrorMsg('El nombre debe tener al menos 2 caracteres.');
-      return;
-    }
-
     if (!form.unidad_medida_id) {
       setErrorMsg('Debe seleccionar una unidad de medida.');
       return;
@@ -90,6 +114,7 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
         es_aditivo: Boolean(form.es_aditivo),
         clase_funcional: form.es_aditivo ? (form.clase_funcional?.trim() || null) : null,
         numero_ins: form.es_aditivo ? (form.numero_ins?.trim() || null) : null,
+        alergeno_ids: form.alergeno_ids,
       };
 
       const res = await apiFetch('/insumos/tipos/', {
@@ -101,16 +126,11 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         let msg = 'Error al registrar el tipo de insumo.';
-        if (typeof data.detail === 'string') {
-          msg = data.detail;
-        } else if (Array.isArray(data.detail)) {
-          msg = data.detail.map((err: { msg?: string }) => err.msg || JSON.stringify(err)).join(', ');
-        }
+        if (typeof data.detail === 'string') msg = data.detail;
         throw new Error(msg);
       }
 
       setSuccessMsg('Tipo de insumo registrado exitosamente.');
-      setForm((prev) => ({ nombre: '', descripcion: '', unidad_medida_id: prev.unidad_medida_id }));
       onSuccess?.();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Error al registrar el tipo de insumo.');
@@ -136,7 +156,7 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
             id="nombre"
             name="nombre"
             type="text"
-            placeholder="Ej: Harina, Esencia de Vainilla, Sal..."
+            placeholder="Ej: Harina, Leche, Sal..."
             value={form.nombre}
             onChange={handleChange}
             required
@@ -161,6 +181,48 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
           </select>
         </div>
 
+        {/* Sección de Selección de Alérgenos */}
+        <div className="form-group">
+          <label>Alérgenos Asociados (Declaración Obligatoria)</label>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+              gap: '8px',
+              marginTop: '6px',
+            }}
+          >
+            {alergenosDisponibles.map((alg) => {
+              const seleccionado = form.alergeno_ids.includes(alg.id);
+              return (
+                <button
+                  key={alg.id}
+                  type="button"
+                  onClick={() => handleToggleAlergeno(alg.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    border: seleccionado ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    backgroundColor: seleccionado ? '#eff6ff' : '#ffffff',
+                    color: seleccionado ? '#1d4ed8' : '#334155',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: seleccionado ? 700 : 500,
+                  }}
+                >
+                  {alg.simbolo && (
+                    <img src={alg.simbolo} alt={alg.nombre} style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                  )}
+                  <span>{alg.nombre}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="form-group">
           <label htmlFor="equivalencia_gramos">Equivalencia en Gramos (por 1 unidad de medida)</label>
           <input
@@ -169,7 +231,6 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
             type="number"
             min="0.01"
             step="any"
-            placeholder="Ej: 60 si 1 unidad pesa 60g, 1000 si es kg/l"
             value={form.equivalencia_gramos ?? ''}
             onChange={(e) =>
               setForm({
@@ -185,7 +246,6 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
           <textarea
             id="descripcion"
             name="descripcion"
-            placeholder="Descripción genérica del insumo..."
             value={form.descripcion}
             onChange={handleChange}
             rows={3}

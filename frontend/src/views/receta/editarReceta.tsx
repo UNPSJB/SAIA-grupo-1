@@ -101,7 +101,12 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
         if (!cancelado && res.ok) {
           const data: RecetaConId = await res.json();
           setReceta(data);
-          setDetalles(data.detalles ?? data.version_actual?.detalles ?? []);
+          const detallesCrudos = data.detalles ?? data.version_actual?.detalles ?? [];
+          const detallesNormalizados = detallesCrudos.map((item) => ({
+            ...item,
+            tipo_insumo_id: Number(item.tipo_insumo_id ?? 0),
+          }));
+          setDetalles(detallesNormalizados);
           if (data.version_actual?.fecha_vigencia) {
             const vig = toInputDate(data.version_actual.fecha_vigencia);
             setFechaVigencia(vig < HOY ? HOY : vig);
@@ -210,16 +215,19 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
       operario_legajo: Number(receta.operario_legajo),
       fecha_vigencia: fechaVigencia ? formatearFechaISO(fechaVigencia) : null,
       fecha_vencimiento: fechaVencimiento ? formatearFechaISO(fechaVencimiento) : null,
-      detalles: detalles.map((d) => ({
-        ingrediente_id: Number(d.ingrediente_id),
-        nombre: d.nombre.trim(),
-        cantidad: Number(d.cantidad),
-        unidad_medida: d.unidad_medida.trim(),
-        es_aditivo: Boolean(d.es_aditivo),
-        clase_funcional: d.es_aditivo ? d.clase_funcional : null,
-        numero_ins: d.es_aditivo ? d.numero_ins : null,
-        descripcion_pasos: d.descripcion_pasos.trim(),
-      })),
+      detalles: detalles.map((d) => {
+        const idTipo = Number(d.tipo_insumo_id ?? 0);
+        return {
+          tipo_insumo_id: idTipo > 0 ? idTipo : null,
+          nombre: d.nombre.trim(),
+          cantidad: Number(d.cantidad),
+          unidad_medida: d.unidad_medida.trim(),
+          es_aditivo: Boolean(d.es_aditivo),
+          clase_funcional: d.es_aditivo ? d.clase_funcional : null,
+          numero_ins: d.es_aditivo ? d.numero_ins : null,
+          descripcion_pasos: d.descripcion_pasos.trim(),
+        };
+      }),
     };
 
     setLoading(true);
@@ -402,7 +410,7 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
             <thead>
               <tr>
                 <th>Etapa</th>
-                <th>Ingrediente / Aditivo</th>
+                <th>Tipo de Insumo / Aditivo</th>
                 <th>Cantidad</th>
                 <th>Procedimiento</th>
                 <th className="acciones-col">Acciones</th>
@@ -426,7 +434,7 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
                   <tr key={d.id}>
                     <td style={{ fontWeight: 500 }}>{d.nombre}</td>
                     <td>
-                      {d.nombre_ingrediente ?? `Insumo #${d.ingrediente_id}`}
+                      {d.nombre_ingrediente || "Tipo de insumo"}
                       {d.es_aditivo && d.clase_funcional
                         ? ` (${d.clase_funcional}${d.numero_ins ? ` - ${d.numero_ins}` : ""})`
                         : ""}

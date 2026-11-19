@@ -9,8 +9,8 @@ router=APIRouter(prefix="/alergenos", tags=["alergenos"])
 
 
 @router.post("/",response_model=schemas.Alergeno)
-async def create_alergeno(alerg=schemas.AlergenoCreate,db:Session= Depends(get_db)):
-    return services.crear_alergeno(alerg,db)
+async def create_alergeno(alerg:schemas.AlergenoCreate,db:Session= Depends(get_db)):
+    return services.crear_alergeno(db,alerg)
 
 @router.get("/", response_model=list[schemas.Alergeno])
 async def read_alergenos(db: Session = Depends(get_db)):
