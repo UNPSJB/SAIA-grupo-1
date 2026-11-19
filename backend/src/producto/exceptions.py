@@ -24,3 +24,10 @@ class DocumentoNoEsReceta(BadRequest):
 
 class ProductoInactivoNoPublicable(BadRequest):
     DETAIL = ErrorCode.PRODUCTO_INACTIVO_NO_PUBLICABLE
+
+
+class Alergenos_invalidos(BadRequest):
+    DETAIL= ErrorCode.ALERGNOS_INVALID
+
+class Conservacion_invalida(BadRequest):
+    DETAIL = ErrorCode.CONSERVACION_INVALID

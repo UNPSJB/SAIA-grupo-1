@@ -198,6 +198,36 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
           </div>
 
           <div className="form-group">
+            <label htmlFor="conservacion">Conservación</label>
+            <input
+              id="conservacion"
+              name="conservacion"
+              type="text"
+              value={producto.conservacion || "Sin datos"}
+              disabled
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Alérgenos de Precaución ("Puede contener")</label>
+            {producto.alergenos_precaucion && producto.alergenos_precaucion.length > 0 ? (
+              <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: "4px" }}>
+                {producto.alergenos_precaucion.map((alg) => (
+                  <Badge key={alg.id} variant="secondary">
+                    {alg.nombre}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <input
+                type="text"
+                value="Sin datos"
+                disabled
+              />
+            )}
+          </div>
+
+          <div className="form-group">
             <label>Estado</label>
             <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
               <Badge variant={producto.activo ? "activo" : "inactivo"}>

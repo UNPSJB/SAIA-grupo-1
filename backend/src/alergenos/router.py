@@ -20,3 +20,7 @@ async def read_alergenos(db: Session = Depends(get_db)):
 @router.get("/{alergeno_id}", response_model=schemas.Alergeno)
 async def read_alergeno(alergeno_id: int, db: Session = Depends(get_db)):
     return services.leer_alergeno(db, alergeno_id)
+
+@router.put("/{alergeno_id}",response_model=schemas.Alergeno)
+async def update_alergeno(alergeno_id:int,alerg:schemas.AlergenoUpdate,db: Session = (Depends(get_db))):
+    return services.actualizar_alergeno(db,alergeno_id,alerg)

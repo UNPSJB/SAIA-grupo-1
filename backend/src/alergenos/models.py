@@ -10,7 +10,13 @@ from src.models import ModeloBase
 if TYPE_CHECKING:
     from src.tipoInsumo.models import TipoInsumo
 
-    
+productos_alergenos = Table(
+    "productos_alergenos",
+    ModeloBase.metadata,
+    Column("producto_id", Integer, ForeignKey("productos.id", ondelete="CASCADE"), primary_key=True),
+    Column("alergeno_id", Integer, ForeignKey("alergenos.id", ondelete="CASCADE"), primary_key=True),
+)
+
 tipos_insumos_alergenos = Table(
     "tipos_insumos_alergenos",
     ModeloBase.metadata,

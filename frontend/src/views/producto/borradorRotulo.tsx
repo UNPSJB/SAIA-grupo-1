@@ -1159,6 +1159,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                 }}
               >
                 {borrador.texto_alergenos || "CONTIENE: —"}
+                {borrador.texto_puede_contener ? `  ${borrador.texto_puede_contener}` : ""}
               </div>
             </div>
 

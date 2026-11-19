@@ -33,6 +33,7 @@ export interface BorradorRotuloResponse {
   lista_ingredientes_texto: string | null;
   tiene_lista_ingredientes: boolean;
   texto_alergenos?: string | null;
+  texto_puede_contener?:string | null;
   porcion: string | null;
   porciones_por_envase: string | null;
   valor_energetico_kcal: number | null;
