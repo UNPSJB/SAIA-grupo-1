@@ -11,45 +11,72 @@ import { InformacionNutricionalModal } from "./InformacionNutricionalModal";
 interface DetalleProductoProps {
   onCancel?: () => void;
   productoId?: number | null;
-  onVerReceta?: (recetaId: number) => void;
   onGestionarIngredientes?: (id: number) => void;
   onVerBorradorRotulo?: (id: number) => void;
+}
+
+interface RecetaResumen {
+  id: number;
+  nombre: string;
+  id_producto: number;
+  activo?: boolean;
 }
 
 export const DetalleProducto: React.FC<DetalleProductoProps> = ({
   onCancel,
   productoId,
-  onVerReceta,
   onGestionarIngredientes,
   onVerBorradorRotulo,
 }) => {
   const [producto, setProducto] = useState<ProductoConId | null>(null);
+  const [recetaAsociadaId, setRecetaAsociadaId] = useState<number | null>(null);
+  const [recetaAsociadaNombre, setRecetaAsociadaNombre] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recetaIdInterno, setRecetaIdInterno] = useState<number | null>(null);
   const [modalNutricionAbierto, setModalNutricionAbierto] = useState(false);
 
   useEffect(() => {
-    if (productoId) {
-      const fetchProducto = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const res = await apiFetch(`/productos/${productoId}`);
-          if (res.ok) {
-            const data = await res.json();
-            setProducto(data);
-          } else {
-            setError("El producto no existe.");
-          }
-        } catch {
-          setError("Error al conectar con el servidor.");
-        } finally {
-          setLoading(false);
+    if (!productoId) return;
+
+    const fetchProductoYReceta = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [resProd, resRecetas] = await Promise.all([
+          apiFetch(`/productos/${productoId}`),
+          apiFetch("/recetas/"),
+        ]);
+
+        if (!resProd.ok) {
+          setError("El producto no existe.");
+          return;
         }
-      };
-      fetchProducto();
-    }
+
+        const dataProd: ProductoConId = await resProd.json();
+        setProducto(dataProd);
+
+        const listaRecetas: RecetaResumen[] = resRecetas.ok ? await resRecetas.json() : [];
+        const recetaEntidad =
+          listaRecetas.find((r) => r.id_producto === dataProd.id && r.activo !== false) ||
+          listaRecetas.find((r) => r.id === dataProd.id_receta && r.activo !== false) ||
+          null;
+
+        if (recetaEntidad) {
+          setRecetaAsociadaId(recetaEntidad.id);
+          setRecetaAsociadaNombre(recetaEntidad.nombre);
+        } else {
+          setRecetaAsociadaId(null);
+          setRecetaAsociadaNombre(null);
+        }
+      } catch {
+        setError("Error al conectar con el servidor.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductoYReceta();
   }, [productoId]);
 
   if (recetaIdInterno) {
@@ -117,21 +144,15 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
                   id="receta"
                   name="receta"
                   type="text"
-                  value={producto.nombre_receta || (producto.id_receta ? `Receta #${producto.id_receta}` : "Sin datos")}
+                  value={recetaAsociadaNombre || (recetaAsociadaId ? `Receta #${recetaAsociadaId}` : "Sin datos")}
                   disabled
                   style={{ flex: "1 1 200px" }}
                 />
-                {producto.id_receta && (
+                {recetaAsociadaId && (
                   <button
                     type="button"
                     className="btn-secundario"
-                    onClick={() => {
-                      if (onVerReceta) {
-                        onVerReceta(producto.id_receta!);
-                      } else {
-                        setRecetaIdInterno(producto.id_receta!);
-                      }
-                    }}
+                    onClick={() => setRecetaIdInterno(recetaAsociadaId)}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -209,14 +230,14 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
             </div>
           </div>
 
-          {Boolean(producto.id_receta) && (
+          {Boolean(recetaAsociadaId) && (
             <ComposicionPorcentualCard
               productoId={producto.id}
               titulo="Lista de Ingredientes del Producto (Generada desde Receta)"
             />
           )}
 
-          {Boolean(producto.id_receta) && producto.aplica_rotulado === false && (
+          {Boolean(recetaAsociadaId) && producto.aplica_rotulado === false && (
             <div
               style={{
                 margin: "1.5rem 0",
@@ -244,7 +265,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
             </div>
           )}
 
-          {Boolean(producto.id_receta) && producto.aplica_rotulado !== false && (
+          {Boolean(recetaAsociadaId) && producto.aplica_rotulado !== false && (
             <>
               <RotuladoProducto productoId={producto.id} unidadMedida={producto.unidadMedida} />
 
@@ -302,7 +323,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
             <button type="button" className="btn-cancelar" onClick={onCancel}>
               Volver
             </button>
-            {onGestionarIngredientes && producto && Boolean(producto.id_receta) && producto.aplica_rotulado !== false && (
+            {onGestionarIngredientes && producto && Boolean(recetaAsociadaId) && producto.aplica_rotulado !== false && (
               <button
                 type="button"
                 className="btn-secundario"
@@ -315,7 +336,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
                 <span>Lista de ingredientes y aditivos</span>
               </button>
             )}
-            {onVerBorradorRotulo && producto && Boolean(producto.id_receta) && producto.aplica_rotulado !== false && (
+            {onVerBorradorRotulo && producto && Boolean(recetaAsociadaId) && producto.aplica_rotulado !== false && (
               <button
                 type="button"
                 className="btn-guardar"

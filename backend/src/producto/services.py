@@ -21,25 +21,19 @@ def _obtener_nombre_receta(receta_obj: Any) -> Optional[str]:
 def _resolver_nombre_receta_producto(db: Session, prod: Producto) -> Optional[str]:
     if prod.receta:
         return _obtener_nombre_receta(prod.receta)
-    if prod.documento_receta_id:
-        doc = db.scalar(select(Documento).where(Documento.id == prod.documento_receta_id))
-        if doc:
-            return doc.titulo
+    rec = db.scalar(select(Receta).where(Receta.id_producto == prod.id, Receta.activo == True))
+    if rec:
+        return rec.nombre
     return None
 
 
-def _validar_id_receta(db: Session, id_receta: Optional[int]) -> Optional[int]:
+def _validar_id_receta(db: Session, id_receta: Optional[int]) -> Optional[Receta]:
     if id_receta is None:
         return None
-    doc = db.scalar(select(Documento).where(Documento.id == id_receta))
-    if doc is not None:
-        if (doc.tipo or "").strip().lower() != "receta":
-            raise exceptions.DocumentoNoEsReceta()
-        return doc.id
-    rec = db.scalar(select(Receta).where(Receta.id == id_receta))
+    rec = db.scalar(select(Receta).where(Receta.id == id_receta, Receta.activo == True))
     if rec is None:
         raise exceptions.RecetaNoEncontrada()
-    return rec.id
+    return rec
 
 
 def obtener_productos_para_exportar(
@@ -100,7 +94,7 @@ def validar_nombre_unico(db: Session, nombre: str, producto_id_actual: Optional[
 
 def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
     validar_nombre_unico(db, producto.nombre)
-    doc_receta_id = _validar_id_receta(db, producto.id_receta)
+    receta_obj = _validar_id_receta(db, producto.id_receta)
 
     unidad = resolver_unidad_medida(
         db,
@@ -125,15 +119,23 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
         descripcion_porcion=producto.descripcion_porcion,
         peso_unidad_g=peso_val,
         aplica_rotulado=producto.aplica_rotulado if producto.aplica_rotulado is not None else True,
-        documento_receta_id=doc_receta_id,
+        documento_receta_id=None,
         activo=True,
     )
     db.add(_producto)
+    db.flush()
+
+    if receta_obj is not None:
+        receta_obj.id_producto = _producto.id
+
     db.commit()
     db.refresh(_producto)
 
-    _producto.nombre_receta = _resolver_nombre_receta_producto(db, _producto)
+    if receta_obj is not None and _producto.aplica_rotulado:
+        from src.rotulado.services import sincronizar_rotulo_desde_receta
+        sincronizar_rotulo_desde_receta(db, producto_id=_producto.id, receta_id=receta_obj.id)
 
+    _producto.nombre_receta = _resolver_nombre_receta_producto(db, _producto)
     return _producto
 
 def listar_productos(db: Session) -> List[Producto]:
@@ -177,7 +179,10 @@ def editar_producto(
 
     if "id_receta" in datos_actualizar:
         id_rec = datos_actualizar.pop("id_receta")
-        datos_actualizar["documento_receta_id"] = _validar_id_receta(db, id_rec)
+        receta_obj = _validar_id_receta(db, id_rec)
+        datos_actualizar["documento_receta_id"] = None
+        if receta_obj is not None:
+            receta_obj.id_producto = producto_id
 
     datos_actualizar.pop("porciones_por_envase", None)
     nuevo_peso = datos_actualizar.get("peso_unidad_g", db_producto.peso_unidad_g)

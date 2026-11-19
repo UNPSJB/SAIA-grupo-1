@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
-import type { Producto, DocumentoReceta } from "./tipos";
+import type { Producto } from "./tipos";
 import type { UnidadMedidaItem } from "../unidadesMedida/tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
+
+interface RecetaOpcion {
+  id: number;
+  nombre: string;
+  activo?: boolean;
+}
 
 const PRODUCTO_INICIAL: Producto = {
   nombre: "",
@@ -23,7 +29,7 @@ interface NuevoProductoProps {
 
 export default function NuevoProducto({ onSuccess, onCancel }: NuevoProductoProps) {
   const [producto, setProducto] = useState<Producto>(PRODUCTO_INICIAL);
-  const [recetas, setRecetas] = useState<DocumentoReceta[]>([]);
+  const [recetas, setRecetas] = useState<RecetaOpcion[]>([]);
   const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -35,7 +41,7 @@ export default function NuevoProducto({ onSuccess, onCancel }: NuevoProductoProp
     async function cargarCatalogos() {
       try {
         const [resRecetas, resUnidades] = await Promise.all([
-          apiFetch("/documentos/?tipo=Receta"),
+          apiFetch("/recetas/"),
           apiFetch("/unidades-medida/?solo_activos=true"),
         ]);
         if (!cancelado) {
@@ -188,11 +194,13 @@ export default function NuevoProducto({ onSuccess, onCancel }: NuevoProductoProp
             onChange={handleChange}
           >
             <option value="">-- Sin receta asociada --</option>
-            {recetas.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.titulo}
-              </option>
-            ))}
+            {recetas
+              .filter((r) => r.activo !== false)
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nombre}
+                </option>
+              ))}
           </select>
         </div>
 
