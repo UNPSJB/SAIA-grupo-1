@@ -41,6 +41,20 @@ NUTRIENTES_CAMPOS = [
     "sodio_mg",
 ]
 
+NUTRIENTES_NOMBRES = {
+    "energia_kcal": "Energía (kcal)",
+    "energia_kj": "Energía (kJ)",
+    "carbohidratos": "Carbohidratos",
+    "azucares_totales": "Azúcares totales",
+    "azucares_anadidos": "Azúcares añadidos",
+    "proteinas": "Proteínas",
+    "grasas_totales": "Grasas totales",
+    "grasas_saturadas": "Grasas saturadas",
+    "grasas_trans": "Grasas trans",
+    "fibra_alimentaria": "Fibra alimentaria",
+    "sodio_mg": "Sodio",
+}
+
 def migrar_columnas_nutricionales(db: Session) -> None:
     engine = db.get_bind()
     with engine.connect() as conn:
@@ -197,6 +211,99 @@ def resolver_receta_para_producto(db: Session, producto: Producto, receta_id: Op
     if not receta:
         raise ProductoSinRecetaError()
     return receta
+
+def listar_ingredientes_incompletos(
+    db: Session,
+    producto_id: int,
+    receta_id: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+
+    producto = db.get(Producto, producto_id)
+
+    if not producto:
+        raise NutricionException(
+            "Producto no encontrado",
+            status_code=404
+        )
+
+    receta = resolver_receta_para_producto(
+        db, producto, receta_id
+    )
+
+    version = receta.version_actual
+    detalles = version.detalles if version else []
+
+    if not detalles:
+        raise RecetaSinIngredientesError()
+
+    ingredientes_incompletos = []
+
+    for det in detalles:
+
+        insumo = det.ingrediente
+        tipo_obj = det.tipo_insumo
+        adit_obj = det.aditivo
+
+        if not insumo and not tipo_obj and not adit_obj:
+            continue
+
+        # Los aditivos sin aporte de energía/sodio
+        # no necesitan información nutricional.
+        if adit_obj and not adit_obj.aporta_energia_sodio:
+            continue
+
+        campos_requeridos = (
+            ["energia_kcal", "energia_kj", "sodio_mg"]
+            if adit_obj
+            else NUTRIENTES_CAMPOS
+        )
+
+        campos_faltantes = []
+
+        for campo in campos_requeridos:
+
+            valor = None
+
+            if tipo_obj is not None:
+                valor = getattr(tipo_obj, campo, None)
+
+            if valor is None and adit_obj is not None:
+                valor = getattr(adit_obj, campo, None)
+
+            if valor is None and insumo is not None:
+                valor = getattr(insumo, campo, None)
+
+            if valor is None:
+                campos_faltantes.append(
+                    NUTRIENTES_NOMBRES[campo]
+                )
+
+        # Identificar la fuente de información.
+        fuente = None
+
+        for entidad in (tipo_obj, adit_obj, insumo):
+            if entidad is not None:
+                fuente = getattr(entidad, "fuente_datos", None)
+                if fuente and fuente.strip():
+                    break
+
+        if not fuente:
+            campos_faltantes.append("Fuente de información")
+
+        if campos_faltantes:
+
+            ingredientes_incompletos.append({
+                "ingrediente_id": (
+                    insumo.id if insumo
+                    else tipo_obj.id if tipo_obj
+                    else adit_obj.id
+                ),
+                "nombre": det.nombre_ingrediente,
+                "es_aditivo": bool(adit_obj),
+                "campos_faltantes": campos_faltantes,
+            })
+
+    return ingredientes_incompletos
 
 def calcular_informacion_nutricional(
     db: Session,

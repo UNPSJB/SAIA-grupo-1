@@ -30,6 +30,24 @@ def resolver_nombre_usuario(usuario: Optional[Personal]) -> str:
         return f"Legajo #{usuario.legajo}"
     return "Admin"
 
+@router.get("/nutricion/productos/{producto_id}/ingredientes-incompletos",dependencies=[Depends(requiere_admin)],)
+def obtener_ingredientes_incompletos(
+    producto_id: int,
+    receta_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    ingredientes = services.listar_ingredientes_incompletos(
+        db=db,
+        producto_id=producto_id,
+        receta_id=receta_id,
+    )
+
+    return {
+        "producto_id": producto_id,
+        "tabla_incompleta": len(ingredientes) > 0,
+        "ingredientes_incompletos": ingredientes,
+    }
+
 @router.get(
     "/nutricion/parametros",
     response_model=List[ParametroRedondeoNutricionalResponse],
