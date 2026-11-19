@@ -7,7 +7,6 @@ from src.models import ModeloBase
 import src.unidadesMedida.models
 
 if TYPE_CHECKING:
-    from src.gestion_archivos.models import Documento
     from src.unidadesMedida.models import UnidadMedida
 
 class Producto(ModeloBase):
