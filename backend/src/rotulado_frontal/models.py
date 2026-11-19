@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import List, Optional
 
 from sqlalchemy import (
-    JSON, Boolean, Date, DateTime, Enum as SQLEnum, ForeignKey, Integer, String, UniqueConstraint,
+    JSON, Boolean, Date, DateTime, Enum as SQLEnum, Float, ForeignKey, Integer, String, UniqueConstraint,
     event, inspect, select,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,6 +10,28 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 from src.rotulado_frontal.constants import EstadoConjunto, EstadoFisico
 from src.rotulado_frontal import exceptions
+
+
+class ParametrosSellos(ModeloBase):
+    __tablename__ = "parametros_sellos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    version: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    fecha_vigencia: Mapped[date] = mapped_column(Date, index=True, nullable=False)
+    activa: Mapped[bool] = mapped_column(Boolean, default=True, index=True, nullable=False)
+    norma_origen: Mapped[str] = mapped_column(String(200), default="Decreto 151/2022 - Disp. ANMAT 11362/24", nullable=False)
+
+    umbral_azucares_pct: Mapped[float] = mapped_column(Float, default=10.0, nullable=False)
+    umbral_grasas_totales_pct: Mapped[float] = mapped_column(Float, default=30.0, nullable=False)
+    umbral_grasas_saturadas_pct: Mapped[float] = mapped_column(Float, default=10.0, nullable=False)
+    umbral_sodio_mg_por_kcal: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    umbral_sodio_max_100g: Mapped[float] = mapped_column(Float, default=300.0, nullable=False)
+    umbral_sodio_bebida_sin_kcal: Mapped[float] = mapped_column(Float, default=40.0, nullable=False)
+    umbral_calorias_solido_100g: Mapped[float] = mapped_column(Float, default=275.0, nullable=False)
+    umbral_calorias_liquido_100ml: Mapped[float] = mapped_column(Float, default=25.0, nullable=False)
+    factor_kcal_carbohidratos: Mapped[float] = mapped_column(Float, default=4.0, nullable=False)
+    factor_kcal_grasas: Mapped[float] = mapped_column(Float, default=9.0, nullable=False)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
 
 
 class ConjuntoParametrosRotulado(ModeloBase):
@@ -78,6 +100,7 @@ class CalculoRotulado(ModeloBase):
     valores_entrada: Mapped[dict] = mapped_column(JSON, nullable=False)
     sellos: Mapped[list] = mapped_column(JSON, nullable=False)
     resultado: Mapped[list] = mapped_column(JSON, nullable=False)
+    pasos: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     calculado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
     calculado_por_legajo: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 

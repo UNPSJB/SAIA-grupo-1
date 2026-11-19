@@ -2,7 +2,7 @@ import React, { Fragment, useEffect, useState } from 'react';
 import '../../styles/formularioAlta.css';
 import '../../styles/rotulado.css';
 import { apiFetch } from '../../api/client';
-import { calcularDesdeNutricion, calcularRotulado, listarCalculos, obtenerEstadoModulo } from './api';
+import { calcularDesdeNutricion, calcularRotulado, listarCalculos, obtenerEstadoModulo, obtenerParametrosSellosVigentes } from './api';
 import { DetalleEvaluacion } from './DetalleEvaluacion';
 import { ListaSellos } from './Octogono';
 import {
@@ -14,6 +14,7 @@ import {
   type Calculo,
   type EstadoFisico,
   type Nutriente,
+  type ParametrosSellos,
   type ValoresNutricionales,
 } from './tipos';
 
@@ -40,13 +41,10 @@ const aFormulario = (v: ValoresNutricionales): ValoresForm => ({
   sodio_mg: String(v.sodio_mg),
 });
 
-/**
- * Sección del detalle de producto: último cálculo de sellos, formulario para calcular de nuevo
- * e historial. Solo se muestra con el módulo de octógonos activo.
- */
 export const RotuladoProducto: React.FC<RotuladoProductoProps> = ({ productoId, unidadMedida }) => {
   const [moduloActivo, setModuloActivo] = useState<boolean | null>(null);
   const [calculos, setCalculos] = useState<Calculo[]>([]);
+  const [parametrosVigentes, setParametrosVigentes] = useState<ParametrosSellos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,8 +65,14 @@ export const RotuladoProducto: React.FC<RotuladoProductoProps> = ({ productoId, 
         if (cancelado) return;
         setModuloActivo(estado.activo);
         if (estado.activo) {
-          const lista = await listarCalculos(productoId);
-          if (!cancelado) setCalculos(lista);
+          const [lista, params] = await Promise.all([
+            listarCalculos(productoId),
+            obtenerParametrosSellosVigentes().catch(() => null),
+          ]);
+          if (!cancelado) {
+            setCalculos(lista);
+            setParametrosVigentes(params);
+          }
         }
       } catch (e) {
         if (!cancelado) setError((e as Error).message);
@@ -81,7 +85,6 @@ export const RotuladoProducto: React.FC<RotuladoProductoProps> = ({ productoId, 
     };
   }, [productoId]);
 
-  // con el módulo apagado (o sin poder consultarlo) la sección no se muestra
   if (moduloActivo === false || (moduloActivo === null && !cargando)) return null;
 
   const ultimo = calculos[0] ?? null;
@@ -253,15 +256,75 @@ export const RotuladoProducto: React.FC<RotuladoProductoProps> = ({ productoId, 
             </div>
           )}
 
+          {ultimo && (
+            <div
+              style={{
+                backgroundColor: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '0.95rem', color: '#1e293b' }}>
+                  <strong>Versión de parámetros:</strong>{' '}
+                  {parametrosVigentes?.version || ultimo.version_parametros}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>
+                  <strong>Fecha de vigencia:</strong>{' '}
+                  {formatearFecha(parametrosVigentes?.fecha_vigencia || ultimo.fecha_vigencia_parametros)}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-guardar rot-btn-chico"
+                onClick={calcularAutoNutricion}
+                disabled={calculando}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <span>⚡</span>
+                <span>{calculando ? 'Recalculando...' : 'Recalcular Sellos'}</span>
+              </button>
+            </div>
+          )}
+
           {ultimo ? (
-            <>
-              <ListaSellos leyendas={leyendasDeSellos(ultimo)} />
-              <p className="rot-texto-sec" style={{ marginBottom: 0 }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                RESULTADO PARA CARA PRINCIPAL DEL ENVASE
+              </h3>
+              {ultimo.sellos && ultimo.sellos.length > 0 ? (
+                <div style={{ padding: '0.5rem 0' }}>
+                  <ListaSellos leyendas={leyendasDeSellos(ultimo)} />
+                </div>
+              ) : (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '6px',
+                    color: '#166534',
+                    fontWeight: 600,
+                  }}
+                >
+                  Producto sin sellos de advertencia
+                </div>
+              )}
+              <p className="rot-texto-sec" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
                 Último cálculo: {formatearFecha(ultimo.calculado_en)}
                 {ultimo.calculado_por_legajo != null && ` · Legajo ${ultimo.calculado_por_legajo}`} · Parámetros versión{' '}
                 {ultimo.version_parametros} ({ultimo.norma_origen}) · {ETIQUETA_ESTADO_FISICO[ultimo.estado_fisico]}
               </p>
-            </>
+
+              <DetalleEvaluacion detalle={ultimo.detalle} pasos={ultimo.pasos} />
+            </div>
           ) : (
             !formAbierto && (
               <p className="rot-texto-sec" style={{ margin: 0 }}>
@@ -318,7 +381,7 @@ export const RotuladoProducto: React.FC<RotuladoProductoProps> = ({ productoId, 
                                   {c.calculado_por_legajo != null && ` · Legajo ${c.calculado_por_legajo}`} · Valores ingresados:{' '}
                                   {NUTRIENTES.map((n) => `${n.etiqueta} ${c.valores_entrada[n.valor]} ${n.unidad}`).join(' · ')}
                                 </div>
-                                <DetalleEvaluacion detalle={c.detalle} />
+                                <DetalleEvaluacion detalle={c.detalle} pasos={c.pasos} />
                               </td>
                             </tr>
                           )}

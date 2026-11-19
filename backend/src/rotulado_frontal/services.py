@@ -12,7 +12,7 @@ from src.rotulado_frontal.constants import (
     CLAVE_MODULO_OCTOGONOS, PARAMETROS_INICIALES, EstadoConjunto, EstadoFisico,
 )
 from src.rotulado_frontal.models import (
-    CalculoRotulado, ConjuntoParametrosRotulado, EstadoModulo, ReglaRotulado,
+    CalculoRotulado, ConjuntoParametrosRotulado, EstadoModulo, ParametrosSellos, ReglaRotulado,
 )
 
 UNIDADES_SOLIDAS = {
@@ -236,25 +236,152 @@ def resolver_estado_fisico(producto, explicito: Optional[EstadoFisico]) -> Estad
     raise exceptions.EstadoFisicoIndeterminado()
 
 
+def asegurar_parametros_sellos_defecto(db: Session) -> ParametrosSellos:
+    param = db.scalar(
+        select(ParametrosSellos)
+        .where(ParametrosSellos.activa == True)
+        .order_by(ParametrosSellos.fecha_vigencia.desc())
+    )
+    if param is None:
+        param = ParametrosSellos(
+            version="Decreto 151/2022 - Disp. ANMAT 11362/24",
+            fecha_vigencia=date(2024, 12, 1),
+            activa=True,
+            norma_origen="Ley 27.642, Decreto 151/2022 y Disp. ANMAT 11362/24",
+            umbral_azucares_pct=10.0,
+            umbral_grasas_totales_pct=30.0,
+            umbral_grasas_saturadas_pct=10.0,
+            umbral_sodio_mg_por_kcal=1.0,
+            umbral_sodio_max_100g=300.0,
+            umbral_sodio_bebida_sin_kcal=40.0,
+            umbral_calorias_solido_100g=275.0,
+            umbral_calorias_liquido_100ml=25.0,
+            factor_kcal_carbohidratos=4.0,
+            factor_kcal_grasas=9.0,
+        )
+        db.add(param)
+        db.commit()
+        db.refresh(param)
+    return param
+
+
+def obtener_parametros_sellos_vigentes(db: Session, fecha: Optional[date] = None) -> ParametrosSellos:
+    fecha = fecha or date.today()
+    param = db.scalar(
+        select(ParametrosSellos)
+        .where(
+            ParametrosSellos.activa == True,
+            ParametrosSellos.fecha_vigencia <= fecha,
+        )
+        .order_by(ParametrosSellos.fecha_vigencia.desc())
+        .limit(1)
+    )
+    if param is None:
+        param = db.scalar(
+            select(ParametrosSellos)
+            .where(ParametrosSellos.activa == True)
+            .order_by(ParametrosSellos.fecha_vigencia.desc())
+            .limit(1)
+        )
+    if param is None:
+        param = asegurar_parametros_sellos_defecto(db)
+    return param
+
+
+def detectar_agregados_producto(db: Session, producto_id: int) -> dict:
+    from src.producto.models import Producto
+    from src.recetas.models import RecetaDetalle
+    from src.insumos.models import Insumo
+
+    prod = db.get(Producto, producto_id)
+    if not prod or not prod.receta_estructurada:
+        return {
+            "azucares": True, "detalle_azucares": "Sin receta asociada",
+            "grasas": True, "detalle_grasas": "Sin receta asociada",
+            "sodio": True, "detalle_sodio": "Sin receta asociada",
+        }
+
+    version = prod.receta_estructurada.version_actual
+    if not version:
+        return {
+            "azucares": True, "detalle_azucares": "Sin receta vigente",
+            "grasas": True, "detalle_grasas": "Sin receta vigente",
+            "sodio": True, "detalle_sodio": "Sin receta vigente",
+        }
+
+    detalles = db.scalars(
+        select(RecetaDetalle).where(RecetaDetalle.version_receta_id == version.id)
+    ).all()
+
+    azucares_nombres = []
+    grasas_nombres = []
+    sodio_nombres = []
+
+    PALABRAS_AZUCAR = (
+        "azucar", "azúcar", "miel", "jarabe", "glucosa", "fructosa",
+        "sacarosa", "dextrosa", "dulce", "mermelada", "caramelo", "jugo", "pulpa"
+    )
+    PALABRAS_GRASA = (
+        "aceite", "manteca", "grasa", "crema", "margarina", "shortening",
+        "cacao", "chocolate"
+    )
+
+    for det in detalles:
+        ins = db.get(Insumo, det.ingrediente_id) if det.ingrediente_id else None
+        nombre_crudo = ins.nombre if ins else (det.nombre_ingrediente or "")
+        nombre = nombre_crudo.lower()
+
+        if "agua" in nombre:
+            continue
+
+        if any(p in nombre for p in PALABRAS_AZUCAR) or (ins and (ins.azucares_anadidos or 0.0) > 0.0):
+            azucares_nombres.append(nombre_crudo)
+
+        if any(p in nombre for p in PALABRAS_GRASA) or (ins and (ins.grasas_totales or 0.0) > 1.0):
+            grasas_nombres.append(nombre_crudo)
+
+        if "sal" in nombre:
+            sodio_nombres.append(nombre_crudo)
+        elif det.es_aditivo and ("sodio" in nombre or "bicarbonato" in nombre or (det.numero_ins and "500" in det.numero_ins)):
+            sodio_nombres.append(f"{nombre_crudo} ({det.numero_ins})" if det.numero_ins else nombre_crudo)
+        elif ins and (ins.sodio_mg or 0.0) > 50.0 and det.es_aditivo:
+            sodio_nombres.append(nombre_crudo)
+
+    tiene_azucares = len(azucares_nombres) > 0
+    tiene_grasas = len(grasas_nombres) > 0
+    tiene_sodio = len(sodio_nombres) > 0
+
+    return {
+        "azucares": tiene_azucares,
+        "detalle_azucares": ", ".join(dict.fromkeys(azucares_nombres)) if tiene_azucares else "No",
+        "grasas": tiene_grasas,
+        "detalle_grasas": ", ".join(dict.fromkeys(grasas_nombres)) if tiene_grasas else "No",
+        "sodio": tiene_sodio,
+        "detalle_sodio": ", ".join(dict.fromkeys(sodio_nombres)) if tiene_sodio else "No",
+    }
+
+
 def evaluar(db: Session, datos: schemas.EvaluacionIn) -> schemas.EvaluacionOut:
-    """Simula sin guardar nada; sirve para probar un borrador antes de publicarlo."""
     conjunto = _obtener(db, datos.conjunto_id) if datos.conjunto_id else obtener_vigente(db)
     sellos, detalle = motor.evaluar(
         _reglas_para_motor(conjunto), datos.valores.model_dump(), datos.estado_fisico,
+    )
+    parametros_sellos = obtener_parametros_sellos_vigentes(db)
+    _, pasos = motor.evaluar_con_parametros_y_agregados(
+        parametros_sellos, datos.valores.model_dump(), datos.estado_fisico
     )
     return schemas.EvaluacionOut(
         conjunto_parametros_id=conjunto.id,
         version_parametros=conjunto.version,
         sellos=sellos,
         detalle=detalle,
+        pasos=pasos,
     )
 
 
 def calcular_rotulado(
     db: Session, producto_id: int, datos: schemas.CalculoIn, usuario=None, fecha: Optional[date] = None,
 ) -> CalculoRotulado:
-    """Aplica los parametros vigentes y guarda el resultado como un calculo nuevo.
-    Recalcular nunca modifica los calculos anteriores."""
     producto = obtener_producto(db, producto_id)
     if not producto.activo:
         raise producto_exceptions.ProductoInactivo()
@@ -264,6 +391,12 @@ def calcular_rotulado(
     valores = datos.valores.model_dump()
     sellos, detalle = motor.evaluar(_reglas_para_motor(conjunto), valores, estado_fisico)
 
+    parametros_sellos = obtener_parametros_sellos_vigentes(db, fecha)
+    agregados = detectar_agregados_producto(db, producto_id)
+    sellos_oficiales, pasos = motor.evaluar_con_parametros_y_agregados(
+        parametros_sellos, valores, estado_fisico, agregados
+    )
+
     calculo = CalculoRotulado(
         producto_id=producto.id,
         conjunto_parametros_id=conjunto.id,
@@ -272,6 +405,7 @@ def calcular_rotulado(
         valores_entrada=valores,
         sellos=sellos,
         resultado=[d.model_dump(mode="json") for d in detalle],
+        pasos=[p.model_dump(mode="json") for p in pasos],
         calculado_por_legajo=_legajo(usuario),
     )
     db.add(calculo)
@@ -371,9 +505,8 @@ def cambiar_estado_modulo(
 # --- Datos iniciales ---
 
 def asegurar_datos_iniciales(db: Session) -> None:
-    """Crea el interruptor del modulo y, si no hay ningun conjunto, el inicial publicado.
-    Es idempotente: se puede llamar en cada arranque."""
     obtener_estado_modulo(db)
+    asegurar_parametros_sellos_defecto(db)
 
     if db.scalar(select(func.count(ConjuntoParametrosRotulado.id))):
         return

@@ -20,6 +20,11 @@ OCTOGONOS = [Depends(requiere_admin), Depends(requiere_modulo_octogonos)]
 # --- Conjuntos de parametros ---
 # la pantalla de parametros sigue disponible con el modulo apagado, asi se puede volver a activar
 
+@router.get("/parametros-sellos/vigente", response_model=schemas.ParametrosSellosOut, dependencies=SOLO_ADMIN)
+def obtener_parametros_sellos_vigentes(fecha: Optional[date] = None, db: Session = Depends(get_db)):
+    return services.obtener_parametros_sellos_vigentes(db, fecha)
+
+
 @router.get("/parametros", response_model=List[schemas.ConjuntoResumen], dependencies=SOLO_ADMIN)
 def listar_conjuntos(estado: Optional[EstadoConjunto] = None, db: Session = Depends(get_db)):
     return services.listar_conjuntos(db, estado)

@@ -8,6 +8,7 @@ import type {
   EstadoConjunto,
   EstadoFisico,
   EstadoModulo,
+  ParametrosSellos,
   ValoresNutricionales,
 } from './tipos';
 
@@ -85,3 +86,4 @@ export const calcularRotulado = (productoId: number, valores: ValoresNutricional
 export const calcularDesdeNutricion = (productoId: number) =>
   pedir<Calculo>(`/productos/${productoId}/calcular-desde-nutricion`, { method: 'POST' });
 export const listarCalculos = (productoId: number) => pedir<Calculo[]>(`/productos/${productoId}/calculos`);
+export const obtenerParametrosSellosVigentes = () => pedir<ParametrosSellos>('/parametros-sellos/vigente');
