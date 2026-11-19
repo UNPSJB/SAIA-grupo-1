@@ -323,6 +323,23 @@ def calcular_informacion_nutricional(
 
     receta = resolver_receta_para_producto(db, producto, receta_id)
 
+    # Verificar que todos los ingredientes tengan datos nutricionales completos.
+    ingredientes_incompletos = listar_ingredientes_incompletos(
+        db=db,
+        producto_id=producto_id,
+        receta_id=receta_id,
+    )
+
+    if ingredientes_incompletos:
+        raise NutricionException(
+            detail={
+                "mensaje": "No se puede calcular la tabla nutricional porque hay ingredientes con datos incompletos.",
+                "tabla_incompleta": True,
+                "ingredientes_incompletos": ingredientes_incompletos,
+            },
+            status_code=422,
+        )
+
     version: Optional[VersionReceta] = None
     if version_receta_id is not None:
         version = db.scalar(
