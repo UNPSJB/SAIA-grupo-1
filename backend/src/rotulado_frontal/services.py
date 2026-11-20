@@ -321,24 +321,26 @@ def detectar_agregados_producto(db: Session, producto_id: int) -> dict:
     )
 
     for det in detalles:
-        ins = db.get(Insumo, det.ingrediente_id) if det.ingrediente_id else None
+        det_ing_id = getattr(det, "ingrediente_id", None)
+        ins = db.get(Insumo, det_ing_id) if det_ing_id else None
+        fuente_nut = ins or det.tipo_insumo or det.aditivo
         nombre_crudo = ins.nombre if ins else (det.nombre_ingrediente or "")
         nombre = nombre_crudo.lower()
 
         if "agua" in nombre:
             continue
 
-        if any(p in nombre for p in PALABRAS_AZUCAR) or (ins and (ins.azucares_anadidos or 0.0) > 0.0):
+        if any(p in nombre for p in PALABRAS_AZUCAR) or (fuente_nut and (getattr(fuente_nut, "azucares_anadidos", None) or 0.0) > 0.0):
             azucares_nombres.append(nombre_crudo)
 
-        if any(p in nombre for p in PALABRAS_GRASA) or (ins and (ins.grasas_totales or 0.0) > 1.0):
+        if any(p in nombre for p in PALABRAS_GRASA) or (fuente_nut and (getattr(fuente_nut, "grasas_totales", None) or 0.0) > 1.0):
             grasas_nombres.append(nombre_crudo)
 
         if "sal" in nombre:
             sodio_nombres.append(nombre_crudo)
         elif det.es_aditivo and ("sodio" in nombre or "bicarbonato" in nombre or (det.numero_ins and "500" in det.numero_ins)):
             sodio_nombres.append(f"{nombre_crudo} ({det.numero_ins})" if det.numero_ins else nombre_crudo)
-        elif ins and (ins.sodio_mg or 0.0) > 50.0 and det.es_aditivo:
+        elif fuente_nut and (getattr(fuente_nut, "sodio_mg", None) or 0.0) > 50.0 and det.es_aditivo:
             sodio_nombres.append(nombre_crudo)
 
     tiene_azucares = len(azucares_nombres) > 0
@@ -453,17 +455,22 @@ def calcular_desde_nutricion_producto(
     if info is None:
         raise exceptions.NutricionNoCalculada()
 
-    valores = schemas.ValoresNutricionalesIn(
+    valores = schemas.ValoresNutricionales100(
         energia_kcal=float(info.energia_kcal_100g or 0.0),
         azucares_anadidos=float(info.azucares_anadidos_100g or 0.0),
         grasas_totales=float(info.grasas_totales_100g or 0.0),
         grasas_saturadas=float(info.grasas_saturadas_100g or 0.0),
         sodio_mg=float(info.sodio_mg_100g or 0.0),
     )
+    try:
+        estado_resuelto = resolver_estado_fisico(producto, None)
+    except exceptions.EstadoFisicoIndeterminado:
+        estado_resuelto = EstadoFisico.SOLIDO
+
     return calcular_rotulado(
         db,
         producto_id,
-        schemas.CalculoIn(valores=valores),
+        schemas.CalculoIn(valores=valores, estado_fisico=estado_resuelto),
         usuario=usuario,
         fecha=fecha,
     )

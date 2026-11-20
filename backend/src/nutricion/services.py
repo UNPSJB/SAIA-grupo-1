@@ -254,9 +254,10 @@ def listar_ingredientes_incompletos(
     ingredientes_incompletos: List[Dict[str, Any]] = []
 
     for det in detalles:
-        insumo = det.ingrediente
-        if not insumo and det.ingrediente_id:
-            insumo = db.get(Insumo, det.ingrediente_id)
+        insumo = getattr(det, "ingrediente", None)
+        det_ing_id = getattr(det, "ingrediente_id", None)
+        if not insumo and det_ing_id:
+            insumo = db.get(Insumo, det_ing_id)
         tipo_obj = det.tipo_insumo
         adit_obj = det.aditivo
 
@@ -492,9 +493,10 @@ def calcular_informacion_nutricional(
     from src.recetas.services import convertir_detalle_a_gramos
 
     for det in detalles:
-        insumo = det.ingrediente
-        if not insumo and det.ingrediente_id:
-            insumo = db.get(Insumo, det.ingrediente_id)
+        insumo = getattr(det, "ingrediente", None)
+        det_ing_id = getattr(det, "ingrediente_id", None)
+        if not insumo and det_ing_id:
+            insumo = db.get(Insumo, det_ing_id)
         tipo_obj = det.tipo_insumo
         adit_obj = det.aditivo
         if not insumo and not tipo_obj and not adit_obj:
