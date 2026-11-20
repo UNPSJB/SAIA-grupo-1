@@ -1,13 +1,22 @@
+import io
 import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from src.insumos.models import Insumo
 from src.tipoInsumo.models import TipoInsumo, Aditivo
 from src.producto.models import Producto
 from src.recetas.models import Receta, VersionReceta, RecetaDetalle
-from src.nutricion.constants import NUTRIENTES_DEFECTO_CAA, REFERENCIA_CATEDRA_PAN_CAMPO
+from src.nutricion.constants import (
+    NUTRIENTES_DEFECTO_CAA,
+    REFERENCIA_CATEDRA_PAN_CAMPO,
+    LEYENDA_REVISION_PROFESIONAL,
+)
 from src.nutricion.models import ParametroRedondeoNutricional, InformacionNutricionalProducto
 from src.nutricion.schemas import (
     ParametroRedondeoNutricionalResponse,
@@ -954,4 +963,212 @@ def guardar_porcion_declarada(
             db.commit()
             return obtener_informacion_nutricional_producto(db, producto_id)
         raise e
+
+def generar_pdf_tabla_nutricional(
+    db: Session,
+    producto_id: int,
+    incluir_leyenda: bool = True,
+) -> bytes:
+    # Validación: No permitir exportar sin la leyenda obligatoria
+    if not incluir_leyenda:
+        raise NutricionException(
+            "No se permite exportar la tabla nutricional sin la leyenda obligatoria de revisión profesional.",
+            status_code=400,
+        )
+
+    info = obtener_informacion_nutricional_producto(db, producto_id)
+    producto = db.get(Producto, producto_id)
+    nombre_prod = producto.nombre if producto else info.nombre_producto
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=40,
+        rightMargin=40,
+        topMargin=35,
+        bottomMargin=35,
+    )
+
+    styles = getSampleStyleSheet()
+    elements = []
+
+    titulo_style = ParagraphStyle(
+        'TituloTabla',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        leading=17,
+        alignment=1,
+        textColor=colors.HexColor('#0f172a'),
+        spaceAfter=4,
+    )
+    subtitulo_style = ParagraphStyle(
+        'SubtituloTabla',
+        fontName='Helvetica-Bold',
+        fontSize=11,
+        leading=14,
+        alignment=1,
+        textColor=colors.HexColor('#334155'),
+        spaceAfter=10,
+    )
+    porcion_style = ParagraphStyle(
+        'PorcionTexto',
+        fontName='Helvetica',
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor('#0f172a'),
+    )
+    header_col_style = ParagraphStyle(
+        'HeaderColStyle',
+        fontName='Helvetica-Bold',
+        fontSize=8.5,
+        leading=11,
+        alignment=1,
+        textColor=colors.HexColor('#ffffff'),
+    )
+    celda_bold = ParagraphStyle(
+        'CeldaBold',
+        fontName='Helvetica-Bold',
+        fontSize=8.5,
+        leading=11,
+        textColor=colors.HexColor('#0f172a'),
+    )
+    celda_regular = ParagraphStyle(
+        'CeldaRegular',
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=11,
+        textColor=colors.HexColor('#1e293b'),
+    )
+    celda_indent = ParagraphStyle(
+        'CeldaIndent',
+        fontName='Helvetica',
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor('#334155'),
+        leftIndent=12,
+    )
+    celda_center = ParagraphStyle(
+        'CeldaCenter',
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=11,
+        alignment=1,
+        textColor=colors.HexColor('#1e293b'),
+    )
+    nota_pie_style = ParagraphStyle(
+        'NotaPie',
+        fontName='Helvetica-Oblique',
+        fontSize=7.5,
+        leading=10,
+        textColor=colors.HexColor('#475569'),
+    )
+    leyenda_style = ParagraphStyle(
+        'LeyendaObligatoria',
+        fontName='Helvetica-Bold',
+        fontSize=8.5,
+        leading=12,
+        textColor=colors.HexColor('#991b1b'),
+    )
+
+    elements.append(Paragraph("INFORMACIÓN NUTRICIONAL", titulo_style))
+    elements.append(Paragraph(f"Producto: {nombre_prod}", subtitulo_style))
+
+    if info.es_incompleta:
+        advertencia_incompleta = ParagraphStyle(
+            'IncompletaBadge',
+            fontName='Helvetica-Bold',
+            fontSize=9,
+            leading=12,
+            textColor=colors.HexColor('#b91c1c'),
+            alignment=1,
+        )
+        elements.append(Paragraph("⚠️ ADVERTENCIA: Esta tabla contiene ingredientes con datos nutricionales incompletos", advertencia_incompleta))
+        elements.append(Spacer(1, 6))
+
+    porcion_g = info.tamano_porcion_g
+    medida = info.medida_casera or info.descripcion_porcion or "1 porción"
+    porc_envase = f" | Porciones por envase: aprox. {info.porciones_por_envase}" if info.porciones_por_envase else ""
+    texto_porcion = f"<b>Porción:</b> {porcion_g:g} g ({medida}){porc_envase}"
+
+    filas_map = {f.nutriente: f for f in info.tabla_nutricional}
+
+    tabla_data = [
+        [
+            Paragraph("<b>Nutriente</b>", header_col_style),
+            Paragraph("<b>100 g</b>", header_col_style),
+            Paragraph(f"<b>Porción ({porcion_g:g} g)</b>", header_col_style),
+            Paragraph("<b>% VD (*)</b>", header_col_style),
+        ]
+    ]
+
+    def agregar_fila(nombre: str, nutriente_key: str, indent: bool = False, bold: bool = False):
+        fila_nut = filas_map.get(nutriente_key)
+        if not fila_nut:
+            return
+        estilo_nom = celda_bold if bold else (celda_indent if indent else celda_regular)
+        val_100 = f"{fila_nut.valor_100g_formateado} {fila_nut.unidad}"
+        val_porc = f"{fila_nut.valor_porcion_formateado} {fila_nut.unidad}"
+        val_vd = fila_nut.vd_formateado
+        tabla_data.append([
+            Paragraph(nombre, estilo_nom),
+            Paragraph(val_100, celda_center),
+            Paragraph(val_porc, celda_center),
+            Paragraph(val_vd, celda_center),
+        ])
+
+    agregar_fila("Valor energético (kcal)", "energia_kcal", bold=True)
+    agregar_fila("Valor energético (kJ)", "energia_kj", indent=True)
+    agregar_fila("Carbohidratos", "carbohidratos", bold=True)
+    agregar_fila("  de los cuales: Azúcares totales", "azucares_totales", indent=True)
+    agregar_fila("  Azúcares añadidos", "azucares_anadidos", indent=True)
+    agregar_fila("Proteínas", "proteinas", bold=True)
+    agregar_fila("Grasas totales", "grasas_totales", bold=True)
+    agregar_fila("  de las cuales: Grasas saturadas", "grasas_saturadas", indent=True)
+    agregar_fila("  Grasas trans", "grasas_trans", indent=True)
+    agregar_fila("Fibra alimentaria", "fibra_alimentaria", bold=True)
+    agregar_fila("Sodio", "sodio_mg", bold=True)
+
+    t = Table(tabla_data, colWidths=[205, 100, 115, 90])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#ffffff'), colors.HexColor('#f8fafc')]),
+    ]))
+
+    elements.append(Paragraph(texto_porcion, porcion_style))
+    elements.append(Spacer(1, 6))
+    elements.append(t)
+    elements.append(Spacer(1, 8))
+
+    pie_caa = "* % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser mayores o menores según sus necesidades energéticas."
+    elements.append(Paragraph(pie_caa, nota_pie_style))
+    elements.append(Spacer(1, 10))
+
+    cuadro_leyenda_data = [[
+        Paragraph(f"<b>AVISO OBLIGATORIO DE REVISIÓN:</b> {LEYENDA_REVISION_PROFESIONAL}", leyenda_style)
+    ]]
+    cuadro_leyenda = Table(cuadro_leyenda_data, colWidths=[510])
+    cuadro_leyenda.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fef2f2')),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#ef4444')),
+        ('TOPPADDING', (0, 0), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elements.append(cuadro_leyenda)
+
+    doc.build(elements)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+
+    return pdf_bytes
+
 

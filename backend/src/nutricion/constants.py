@@ -142,3 +142,9 @@ REFERENCIA_CATEDRA_PAN_CAMPO = {
     },
     "tolerancia_porcentaje": 5.0,
 }
+
+LEYENDA_REVISION_PROFESIONAL = (
+    "Valores calculados a partir de datos de referencia y recetas estructuradas. "
+    "Deben ser revisados por un/a profesional revisor."
+)
+

@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Response
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.autenticacion.dependencies import requiere_admin, get_usuario_actual
@@ -265,3 +265,36 @@ def verificar_referencia_producto(
 ):
     info = services.obtener_informacion_nutricional_producto(db, producto_id)
     return services.verificar_tolerancia_referencia_catedra(info)
+
+@router.get(
+    "/nutricion/productos/{producto_id}/exportar-pdf",
+    dependencies=[Depends(requiere_admin)],
+)
+def exportar_tabla_nutricional_pdf(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    pdf_bytes = services.generar_pdf_tabla_nutricional(db, producto_id, incluir_leyenda=True)
+    headers = {
+        "Content-Disposition": f'attachment; filename="informacion_nutricional_{producto_id}.pdf"',
+        "Access-Control-Expose-Headers": "Content-Disposition",
+    }
+    return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+
+@router.get(
+    "/productos/{producto_id}/exportar-pdf-nutricional",
+    dependencies=[Depends(requiere_admin)],
+)
+def exportar_tabla_nutricional_pdf_alias(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    pdf_bytes = services.generar_pdf_tabla_nutricional(db, producto_id, incluir_leyenda=True)
+    headers = {
+        "Content-Disposition": f'attachment; filename="informacion_nutricional_{producto_id}.pdf"',
+        "Access-Control-Expose-Headers": "Content-Disposition",
+    }
+    return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+
