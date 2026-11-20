@@ -25,6 +25,7 @@ import type {
   ExportarBorradorResponse,
   OctogonoItem,
 } from "./tiposBorradorRotulo";
+import { useAuth } from "../../auth/useAuth";
 import "../../styles/formularioAlta.css";
 
 interface BorradorRotuloProps {
@@ -38,6 +39,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
   onVolver,
   onIrAIngredientes,
 }) => {
+  const { esAdministrador } = useAuth();
   const [cargando, setCargando] = useState<boolean>(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [borrador, setBorrador] = useState<BorradorRotuloResponse | null>(null);
@@ -51,6 +53,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
 
   const [modalExportarAbierto, setModalExportarAbierto] = useState<boolean>(false);
   const [exportando, setExportando] = useState<boolean>(false);
+  const [descargandoPdf, setDescargandoPdf] = useState<boolean>(false);
   const [resultadoExportacion, setResultadoExportacion] =
     useState<ExportarBorradorResponse | null>(null);
 
@@ -262,6 +265,61 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
       setTimeout(() => {
         ventana.print();
       }, 350);
+    }
+  };
+
+  const handleDescargarBorradorPDF = async () => {
+    if (!esAdministrador) {
+      setDialogoError({
+        abierto: true,
+        titulo: "Acceso Restringido",
+        mensaje:
+          "Solo personas con permiso de administrar pueden exportar el borrador del rótulo con detalle de cálculos.",
+      });
+      return;
+    }
+    try {
+      setDescargandoPdf(true);
+      const res = await apiFetch(
+        `/productos/${productoId}/borrador-rotulo/exportar-pdf`
+      );
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || "Error al exportar el borrador en PDF");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const nombreSanitizado = (
+        borrador?.producto_nombre || `producto_${productoId}`
+      )
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_");
+      a.download = `borrador_rotulo_${nombreSanitizado}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setDialogoExito({
+        abierto: true,
+        titulo: "Borrador Exportado en PDF",
+        mensaje:
+          "Se ha descargado el borrador del rótulo junto con el anexo técnico completo de respaldo de cálculos (receta, composición porcentual, fuentes de datos nutricionales y justificación de sellos).",
+      });
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : "Error al exportar el borrador en PDF";
+      setDialogoError({
+        abierto: true,
+        titulo: "Error de Exportación",
+        mensaje: errorMsg,
+      });
+    } finally {
+      setDescargandoPdf(false);
     }
   };
 
@@ -532,15 +590,40 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             </span>
             <span>Editar Datos del Rótulo</span>
           </button>
+          {esAdministrador && (
+            <button
+              type="button"
+              onClick={handleDescargarBorradorPDF}
+              disabled={descargandoPdf}
+              className="btn-primario"
+              style={{
+                padding: "8px 20px",
+                fontSize: "0.95rem",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                picture_as_pdf
+              </span>
+              <span>
+                {descargandoPdf
+                  ? "Generando..."
+                  : "Exportar Borrador (PDF con Cálculos)"}
+              </span>
+            </button>
+          )}
           <button
             type="button"
             onClick={handleExportarBorrador}
             disabled={exportando}
-            className="btn-primario"
+            className="btn-secundario"
             style={{
-              padding: "8px 20px",
+              padding: "8px 18px",
               fontSize: "0.95rem",
-              fontWeight: 700,
+              fontWeight: 600,
               display: "flex",
               alignItems: "center",
               gap: "8px",
@@ -549,7 +632,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
               print
             </span>
-            <span>{exportando ? "Preparando..." : "Exportar / Imprimir"}</span>
+            <span>{exportando ? "Preparando..." : "Vista Impresión"}</span>
           </button>
         </div>
       </div>
@@ -2221,6 +2304,27 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               <p style={{ fontSize: "0.92rem", color: "var(--color-texto-sec)", margin: 0 }}>
                 El documento generado contiene la ficha técnica y las caras frontal y posterior listas para impresión o envío a la autoridad sanitaria competente.
               </p>
+
+              <div
+                style={{
+                  backgroundColor: "var(--color-fondo)",
+                  border: "1px solid var(--color-borde)",
+                  borderRadius: "8px",
+                  padding: "12px 16px",
+                  fontSize: "0.88rem",
+                  color: "var(--color-texto)",
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: "4px", color: "var(--color-primario)" }}>
+                  Detalle del documento PDF con anexo de respaldo:
+                </div>
+                <ul style={{ margin: 0, paddingLeft: "18px", color: "var(--color-texto-sec)", lineHeight: 1.5 }}>
+                  <li>Borrador del rótulo (denominación, alérgenos, sellos frontales y tabla nutricional).</li>
+                  <li>Receta empleada y composición porcentual de la fórmula.</li>
+                  <li>Tabla nutricional con fuentes de datos registradas por cada insumo.</li>
+                  <li>Cálculo y justificación técnica de sellos con la versión de parámetros aplicada.</li>
+                </ul>
+              </div>
             </div>
           )}
 
@@ -2235,14 +2339,32 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             <button
               type="button"
               onClick={imprimirBorrador}
-              className="btn-primario"
+              className="btn-secundario"
               style={{ display: "flex", alignItems: "center", gap: "8px" }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
                 print
               </span>
-              <span>Abrir Vista de Impresión / PDF</span>
+              <span>Vista de Impresión (HTML)</span>
             </button>
+            {esAdministrador && (
+              <button
+                type="button"
+                onClick={handleDescargarBorradorPDF}
+                disabled={descargandoPdf}
+                className="btn-primario"
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                  picture_as_pdf
+                </span>
+                <span>
+                  {descargandoPdf
+                    ? "Generando..."
+                    : "Descargar PDF con Respaldo de Cálculos"}
+                </span>
+              </button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

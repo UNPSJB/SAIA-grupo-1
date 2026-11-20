@@ -74,6 +74,8 @@ export interface BorradorRotuloResponse {
   es_completo_para_tramite: boolean;
   actualizado_el: string;
   usuario_actualizacion: string | null;
+  fecha_ultima_exportacion_pdf?: string | null;
+  version_receta_exportada?: number | null;
 }
 
 export interface BorradorRotuloUpdate {

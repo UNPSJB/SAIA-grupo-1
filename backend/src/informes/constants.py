@@ -6,7 +6,7 @@ from src.incidentes.constants import EstadoIncidente
 ESTADOS_CUMPLIDOS = (EstadoTareaItem.REALIZADO,)
 ESTADOS_INCUMPLIDOS = (EstadoTareaItem.NO_REALIZADO, EstadoTareaItem.VENCIDO)
 
-# RESUELTO es el estado de cierre de los registros previos a la HDU #39
+# RESUELTO es el estado de cierre de los registros previos
 ESTADOS_INCIDENTE_CERRADO = (EstadoIncidente.CERRADO, EstadoIncidente.RESUELTO)
 
 ETIQUETAS_MOTIVO = {

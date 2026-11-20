@@ -57,10 +57,10 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
   const [formato, setFormato] =
     useState<FormatoDeclaracionAditivos>("ins_y_nombre");
   const [items, setItems] = useState<ItemIngrediente[]>([]);
-  const [ajustadoManualmente, setAjustadoManualmente] =
+  const [, setAjustadoManualmente] =
     useState<boolean>(false);
-  const [fechaAjuste, setFechaAjuste] = useState<string | null>(null);
-  const [usuarioAjuste, setUsuarioAjuste] = useState<string | null>(null);
+  const [, setFechaAjuste] = useState<string | null>(null);
+  const [, setUsuarioAjuste] = useState<string | null>(null);
   const [textoRotulo, setTextoRotulo] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [exitoMsg, setExitoMsg] = useState<string | null>(null);
@@ -1138,7 +1138,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                   <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
                     label
                   </span>
-                  <span>Ver Rótulo Completo (HDU #87)</span>
+                  <span>Ver Rótulo Completo</span>
                   <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
                     arrow_forward
                   </span>
