@@ -760,4 +760,21 @@ def test_generar_pdf_tabla_nutricional(session: Session):
         services.generar_pdf_tabla_nutricional(session, prod.id, incluir_leyenda=False)
     assert "No se permite exportar la tabla nutricional sin la leyenda obligatoria" in str(exc_info.value.detail)
 
+    # 3. Generación de Imagen (PNG y JPEG) con leyenda obligatoria
+    png_bytes = services.generar_imagen_tabla_nutricional(session, prod.id, formato="png", incluir_leyenda=True)
+    assert isinstance(png_bytes, bytes)
+    assert png_bytes.startswith(b"\x89PNG")
+    assert len(png_bytes) > 1000
+
+    jpeg_bytes = services.generar_imagen_tabla_nutricional(session, prod.id, formato="jpeg", incluir_leyenda=True)
+    assert isinstance(jpeg_bytes, bytes)
+    assert jpeg_bytes.startswith(b"\xff\xd8")
+    assert len(jpeg_bytes) > 1000
+
+    # 4. Validación de imagen: no permitir exportar sin leyenda obligatoria
+    with pytest.raises(services.NutricionException) as exc_info_img:
+        services.generar_imagen_tabla_nutricional(session, prod.id, incluir_leyenda=False)
+    assert "No se permite exportar la tabla nutricional sin la leyenda obligatoria" in str(exc_info_img.value.detail)
+
+
 

@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
 import { descargarPDF } from '../../utils/exportarPdf';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
+import type { FormatoGrafico } from '../../utils/exportarGraficos';
 import type { InformacionNutricional, ParametroRedondeo, VerificacionReferencia, IngredienteIncompleto } from './tipos';
 
 const LEYENDA_REVISION_PROFESIONAL =
@@ -35,7 +38,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
   const [porcionesEnvase, setPorcionesEnvase] = useState<number | null>(null);
   const [descPorcion, setDescPorcion] = useState<string>('');
   const [guardandoPorcion, setGuardandoPorcion] = useState(false);
-  const [exportandoPdf, setExportandoPdf] = useState(false);
+  const [exportModalAbierto, setExportModalAbierto] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [paramEditando, setParamEditando] = useState<ParametroRedondeo | null>(null);
   const [guardandoParam, setGuardandoParam] = useState(false);
   const [ingredientesIncompletos, setIngredientesIncompletos] = useState<IngredienteIncompleto[]>([]);
@@ -201,21 +205,216 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
     }
   };
 
-  const exportarAPdf = async () => {
-    if (!esAdministrador) return;
+  const exportarTablaAImagen = async (
+    infoTabla: InformacionNutricional,
+    nombreProd: string,
+    formato: 'png' | 'jpeg',
+    medidaCaseraTexto: string
+  ) => {
+    const scale = 2;
+    const width = 640;
+
+    const paddingX = 28;
+    const paddingY = 24;
+    const altoTitulo = 36;
+    const altoSubtitulo = 22;
+    const altoAlerta = infoTabla.es_incompleta ? 28 : 0;
+    const altoPorcion = 26;
+    const altoHeaderTabla = 32;
+    const altoFilas = infoTabla.tabla_nutricional.length * 25;
+    const altoPieCaa = 36;
+    const altoLeyenda = 65;
+    const totalHeight =
+      paddingY * 2 +
+      altoTitulo +
+      altoSubtitulo +
+      altoAlerta +
+      altoPorcion +
+      altoHeaderTabla +
+      altoFilas +
+      altoPieCaa +
+      altoLeyenda +
+      16;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = totalHeight * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('No se pudo inicializar el lienzo para generar la imagen.');
+
+    ctx.scale(scale, scale);
+
+    // Fondo blanco nítido
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, totalHeight);
+
+    // Borde exterior tipo panel de rótulo
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(14, 12, width - 28, totalHeight - 24);
+
+    let y = paddingY + 10;
+
+    // Título "INFORMACIÓN NUTRICIONAL"
+    ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'left';
+    ctx.fillText('INFORMACIÓN NUTRICIONAL', paddingX, y);
+    y += 6;
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(paddingX, y, width - paddingX * 2, 2.5);
+    y += 18;
+
+    // Nombre del producto
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#334155';
+    ctx.fillText(`Producto: ${nombreProd}`, paddingX, y);
+    y += 16;
+
+    if (infoTabla.es_incompleta) {
+      ctx.fillStyle = '#b91c1c';
+      ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillText('⚠️ ADVERTENCIA: Tabla calculada con datos nutricionales incompletos', paddingX, y);
+      y += 18;
+    }
+
+    // Porción y medida casera
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    const porcEnvTexto = infoTabla.porciones_por_envase
+      ? ` · Porciones por envase: aprox. ${infoTabla.porciones_por_envase}`
+      : '';
+    ctx.fillText(`Porción: ${infoTabla.tamano_porcion_g} g (${medidaCaseraTexto})${porcEnvTexto}`, paddingX, y);
+    y += 14;
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(paddingX, y, width - paddingX * 2, 1.5);
+    y += 18;
+
+    // Encabezados de columna
+    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'left';
+    ctx.fillText('Nutriente', paddingX, y);
+    ctx.textAlign = 'right';
+    ctx.fillText('Por 100 g', 320, y);
+    ctx.fillText(`Porción (${infoTabla.tamano_porcion_g} g)`, 460, y);
+    ctx.fillText('% VD (*)', width - paddingX, y);
+    y += 8;
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(paddingX, y);
+    ctx.lineTo(width - paddingX, y);
+    ctx.stroke();
+    y += 16;
+
+    // Filas de nutrientes
+    infoTabla.tabla_nutricional.forEach((f) => {
+      const esSub = ['azucares_totales', 'azucares_anadidos', 'grasas_saturadas', 'grasas_trans'].includes(
+        f.nutriente
+      );
+      ctx.textAlign = 'left';
+      ctx.font = esSub
+        ? 'normal 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif'
+        : 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillStyle = esSub ? '#475569' : '#0f172a';
+      const indentX = esSub ? paddingX + 16 : paddingX;
+      ctx.fillText(f.nombre_mostrar, indentX, y);
+
+      ctx.textAlign = 'right';
+      ctx.font = 'normal 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText(`${f.valor_100g_formateado} ${f.unidad}`, 320, y);
+
+      ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(`${f.valor_porcion_formateado} ${f.unidad}`, 460, y);
+
+      ctx.font = 'normal 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText(f.vd_formateado, width - paddingX, y);
+
+      y += 5;
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.beginPath();
+      ctx.moveTo(paddingX, y);
+      ctx.lineTo(width - paddingX, y);
+      ctx.stroke();
+      y += 18;
+    });
+
+    // Nota reglamentaria CAA
+    y += 4;
+    ctx.textAlign = 'left';
+    ctx.font = 'italic 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(
+      '(*) % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser',
+      paddingX,
+      y
+    );
+    y += 12;
+    ctx.fillText('mayores o menores según sus necesidades energéticas (Código Alimentario Argentino).', paddingX, y);
+    y += 14;
+
+    // CUADRO DESTACADO CON LA LEYENDA OBLIGATORIA DE REVISIÓN PROFESIONAL
+    const boxW = width - paddingX * 2;
+    const boxH = 48;
+    ctx.fillStyle = '#fef2f2';
+    ctx.fillRect(paddingX, y, boxW, boxH);
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(paddingX, y, boxW, boxH);
+
+    ctx.fillStyle = '#991b1b';
+    ctx.font = 'bold 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillText('⚠️ AVISO OBLIGATORIO DE REVISIÓN:', paddingX + 10, y + 17);
+    ctx.font = 'normal 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillText(LEYENDA_REVISION_PROFESIONAL, paddingX + 10, y + 33);
+
+    const mimeType = formato === 'jpeg' ? 'image/jpeg' : 'image/png';
+    const quality = formato === 'jpeg' ? 0.95 : 1.0;
+    const dataUrl = canvas.toDataURL(mimeType, quality);
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `informacion_nutricional_${infoTabla.producto_id}.${formato}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const handleConfirmarExportacion = async (formato: FormatoGrafico) => {
+    if (!esAdministrador || !info) return;
     // Validación: No permitir exportar sin la leyenda
     if (!LEYENDA_REVISION_PROFESIONAL) {
       setError('No se permite exportar la tabla nutricional sin la leyenda obligatoria.');
       return;
     }
-    setExportandoPdf(true);
+    setExportando(true);
     setError(null);
     try {
-      await descargarPDF(`/nutricion/productos/${productoId}/exportar-pdf`, `informacion_nutricional_${productoId}.pdf`);
+      if (formato === 'pdf') {
+        await descargarPDF(
+          `/nutricion/productos/${productoId}/exportar-pdf`,
+          `informacion_nutricional_${productoId}.pdf`
+        );
+      } else {
+        await exportarTablaAImagen(
+          info,
+          nombreProducto,
+          formato,
+          medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción'
+        );
+      }
+      setExportModalAbierto(false);
+      setMensajeExito(`Tabla nutricional exportada exitosamente en formato ${formato.toUpperCase()}.`);
     } catch (err: any) {
-      setError(err.message || 'Error al exportar la tabla nutricional a PDF.');
+      setError(err.message || 'Error al exportar la tabla nutricional.');
     } finally {
-      setExportandoPdf(false);
+      setExportando(false);
     }
   };
 
@@ -1487,45 +1686,37 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <button
                         type="button"
-                        onClick={exportarAPdf}
-                        disabled={exportandoPdf}
+                        onClick={() => setExportModalAbierto(true)}
+                        disabled={exportando}
+                        className="btn-cancelar"
                         style={{
-                          backgroundColor: '#b91c1c',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '0.45rem 0.85rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: exportando ? 'not-allowed' : 'pointer',
                           fontSize: '0.85rem',
                           fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          cursor: exportandoPdf ? 'not-allowed' : 'pointer',
-                          opacity: exportandoPdf ? 0.7 : 1,
+                          padding: '0.45rem 0.85rem',
+                          borderRadius: '6px',
                         }}
-                        title="Exportar la tabla nutricional a PDF con la leyenda reglamentaria obligatoria"
+                        title="Exportar la tabla nutricional en PNG, JPEG o PDF"
                       >
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                          picture_as_pdf
-                        </span>
-                        {exportandoPdf ? 'Exportando...' : 'Exportar PDF'}
+                        <ExportIcon size={17} /> Exportar Tabla
                       </button>
 
                       <button
                         type="button"
                         onClick={imprimirTabla}
+                        className="btn-cancelar"
                         style={{
-                          backgroundColor: '#334155',
-                          color: '#f8fafc',
-                          border: '1px solid #475569',
-                          borderRadius: '6px',
-                          padding: '0.45rem 0.85rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
                           fontSize: '0.85rem',
                           fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          cursor: 'pointer',
+                          padding: '0.45rem 0.85rem',
+                          borderRadius: '6px',
                         }}
                         title="Imprimir la tabla de rotulado nutricional junto con la leyenda obligatoria"
                       >
@@ -1769,6 +1960,19 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
           </button>
         </div>
       </div>
+
+      {info && (
+        <ConfirmExportGraficoDialog
+          open={exportModalAbierto}
+          tituloModal="Exportar Tabla Nutricional"
+          tituloGrafico={`Información Nutricional - ${nombreProducto}`}
+          iconoCard="📋"
+          filtrosAplicados={`Porción: ${info.tamano_porcion_g} g (${medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción'}) · Incluye leyenda obligatoria de revisión`}
+          loading={exportando}
+          onConfirm={handleConfirmarExportacion}
+          onCancel={() => setExportModalAbierto(false)}
+        />
+      )}
     </div>
   );
 };

@@ -1171,4 +1171,87 @@ def generar_pdf_tabla_nutricional(
 
     return pdf_bytes
 
+def generar_imagen_tabla_nutricional(
+    db: Session,
+    producto_id: int,
+    formato: str = "png",
+    incluir_leyenda: bool = True,
+) -> bytes:
+    # Validación: No permitir exportar sin la leyenda obligatoria
+    if not incluir_leyenda:
+        raise NutricionException(
+            "No se permite exportar la tabla nutricional sin la leyenda obligatoria de revisión profesional.",
+            status_code=400,
+        )
+
+    info = obtener_informacion_nutricional_producto(db, producto_id)
+    producto = db.get(Producto, producto_id)
+    nombre_prod = producto.nombre if producto else info.nombre_producto
+
+    from PIL import Image, ImageDraw
+
+    width = 650
+    height = 700 + (30 if info.es_incompleta else 0)
+    img = Image.new("RGB", (width, height), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
+
+    # Marco
+    draw.rectangle([(15, 15), (width - 15, height - 15)], outline=(15, 23, 42), width=2)
+
+    y = 30
+    draw.text((30, y), "INFORMACIÓN NUTRICIONAL", fill=(15, 23, 42))
+    y += 24
+    draw.line([(30, y), (width - 30, y)], fill=(15, 23, 42), width=2)
+    y += 12
+    draw.text((30, y), f"Producto: {nombre_prod}", fill=(51, 65, 85))
+    y += 20
+
+    if info.es_incompleta:
+        draw.text((30, y), "ADVERTENCIA: Tabla calculada con datos nutricionales incompletos", fill=(185, 28, 28))
+        y += 20
+
+    medida = info.medida_casera or info.descripcion_porcion or "1 porción"
+    porc_envase = f" | Porciones por envase: aprox. {info.porciones_por_envase}" if info.porciones_por_envase else ""
+    draw.text((30, y), f"Porción: {info.tamano_porcion_g:g} g ({medida}){porc_envase}", fill=(15, 23, 42))
+    y += 18
+    draw.line([(30, y), (width - 30, y)], fill=(15, 23, 42), width=1)
+    y += 12
+
+    # Encabezados
+    draw.text((30, y), "Nutriente", fill=(15, 23, 42))
+    draw.text((320, y), "Por 100 g", fill=(15, 23, 42))
+    draw.text((430, y), f"Porción ({info.tamano_porcion_g:g} g)", fill=(15, 23, 42))
+    draw.text((560, y), "% VD (*)", fill=(15, 23, 42))
+    y += 18
+    draw.line([(30, y), (width - 30, y)], fill=(203, 213, 225), width=1)
+    y += 10
+
+    # Filas
+    for item in info.tabla_nutricional:
+        es_sub = item.nutriente in ["azucares_totales", "azucares_anadidos", "grasas_saturadas", "grasas_trans"]
+        indent = 45 if es_sub else 30
+        draw.text((indent, y), item.nombre_mostrar, fill=(71, 85, 105) if es_sub else (15, 23, 42))
+        draw.text((320, y), f"{item.valor_100g_formateado} {item.unidad}", fill=(51, 65, 85))
+        draw.text((430, y), f"{item.valor_porcion_formateado} {item.unidad}", fill=(15, 23, 42))
+        draw.text((560, y), item.vd_formateado, fill=(51, 65, 85))
+        y += 20
+        draw.line([(30, y - 2), (width - 30, y - 2)], fill=(241, 245, 249), width=1)
+
+    y += 8
+    draw.text((30, y), "(*) % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ.", fill=(100, 116, 139))
+    y += 18
+
+    # Cuadro con Leyenda Obligatoria
+    draw.rectangle([(30, y), (width - 30, y + 50)], fill=(254, 242, 242), outline=(239, 68, 68), width=2)
+    draw.text((40, y + 8), "AVISO OBLIGATORIO DE REVISIÓN:", fill=(153, 27, 27))
+    draw.text((40, y + 26), LEYENDA_REVISION_PROFESIONAL, fill=(153, 27, 27))
+
+    buffer = io.BytesIO()
+    fmt_pil = "JPEG" if formato.lower() in ["jpg", "jpeg"] else "PNG"
+    img.save(buffer, format=fmt_pil, quality=95)
+    img_bytes = buffer.getvalue()
+    buffer.close()
+
+    return img_bytes
+
 

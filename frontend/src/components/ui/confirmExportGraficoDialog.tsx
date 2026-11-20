@@ -11,6 +11,8 @@ interface ConfirmExportGraficoDialogProps {
   loading?: boolean;
   onConfirm: (formato: FormatoGrafico) => void;
   onCancel: () => void;
+  tituloModal?: string;
+  iconoCard?: string;
 }
 
 export const ConfirmExportGraficoDialog: React.FC<ConfirmExportGraficoDialogProps> = ({
@@ -21,6 +23,8 @@ export const ConfirmExportGraficoDialog: React.FC<ConfirmExportGraficoDialogProp
   loading = false,
   onConfirm,
   onCancel,
+  tituloModal,
+  iconoCard,
 }) => {
   const [formato, setFormato] = useState<FormatoGrafico>('png');
 
@@ -66,7 +70,7 @@ export const ConfirmExportGraficoDialog: React.FC<ConfirmExportGraficoDialogProp
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
           <ExportIcon size={22} style={{ color: 'var(--color-primario-texto, #2b6cb0)' }} />
           <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-texto, #1a202c)' }}>
-            Exportar {cantidadGraficos > 1 ? 'Gráficos Consolidados' : 'Gráfico'}
+            {tituloModal || (cantidadGraficos > 1 ? 'Exportar Gráficos Consolidados' : 'Exportar Gráfico')}
           </h3>
         </div>
 
@@ -135,7 +139,7 @@ export const ConfirmExportGraficoDialog: React.FC<ConfirmExportGraficoDialogProp
             }}
           >
             <div style={{ fontWeight: 600, color: 'var(--color-texto, #2d3748)', fontSize: '0.85rem' }}>
-              📈 {tituloGrafico}
+              {iconoCard || '📈'} {tituloGrafico}
             </div>
             {filtrosAplicados && (
               <div style={{ fontSize: '0.8rem', color: 'var(--color-texto-sec, #718096)', marginTop: '3px' }}>

@@ -283,6 +283,45 @@ def exportar_tabla_nutricional_pdf(
     return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
 
 @router.get(
+    "/nutricion/productos/{producto_id}/exportar-imagen",
+    dependencies=[Depends(requiere_admin)],
+)
+def exportar_tabla_nutricional_imagen(
+    producto_id: int,
+    formato: str = "png",
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    fmt = "jpeg" if formato.lower() in ["jpg", "jpeg"] else "png"
+    img_bytes = services.generar_imagen_tabla_nutricional(db, producto_id, formato=fmt, incluir_leyenda=True)
+    media_type = f"image/{fmt}"
+    headers = {
+        "Content-Disposition": f'attachment; filename="informacion_nutricional_{producto_id}.{fmt}"',
+        "Access-Control-Expose-Headers": "Content-Disposition",
+    }
+    return Response(content=img_bytes, media_type=media_type, headers=headers)
+
+@router.get(
+    "/productos/{producto_id}/exportar-imagen-nutricional",
+    dependencies=[Depends(requiere_admin)],
+)
+def exportar_tabla_nutricional_imagen_alias(
+    producto_id: int,
+    formato: str = "png",
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    fmt = "jpeg" if formato.lower() in ["jpg", "jpeg"] else "png"
+    img_bytes = services.generar_imagen_tabla_nutricional(db, producto_id, formato=fmt, incluir_leyenda=True)
+    media_type = f"image/{fmt}"
+    headers = {
+        "Content-Disposition": f'attachment; filename="informacion_nutricional_{producto_id}.{fmt}"',
+        "Access-Control-Expose-Headers": "Content-Disposition",
+    }
+    return Response(content=img_bytes, media_type=media_type, headers=headers)
+
+
+@router.get(
     "/productos/{producto_id}/exportar-pdf-nutricional",
     dependencies=[Depends(requiere_admin)],
 )
@@ -297,4 +336,6 @@ def exportar_tabla_nutricional_pdf_alias(
         "Access-Control-Expose-Headers": "Content-Disposition",
     }
     return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+
+
 
