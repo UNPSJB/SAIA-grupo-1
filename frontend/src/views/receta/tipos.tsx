@@ -22,7 +22,7 @@ export type EstadoGeneralRecetaChecklist =
   | 'vencido';
 
 export interface RecetaDetalle {
-  ingrediente_id: number;
+  tipo_insumo_id?: number | null;
   nombre: string;
   cantidad: number;
   unidad_medida: string;
@@ -39,7 +39,7 @@ export interface RecetaDetalleConId extends RecetaDetalle {
 }
 
 export interface RecetaDetalleForm {
-  ingrediente_id: number | '';
+  tipo_insumo_id: number | '';
   nombre: string;
   cantidad: number | '';
   unidad_medida: string;

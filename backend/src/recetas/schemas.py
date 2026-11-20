@@ -27,7 +27,6 @@ class ValorControlRegistrado(BaseModel):
 
 
 class RecetaDetalleBase(BaseModel):
-    ingrediente_id: Optional[int] = None
     tipo_insumo_id: Optional[int] = None
     aditivo_id: Optional[int] = None
     nombre: str = Field(max_length=50)
@@ -61,8 +60,7 @@ class RecetaDetalleCreate(RecetaDetalleBase):
     @model_validator(mode="after")
     def validar_reglas_aditivo(self) -> "RecetaDetalleCreate":
         if (
-            self.ingrediente_id is None
-            and self.tipo_insumo_id is None
+            self.tipo_insumo_id is None
             and self.aditivo_id is None
             and self.unidad_medida_id is None
             and not self.unidad_medida

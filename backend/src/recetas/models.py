@@ -184,7 +184,6 @@ class RecetaDetalle(ModeloBase):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     nombre: Mapped[str] = mapped_column(String(50), index=True, nullable=False)
     version_receta_id: Mapped[int] = mapped_column(ForeignKey("versiones_receta.id"), index=True, nullable=False)
-    ingrediente_id: Mapped[Optional[int]] = mapped_column(ForeignKey("insumos.id"), index=True, nullable=True)
     tipo_insumo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tipos_insumos.id"), index=True, nullable=True)
     aditivo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("aditivos.id"), index=True, nullable=True)
     cantidad: Mapped[float] = mapped_column(index=True, nullable=False)
@@ -205,10 +204,6 @@ class RecetaDetalle(ModeloBase):
 
     unidad_medida_rel: Mapped["UnidadMedida"] = relationship(
         "src.unidadesMedida.models.UnidadMedida", lazy="joined"
-    )
-    ingrediente: Mapped[Optional["Insumo"]] = relationship(
-        "Insumo",
-        foreign_keys=[ingrediente_id],
     )
     tipo_insumo: Mapped[Optional["TipoInsumo"]] = relationship(
         "TipoInsumo",
@@ -251,8 +246,6 @@ class RecetaDetalle(ModeloBase):
             return self.tipo_insumo.nombre
         if self.aditivo:
             return self.aditivo.nombre
-        if self.ingrediente:
-            return self.ingrediente.nombre
         return "Desconocido"
 
     @property

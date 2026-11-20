@@ -244,6 +244,38 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
         </div>
       </div>
 
+      <div>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Alérgenos Declarados</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+            {detalle.alergenos && detalle.alergenos.length > 0 ? (
+              detalle.alergenos.map((alg) => (
+                <span
+                  key={alg.id}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    color: '#2563eb',
+                    border: '1px solid rgba(37, 99, 235, 0.2)',
+                  }}
+                >
+                  {alg.simbolo && (
+                    <img src={alg.simbolo} alt={alg.nombre} style={{ width: '14px', height: '14px', objectFit: 'contain' }} />
+                  )}
+                  {alg.nombre}
+                </span>
+              ))
+            ) : (
+              <span style={{ fontSize: '13px', color: 'var(--color-texto-sec)' }}>Ninguno</span>
+            )}
+          </div>
+        </div>
+
       <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Historial de Lotes Recibidos</h2>
 
       <div className="tabla-wrapper">

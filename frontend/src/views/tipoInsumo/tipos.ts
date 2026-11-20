@@ -11,7 +11,11 @@ export interface LoteInsumoHistorico {
   activo: boolean;
   proveedor_nombre: string | null;
 }
-
+export interface AlergenoSimple {
+  id: number;
+  nombre: string;
+  simbolo?: string | null;
+}
 export interface TipoInsumo {
   id: number;
   nombre: string;
@@ -30,6 +34,8 @@ export interface TipoInsumo {
   cantidad_lotes?: number;
   total_lotes?: number;
   stock_total?: number;
+  alergenos?: AlergenoSimple[];
+  nombres_alergenos?: string;
 }
 
 export interface TipoInsumoDetalle extends TipoInsumo {
@@ -46,4 +52,5 @@ export interface TipoInsumoForm {
   es_aditivo?: boolean;
   clase_funcional?: string;
   numero_ins?: string;
+  alergeno_ids?: number[];
 }

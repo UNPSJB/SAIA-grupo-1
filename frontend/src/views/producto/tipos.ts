@@ -3,10 +3,17 @@ export interface DocumentoReceta {
   titulo: string;
   tipo: string;
 }
+export interface AlergenoItem {
+  id: number;
+  nombre: string;
+}
 
 export interface Producto {
   nombre: string;
   descripcion?: string;
+  conservacion?:string; 
+  alergenos_precaucion_ids?: number[];
+  alergenos_precaucion?: AlergenoItem[];
   unidad_medida_id?: number | null;
   unidadMedida: string;
   unidad_medida_nombre?: string | null;

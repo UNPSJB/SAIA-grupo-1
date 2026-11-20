@@ -570,7 +570,7 @@ def obtener_o_crear_borrador(
         pais_origen="Industria Argentina",
         lote=cod_lote,
         fecha_duracion="Consumir preferentemente antes de la fecha indicada en el envase",
-        instrucciones_conservacion="Conservar en lugar fresco, seco y protegido de la luz directa",
+        instrucciones_conservacion=producto.conservacion,
         modo_empleo=None,
         porcion=None,
         porciones_por_envase=None,
@@ -1217,13 +1217,81 @@ def generar_filas_tabla_nutricional(
     return filas
 
 
+def calcular_declaracion_alergenos(db: Session, producto_id: int) -> dict:
+    """
+    Analiza la receta vigente del producto (CONTIENE) y los alérgenos de precaución
+    configurados en el producto (PUEDE CONTENER) para armar las leyendas de rotulado.
+    """
+    from src.recetas.models import Receta
+
+    receta = db.scalar(
+        select(Receta).where(Receta.id_producto == producto_id, Receta.activo == True)
+    )
+    producto = db.get(Producto, producto_id)
+
+    alergenos_encontrados = set()
+    contiene_gluten = False
+
+    if receta and receta.version_vigente:
+        for detalle in receta.version_vigente.detalles:
+            tipo_insumo = getattr(detalle, "tipo_insumo", None)
+            if tipo_insumo and hasattr(tipo_insumo, "alergenos"):
+                for alg in tipo_insumo.alergenos:
+                    if alg and alg.nombre:
+                        nombre_alg = alg.nombre.strip().upper()
+                        alergenos_encontrados.add(nombre_alg)
+                        if "GLUTEN" in nombre_alg or "TRIGO" in nombre_alg:
+                            contiene_gluten = True
+
+            insumo = getattr(detalle, "insumo", None)
+            if insumo:
+                if getattr(insumo, "contiene_gluten", False):
+                    contiene_gluten = True
+                for alg in getattr(insumo, "alergenos", []):
+                    if alg and alg.nombre:
+                        alergenos_encontrados.add(alg.nombre.strip().upper())
+
+    # Alérgenos de precaución / contaminación cruzada configurados en Producto
+    precaucion_encontrados = set()
+    if producto and hasattr(producto, "alergenos_precaucion"):
+        for alg in producto.alergenos_precaucion or []:
+            if alg and alg.nombre:
+                nombre_alg = alg.nombre.strip().upper()
+                # Si ya está declarado como CONTIENE, no hace falta repetirlo en PUEDE CONTENER
+                if nombre_alg not in alergenos_encontrados:
+                    precaucion_encontrados.add(nombre_alg)
+
+    elementos_contiene = sorted(list(alergenos_encontrados))
+    elementos_puede_contener = sorted(list(precaucion_encontrados))
+
+    if elementos_contiene:
+        texto_contiene = f"CONTIENE: {', '.join(elementos_contiene)}."
+    else:
+        texto_contiene = "SIN ALÉRGENOS DECLARADOS."
+
+    texto_puede_contener = (
+        f"PUEDE CONTENER: {', '.join(elementos_puede_contener)}."
+        if elementos_puede_contener
+        else None
+    )
+
+    return {
+        "contiene_gluten": contiene_gluten,
+        "alergenos_lista": elementos_contiene,
+        "texto_contiene_alergenos": texto_contiene,
+        "puede_contener_lista": elementos_puede_contener,
+        "texto_puede_contener": texto_puede_contener,
+    }
+
 def mapear_respuesta_borrador(
-    borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
+    db: Session, borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
 ) -> schemas.BorradorRotuloResponse:
     prod_nom = borrador.producto.nombre if borrador.producto else ""
     texto_ingredientes = (
         lista.texto_rotulo if lista and lista.texto_rotulo else None
     )
+
+    info_alergenos = calcular_declaracion_alergenos(db, borrador.producto_id)
     tiene_ingr = bool(lista and lista.items and len(lista.items) > 0)
 
     octogonos, tiene_oct, msg_oct = calcular_octogonos_e12(borrador, lista)
@@ -1252,6 +1320,8 @@ def mapear_respuesta_borrador(
         modo_empleo=borrador.modo_empleo,
         lista_ingredientes_texto=texto_ingredientes,
         tiene_lista_ingredientes=tiene_ingr,
+        texto_alergenos=info_alergenos["texto_contiene_alergenos"],
+        texto_puede_contener=info_alergenos["texto_puede_contener"],
         porcion=borrador.porcion,
         porciones_por_envase=borrador.porciones_por_envase,
         valor_energetico_kcal=borrador.valor_energetico_kcal,
@@ -1305,7 +1375,13 @@ def exportar_borrador(
 
     borrador = obtener_o_crear_borrador(db, producto_id)
     lista = obtener_lista_rotulo(db, producto_id)
-    datos_rotulo = mapear_respuesta_borrador(borrador, lista)
+    datos_rotulo = mapear_respuesta_borrador(db, borrador, lista)
+
+    # Obtenemos el texto formateado de alérgenos calculados a partir de la receta vigente
+    info_alergenos = calcular_declaracion_alergenos(db, producto_id)
+    alergenos_html = f'<div style="margin-top: 6px; font-weight: 800; text-transform: uppercase;">{info_alergenos["texto_contiene_alergenos"]}</div>'
+    if info_alergenos.get("texto_puede_contener"):
+        alergenos_html += f'<div style="margin-top: 4px; font-weight: 700; text-transform: uppercase;">{info_alergenos["texto_puede_contener"]}</div>'
 
     octogonos_html = ""
     if datos_rotulo.tiene_octogonos:
@@ -1399,7 +1475,8 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Aria
         <div>
             <div class="seccion-titulo">Información del Producto</div>
             <div class="texto-regular">
-                <strong>Ingredientes:</strong> {ingredientes_html}<br><br>
+                <strong>Ingredientes:</strong> {ingredientes_html}<br>
+                {alergenos_html}<br>
                 <strong>Elaborado por:</strong> {datos_rotulo.razon_social or 'No especificada'}<br>
                 <strong>Dirección:</strong> {datos_rotulo.direccion_origen or 'No especificada'}<br>
                 <strong>Origen:</strong> {datos_rotulo.pais_origen}<br>
@@ -1434,5 +1511,3 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Aria
         leyenda_incluida=True,
         timestamp=datetime.now(),
     )
-
-

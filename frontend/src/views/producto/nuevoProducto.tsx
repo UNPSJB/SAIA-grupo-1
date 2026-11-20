@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import type { Producto } from "./tipos";
+import type { Producto, AlergenoItem } from "./tipos";
 import type { UnidadMedidaItem } from "../unidadesMedida/tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
@@ -20,6 +20,8 @@ const PRODUCTO_INICIAL: Producto = {
   peso_unidad_g: null,
   aplica_rotulado: true,
   activo: true,
+  conservacion:"",
+  alergenos_precaucion_ids:[],
 };
 
 interface NuevoProductoProps {
@@ -35,18 +37,21 @@ export default function NuevoProducto({ onSuccess, onCancel }: NuevoProductoProp
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [exitoDialogAbierto, setExitoDialogAbierto] = useState(false);
+  const [alergenos, setAlergenos] = useState<AlergenoItem[]>([]);
 
   useEffect(() => {
     let cancelado = false;
     async function cargarCatalogos() {
       try {
-        const [resRecetas, resUnidades] = await Promise.all([
+        const [resRecetas, resUnidades, resAlergenos] = await Promise.all([
           apiFetch("/recetas/"),
           apiFetch("/unidades-medida/?solo_activos=true"),
+          apiFetch("/alergenos/"),
         ]);
         if (!cancelado) {
           setRecetas(resRecetas.ok ? await resRecetas.json() : []);
           setUnidades(resUnidades.ok ? await resUnidades.json() : []);
+          setAlergenos(resAlergenos.ok ? await resAlergenos.json() : []);
         }
       } catch {
         if (!cancelado) {
@@ -93,6 +98,8 @@ export default function NuevoProducto({ onSuccess, onCancel }: NuevoProductoProp
     const payload = {
       nombre: nombreLimpio,
       descripcion: producto.descripcion?.trim() || null,
+      conservacion: producto.conservacion?.trim() || null,
+      alergenos_precaucion_ids: producto.alergenos_precaucion_ids || [],
       unidad_medida_id: Number(producto.unidad_medida_id),
       id_receta: producto.id_receta ? Number(producto.id_receta) : null,
       peso_unidad_g: producto.peso_unidad_g && Number(producto.peso_unidad_g) > 0 ? Number(producto.peso_unidad_g) : null,
@@ -130,6 +137,19 @@ export default function NuevoProducto({ onSuccess, onCancel }: NuevoProductoProp
       setLoading(false);
     }
   }
+
+function toggleAlergenoPrecaucion(alergenoId: number) {
+  setProducto((prev) => {
+    const actuales = prev.alergenos_precaucion_ids || [];
+    const existe = actuales.includes(alergenoId);
+    return {
+      ...prev,
+      alergenos_precaucion_ids: existe
+        ? actuales.filter((id) => id !== alergenoId)
+        : [...actuales, alergenoId],
+    };
+  });
+}
 
   function handleCancelar() {
     setProducto(PRODUCTO_INICIAL);
@@ -254,6 +274,54 @@ export default function NuevoProducto({ onSuccess, onCancel }: NuevoProductoProp
             value={producto.descripcion || ""}
             onChange={handleChange}
             maxLength={100}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Alérgenos por Posible Contaminación Cruzada ("Puede contener")</label>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+              gap: "8px",
+              marginTop: "6px",
+            }}
+          >
+            {alergenos.map((alg) => {
+              const checked = (producto.alergenos_precaucion_ids || []).includes(alg.id);
+              return (
+                <label
+                  key={alg.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleAlergenoPrecaucion(alg.id)}
+                  />
+                  <span>{alg.nombre}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="conservacion">Condiciones de Conservación (Opcional)</label>
+          <input
+            id="conservacion"
+            name="conservacion"
+            type="text"
+            placeholder="Ej: Conservar en lugar fresco y seco"
+            value={producto.conservacion || ""}
+            onChange={handleChange}
+            maxLength={200}
           />
         </div>
 

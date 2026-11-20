@@ -1,3 +1,4 @@
+import re
 from typing import Optional, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.recetas.schemas import RecetaBase
@@ -13,11 +14,13 @@ class ProductoBase(BaseModel):
     descripcion_porcion: Optional[str] = None
     peso_unidad_g: Optional[float] = None
     aplica_rotulado: Optional[bool] = True
+    conservacion:Optional[str] = None
 
 class ProductoCreate(ProductoBase):
     id_receta: Optional[int] = None
     receta: Optional[RecetaBase] = None
-    
+    alergenos_precaucion_ids: Optional[list[int]]= None
+
     @field_validator('nombre')
     @classmethod
     def validar_nombre_no_vacio(cls, v: str) -> str:
@@ -34,6 +37,13 @@ class ProductoCreate(ProductoBase):
             raise exceptions.UnidadVacia
         return self
 
+    @field_validator("conservacion")
+    @classmethod
+    def validar_descripcion(cls, v: Optional[str]) -> Optional[str]:
+            if v and re.match(r"^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s°.,-]+$", v):  #este RE le permite al usuario ingresar comas, puntos numeros y espacios
+                        return v
+            raise exceptions.Conservacion_invalida()
+
 class ProductoUpdate(ProductoBase):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
@@ -46,6 +56,9 @@ class ProductoUpdate(ProductoBase):
     descripcion_porcion: Optional[str] = None
     peso_unidad_g: Optional[float] = None
     aplica_rotulado: Optional[bool] = None
+    alergenos_precaucion_ids:Optional[list[int]]=None
+    conservacion:Optional[str] = None
+
 
     @field_validator('nombre')
     @classmethod
@@ -56,6 +69,13 @@ class ProductoUpdate(ProductoBase):
                 raise exceptions.NombreVacio
             return v_limpio
         return v
+
+    @field_validator("conservacion")
+    @classmethod
+    def validar_descripcion(cls, v: Optional[str]) -> Optional[str]:
+                if v and re.match(r"^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s°.,-]+$", v):  #este RE le permite al usuario ingresar comas, puntos numeros y espacios
+                            return v
+                raise exceptions.Conservacion_invalida()
 
 class ProductoResponse(ProductoBase):
     id: int = Field(ge=0)

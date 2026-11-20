@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from src.alergenos.models import Alergeno,tipos_insumos_alergenos
 from src.models import ModeloBase
 
 if TYPE_CHECKING:
@@ -58,6 +59,10 @@ class TipoInsumo(ModeloBase):
         "src.insumos.models.Insumo", back_populates="tipo"
     )
 
+    alergenos: Mapped[List["Alergeno"]] = relationship(
+        "Alergeno", secondary=tipos_insumos_alergenos, back_populates="tipos_insumos"
+    )
+
     @property
     def unidadMedida(self) -> str:
         if self.unidad_medida_rel:
@@ -75,6 +80,10 @@ class TipoInsumo(ModeloBase):
         if self.unidad_medida_rel:
             return self.unidad_medida_rel.abreviatura
         return ""
+
+    @property
+    def nombres_alergenos(self) -> str:
+     return ", ".join([a.nombre for a in self.alergenos]) if self.alergenos else ""
 
     @property
     def tiene_datos_nutricionales(self) -> bool:

@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
+from src.alergenos.models import Alergeno
 from src.tipoInsumo import exceptions, models, schemas
 from src.unidadesMedida.services import resolver_unidad_medida
 
@@ -90,6 +91,8 @@ def serializar_tipo_insumo(
         tiene_datos_nutricionales=bool(tipo.tiene_datos_nutricionales),
         modificado_manualmente=bool(tipo.modificado_manualmente),
         activo=tipo.activo,
+        alergenos=[schemas.AlergenoSimple.model_validate(a) for a in (tipo.alergenos or [])],
+        nombres_alergenos=tipo.nombres_alergenos,
         total_lotes=total_lotes,
         cantidad_lotes=total_lotes,
         stock_total=stock_total,
@@ -134,6 +137,10 @@ def crear_tipo_insumo(db: Session, datos: schemas.TipoInsumoCreate) -> models.Ti
         fecha_carga_nutricional=datetime.now() if datos.energia_kcal is not None or datos.fuente_datos else None,
         activo=True,
     )
+
+    if datos.alergeno_ids:
+        alergenos_db = list(db.scalars(select(Alergeno).where(Alergeno.id.in_(datos.alergeno_ids))).all())
+        tipo.alergenos = alergenos_db
     db.add(tipo)
     db.commit()
     db.refresh(tipo)
@@ -223,6 +230,11 @@ def actualizar_tipo_insumo(
         nombre_normalizado = normalizar_nombre(datos_dict["nombre"])
         validar_nombre_unico(db, nombre_normalizado, excluir_id=tipo_id)
         tipo.nombre = nombre_normalizado
+
+    if "alergeno_ids" in datos_dict and datos_dict["alergeno_ids"] is not None:
+        alergenos_db = list(db.scalars(select(Alergeno).where(Alergeno.id.in_(datos_dict["alergeno_ids"]))).all())
+        tipo.alergenos = alergenos_db
+        
     if "descripcion" in datos_dict:
         tipo.descripcion = datos_dict["descripcion"]
     if (
