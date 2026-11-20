@@ -19,6 +19,7 @@ from src.nutricion.schemas import (
     IngredienteIncompletoItem,
     CompletarIngredienteRequest,
     CompletarIngredienteResponse,
+    GuardarPorcionDeclaradaRequest,
     VerificacionReferenciaResponse,
     VerificacionReferenciaDetalle,
 )
@@ -75,6 +76,7 @@ def migrar_columnas_nutricionales(db: Session) -> None:
             ("tamano_porcion_g", "REAL"),
             ("porciones_por_envase", "REAL"),
             ("descripcion_porcion", "VARCHAR(100)"),
+            ("medida_casera", "VARCHAR(100)"),
         ]
         for col, tipo in columnas_a_agregar:
             if col not in columnas_prod:
@@ -82,8 +84,11 @@ def migrar_columnas_nutricionales(db: Session) -> None:
 
         res_info = conn.execute(text("PRAGMA table_info(informacion_nutricional_productos)"))
         columnas_info = {row[1] for row in res_info.fetchall()}
-        if columnas_info and "es_incompleta" not in columnas_info:
-            conn.execute(text("ALTER TABLE informacion_nutricional_productos ADD COLUMN es_incompleta BOOLEAN DEFAULT 0 NOT NULL"))
+        if columnas_info:
+            if "es_incompleta" not in columnas_info:
+                conn.execute(text("ALTER TABLE informacion_nutricional_productos ADD COLUMN es_incompleta BOOLEAN DEFAULT 0 NOT NULL"))
+            if "medida_casera" not in columnas_info:
+                conn.execute(text("ALTER TABLE informacion_nutricional_productos ADD COLUMN medida_casera VARCHAR(100)"))
 
         conn.commit()
 
@@ -374,6 +379,7 @@ def calcular_informacion_nutricional(
     tamano_porcion_g: Optional[float] = None,
     porciones_por_envase: Optional[float] = None,
     descripcion_porcion: Optional[str] = None,
+    medida_casera: Optional[str] = None,
     usuario_actual: Optional[str] = None,
     version_receta_id: Optional[int] = None,
 ) -> InformacionNutricionalResponse:
@@ -453,12 +459,21 @@ def calcular_informacion_nutricional(
         descripcion_porcion
         or getattr(producto, "descripcion_porcion", None)
     )
+    med_casera = (
+        medida_casera
+        or getattr(producto, "medida_casera", None)
+        or desc_porcion
+    )
+    if not desc_porcion and med_casera:
+        desc_porcion = med_casera
 
     setattr(producto, "tamano_porcion_g", porcion)
     if porciones_env is not None:
         setattr(producto, "porciones_por_envase", porciones_env)
     if desc_porcion is not None:
         setattr(producto, "descripcion_porcion", desc_porcion)
+    if med_casera is not None:
+        setattr(producto, "medida_casera", med_casera)
     db.commit()
 
     parametros = listar_parametros(db)
@@ -578,6 +593,7 @@ def calcular_informacion_nutricional(
             tamano_porcion_g=porcion,
             porciones_por_envase=porciones_env,
             descripcion_porcion=desc_porcion,
+            medida_casera=med_casera,
             rendimiento_final_receta=rendimiento_final,
             peso_total_ingredientes=peso_total_ingredientes,
             factor_rendimiento=factor_rendimiento,
@@ -595,6 +611,7 @@ def calcular_informacion_nutricional(
         info_existente.tamano_porcion_g = porcion
         info_existente.porciones_por_envase = porciones_env
         info_existente.descripcion_porcion = desc_porcion
+        info_existente.medida_casera = med_casera
         info_existente.rendimiento_final_receta = rendimiento_final
         info_existente.peso_total_ingredientes = peso_total_ingredientes
         info_existente.factor_rendimiento = factor_rendimiento
@@ -623,6 +640,7 @@ def calcular_informacion_nutricional(
         tamano_porcion_g=porcion,
         porciones_por_envase=porciones_env,
         descripcion_porcion=desc_porcion,
+        medida_casera=med_casera,
         rendimiento_final_receta=rendimiento_final,
         peso_total_ingredientes=peso_total_ingredientes,
         factor_rendimiento=factor_rendimiento,
@@ -668,6 +686,35 @@ def obtener_informacion_nutricional_producto(
     tabla_data = json.loads(info.valores_nutricionales_json)
     tabla_nutricional = [NutrienteFilaResponse(**item) for item in tabla_data]
 
+    # Validación: Mostrar siempre los nutrientes de declaración obligatoria (incluyendo azúcares)
+    nutrientes_presentes = {f.nutriente for f in tabla_nutricional}
+    parametros_def = {p.nutriente: p for p in listar_parametros(db)}
+    for campo_obligatorio in NUTRIENTES_CAMPOS:
+        if campo_obligatorio not in nutrientes_presentes:
+            param = parametros_def.get(campo_obligatorio)
+            if param:
+                txt_cero = param.texto_no_significativo or "0"
+                tabla_nutricional.append(
+                    NutrienteFilaResponse(
+                        nutriente=param.nutriente,
+                        nombre_mostrar=param.nombre_mostrar,
+                        unidad=param.unidad,
+                        valor_100g=0.0,
+                        valor_100g_formateado=txt_cero,
+                        valor_porcion=0.0,
+                        valor_porcion_formateado=txt_cero,
+                        vdr=param.vdr,
+                        vd_porcentaje=0.0 if param.vdr else None,
+                        vd_formateado="0%" if param.vdr else "-",
+                        es_no_significativo=True,
+                    )
+                )
+
+    # Ordenar por el orden definido en los parámetros
+    tabla_nutricional.sort(
+        key=lambda x: parametros_def[x.nutriente].orden if x.nutriente in parametros_def else 999
+    )
+
     detalles_data = (
         json.loads(info.detalles_ingredientes_json)
         if info.detalles_ingredientes_json
@@ -693,6 +740,7 @@ def obtener_informacion_nutricional_producto(
         tamano_porcion_g=info.tamano_porcion_g,
         porciones_por_envase=info.porciones_por_envase,
         descripcion_porcion=info.descripcion_porcion,
+        medida_casera=getattr(info, "medida_casera", None) or getattr(producto, "medida_casera", None) or info.descripcion_porcion,
         rendimiento_final_receta=info.rendimiento_final_receta,
         peso_total_ingredientes=info.peso_total_ingredientes,
         factor_rendimiento=info.factor_rendimiento,
@@ -854,3 +902,56 @@ def verificar_tolerancia_referencia_catedra(
         detalles_porcion=detalles_porcion,
         mensaje=mensaje,
     )
+
+def guardar_porcion_declarada(
+    db: Session,
+    producto_id: int,
+    datos: GuardarPorcionDeclaradaRequest,
+    usuario_actual: Optional[str] = None,
+) -> InformacionNutricionalResponse:
+    migrar_columnas_nutricionales(db)
+    producto = db.get(Producto, producto_id)
+    if not producto:
+        raise NutricionException("Producto no encontrado", status_code=404)
+
+    if not datos.tamano_porcion_g or datos.tamano_porcion_g <= 0:
+        raise PorcionInvalidaError("El tamaño de porción debe ser mayor a 0 gramos.")
+
+    medida = (datos.medida_casera or "").strip()
+    if not medida:
+        raise NutricionException("La medida casera declarada es obligatoria.", status_code=422)
+
+    producto.tamano_porcion_g = datos.tamano_porcion_g
+    producto.medida_casera = medida
+    producto.descripcion_porcion = datos.descripcion_porcion or medida
+    if datos.porciones_por_envase is not None and datos.porciones_por_envase > 0:
+        producto.porciones_por_envase = datos.porciones_por_envase
+    db.commit()
+
+    # Recalcular la tabla nutricional si es posible
+    try:
+        return calcular_informacion_nutricional(
+            db=db,
+            producto_id=producto_id,
+            tamano_porcion_g=datos.tamano_porcion_g,
+            porciones_por_envase=datos.porciones_por_envase,
+            descripcion_porcion=datos.descripcion_porcion or medida,
+            medida_casera=medida,
+            usuario_actual=usuario_actual,
+        )
+    except NutricionException as e:
+        info = db.scalar(
+            select(InformacionNutricionalProducto).where(
+                InformacionNutricionalProducto.producto_id == producto_id
+            )
+        )
+        if info:
+            info.tamano_porcion_g = datos.tamano_porcion_g
+            info.medida_casera = medida
+            info.descripcion_porcion = datos.descripcion_porcion or medida
+            if datos.porciones_por_envase is not None:
+                info.porciones_por_envase = datos.porciones_por_envase
+            db.commit()
+            return obtener_informacion_nutricional_producto(db, producto_id)
+        raise e
+

@@ -13,6 +13,7 @@ from src.nutricion.schemas import (
     IngredientesIncompletosResponse,
     CompletarIngredienteRequest,
     CompletarIngredienteResponse,
+    GuardarPorcionDeclaradaRequest,
     CalcularNutricionRequest,
     VerificacionReferenciaResponse,
 )
@@ -166,6 +167,7 @@ def calcular_nutricion_producto(
         tamano_porcion_g=datos.tamano_porcion_g if datos else None,
         porciones_por_envase=datos.porciones_por_envase if datos else None,
         descripcion_porcion=datos.descripcion_porcion if datos else None,
+        medida_casera=datos.medida_casera if datos else None,
         usuario_actual=u_nombre,
     )
 
@@ -188,6 +190,45 @@ def calcular_nutricion_producto_alias(
         tamano_porcion_g=datos.tamano_porcion_g if datos else None,
         porciones_por_envase=datos.porciones_por_envase if datos else None,
         descripcion_porcion=datos.descripcion_porcion if datos else None,
+        medida_casera=datos.medida_casera if datos else None,
+        usuario_actual=u_nombre,
+    )
+
+@router.put(
+    "/nutricion/productos/{producto_id}/porcion-declarada",
+    response_model=InformacionNutricionalResponse,
+    dependencies=[Depends(requiere_admin)],
+)
+def guardar_porcion_declarada_endpoint(
+    producto_id: int,
+    datos: GuardarPorcionDeclaradaRequest,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    u_nombre = resolver_nombre_usuario(usuario)
+    return services.guardar_porcion_declarada(
+        db=db,
+        producto_id=producto_id,
+        datos=datos,
+        usuario_actual=u_nombre,
+    )
+
+@router.put(
+    "/productos/{producto_id}/porcion-declarada",
+    response_model=InformacionNutricionalResponse,
+    dependencies=[Depends(requiere_admin)],
+)
+def guardar_porcion_declarada_alias(
+    producto_id: int,
+    datos: GuardarPorcionDeclaradaRequest,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    u_nombre = resolver_nombre_usuario(usuario)
+    return services.guardar_porcion_declarada(
+        db=db,
+        producto_id=producto_id,
+        datos=datos,
         usuario_actual=u_nombre,
     )
 

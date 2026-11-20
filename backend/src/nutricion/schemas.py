@@ -92,6 +92,7 @@ class InformacionNutricionalResponse(BaseModel):
     tamano_porcion_g: float
     porciones_por_envase: Optional[float] = None
     descripcion_porcion: Optional[str] = None
+    medida_casera: Optional[str] = None
     rendimiento_final_receta: float
     peso_total_ingredientes: float
     factor_rendimiento: float
@@ -120,6 +121,13 @@ class CalcularNutricionRequest(BaseModel):
     tamano_porcion_g: Optional[float] = Field(None, gt=0)
     porciones_por_envase: Optional[float] = Field(None, gt=0)
     descripcion_porcion: Optional[str] = None
+    medida_casera: Optional[str] = None
+
+class GuardarPorcionDeclaradaRequest(BaseModel):
+    tamano_porcion_g: float = Field(..., gt=0, description="Tamaño de porción en gramos")
+    medida_casera: str = Field(..., min_length=1, max_length=100, description="Medida casera declarada (ej: 1 rebanada, 2 cucharadas)")
+    porciones_por_envase: Optional[float] = Field(None, gt=0, description="Cantidad de porciones por envase")
+    descripcion_porcion: Optional[str] = Field(None, max_length=100, description="Descripción o texto alternativo de la porción")
 
 class VerificacionReferenciaDetalle(BaseModel):
     nutriente: str

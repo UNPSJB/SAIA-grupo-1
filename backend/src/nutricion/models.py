@@ -29,6 +29,7 @@ class InformacionNutricionalProducto(ModeloBase):
     tamano_porcion_g: Mapped[float] = mapped_column(Float, nullable=False)
     porciones_por_envase: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     descripcion_porcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    medida_casera: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     rendimiento_final_receta: Mapped[float] = mapped_column(Float, nullable=False)
     peso_total_ingredientes: Mapped[float] = mapped_column(Float, nullable=False)
     factor_rendimiento: Mapped[float] = mapped_column(Float, nullable=False)
