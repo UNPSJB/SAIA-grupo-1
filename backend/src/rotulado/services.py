@@ -683,6 +683,7 @@ def autocompletar_datos_borrador(
             borrador.grasas_trans = info_nut.grasas_trans_porcion
             borrador.fibra_alimentaria = info_nut.fibra_alimentaria_porcion
             borrador.sodio = info_nut.sodio_mg_porcion
+            borrador.tabla_marcada_incompleta = bool(getattr(info_nut, "es_incompleta", False))
 
     if "ingredientes" in t_campos:
         borrador.ingredientes_editado_manualmente = False
@@ -1025,6 +1026,20 @@ def detectar_datos_faltantes_y_tabla(
         motivos_incompleta.append(
             "La tabla nutricional está marcada expresamente como incompleta"
         )
+    else:
+        from sqlalchemy.orm import object_session
+        sess = object_session(borrador)
+        if sess is not None:
+            from src.nutricion.models import InformacionNutricionalProducto
+            info_nut = sess.scalar(
+                select(InformacionNutricionalProducto).where(
+                    InformacionNutricionalProducto.producto_id == borrador.producto_id
+                )
+            )
+            if info_nut and getattr(info_nut, "es_incompleta", False):
+                motivos_incompleta.append(
+                    "La tabla nutricional del producto está marcada como incompleta por ingredientes con datos faltantes"
+                )
 
     if not borrador.porcion or not borrador.porcion.strip():
         motivos_incompleta.append("Falta indicar el tamaño de porción de referencia")

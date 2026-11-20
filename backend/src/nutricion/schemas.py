@@ -41,6 +41,24 @@ class InsumoNutricionalUpdate(BaseModel):
     grasas_trans: Optional[float] = None
     fibra_alimentaria: Optional[float] = None
     sodio_mg: Optional[float] = None
+    fuente_datos: Optional[str] = None
+    fuente_detalle: Optional[str] = None
+
+class IngredienteIncompletoItem(BaseModel):
+    ingrediente_id: int
+    nombre: str
+    es_aditivo: bool
+    aporta_energia_sodio: bool = False
+    tipo_entidad: str  # "insumo" | "tipo_insumo" | "aditivo"
+    entidad_id: int
+    campos_faltantes: List[str]
+    campos_faltantes_claves: List[str]
+    valores_actuales: Dict[str, Any] = {}
+
+class IngredientesIncompletosResponse(BaseModel):
+    producto_id: int
+    tabla_incompleta: bool
+    ingredientes_incompletos: List[IngredienteIncompletoItem]
 
 class NutrienteFilaResponse(BaseModel):
     nutriente: str
@@ -79,8 +97,23 @@ class InformacionNutricionalResponse(BaseModel):
     factor_rendimiento: float
     fecha_calculo: datetime
     calculado_por_usuario: Optional[str] = None
+    es_incompleta: bool = False
+    ingredientes_incompletos: Optional[List[IngredienteIncompletoItem]] = None
     tabla_nutricional: List[NutrienteFilaResponse]
     detalles_ingredientes: Optional[List[DetalleAporteIngrediente]] = None
+
+class CompletarIngredienteRequest(BaseModel):
+    producto_id: Optional[int] = None
+    tipo_entidad: str  # "insumo" | "tipo_insumo" | "aditivo"
+    entidad_id: int
+    valores: Dict[str, Any]
+
+class CompletarIngredienteResponse(BaseModel):
+    mensaje: str
+    recalculado: bool
+    tabla_incompleta: bool
+    ingredientes_incompletos: List[IngredienteIncompletoItem]
+    informacion_nutricional: Optional[InformacionNutricionalResponse] = None
 
 class CalcularNutricionRequest(BaseModel):
     receta_id: Optional[int] = None

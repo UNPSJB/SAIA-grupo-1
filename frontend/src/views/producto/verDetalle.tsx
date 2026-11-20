@@ -35,6 +35,19 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [recetaIdInterno, setRecetaIdInterno] = useState<number | null>(null);
   const [modalNutricionAbierto, setModalNutricionAbierto] = useState(false);
+  const [tablaNutricionalIncompleta, setTablaNutricionalIncompleta] = useState<boolean | null>(null);
+
+  const consultarEstadoNutricional = async () => {
+    if (!productoId) return;
+    try {
+      const res = await apiFetch(`/nutricion/productos/${productoId}/ingredientes-incompletos`);
+      if (res.ok) {
+        const data = await res.json();
+        setTablaNutricionalIncompleta(Boolean(data.tabla_incompleta));
+      }
+    } catch {
+    }
+  };
 
   useEffect(() => {
     if (!productoId) return;
@@ -69,6 +82,8 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
           setRecetaAsociadaId(null);
           setRecetaAsociadaNombre(null);
         }
+
+        await consultarEstadoNutricional();
       } catch {
         setError("Error al conectar con el servidor.");
       } finally {
@@ -289,9 +304,49 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
                       monitoring
                     </span>
                     <span>Información Nutricional y Cálculo Automático</span>
+                    {tablaNutricionalIncompleta === true && (
+                      <span
+                        style={{
+                          backgroundColor: "rgba(239, 68, 68, 0.15)",
+                          color: "#f87171",
+                          border: "1px solid #ef4444",
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>warning</span>
+                        Incompleta
+                      </span>
+                    )}
+                    {tablaNutricionalIncompleta === false && (
+                      <span
+                        style={{
+                          backgroundColor: "rgba(34, 197, 94, 0.15)",
+                          color: "#4ade80",
+                          border: "1px solid #22c55e",
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>check_circle</span>
+                        Completa
+                      </span>
+                    )}
                   </div>
                   <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
-                    Calcula los valores por 100g, por porción y % VD a partir de la receta y datos de ingredientes.
+                    {tablaNutricionalIncompleta === true
+                      ? "Advertencia: Existen ingredientes con datos nutricionales faltantes o sin fuente registrada."
+                      : "Calcula los valores por 100g, por porción y % VD a partir de la receta y datos de ingredientes."}
                   </p>
                 </div>
 
@@ -359,7 +414,10 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
         <InformacionNutricionalModal
           productoId={producto.id}
           nombreProducto={producto.nombre}
-          onClose={() => setModalNutricionAbierto(false)}
+          onClose={() => {
+            setModalNutricionAbierto(false);
+            consultarEstadoNutricional();
+          }}
         />
       )}
     </div>

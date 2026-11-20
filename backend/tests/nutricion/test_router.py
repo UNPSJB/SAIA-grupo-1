@@ -10,6 +10,7 @@ from tests.database import session
 client = TestClient(app)
 
 def test_listar_y_modificar_parametros(session: Session):
+    session.commit()
     res = client.get("/nutricion/parametros")
     assert res.status_code == 200
     data = res.json()
@@ -38,10 +39,17 @@ def test_endpoints_nutricion_producto(session: Session):
         stock=10.0,
         medida="kilogramos",
         energia_kcal=350.0,
+        energia_kj=1464.4,
         carbohidratos=72.0,
+        azucares_totales=1.5,
+        azucares_anadidos=0.0,
         proteinas=10.0,
         grasas_totales=1.2,
+        grasas_saturadas=0.3,
+        grasas_trans=0.0,
+        fibra_alimentaria=3.5,
         sodio_mg=5.0,
+        fuente_datos="CAA",
     )
     session.add(insumo)
     session.flush()
@@ -86,24 +94,26 @@ def test_endpoints_nutricion_producto(session: Session):
     )
     session.add(detalle)
     session.commit()
+    prod_id = prod.id
+    session.close()
 
     res_calc = client.post(
-        f"/nutricion/productos/{prod.id}/calcular",
+        f"/nutricion/productos/{prod_id}/calcular",
         json={"tamano_porcion_g": 50.0, "porciones_por_envase": 18.0},
     )
     assert res_calc.status_code == 200
     info = res_calc.json()
-    assert info["producto_id"] == prod.id
+    assert info["producto_id"] == prod_id
     assert len(info["tabla_nutricional"]) >= 11
 
-    res_get = client.get(f"/nutricion/productos/{prod.id}")
+    res_get = client.get(f"/nutricion/productos/{prod_id}")
     assert res_get.status_code == 200
     assert res_get.json()["id"] == info["id"]
 
-    res_alias = client.get(f"/productos/{prod.id}/informacion-nutricional")
+    res_alias = client.get(f"/productos/{prod_id}/informacion-nutricional")
     assert res_alias.status_code == 200
-    assert res_alias.json()["producto_id"] == prod.id
+    assert res_alias.json()["producto_id"] == prod_id
 
-    res_verif = client.get(f"/nutricion/productos/{prod.id}/verificar-referencia")
+    res_verif = client.get(f"/nutricion/productos/{prod_id}/verificar-referencia")
     assert res_verif.status_code == 200
     assert "resultado_global_valido" in res_verif.json()

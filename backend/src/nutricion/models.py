@@ -36,6 +36,7 @@ class InformacionNutricionalProducto(ModeloBase):
     calculado_por_usuario: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     detalles_ingredientes_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     valores_nutricionales_json: Mapped[str] = mapped_column(Text, nullable=False)
+    es_incompleta: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     energia_kcal_100g: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     energia_kcal_porcion: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
