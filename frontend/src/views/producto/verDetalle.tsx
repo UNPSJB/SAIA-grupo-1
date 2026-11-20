@@ -7,6 +7,7 @@ import { VerReceta } from "../receta/VerReceta";
 import { ComposicionPorcentualCard } from "../receta/ComposicionPorcentualCard";
 import { RotuladoProducto } from "../rotuladoFrontal/RotuladoProducto";
 import { InformacionNutricionalModal } from "./InformacionNutricionalModal";
+import { useAuth } from "../../auth/useAuth";
 
 interface DetalleProductoProps {
   onCancel?: () => void;
@@ -36,6 +37,7 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
   const [recetaIdInterno, setRecetaIdInterno] = useState<number | null>(null);
   const [modalNutricionAbierto, setModalNutricionAbierto] = useState(false);
   const [tablaNutricionalIncompleta, setTablaNutricionalIncompleta] = useState<boolean | null>(null);
+  const { esAdministrador } = useAuth();
 
   const consultarEstadoNutricional = async () => {
     if (!productoId) return;
@@ -284,93 +286,95 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
             <>
               <RotuladoProducto productoId={producto.id} unidadMedida={producto.unidadMedida} />
 
-              <div
-                style={{
-                  margin: "1.5rem 0",
-                  padding: "1.25rem",
-                  backgroundColor: "#1e293b",
-                  borderRadius: "8px",
-                  border: "1px solid #334155",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "1rem",
-                }}
-              >
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "1rem" }}>
-                    <span className="material-symbols-outlined" style={{ color: "#38bdf8", fontSize: "22px" }}>
-                      monitoring
-                    </span>
-                    <span>Información Nutricional y Cálculo Automático</span>
-                    {tablaNutricionalIncompleta === true && (
-                      <span
-                        style={{
-                          backgroundColor: "rgba(239, 68, 68, 0.15)",
-                          color: "#f87171",
-                          border: "1px solid #ef4444",
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>warning</span>
-                        Incompleta
-                      </span>
-                    )}
-                    {tablaNutricionalIncompleta === false && (
-                      <span
-                        style={{
-                          backgroundColor: "rgba(34, 197, 94, 0.15)",
-                          color: "#4ade80",
-                          border: "1px solid #22c55e",
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>check_circle</span>
-                        Completa
-                      </span>
-                    )}
-                  </div>
-                  <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
-                    {tablaNutricionalIncompleta === true
-                      ? "Advertencia: Existen ingredientes con datos nutricionales faltantes o sin fuente registrada."
-                      : "Calcula los valores por 100g, por porción y % VD a partir de la receta y datos de ingredientes."}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn-primario"
-                  onClick={() => setModalNutricionAbierto(true)}
+              {esAdministrador && (
+                <div
                   style={{
-                    display: "inline-flex",
+                    margin: "1.5rem 0",
+                    padding: "1.25rem",
+                    backgroundColor: "#1e293b",
+                    borderRadius: "8px",
+                    border: "1px solid #334155",
+                    display: "flex",
+                    justifyContent: "space-between",
                     alignItems: "center",
-                    gap: "6px",
-                    padding: "8px 16px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    backgroundColor: "#0284c7",
+                    flexWrap: "wrap",
+                    gap: "1rem",
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                    monitoring
-                  </span>
-                  Ver / Calcular Nutrición
-                </button>
-              </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "1rem" }}>
+                      <span className="material-symbols-outlined" style={{ color: "#38bdf8", fontSize: "22px" }}>
+                        monitoring
+                      </span>
+                      <span>Información Nutricional y Cálculo Automático</span>
+                      {tablaNutricionalIncompleta === true && (
+                        <span
+                          style={{
+                            backgroundColor: "rgba(239, 68, 68, 0.15)",
+                            color: "#f87171",
+                            border: "1px solid #ef4444",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>warning</span>
+                          Incompleta
+                        </span>
+                      )}
+                      {tablaNutricionalIncompleta === false && (
+                        <span
+                          style={{
+                            backgroundColor: "rgba(34, 197, 94, 0.15)",
+                            color: "#4ade80",
+                            border: "1px solid #22c55e",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>check_circle</span>
+                          Completa
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
+                      {tablaNutricionalIncompleta === true
+                        ? "Advertencia: Existen ingredientes con datos nutricionales faltantes o sin fuente registrada."
+                        : "Calcula los valores por 100g, por porción y % VD a partir de la receta y datos de ingredientes."}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-primario"
+                    onClick={() => setModalNutricionAbierto(true)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 16px",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      backgroundColor: "#0284c7",
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                      monitoring
+                    </span>
+                    Ver / Calcular Nutrición
+                  </button>
+                </div>
+              )}
             </>
           )}
 
