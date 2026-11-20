@@ -65,12 +65,18 @@ def migrar_columnas_nutricionales(db: Session) -> None:
     with engine.connect() as conn:
         res_insumos = conn.execute(text("PRAGMA table_info(insumos)"))
         columnas_insumos = {row[1] for row in res_insumos.fetchall()}
+        if "medida" not in columnas_insumos:
+            conn.execute(text("ALTER TABLE insumos ADD COLUMN medida VARCHAR(50) DEFAULT 'KILOGRAMOS'"))
+            conn.execute(text("UPDATE insumos SET medida = coalesce((SELECT upper(nombre) FROM unidades_medida WHERE unidades_medida.id = insumos.unidad_medida_id), 'KILOGRAMOS')"))
         for n in NUTRIENTES_CAMPOS:
             if n not in columnas_insumos:
                 conn.execute(text(f"ALTER TABLE insumos ADD COLUMN {n} REAL"))
 
         res_prod = conn.execute(text("PRAGMA table_info(productos)"))
         columnas_prod = {row[1] for row in res_prod.fetchall()}
+        if "unidadMedida" not in columnas_prod:
+            conn.execute(text("ALTER TABLE productos ADD COLUMN unidadMedida VARCHAR(50) DEFAULT 'UNIDADES'"))
+            conn.execute(text("UPDATE productos SET unidadMedida = coalesce((SELECT upper(nombre) FROM unidades_medida WHERE unidades_medida.id = productos.unidad_medida_id), 'UNIDADES')"))
         columnas_a_agregar = [
             ("receta_id", "INTEGER"),
             ("tamano_porcion_g", "REAL"),

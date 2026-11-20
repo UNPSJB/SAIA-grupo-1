@@ -1,5 +1,6 @@
 """Tests del motor de evaluacion: funciones puras, sin base de datos."""
 import pytest
+from types import SimpleNamespace
 from pydantic import ValidationError
 
 from src.rotulado_frontal import motor
@@ -113,3 +114,88 @@ def test_porcentaje_energia_exige_factor_kcal():
 def test_energia_no_se_compara_contra_si_misma():
     with pytest.raises(ValidationError):
         CondicionUmbral(tipo="MG_POR_KCAL", nutriente="energia_kcal", umbral=1)
+
+
+def test_caso_testigo_milanesa_de_pollo_solo_sodio():
+    parametros = SimpleNamespace(
+        umbral_azucares_pct=10.0,
+        umbral_grasas_totales_pct=30.0,
+        umbral_grasas_saturadas_pct=10.0,
+        umbral_sodio_mg_por_kcal=1.0,
+        umbral_sodio_max_100g=300.0,
+        umbral_sodio_bebida_sin_kcal=40.0,
+        umbral_calorias_solido_100g=275.0,
+        umbral_calorias_liquido_100ml=25.0,
+        factor_kcal_carbohidratos=4.0,
+        factor_kcal_grasas=9.0,
+    )
+    valores_milanesa = {
+        "energia_kcal": 181.0,
+        "azucares_anadidos": 0.0,
+        "grasas_totales": 6.0,
+        "grasas_saturadas": 1.0,
+        "sodio_mg": 315.0,
+    }
+    agregados = {
+        "azucares": False,
+        "detalle_azucares": "No",
+        "grasas": False,
+        "detalle_grasas": "No",
+        "sodio": True,
+        "detalle_sodio": "Sal",
+    }
+    sellos_res, pasos = motor.evaluar_con_parametros_y_agregados(
+        parametros, valores_milanesa, EstadoFisico.SOLIDO, agregados
+    )
+    assert sellos_res == ["EXCESO_SODIO"]
+    mapa_pasos = {p.codigo: p for p in pasos}
+    assert mapa_pasos["EXCESO_AZUCARES"].aplica is False
+    assert mapa_pasos["EXCESO_AZUCARES"].supera is False
+    assert mapa_pasos["EXCESO_GRASAS_TOTALES"].aplica is False
+    assert mapa_pasos["EXCESO_GRASAS_TOTALES"].supera is False
+    assert mapa_pasos["EXCESO_GRASAS_SATURADAS"].aplica is False
+    assert mapa_pasos["EXCESO_GRASAS_SATURADAS"].supera is False
+    assert mapa_pasos["EXCESO_SODIO"].aplica is True
+    assert mapa_pasos["EXCESO_SODIO"].supera is True
+    assert mapa_pasos["EXCESO_CALORIAS"].aplica is False
+    assert mapa_pasos["EXCESO_CALORIAS"].supera is False
+
+
+def test_calorias_requiere_sello_energetico_previo():
+    parametros = SimpleNamespace(
+        umbral_azucares_pct=10.0,
+        umbral_grasas_totales_pct=30.0,
+        umbral_grasas_saturadas_pct=10.0,
+        umbral_sodio_mg_por_kcal=1.0,
+        umbral_sodio_max_100g=300.0,
+        umbral_sodio_bebida_sin_kcal=40.0,
+        umbral_calorias_solido_100g=275.0,
+        umbral_calorias_liquido_100ml=25.0,
+        factor_kcal_carbohidratos=4.0,
+        factor_kcal_grasas=9.0,
+    )
+    valores_sin_sellos_energeticos = {
+        "energia_kcal": 350.0,
+        "azucares_anadidos": 2.0,
+        "grasas_totales": 3.0,
+        "grasas_saturadas": 0.5,
+        "sodio_mg": 50.0,
+    }
+    sellos_res, pasos = motor.evaluar_con_parametros_y_agregados(
+        parametros, valores_sin_sellos_energeticos, EstadoFisico.SOLIDO,
+        agregados={"azucares": True, "grasas": True, "sodio": True}
+    )
+    assert "EXCESO_CALORIAS" not in sellos_res
+
+    valores_con_azucar_alto = {
+        "energia_kcal": 350.0,
+        "azucares_anadidos": 25.0,
+        "grasas_totales": 3.0,
+        "grasas_saturadas": 0.5,
+        "sodio_mg": 50.0,
+    }
+    sellos_res2, pasos2 = motor.evaluar_con_parametros_y_agregados(
+        parametros, valores_con_azucar_alto, EstadoFisico.SOLIDO,
+        agregados={"azucares": True, "grasas": True, "sodio": True}
+    )
+    assert sellos_res2 == ["EXCESO_AZUCARES", "EXCESO_CALORIAS"]

@@ -127,3 +127,6 @@ class ErrorCode:
     PRODUCTO_NO_APLICA_ROTULADO = (
         "No corresponde el rotulado frontal porque el producto no se comercializa envasado en ausencia del cliente"
     )
+    NUTRICION_NO_CALCULADA = (
+        "El producto no tiene información nutricional calculada (E11) para evaluar los sellos"
+    )

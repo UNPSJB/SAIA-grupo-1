@@ -235,3 +235,10 @@ def test_un_operador_no_accede_a_los_parametros(session: Session, como_usuario) 
 def test_un_administrador_accede(session: Session, como_usuario) -> None:
     como_usuario(Capacidades.ADMINISTRAR)
     assert client.get(f"{BASE}/parametros").status_code == 200
+
+
+def test_calcular_desde_nutricion_endpoint(session: Session) -> None:
+    crear_y_publicar("2022.1", "2022-03-23")
+    producto_id = crear_producto("Alfajor Nutricion", "gramos")
+    res = client.post(f"{BASE}/productos/{producto_id}/calcular-desde-nutricion")
+    assert res.status_code in (201, 400)

@@ -179,11 +179,43 @@ class ResultadoRegla(BaseModel):
     condiciones: List[DetalleCondicion] = Field(default_factory=list)
 
 
+class ParametrosSellosOut(BaseModel):
+    id: int
+    version: str
+    fecha_vigencia: date
+    activa: bool
+    norma_origen: str
+    umbral_azucares_pct: float
+    umbral_grasas_totales_pct: float
+    umbral_grasas_saturadas_pct: float
+    umbral_sodio_mg_por_kcal: float
+    umbral_sodio_max_100g: float
+    umbral_sodio_bebida_sin_kcal: float
+    umbral_calorias_solido_100g: float
+    umbral_calorias_liquido_100ml: float
+    factor_kcal_carbohidratos: float
+    factor_kcal_grasas: float
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PasoCalculoSello(BaseModel):
+    criterio: str
+    codigo: str
+    leyenda: str
+    tiene_agregado: bool
+    detalle_agregado: str
+    calculo_realizado: str
+    umbral: str
+    supera: bool
+    aplica: bool
+
+
 class EvaluacionOut(BaseModel):
     conjunto_parametros_id: int
     version_parametros: str
     sellos: List[str]
     detalle: List[ResultadoRegla]
+    pasos: List[PasoCalculoSello] = Field(default_factory=list)
 
 
 class CalculoOut(BaseModel):
@@ -197,6 +229,7 @@ class CalculoOut(BaseModel):
     valores_entrada: ValoresNutricionales100
     sellos: List[str]
     detalle: List[ResultadoRegla] = Field(validation_alias="resultado")
+    pasos: List[PasoCalculoSello] = Field(default_factory=list)
     calculado_en: datetime
     calculado_por_legajo: Optional[int] = None
     model_config = ConfigDict(from_attributes=True)

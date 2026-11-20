@@ -43,3 +43,7 @@ class EstadoFisicoIndeterminado(BadRequest):
 
 class ProductoNoAplicaRotulado(BadRequest):
     DETAIL = ErrorCode.PRODUCTO_NO_APLICA_ROTULADO
+
+
+class NutricionNoCalculada(BadRequest):
+    DETAIL = ErrorCode.NUTRICION_NO_CALCULADA
