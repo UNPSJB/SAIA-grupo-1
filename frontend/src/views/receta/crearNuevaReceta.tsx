@@ -167,7 +167,7 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
       fecha_vigencia: receta.fecha_vigencia ? formatearFechaISO(receta.fecha_vigencia) : null,
       fecha_vencimiento: receta.fecha_vencimiento ? formatearFechaISO(receta.fecha_vencimiento) : null,
       detalles: detalles.map((d) => ({
-        ingrediente_id: Number(d.ingrediente_id),
+        tipo_insumo_id: Number(d.tipo_insumo_id),
         nombre: d.nombre.trim(),
         cantidad: Number(d.cantidad),
         unidad_medida: d.unidad_medida.trim(),
@@ -376,7 +376,7 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
                   <tr key={d.id ?? index}>
                     <td style={{ fontWeight: 500 }}>{d.nombre}</td>
                     <td>
-                      {d.nombre_ingrediente ?? `Insumo #${d.ingrediente_id}`}
+                      {d.nombre_ingrediente ?? `Insumo #${d.tipo_insumo_id}`}
                       {d.es_aditivo && d.clase_funcional
                         ? ` (${d.clase_funcional}${d.numero_ins ? ` - ${d.numero_ins}` : ""})`
                         : ""}

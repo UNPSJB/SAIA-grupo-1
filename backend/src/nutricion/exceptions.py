@@ -1,7 +1,8 @@
 from fastapi import HTTPException, status
+from typing import Any
 
 class NutricionException(HTTPException):
-    def __init__(self, detail: str, status_code: int = status.HTTP_400_BAD_REQUEST):
+    def __init__(self, detail: Any, status_code: int = status.HTTP_400_BAD_REQUEST):
         super().__init__(status_code=status_code, detail=detail)
 
 class ProductoSinRecetaError(NutricionException):

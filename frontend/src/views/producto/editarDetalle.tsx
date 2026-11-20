@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
-import type { ProductoConId, DocumentoReceta } from "./tipos";
+import type { ProductoConId, AlergenoItem } from "./tipos";
 import type { UnidadMedidaItem } from "../unidadesMedida/tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
+
+interface RecetaOpcion {
+  id: number;
+  nombre: string;
+  activo?: boolean;
+}
 
 const PRODUCTO_INICIAL: ProductoConId = {
   id: 0,
@@ -13,6 +19,8 @@ const PRODUCTO_INICIAL: ProductoConId = {
   unidadMedida: "",
   id_receta: null,
   activo: true,
+  conservacion:"",
+  alergenos_precaucion_ids:[],
 };
 
 interface EditarProductoProps {
@@ -23,24 +31,27 @@ interface EditarProductoProps {
 
 export default function EditarProducto({ productoId, onSuccess, onCancel }: EditarProductoProps) {
   const [producto, setProducto] = useState<ProductoConId>(PRODUCTO_INICIAL);
-  const [recetas, setRecetas] = useState<DocumentoReceta[]>([]);
+  const [recetas, setRecetas] = useState<RecetaOpcion[]>([]);
   const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [exitoDialogAbierto, setExitoDialogAbierto] = useState(false);
+  const [alergenos, setAlergenos] = useState<AlergenoItem[]>([]);
 
   useEffect(() => {
     let cancelado = false;
     async function cargarCatalogos() {
       try {
-        const [resRecetas, resUnidades] = await Promise.all([
-          apiFetch("/documentos/?tipo=Receta"),
+        const [resRecetas, resUnidades, resAlergenos] = await Promise.all([
+          apiFetch("/recetas/"),
           apiFetch("/unidades-medida/?solo_activos=false"),
+          apiFetch("/alergenos/"),
         ]);
         if (!cancelado) {
           setRecetas(resRecetas.ok ? await resRecetas.json() : []);
           setUnidades(resUnidades.ok ? await resUnidades.json() : []);
+          setAlergenos(resAlergenos.ok ? await resAlergenos.json() : []);
         }
       } catch {
         if (!cancelado) {
@@ -62,7 +73,16 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
           const res = await apiFetch(`/productos/${productoId}`);
           if (res.ok) {
             const data = await res.json();
-            setProducto(data);
+            const idsDesdeObjetos = Array.isArray(data.alergenos_precaucion)
+              ? data.alergenos_precaucion.map((a: { id: number }) => a.id)
+              : [];
+            setProducto({
+              ...data,
+              conservacion: data.conservacion ?? "",
+              alergenos_precaucion_ids: Array.isArray(data.alergenos_precaucion_ids)
+                ? data.alergenos_precaucion_ids
+                : idsDesdeObjetos,
+            });
           }
         } catch {
           setErrorMsg("El producto no existe.");
@@ -103,6 +123,8 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
     const payload = {
       nombre: producto.nombre.trim(),
       descripcion: producto.descripcion?.trim() || null,
+      conservacion: producto.conservacion?.trim() || null,
+      alergenos_precaucion_ids: producto.alergenos_precaucion_ids || [],
       unidad_medida_id: Number(producto.unidad_medida_id),
       id_receta: producto.id_receta ? Number(producto.id_receta) : null,
       peso_unidad_g: producto.peso_unidad_g && Number(producto.peso_unidad_g) > 0 ? Number(producto.peso_unidad_g) : null,
@@ -130,6 +152,19 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
     } finally {
       setLoading(false);
     }
+  }
+
+function toggleAlergenoPrecaucion(alergenoId: number) {
+    setProducto((prev) => {
+      const actuales = prev.alergenos_precaucion_ids || [];
+      const existe = actuales.includes(alergenoId);
+      return {
+        ...prev,
+        alergenos_precaucion_ids: existe
+          ? actuales.filter((id) => id !== alergenoId)
+          : [...actuales, alergenoId],
+      };
+    });
   }
 
   function handleCancelar() {
@@ -195,11 +230,13 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
             onChange={handleChange}
           >
             <option value="">-- Sin receta asociada --</option>
-            {recetas.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.titulo}
-              </option>
-            ))}
+            {recetas
+              .filter((r) => r.activo !== false || r.id === producto.id_receta)
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nombre}
+                </option>
+              ))}
           </select>
         </div>
 
@@ -252,6 +289,54 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
             value={producto.descripcion || ""}
             onChange={handleChange}
             maxLength={100}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Alérgenos por Posible Contaminación Cruzada ("Puede contener")</label>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+              gap: "8px",
+              marginTop: "6px",
+            }}
+          >
+            {alergenos.map((alg) => {
+              const checked = (producto.alergenos_precaucion_ids || []).includes(alg.id);
+              return (
+                <label
+                  key={alg.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleAlergenoPrecaucion(alg.id)}
+                  />
+                  <span>{alg.nombre}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="conservacion">Condiciones de Conservación (Opcional)</label>
+          <input
+            id="conservacion"
+            name="conservacion"
+            type="text"
+            placeholder="Ej: Conservar en lugar fresco y seco"
+            value={producto.conservacion || ""}
+            onChange={handleChange}
+            maxLength={200}
           />
         </div>
 

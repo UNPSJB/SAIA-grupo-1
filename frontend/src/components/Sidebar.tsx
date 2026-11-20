@@ -46,7 +46,8 @@ export type Modulo =
   | 'receta'
   | 'checklistRecetas'
   | 'configuraciones'
-  | 'rotuladoFrontal';
+  | 'rotuladoFrontal'
+  | 'alergenos';
 
 interface SidebarProps {
   moduloActivo: Modulo;
@@ -270,6 +271,11 @@ const ICONOS_MODULO: Record<Modulo, React.ReactNode> = {
       <path d="M9 17h6" />
     </svg>
   ),
+  alergenos: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  ),
 };
 
 const ICONOS_GRUPO: Record<string, React.ReactNode> = {
@@ -339,6 +345,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'tipoInsumo', label: 'Tipos de Insumo', icono: ICONOS_MODULO.tipoInsumo },
         { id: 'insumos', label: 'Ingredientes', icono: ICONOS_MODULO.insumos },
         { id: 'receta', label: 'Receta', icono: ICONOS_MODULO.receta },
+        { id: 'alergenos', label: 'Alérgenos', icono: ICONOS_MODULO.alergenos },
         { id: 'productos', label: 'Productos Elaborados', icono: ICONOS_MODULO.productos },
       ],
     },

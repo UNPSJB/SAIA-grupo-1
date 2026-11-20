@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
-import type { InformacionNutricional, ParametroRedondeo, VerificacionReferencia } from './tipos';
+import type { InformacionNutricional, ParametroRedondeo, VerificacionReferencia, IngredienteIncompleto } from './tipos';
 
 interface InformacionNutricionalModalProps {
   productoId: number;
@@ -31,11 +31,28 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
   const [descPorcion, setDescPorcion] = useState<string>('');
   const [paramEditando, setParamEditando] = useState<ParametroRedondeo | null>(null);
   const [guardandoParam, setGuardandoParam] = useState(false);
+  const [ingredientesIncompletos, setIngredientesIncompletos] = useState<IngredienteIncompleto[]>([]);
+  const [ingredienteACompletar, setIngredienteACompletar] = useState<IngredienteIncompleto | null>(null);
+  const [formValores, setFormValores] = useState<Record<string, string>>({});
+  const [guardandoIngrediente, setGuardandoIngrediente] = useState(false);
+
+  const cargarIncompletos = async () => {
+    try {
+      const res = await apiFetch(`/nutricion/productos/${productoId}/ingredientes-incompletos`);
+      if (res.ok) {
+        const data = await res.json();
+        setIngredientesIncompletos(data.ingredientes_incompletos || []);
+      }
+    } catch {
+      // Ignorar errores menores al consultar incompletos
+    }
+  };
 
   const cargarNutricion = async () => {
     setLoading(true);
     setError(null);
     try {
+      await cargarIncompletos();
       const [prodRes, res] = await Promise.all([
         apiFetch(`/productos/${productoId}`),
         apiFetch(`/nutricion/productos/${productoId}`),
@@ -50,12 +67,19 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
       if (res.ok) {
         const data = await res.json();
         setInfo(data);
+        if (data.ingredientes_incompletos) {
+          setIngredientesIncompletos(data.ingredientes_incompletos);
+        }
         if (data.tamano_porcion_g != null) setTamanoPorcion(String(data.tamano_porcion_g));
         if (data.porciones_por_envase != null) setPorcionesEnvase(data.porciones_por_envase);
         if (data.descripcion_porcion != null) setDescPorcion(data.descripcion_porcion);
       } else {
         const err = await res.json().catch(() => ({}));
-        setError(err.detail || 'No se pudo obtener la información nutricional.');
+        const msg = typeof err.detail === 'object' ? err.detail?.mensaje : (err.detail || 'No se pudo obtener la información nutricional.');
+        setError(msg);
+        if (err.detail?.ingredientes_incompletos) {
+          setIngredientesIncompletos(err.detail.ingredientes_incompletos);
+        }
       }
     } catch {
       setError('Error de comunicación con el servidor al cargar información nutricional.');
@@ -109,16 +133,94 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
       if (res.ok) {
         const data = await res.json();
         setInfo(data);
+        setIngredientesIncompletos([]);
         setMensajeExito('Información nutricional calculada con éxito desde la receta estructurada.');
         setVerificacion(null);
       } else {
         const err = await res.json().catch(() => ({}));
-        setError(err.detail || 'No se pudo calcular la información nutricional.');
+        const msg = typeof err.detail === 'object' ? err.detail?.mensaje : (err.detail || 'No se pudo calcular la información nutricional.');
+        setError(msg);
+        if (err.detail?.ingredientes_incompletos) {
+          setIngredientesIncompletos(err.detail.ingredientes_incompletos);
+        }
       }
     } catch {
       setError('Error al procesar el cálculo nutricional.');
     } finally {
       setCalculando(false);
+    }
+  };
+
+  const abrirFormularioCompletar = (ing: IngredienteIncompleto) => {
+    const iniciales: Record<string, string> = {};
+    if (ing.valores_actuales) {
+      Object.entries(ing.valores_actuales).forEach(([k, v]) => {
+        if (v !== null && v !== undefined) {
+          iniciales[k] = String(v);
+        }
+      });
+    }
+    if (!iniciales['fuente_datos']) {
+      iniciales['fuente_datos'] = 'Código Alimentario Argentino (CAA)';
+    }
+    setFormValores(iniciales);
+    setIngredienteACompletar(ing);
+    setError(null);
+  };
+
+  const guardarDatosIngrediente = async () => {
+    if (!ingredienteACompletar || !esAdministrador) return;
+    setGuardandoIngrediente(true);
+    setError(null);
+    setMensajeExito(null);
+    try {
+      const payloadValores: Record<string, any> = { ...formValores };
+      const numericFields = [
+        'energia_kcal',
+        'energia_kj',
+        'carbohidratos',
+        'azucares_totales',
+        'azucares_anadidos',
+        'proteinas',
+        'grasas_totales',
+        'grasas_saturadas',
+        'grasas_trans',
+        'fibra_alimentaria',
+        'sodio_mg',
+      ];
+      numericFields.forEach((nf) => {
+        if (payloadValores[nf] !== undefined && payloadValores[nf] !== '') {
+          payloadValores[nf] = Number(payloadValores[nf]);
+        }
+      });
+
+      const res = await apiFetch('/nutricion/completar-ingrediente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          producto_id: productoId,
+          tipo_entidad: ingredienteACompletar.tipo_entidad,
+          entidad_id: ingredienteACompletar.entidad_id,
+          valores: payloadValores,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setMensajeExito(data.mensaje);
+        setIngredientesIncompletos(data.ingredientes_incompletos || []);
+        if (data.recalculado && data.informacion_nutricional) {
+          setInfo(data.informacion_nutricional);
+        }
+        setIngredienteACompletar(null);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setError(typeof err.detail === 'string' ? err.detail : 'Error al guardar los datos del ingrediente.');
+      }
+    } catch {
+      setError('Error de comunicación al guardar los datos del ingrediente.');
+    } finally {
+      setGuardandoIngrediente(false);
     }
   };
 
@@ -229,9 +331,48 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
               monitoring
             </span>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-                Información Nutricional Oficial
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                  Información Nutricional Oficial
+                </h2>
+                {Boolean(info?.es_incompleta || ingredientesIncompletos.length > 0) ? (
+                  <span
+                    style={{
+                      backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                      color: '#f87171',
+                      border: '1px solid #ef4444',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>warning</span>
+                    INCOMPLETA
+                  </span>
+                ) : info ? (
+                  <span
+                    style={{
+                      backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                      color: '#4ade80',
+                      border: '1px solid #22c55e',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>check_circle</span>
+                    COMPLETA
+                  </span>
+                ) : null}
+              </div>
               <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
                 Producto: <strong style={{ color: '#f1f5f9' }}>{nombreProducto}</strong>
                 {info?.nombre_receta && (
@@ -310,6 +451,387 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
             </div>
           ) : (
             <>
+              {/* Sección de advertencia con listado de ingredientes incompletos */}
+              {ingredientesIncompletos.length > 0 && (
+                <div
+                  style={{
+                    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                    border: '1px solid #f59e0b',
+                    borderRadius: '8px',
+                    padding: '1rem 1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fbbf24' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>
+                      warning
+                    </span>
+                    <strong style={{ fontSize: '0.95rem' }}>
+                      Advertencia: Ingredientes con Datos Nutricionales Faltantes o sin Fuente Registrada
+                    </strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#cbd5e1' }}>
+                    Para no generar una tabla que parezca completa pero está calculada con datos faltantes, se deben completar los nutrientes obligatorios o la fuente de los siguientes ingredientes:
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {ingredientesIncompletos.map((ing) => (
+                      <div
+                        key={`${ing.tipo_entidad}-${ing.entidad_id}-${ing.ingrediente_id}`}
+                        style={{
+                          backgroundColor: '#1e293b',
+                          border: '1px solid #334155',
+                          borderRadius: '6px',
+                          padding: '0.65rem 0.85rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '0.5rem',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.9rem' }}>
+                              {ing.nombre}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '0.7rem',
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '4px',
+                                backgroundColor: ing.es_aditivo ? '#3b82f6' : '#64748b',
+                                color: '#fff',
+                              }}
+                            >
+                              {ing.es_aditivo ? 'Aditivo' : 'Ingrediente'}
+                            </span>
+                            {ing.es_aditivo && ing.aporta_energia_sodio && (
+                              <span
+                                style={{
+                                  fontSize: '0.7rem',
+                                  padding: '0.1rem 0.4rem',
+                                  borderRadius: '4px',
+                                  backgroundColor: '#d97706',
+                                  color: '#fff',
+                                }}
+                              >
+                                Aporta energía/sodio
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
+                            {ing.campos_faltantes.map((cf) => (
+                              <span
+                                key={cf}
+                                style={{
+                                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                  color: '#fca5a5',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  padding: '0.1rem 0.45rem',
+                                  borderRadius: '4px',
+                                  fontSize: '0.75rem',
+                                }}
+                              >
+                                Falta: {cf}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {esAdministrador && (
+                          <button
+                            type="button"
+                            onClick={() => abrirFormularioCompletar(ing)}
+                            style={{
+                              backgroundColor: '#0284c7',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '5px',
+                              padding: '0.35rem 0.75rem',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
+                            Completar datos
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Formulario para completar datos faltantes desde la misma pantalla */}
+              {ingredienteACompletar && (
+                <div
+                  style={{
+                    backgroundColor: '#1e293b',
+                    border: '2px solid #38bdf8',
+                    borderRadius: '8px',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className="material-symbols-outlined" style={{ color: '#38bdf8', fontSize: '24px' }}>
+                        edit_document
+                      </span>
+                      <div>
+                        <strong style={{ fontSize: '1.05rem', color: '#f8fafc' }}>
+                          Completar datos nutricionales: {ingredienteACompletar.nombre}
+                        </strong>
+                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                          Tipo: {ingredienteACompletar.tipo_entidad} · {ingredienteACompletar.es_aditivo ? 'Aditivo' : 'Ingrediente estándar'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIngredienteACompletar(null)}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                    >
+                      <span className="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                        Fuente de Información Nutricional *
+                      </label>
+                      <input
+                        type="text"
+                        list="fuentes-sugeridas"
+                        placeholder="Ej. CAA, SENASA, USDA, Rótulo proveedor"
+                        value={formValores['fuente_datos'] || ''}
+                        onChange={(e) => setFormValores({ ...formValores, fuente_datos: e.target.value })}
+                        style={{
+                          backgroundColor: '#0f172a',
+                          border: '1px solid #475569',
+                          color: '#fff',
+                          padding: '0.45rem 0.6rem',
+                          borderRadius: '6px',
+                          width: '100%',
+                          fontSize: '0.85rem',
+                        }}
+                      />
+                      <datalist id="fuentes-sugeridas">
+                        <option value="Código Alimentario Argentino (CAA)" />
+                        <option value="SENASA / Tablas Oficiales" />
+                        <option value="USDA FoodData Central" />
+                        <option value="Rótulo del fabricante / envase de origen" />
+                        <option value="Análisis de laboratorio acreditado" />
+                      </datalist>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                        Detalle / Referencia de Fuente (Opcional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Art. 643 / Lote analizado"
+                        value={formValores['fuente_detalle'] || ''}
+                        onChange={(e) => setFormValores({ ...formValores, fuente_detalle: e.target.value })}
+                        style={{
+                          backgroundColor: '#0f172a',
+                          border: '1px solid #475569',
+                          color: '#fff',
+                          padding: '0.45rem 0.6rem',
+                          borderRadius: '6px',
+                          width: '100%',
+                          fontSize: '0.85rem',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid #334155', paddingTop: '0.75rem' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#38bdf8', marginBottom: '0.5rem' }}>
+                      Valores por 100g de ingrediente:
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.6rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Energía (kcal) *</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          placeholder="0"
+                          value={formValores['energia_kcal'] ?? ''}
+                          onChange={(e) => setFormValores({ ...formValores, energia_kcal: e.target.value })}
+                          style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Sodio (mg) *</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          placeholder="0"
+                          value={formValores['sodio_mg'] ?? ''}
+                          onChange={(e) => setFormValores({ ...formValores, sodio_mg: e.target.value })}
+                          style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                        />
+                      </div>
+
+                      {!ingredienteACompletar.es_aditivo && (
+                        <>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Carbohidratos (g)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="0"
+                              value={formValores['carbohidratos'] ?? ''}
+                              onChange={(e) => setFormValores({ ...formValores, carbohidratos: e.target.value })}
+                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Azúcares Totales (g)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="0"
+                              value={formValores['azucares_totales'] ?? ''}
+                              onChange={(e) => setFormValores({ ...formValores, azucares_totales: e.target.value })}
+                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Azúcares Añadidos (g)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="0"
+                              value={formValores['azucares_anadidos'] ?? ''}
+                              onChange={(e) => setFormValores({ ...formValores, azucares_anadidos: e.target.value })}
+                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Proteínas (g)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="0"
+                              value={formValores['proteinas'] ?? ''}
+                              onChange={(e) => setFormValores({ ...formValores, proteinas: e.target.value })}
+                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Grasas Totales (g)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="0"
+                              value={formValores['grasas_totales'] ?? ''}
+                              onChange={(e) => setFormValores({ ...formValores, grasas_totales: e.target.value })}
+                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Grasas Saturadas (g)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="0"
+                              value={formValores['grasas_saturadas'] ?? ''}
+                              onChange={(e) => setFormValores({ ...formValores, grasas_saturadas: e.target.value })}
+                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Grasas Trans (g)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="0"
+                              value={formValores['grasas_trans'] ?? ''}
+                              onChange={(e) => setFormValores({ ...formValores, grasas_trans: e.target.value })}
+                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Fibra Alimentaria (g)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="0"
+                              value={formValores['fibra_alimentaria'] ?? ''}
+                              onChange={(e) => setFormValores({ ...formValores, fibra_alimentaria: e.target.value })}
+                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIngredienteACompletar(null)}
+                      style={{
+                        backgroundColor: '#475569',
+                        color: '#f8fafc',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.45rem 1rem',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={guardarDatosIngrediente}
+                      disabled={guardandoIngrediente}
+                      style={{
+                        backgroundColor: '#16a34a',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.45rem 1.25rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        cursor: guardandoIngrediente ? 'not-allowed' : 'pointer',
+                        opacity: guardandoIngrediente ? 0.7 : 1,
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                        save
+                      </span>
+                      {guardandoIngrediente ? 'Guardando...' : 'Guardar y Recalcular'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {esAdministrador && (
                 <div
                   style={{
@@ -661,6 +1183,30 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     border: '2px solid #334155',
                   }}
                 >
+                  {Boolean(info.es_incompleta || ingredientesIncompletos.length > 0) && (
+                    <div
+                      style={{
+                        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                        border: '1px solid #ef4444',
+                        color: '#fca5a5',
+                        padding: '0.6rem 0.85rem',
+                        borderRadius: '6px',
+                        marginBottom: '0.75rem',
+                        fontSize: '0.85rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#ef4444' }}>
+                        warning
+                      </span>
+                      <span>
+                        <strong>TABLA MARCADA COMO INCOMPLETA:</strong> Hay ingredientes con datos nutricionales faltantes o sin fuente registrada. No debe utilizarse como información definitiva.
+                      </span>
+                    </div>
+                  )}
+
                   <div
                     style={{
                       borderBottom: '3px solid #f8fafc',

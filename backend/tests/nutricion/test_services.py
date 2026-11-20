@@ -2,11 +2,17 @@ import pytest
 from datetime import datetime
 from sqlalchemy.orm import Session
 from src.insumos.models import Insumo
+from src.tipoInsumo.models import Aditivo
 from src.producto.models import Producto
 from src.recetas.models import Receta, VersionReceta, RecetaDetalle
 from src.nutricion import services
 from src.nutricion.models import ParametroRedondeoNutricional
-from src.nutricion.schemas import ParametroRedondeoUpdate, InsumoNutricionalUpdate
+from src.nutricion.schemas import (
+    ParametroRedondeoUpdate,
+    InsumoNutricionalUpdate,
+    CompletarIngredienteRequest,
+    GuardarPorcionDeclaradaRequest,
+)
 from src.nutricion.exceptions import (
     ProductoSinRecetaError,
     RecetaSinIngredientesError,
@@ -130,6 +136,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         grasas_trans=0.0,
         fibra_alimentaria=3.5,
         sodio_mg=5.0,
+        fuente_datos="CAA",
     )
     h_agua = Insumo(
         nombre="Agua Potable Ref",
@@ -149,6 +156,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         grasas_trans=0.0,
         fibra_alimentaria=0.0,
         sodio_mg=0.0,
+        fuente_datos="CAA",
     )
     h_levadura = Insumo(
         nombre="Levadura Fresca Ref",
@@ -168,6 +176,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         grasas_trans=0.0,
         fibra_alimentaria=6.0,
         sodio_mg=30.0,
+        fuente_datos="CAA",
     )
     h_sal = Insumo(
         nombre="Sal Fina Ref",
@@ -187,6 +196,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         grasas_trans=0.0,
         fibra_alimentaria=0.0,
         sodio_mg=38850.0,
+        fuente_datos="CAA",
     )
     h_aceite = Insumo(
         nombre="Aceite Girasol Ref",
@@ -206,6 +216,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         grasas_trans=0.0,
         fibra_alimentaria=0.0,
         sodio_mg=0.0,
+        fuente_datos="CAA",
     )
     session.add_all([h_harina, h_agua, h_levadura, h_sal, h_aceite])
     session.flush()
@@ -361,3 +372,313 @@ def test_receta_sin_ingredientes_falla(session: Session):
 
     with pytest.raises(RecetaSinIngredientesError):
         services.calcular_informacion_nutricional(session, prod.id)
+
+def test_listar_ingredientes_incompletos_faltantes_y_fuente(session: Session):
+    ahora = datetime.now()
+    insumo_incompleto = Insumo(
+        nombre="Harina Incompleta",
+        lote="INC-01",
+        fechaRecepcion=ahora,
+        cantRecibida=10.0,
+        stock=10.0,
+        medida="kilogramos",
+        energia_kcal=300.0,
+        # faltan otros nutrientes y fuente_datos
+    )
+    session.add(insumo_incompleto)
+    session.flush()
+
+    prod = Producto(nombre="Pan Incompleto", unidadMedida="kilogramos", activo=True)
+    session.add(prod)
+    session.flush()
+
+    receta = Receta(nombre="Receta Incompleta", id_producto=prod.id, operario_legajo=1, rendimiento_final=500.0, activo=True)
+    session.add(receta)
+    session.flush()
+
+    version = VersionReceta(receta_id=receta.id, version=1, rendimiento_final=500.0, archivado=False, es_vigente=True)
+    session.add(version)
+    session.flush()
+
+    det = RecetaDetalle(
+        nombre="Harina",
+        version_receta_id=version.id,
+        ingrediente_id=insumo_incompleto.id,
+        cantidad=500.0,
+        unidad_medida="GRAMOS",
+        es_aditivo=False,
+        descripcion_pasos="Paso 1",
+    )
+    session.add(det)
+    session.commit()
+
+    incompletos = services.listar_ingredientes_incompletos(session, prod.id)
+    assert len(incompletos) == 1
+    assert incompletos[0]["nombre"] == "Harina Incompleta"
+    assert "Fuente de información" in incompletos[0]["campos_faltantes"]
+    assert "carbohidratos" in incompletos[0]["campos_faltantes_claves"]
+
+def test_aditivo_sin_aporte_no_es_incompleto(session: Session):
+    adit_sin_aporte = Aditivo(
+        nombre="Colorante Caramelo Test",
+        clase_funcional="COLORANTE",
+        unidad_medida_id=1,
+        aporta_energia_sodio=False,
+        activo=True,
+    )
+    session.add(adit_sin_aporte)
+    session.flush()
+
+    prod = Producto(nombre="Producto Con Aditivo Inerte", unidadMedida="kilogramos", activo=True)
+    session.add(prod)
+    session.flush()
+
+    receta = Receta(nombre="Receta Aditivo Inerte", id_producto=prod.id, operario_legajo=1, rendimiento_final=100.0, activo=True)
+    session.add(receta)
+    session.flush()
+
+    version = VersionReceta(receta_id=receta.id, version=1, rendimiento_final=100.0, archivado=False, es_vigente=True)
+    session.add(version)
+    session.flush()
+
+    det = RecetaDetalle(
+        nombre="Colorante",
+        version_receta_id=version.id,
+        aditivo_id=adit_sin_aporte.id,
+        cantidad=5.0,
+        unidad_medida="GRAMOS",
+        es_aditivo=True,
+        descripcion_pasos="Agregar gota",
+    )
+    session.add(det)
+    session.commit()
+
+    incompletos = services.listar_ingredientes_incompletos(session, prod.id)
+    # No considerar incompleto un aditivo sin datos nutricionales, salvo que aporte energía o sodio
+    assert len(incompletos) == 0
+
+def test_aditivo_con_aporte_es_incompleto_si_falta_energia_o_sodio(session: Session):
+    adit_con_aporte = Aditivo(
+        nombre="Bicarbonato de Sodio Test",
+        clase_funcional="LEUDANTE",
+        unidad_medida_id=1,
+        aporta_energia_sodio=True,
+        sodio_mg=None, # Falta sodio
+        energia_kcal=None, # Falta energía
+        activo=True,
+    )
+    session.add(adit_con_aporte)
+    session.flush()
+
+    prod = Producto(nombre="Producto Con Leudante", unidadMedida="kilogramos", activo=True)
+    session.add(prod)
+    session.flush()
+
+    receta = Receta(nombre="Receta Leudante", id_producto=prod.id, operario_legajo=1, rendimiento_final=100.0, activo=True)
+    session.add(receta)
+    session.flush()
+
+    version = VersionReceta(receta_id=receta.id, version=1, rendimiento_final=100.0, archivado=False, es_vigente=True)
+    session.add(version)
+    session.flush()
+
+    det = RecetaDetalle(
+        nombre="Bicarbonato",
+        version_receta_id=version.id,
+        aditivo_id=adit_con_aporte.id,
+        cantidad=10.0,
+        unidad_medida="GRAMOS",
+        es_aditivo=True,
+        descripcion_pasos="Mezclar",
+    )
+    session.add(det)
+    session.commit()
+
+    incompletos = services.listar_ingredientes_incompletos(session, prod.id)
+    assert len(incompletos) == 1
+    assert incompletos[0]["nombre"] == "Bicarbonato de Sodio Test"
+    assert "Sodio" in incompletos[0]["campos_faltantes"]
+    assert "Energía (kcal)" in incompletos[0]["campos_faltantes"]
+
+def test_completar_ingrediente_y_recalculo_automatico(session: Session):
+    ahora = datetime.now()
+    insumo = Insumo(
+        nombre="Avena Test Recalculo",
+        lote="AVE-01",
+        fechaRecepcion=ahora,
+        cantRecibida=10.0,
+        stock=10.0,
+        medida="kilogramos",
+    )
+    session.add(insumo)
+    session.flush()
+
+    prod = Producto(nombre="Barra de Avena Test", unidadMedida="kilogramos", activo=True, tamano_porcion_g=40.0)
+    session.add(prod)
+    session.flush()
+
+    receta = Receta(nombre="Receta Barra", id_producto=prod.id, operario_legajo=1, rendimiento_final=500.0, activo=True)
+    session.add(receta)
+    session.flush()
+
+    version = VersionReceta(receta_id=receta.id, version=1, rendimiento_final=500.0, archivado=False, es_vigente=True)
+    session.add(version)
+    session.flush()
+
+    det = RecetaDetalle(
+        nombre="Avena",
+        version_receta_id=version.id,
+        ingrediente_id=insumo.id,
+        cantidad=500.0,
+        unidad_medida="GRAMOS",
+        es_aditivo=False,
+        descripcion_pasos="Mezclar",
+    )
+    session.add(det)
+    session.commit()
+
+    # Inicialmente incompleto
+    incompletos = services.listar_ingredientes_incompletos(session, prod.id)
+    assert len(incompletos) == 1
+
+    # Completar ingrediente
+    req = CompletarIngredienteRequest(
+        producto_id=prod.id,
+        tipo_entidad="insumo",
+        entidad_id=insumo.id,
+        valores={
+            "fuente_datos": "CAA",
+            "energia_kcal": 380.0,
+            "energia_kj": 1590.0,
+            "carbohidratos": 66.0,
+            "azucares_totales": 1.0,
+            "azucares_anadidos": 0.0,
+            "proteinas": 13.0,
+            "grasas_totales": 6.5,
+            "grasas_saturadas": 1.2,
+            "grasas_trans": 0.0,
+            "fibra_alimentaria": 10.0,
+            "sodio_mg": 4.0,
+        },
+    )
+
+    resp = services.completar_ingrediente_y_recalcular(session, req, usuario_actual="TestAdmin")
+    assert resp.recalculado is True
+    assert resp.tabla_incompleta is False
+    assert len(resp.ingredientes_incompletos) == 0
+    assert resp.informacion_nutricional is not None
+    assert resp.informacion_nutricional.es_incompleta is False
+    assert len(resp.informacion_nutricional.tabla_nutricional) >= 11
+
+def test_guardar_porcion_y_medida_casera_declaradas(session: Session):
+    services.asegurar_parametros_defecto(session)
+    ahora = datetime.now()
+    insumo = Insumo(
+        nombre="Harina Integral Test",
+        lote="L-INT-01",
+        fechaRecepcion=ahora,
+        cantRecibida=10.0,
+        stock=10.0,
+        medida="kilogramos",
+        energia_kcal=340.0,
+        energia_kj=1422.0,
+        carbohidratos=62.0,
+        azucares_totales=1.5,
+        azucares_anadidos=0.0,
+        proteinas=12.0,
+        grasas_totales=2.2,
+        grasas_saturadas=0.4,
+        grasas_trans=0.0,
+        fibra_alimentaria=10.5,
+        sodio_mg=5.0,
+        fuente_datos="CAA",
+    )
+    session.add(insumo)
+    session.flush()
+
+    prod = Producto(
+        nombre="Pan Integral de Prueba",
+        descripcion="500g",
+        unidadMedida="kilogramos",
+        activo=True,
+    )
+    session.add(prod)
+    session.flush()
+
+    receta = Receta(
+        nombre="Receta Pan Integral",
+        id_producto=prod.id,
+        operario_legajo=1,
+        rendimiento_final=1000.0,
+        activo=True,
+    )
+    session.add(receta)
+    session.flush()
+
+    version = VersionReceta(receta_id=receta.id, version=1, rendimiento_final=1000.0, archivado=False, es_vigente=True)
+    session.add(version)
+    session.flush()
+
+    det = RecetaDetalle(
+        nombre="Harina Integral",
+        version_receta_id=version.id,
+        ingrediente_id=insumo.id,
+        cantidad=1000.0,
+        unidad_medida="GRAMOS",
+        es_aditivo=False,
+        descripcion_pasos="Mezclar y amasar",
+    )
+    session.add(det)
+    session.commit()
+
+    req_porcion = GuardarPorcionDeclaradaRequest(
+        tamano_porcion_g=60.0,
+        medida_casera="2 rebanadas",
+        porciones_por_envase=16.0,
+        descripcion_porcion="2 rebanadas gruesas",
+    )
+
+    info = services.guardar_porcion_declarada(session, prod.id, req_porcion, usuario_actual="TesterAdmin")
+    assert info.tamano_porcion_g == 60.0
+    assert info.medida_casera == "2 rebanadas"
+    assert info.porciones_por_envase == 16.0
+    assert info.es_incompleta is False
+
+    # Verificar que todos los nutrientes obligatorios están presentes en la tabla
+    nutrientes_nombres = [f.nutriente for f in info.tabla_nutricional]
+    assert "azucares_totales" in nutrientes_nombres
+    assert "azucares_anadidos" in nutrientes_nombres
+    assert "energia_kcal" in nutrientes_nombres
+    assert "grasas_trans" in nutrientes_nombres
+    assert "sodio_mg" in nutrientes_nombres
+
+    # Verificar persistencia en el producto
+    session.refresh(prod)
+    assert prod.tamano_porcion_g == 60.0
+    assert prod.medida_casera == "2 rebanadas"
+    assert prod.porciones_por_envase == 16.0
+
+def test_guardar_porcion_declarada_validaciones(session: Session):
+    prod = Producto(
+        nombre="Producto Para Validar Porcion",
+        descripcion="Test",
+        unidadMedida="kilogramos",
+        activo=True,
+    )
+    session.add(prod)
+    session.commit()
+
+    # Tamaño de porción menor o igual a 0 debe fallar (validación de schema)
+    with pytest.raises(Exception):
+        GuardarPorcionDeclaradaRequest(
+            tamano_porcion_g=-5.0,
+            medida_casera="1 cucharada",
+        )
+
+    # Medida casera en blanco debe fallar (validación de schema)
+    with pytest.raises(Exception):
+        GuardarPorcionDeclaradaRequest(
+            tamano_porcion_g=50.0,
+            medida_casera="",
+        )
+

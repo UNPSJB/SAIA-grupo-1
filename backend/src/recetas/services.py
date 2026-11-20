@@ -94,36 +94,19 @@ def _normalizar_detalle_para_guardar(db: Session, detalle: dict) -> dict:
     unidad_texto = d.pop("unidad_medida", None)
     unidad_id_explicit = d.pop("unidad_medida_id", None)
 
-    ing_id = d.get("ingrediente_id")
-    tipo_id = d.get("tipo_insumo_id")
-    adit_id = d.get("aditivo_id")
+    # La etapa de receta se asocia a TipoInsumo, no a un lote de Insumo
+    tipo_id = d.get("tipo_insumo_id") or None
+    adit_id = d.get("aditivo_id") or None
 
-    ins_obj = db.get(Insumo, ing_id) if ing_id else None
+    
+    d["tipo_insumo_id"] = tipo_id
+    d["aditivo_id"] = adit_id
+
     tipo_obj = db.get(TipoInsumo, tipo_id) if tipo_id else None
-
-    if ins_obj and not tipo_obj and ins_obj.tipo_insumo_id:
-        d["tipo_insumo_id"] = ins_obj.tipo_insumo_id
-        tipo_obj = db.get(TipoInsumo, ins_obj.tipo_insumo_id)
-    elif tipo_obj and not ins_obj:
-        lote_ref = db.scalar(
-            select(Insumo)
-            .where(Insumo.tipo_insumo_id == tipo_obj.id, Insumo.activo == True)
-            .order_by(Insumo.stock.desc(), Insumo.id.asc())
-        )
-        if lote_ref:
-            d["ingrediente_id"] = lote_ref.id
-            ins_obj = lote_ref
-        else:
-            cualquier_lote = db.scalar(select(Insumo).where(Insumo.tipo_insumo_id == tipo_obj.id))
-            if cualquier_lote:
-                d["ingrediente_id"] = cualquier_lote.id
-                ins_obj = cualquier_lote
 
     if tipo_obj and tipo_obj.unidad_medida_id:
         d["unidad_medida_id"] = tipo_obj.unidad_medida_id
-    elif ins_obj and ins_obj.unidad_medida_id:
-        d["unidad_medida_id"] = ins_obj.unidad_medida_id
-    elif unidad_id_explicit is not None:
+    elif unidad_id_explicit:
         d["unidad_medida_id"] = unidad_id_explicit
     else:
         try:
@@ -342,7 +325,7 @@ def escalar_receta(
             schemas.IngredienteEscaladoItem(
                 detalle_id=det.id,
                 nombre_etapa=det.nombre,
-                ingrediente_id=det.ingrediente_id,
+                ingrediente_id=getattr(det, "ingrediente_id", None),
                 nombre_ingrediente=det.nombre_ingrediente,
                 es_aditivo=det.es_aditivo,
                 unidad_medida=det.unidad_medida,
@@ -373,9 +356,6 @@ def convertir_detalle_a_gramos(
     cant = float(det.cantidad or 0.0)
 
     tipo_obj = det.tipo_insumo
-    if not tipo_obj and det.ingrediente and det.ingrediente.tipo_insumo_id:
-        tipo_obj = db.get(TipoInsumo, det.ingrediente.tipo_insumo_id)
-
     adit_obj = det.aditivo
 
     if u in ("gramos", "gramo", "g"):
@@ -442,7 +422,6 @@ def calcular_composicion_porcentual(
             equivalencias_faltantes.append(
                 schemas.EquivalenciaFaltanteItem(
                     detalle_id=det.id,
-                    ingrediente_id=det.ingrediente_id,
                     tipo_insumo_id=det.tipo_insumo_id,
                     nombre=det.nombre_ingrediente,
                     unidad_medida=det.unidad_medida,
@@ -465,7 +444,6 @@ def calcular_composicion_porcentual(
 
         item_comp = schemas.ItemComposicionPorcentual(
             detalle_id=det.id,
-            ingrediente_id=det.ingrediente_id,
             tipo_insumo_id=det.tipo_insumo_id,
             aditivo_id=det.aditivo_id,
             nombre=det.nombre_ingrediente,
@@ -575,13 +553,15 @@ def generar_checklist_receta(
             requerido_por_insumo: Dict[int, Tuple[str, float]] = {}
             for det in version_vig.detalles:
                 cant_req = round(float(det.cantidad) * factor, 3)
-                t_id = det.tipo_insumo_id or (det.ingrediente.tipo_insumo_id if det.ingrediente else None)
+                det_ing = getattr(det, "ingrediente", None)
+                det_ing_id = getattr(det, "ingrediente_id", None)
+                t_id = det.tipo_insumo_id or (det_ing.tipo_insumo_id if det_ing else None)
                 if t_id:
                     nom_prev, acum_prev = requerido_por_tipo.get(t_id, (det.nombre_ingrediente, 0.0))
                     requerido_por_tipo[t_id] = (nom_prev, acum_prev + cant_req)
-                elif det.ingrediente_id:
-                    nom_prev, acum_prev = requerido_por_insumo.get(det.ingrediente_id, (det.nombre_ingrediente, 0.0))
-                    requerido_por_insumo[det.ingrediente_id] = (nom_prev, acum_prev + cant_req)
+                elif det_ing_id:
+                    nom_prev, acum_prev = requerido_por_insumo.get(det_ing_id, (det.nombre_ingrediente, 0.0))
+                    requerido_por_insumo[det_ing_id] = (nom_prev, acum_prev + cant_req)
 
             for t_id, (nom_t, total_req) in requerido_por_tipo.items():
                 lotes_activos = list(
@@ -613,7 +593,8 @@ def generar_checklist_receta(
 
         for idx_orden, detalle in enumerate(version_vig.detalles, start=1):
             cantidad_calculada = round(float(detalle.cantidad) * factor, 3)
-            t_id_det = detalle.tipo_insumo_id or (detalle.ingrediente.tipo_insumo_id if detalle.ingrediente else None)
+            det_ing = getattr(detalle, "ingrediente", None)
+            t_id_det = detalle.tipo_insumo_id or (det_ing.tipo_insumo_id if det_ing else None)
 
             item = ChecklistRecetaItem(
                 orden=idx_orden,
@@ -623,7 +604,7 @@ def generar_checklist_receta(
                 detalle_id=detalle.id,
                 nombre_etapa=detalle.nombre,
                 descripcion_pasos=detalle.descripcion_pasos,
-                ingrediente_id=detalle.ingrediente_id,
+                ingrediente_id=getattr(detalle, "ingrediente_id", None),
                 tipo_insumo_id=t_id_det,
                 cantidad=cantidad_calculada,
                 unidad_medida_id=detalle.unidad_medida_id,

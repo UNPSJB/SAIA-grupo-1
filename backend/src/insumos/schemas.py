@@ -41,21 +41,24 @@ class InsumoBase(BaseModel):
 
 
 class InsumoCreate(InsumoBase):
-    @field_validator("fechaRecepcion") # (o el nombre del campo que uses)
+    @field_validator("fechaRecepcion")
     @classmethod
-    def validar_fecha_recepcion(cls, v: datetime) -> datetime:
-        if v.date() > date.today():
-            raise exceptions.FechaRecepcionInvalida()
+    def validar_fecha_recepcion(cls, v: Optional[datetime]) -> Optional[datetime]:
+        if v is not None:
+            v_naive = v.replace(tzinfo=None) if getattr(v, "tzinfo", None) else v
+            if v_naive.date() > date.today():
+                raise exceptions.FechaRecepcionInvalida()
         return v
 
     @field_validator("fechaVencimiento")
     @classmethod
     def validar_fecha_vencimiento(cls, v: Optional[datetime]) -> Optional[datetime]:
         if v is not None:
+            v_naive = v.replace(tzinfo=None) if getattr(v, "tzinfo", None) else v
             manana = (datetime.now() + timedelta(days=7)).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
-            if v < manana:
+            if v_naive < manana:
                 raise exceptions.FechaVencimientoInvalida()
         return v
 

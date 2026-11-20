@@ -10,3 +10,9 @@ class UnidadMedida(ModeloBase):
     nombre: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     abreviatura: Mapped[str] = mapped_column(String(15), unique=True, index=True, nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, index=True, nullable=False)
+
+    GRAMOS = "Gramos"
+    KILOGRAMOS = "Kilogramos"
+    MILILITROS = "Mililitros"
+    LITROS = "Litros"
+    UNIDADES = "Unidades"

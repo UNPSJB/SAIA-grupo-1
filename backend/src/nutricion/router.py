@@ -10,6 +10,10 @@ from src.nutricion.schemas import (
     ParametroRedondeoUpdate,
     InsumoNutricionalUpdate,
     InformacionNutricionalResponse,
+    IngredientesIncompletosResponse,
+    CompletarIngredienteRequest,
+    CompletarIngredienteResponse,
+    GuardarPorcionDeclaradaRequest,
     CalcularNutricionRequest,
     VerificacionReferenciaResponse,
 )
@@ -29,6 +33,41 @@ def resolver_nombre_usuario(usuario: Optional[Personal]) -> str:
     if hasattr(usuario, "legajo") and usuario.legajo:
         return f"Legajo #{usuario.legajo}"
     return "Admin"
+
+@router.get(
+    "/nutricion/productos/{producto_id}/ingredientes-incompletos",
+    response_model=IngredientesIncompletosResponse,
+    dependencies=[Depends(get_usuario_actual)],
+)
+def obtener_ingredientes_incompletos(
+    producto_id: int,
+    receta_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    ingredientes = services.listar_ingredientes_incompletos(
+        db=db,
+        producto_id=producto_id,
+        receta_id=receta_id,
+    )
+
+    return {
+        "producto_id": producto_id,
+        "tabla_incompleta": len(ingredientes) > 0,
+        "ingredientes_incompletos": ingredientes,
+    }
+
+@router.post(
+    "/nutricion/completar-ingrediente",
+    response_model=CompletarIngredienteResponse,
+    dependencies=[Depends(requiere_admin)],
+)
+def completar_ingrediente(
+    datos: CompletarIngredienteRequest,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    u_nombre = resolver_nombre_usuario(usuario)
+    return services.completar_ingrediente_y_recalcular(db, datos, usuario_actual=u_nombre)
 
 @router.get(
     "/nutricion/parametros",
@@ -128,6 +167,7 @@ def calcular_nutricion_producto(
         tamano_porcion_g=datos.tamano_porcion_g if datos else None,
         porciones_por_envase=datos.porciones_por_envase if datos else None,
         descripcion_porcion=datos.descripcion_porcion if datos else None,
+        medida_casera=datos.medida_casera if datos else None,
         usuario_actual=u_nombre,
     )
 
@@ -150,6 +190,45 @@ def calcular_nutricion_producto_alias(
         tamano_porcion_g=datos.tamano_porcion_g if datos else None,
         porciones_por_envase=datos.porciones_por_envase if datos else None,
         descripcion_porcion=datos.descripcion_porcion if datos else None,
+        medida_casera=datos.medida_casera if datos else None,
+        usuario_actual=u_nombre,
+    )
+
+@router.put(
+    "/nutricion/productos/{producto_id}/porcion-declarada",
+    response_model=InformacionNutricionalResponse,
+    dependencies=[Depends(requiere_admin)],
+)
+def guardar_porcion_declarada_endpoint(
+    producto_id: int,
+    datos: GuardarPorcionDeclaradaRequest,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    u_nombre = resolver_nombre_usuario(usuario)
+    return services.guardar_porcion_declarada(
+        db=db,
+        producto_id=producto_id,
+        datos=datos,
+        usuario_actual=u_nombre,
+    )
+
+@router.put(
+    "/productos/{producto_id}/porcion-declarada",
+    response_model=InformacionNutricionalResponse,
+    dependencies=[Depends(requiere_admin)],
+)
+def guardar_porcion_declarada_alias(
+    producto_id: int,
+    datos: GuardarPorcionDeclaradaRequest,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    u_nombre = resolver_nombre_usuario(usuario)
+    return services.guardar_porcion_declarada(
+        db=db,
+        producto_id=producto_id,
+        datos=datos,
         usuario_actual=u_nombre,
     )
 

@@ -40,3 +40,10 @@ class ModuloDesactivado(Conflict):
 
 class EstadoFisicoIndeterminado(BadRequest):
     DETAIL = ErrorCode.ESTADO_FISICO_INDETERMINADO
+
+class ProductoNoAplicaRotulado(BadRequest):
+    DETAIL = ErrorCode.PRODUCTO_NO_APLICA_ROTULADO
+
+
+class NutricionNoCalculada(BadRequest):
+    DETAIL = ErrorCode.NUTRICION_NO_CALCULADA

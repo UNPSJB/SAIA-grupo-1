@@ -4,6 +4,12 @@ import { apiFetch } from '../../api/client';
 import type { TipoInsumo, TipoInsumoForm } from './tipos';
 import type { UnidadMedidaItem } from '../unidadesMedida/tipos';
 
+interface AlergenoItem {
+  id: number;
+  nombre: string;
+  simbolo?: string;
+}
+
 interface EditarTipoInsumoProps {
   id: number;
   onSuccess?: () => void;
@@ -11,12 +17,14 @@ interface EditarTipoInsumoProps {
 }
 
 export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSuccess, onCancel }) => {
-  const [form, setForm] = useState<TipoInsumoForm>({
+  const [form, setForm] = useState<TipoInsumoForm & { alergeno_ids: number[] }>({
     nombre: '',
     descripcion: '',
     unidad_medida_id: '',
+    alergeno_ids: [],
   });
   const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
+  const [alergenosDisponibles, setAlergenosDisponibles] = useState<AlergenoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [cargandoDatos, setCargandoDatos] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -26,26 +34,36 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
     let cancelado = false;
     async function cargar() {
       try {
-        const [resTipo, resUnidades] = await Promise.all([
+        const [resTipo, resUnidades, resAlergenos] = await Promise.all([
           apiFetch(`/insumos/tipos/${id}`),
           apiFetch('/unidades-medida/?solo_activos=false'),
+          apiFetch('/alergenos/'),
         ]);
         const listaUnidades: UnidadMedidaItem[] = resUnidades.ok ? await resUnidades.json() : [];
-        if (!cancelado) setUnidades(listaUnidades);
+        const listaAlergenos: AlergenoItem[] = resAlergenos.ok ? await resAlergenos.json() : [];
+        
+        if (!cancelado) {
+          setUnidades(listaUnidades);
+          setAlergenosDisponibles(listaAlergenos);
+        }
 
         if (!cancelado && resTipo.ok) {
-          const data: TipoInsumo = await resTipo.json();
+          const data: TipoInsumo & { alergenos?: { id: number }[] } = await resTipo.json();
           const unidadCoincidente =
             data.unidad_medida_id ??
             listaUnidades.find(
               (u) => u.nombre.toLowerCase() === (data.unidadMedida || '').toLowerCase()
             )?.id ??
             '';
+
+          const idsAsociados = data.alergenos ? data.alergenos.map((a) => a.id) : [];
+
           setForm({
             nombre: data.nombre,
             descripcion: data.descripcion || '',
             unidad_medida_id: unidadCoincidente,
             equivalencia_gramos: data.equivalencia_gramos ?? '',
+            alergeno_ids: idsAsociados,
           });
         } else if (!cancelado) {
           setErrorMsg('No se pudo cargar la información del tipo de insumo.');
@@ -70,7 +88,19 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
     });
   };
 
-  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
+  const handleToggleAlergeno = (alergenoId: number) => {
+    setForm((prev) => {
+      const existe = prev.alergeno_ids.includes(alergenoId);
+      return {
+        ...prev,
+        alergeno_ids: existe
+          ? prev.alergeno_ids.filter((aid) => aid !== alergenoId)
+          : [...prev.alergeno_ids, alergenoId],
+      };
+    });
+  };
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -78,10 +108,6 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
     const nombreLimpio = form.nombre.trim();
     if (!nombreLimpio) {
       setErrorMsg('El nombre del tipo de insumo no puede estar vacío.');
-      return;
-    }
-    if (nombreLimpio.length < 2) {
-      setErrorMsg('El nombre debe tener al menos 2 caracteres.');
       return;
     }
     if (!form.unidad_medida_id) {
@@ -96,6 +122,7 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
         descripcion: form.descripcion.trim() || null,
         unidad_medida_id: Number(form.unidad_medida_id),
         equivalencia_gramos: form.equivalencia_gramos !== '' && form.equivalencia_gramos !== undefined ? Number(form.equivalencia_gramos) : null,
+        alergeno_ids: form.alergeno_ids,
       };
 
       const res = await apiFetch(`/insumos/tipos/${id}`, {
@@ -107,11 +134,7 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         let msg = 'Error al actualizar el tipo de insumo.';
-        if (typeof data.detail === 'string') {
-          msg = data.detail;
-        } else if (Array.isArray(data.detail)) {
-          msg = data.detail.map((err: { msg?: string }) => err.msg || JSON.stringify(err)).join(', ');
-        }
+        if (typeof data.detail === 'string') msg = data.detail;
         throw new Error(msg);
       }
 
@@ -175,6 +198,48 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
           </select>
         </div>
 
+        {/* Selección de Alérgenos en Edición */}
+        <div className="form-group">
+          <label>Alérgenos Asociados</label>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+              gap: '8px',
+              marginTop: '6px',
+            }}
+          >
+            {alergenosDisponibles.map((alg) => {
+              const seleccionado = form.alergeno_ids.includes(alg.id);
+              return (
+                <button
+                  key={alg.id}
+                  type="button"
+                  onClick={() => handleToggleAlergeno(alg.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    border: seleccionado ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    backgroundColor: seleccionado ? '#eff6ff' : '#ffffff',
+                    color: seleccionado ? '#1d4ed8' : '#334155',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: seleccionado ? 700 : 500,
+                  }}
+                >
+                  {alg.simbolo && (
+                    <img src={alg.simbolo} alt={alg.nombre} style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                  )}
+                  <span>{alg.nombre}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="form-group">
           <label htmlFor="equivalencia_gramos">Equivalencia en Gramos (por 1 unidad de medida)</label>
           <input
@@ -183,7 +248,6 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
             type="number"
             min="0.01"
             step="any"
-            placeholder="Ej: 60 si 1 unidad pesa 60g, 1000 si es kg/l"
             value={form.equivalencia_gramos ?? ''}
             onChange={(e) =>
               setForm({

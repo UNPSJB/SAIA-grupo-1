@@ -20,6 +20,11 @@ OCTOGONOS = [Depends(requiere_admin), Depends(requiere_modulo_octogonos)]
 # --- Conjuntos de parametros ---
 # la pantalla de parametros sigue disponible con el modulo apagado, asi se puede volver a activar
 
+@router.get("/parametros-sellos/vigente", response_model=schemas.ParametrosSellosOut, dependencies=SOLO_ADMIN)
+def obtener_parametros_sellos_vigentes(fecha: Optional[date] = None, db: Session = Depends(get_db)):
+    return services.obtener_parametros_sellos_vigentes(db, fecha)
+
+
 @router.get("/parametros", response_model=List[schemas.ConjuntoResumen], dependencies=SOLO_ADMIN)
 def listar_conjuntos(estado: Optional[EstadoConjunto] = None, db: Session = Depends(get_db)):
     return services.listar_conjuntos(db, estado)
@@ -111,6 +116,20 @@ def calcular_rotulado(
     usuario: Personal = Depends(requiere_admin),
 ):
     return services.calcular_rotulado(db, producto_id, datos, usuario)
+
+
+@router.post(
+    "/productos/{producto_id}/calcular-desde-nutricion",
+    response_model=schemas.CalculoOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=OCTOGONOS,
+)
+def calcular_desde_nutricion(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    return services.calcular_desde_nutricion_producto(db, producto_id, usuario)
 
 
 @router.get(

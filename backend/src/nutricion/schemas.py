@@ -41,6 +41,24 @@ class InsumoNutricionalUpdate(BaseModel):
     grasas_trans: Optional[float] = None
     fibra_alimentaria: Optional[float] = None
     sodio_mg: Optional[float] = None
+    fuente_datos: Optional[str] = None
+    fuente_detalle: Optional[str] = None
+
+class IngredienteIncompletoItem(BaseModel):
+    ingrediente_id: int
+    nombre: str
+    es_aditivo: bool
+    aporta_energia_sodio: bool = False
+    tipo_entidad: str  # "insumo" | "tipo_insumo" | "aditivo"
+    entidad_id: int
+    campos_faltantes: List[str]
+    campos_faltantes_claves: List[str]
+    valores_actuales: Dict[str, Any] = {}
+
+class IngredientesIncompletosResponse(BaseModel):
+    producto_id: int
+    tabla_incompleta: bool
+    ingredientes_incompletos: List[IngredienteIncompletoItem]
 
 class NutrienteFilaResponse(BaseModel):
     nutriente: str
@@ -74,19 +92,42 @@ class InformacionNutricionalResponse(BaseModel):
     tamano_porcion_g: float
     porciones_por_envase: Optional[float] = None
     descripcion_porcion: Optional[str] = None
+    medida_casera: Optional[str] = None
     rendimiento_final_receta: float
     peso_total_ingredientes: float
     factor_rendimiento: float
     fecha_calculo: datetime
     calculado_por_usuario: Optional[str] = None
+    es_incompleta: bool = False
+    ingredientes_incompletos: Optional[List[IngredienteIncompletoItem]] = None
     tabla_nutricional: List[NutrienteFilaResponse]
     detalles_ingredientes: Optional[List[DetalleAporteIngrediente]] = None
+
+class CompletarIngredienteRequest(BaseModel):
+    producto_id: Optional[int] = None
+    tipo_entidad: str  # "insumo" | "tipo_insumo" | "aditivo"
+    entidad_id: int
+    valores: Dict[str, Any]
+
+class CompletarIngredienteResponse(BaseModel):
+    mensaje: str
+    recalculado: bool
+    tabla_incompleta: bool
+    ingredientes_incompletos: List[IngredienteIncompletoItem]
+    informacion_nutricional: Optional[InformacionNutricionalResponse] = None
 
 class CalcularNutricionRequest(BaseModel):
     receta_id: Optional[int] = None
     tamano_porcion_g: Optional[float] = Field(None, gt=0)
     porciones_por_envase: Optional[float] = Field(None, gt=0)
     descripcion_porcion: Optional[str] = None
+    medida_casera: Optional[str] = None
+
+class GuardarPorcionDeclaradaRequest(BaseModel):
+    tamano_porcion_g: float = Field(..., gt=0, description="Tamaño de porción en gramos")
+    medida_casera: str = Field(..., min_length=1, max_length=100, description="Medida casera declarada (ej: 1 rebanada, 2 cucharadas)")
+    porciones_por_envase: Optional[float] = Field(None, gt=0, description="Cantidad de porciones por envase")
+    descripcion_porcion: Optional[str] = Field(None, max_length=100, description="Descripción o texto alternativo de la porción")
 
 class VerificacionReferenciaDetalle(BaseModel):
     nutriente: str

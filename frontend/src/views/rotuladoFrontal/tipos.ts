@@ -94,6 +94,34 @@ export interface ResultadoRegla {
   condiciones: DetalleCondicion[];
 }
 
+export interface PasoCalculoSello {
+  criterio: string;
+  codigo: string;
+  tiene_agregado: string;
+  calculo_realizado: string;
+  umbral: string;
+  estado: string;
+  aplica: boolean;
+  supera: boolean;
+}
+
+export interface ParametrosSellos {
+  id: number;
+  version: string;
+  fecha_vigencia: string;
+  activa: boolean;
+  umbral_azucares_pct: number;
+  umbral_grasas_totales_pct: number;
+  umbral_grasas_saturadas_pct: number;
+  umbral_sodio_mg_por_kcal: number;
+  umbral_sodio_max_100g: number;
+  umbral_sodio_bebida_sin_kcal: number;
+  umbral_calorias_solido_100g: number;
+  umbral_calorias_liquido_100ml: number;
+  factor_kcal_carbohidratos: number;
+  factor_kcal_grasas: number;
+}
+
 export interface Calculo {
   id: number;
   producto_id: number;
@@ -105,6 +133,7 @@ export interface Calculo {
   valores_entrada: ValoresNutricionales;
   sellos: string[];
   detalle: ResultadoRegla[];
+  pasos?: PasoCalculoSello[] | null;
   calculado_en: string;
   calculado_por_legajo?: number | null;
 }

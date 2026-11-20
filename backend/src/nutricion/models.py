@@ -29,6 +29,7 @@ class InformacionNutricionalProducto(ModeloBase):
     tamano_porcion_g: Mapped[float] = mapped_column(Float, nullable=False)
     porciones_por_envase: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     descripcion_porcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    medida_casera: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     rendimiento_final_receta: Mapped[float] = mapped_column(Float, nullable=False)
     peso_total_ingredientes: Mapped[float] = mapped_column(Float, nullable=False)
     factor_rendimiento: Mapped[float] = mapped_column(Float, nullable=False)
@@ -36,6 +37,7 @@ class InformacionNutricionalProducto(ModeloBase):
     calculado_por_usuario: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     detalles_ingredientes_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     valores_nutricionales_json: Mapped[str] = mapped_column(Text, nullable=False)
+    es_incompleta: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     energia_kcal_100g: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     energia_kcal_porcion: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

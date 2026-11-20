@@ -311,7 +311,7 @@ def test_guardar_y_obtener_lista_rotulo_db(session: Session):
 def test_guardar_ajuste_manual_deja_constancia(session: Session):
     prod = Producto(
         nombre="Alfajor Test",
-        unidadMedida=UnidadMedida.UNIDADES,
+        unidadMedida="unidades",
         activo=True,
     )
     session.add(prod)
@@ -382,7 +382,7 @@ def test_guardar_ajuste_manual_deja_constancia(session: Session):
 def test_guardar_directo_con_ajuste_manual(session: Session):
     prod = Producto(
         nombre="Galleta Manual Test",
-        unidadMedida=UnidadMedida.UNIDADES,
+        unidadMedida="unidades",
         activo=True,
     )
     session.add(prod)
@@ -423,7 +423,7 @@ def test_guardar_directo_con_ajuste_manual(session: Session):
 def test_cambiar_formato_aditivos(session: Session):
     prod = Producto(
         nombre="Budín Test",
-        unidadMedida=UnidadMedida.UNIDADES,
+        unidadMedida="unidades",
         activo=True,
     )
     session.add(prod)
@@ -582,7 +582,7 @@ def test_excepciones_varias(session: Session):
 
     prod_sin_lista = Producto(
         nombre="Prod Sin Lista Test",
-        unidadMedida=UnidadMedida.UNIDADES,
+        unidadMedida="unidades",
         activo=True,
     )
     session.add(prod_sin_lista)

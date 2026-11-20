@@ -1,13 +1,13 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from src.alergenos.models import Alergeno,productos_alergenos
 from src.recetas.models import Receta
 from src.models import ModeloBase
 
 import src.unidadesMedida.models
 
 if TYPE_CHECKING:
-    from src.gestion_archivos.models import Documento
     from src.unidadesMedida.models import UnidadMedida
 
 class Producto(ModeloBase):
@@ -27,12 +27,22 @@ class Producto(ModeloBase):
         "UnidadMedida", lazy="joined"
     )
 
+    
+
     tamano_porcion_g: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
     _porciones_por_envase: Mapped[Optional[float]] = mapped_column("porciones_por_envase", Float, nullable=True, default=None)
     descripcion_porcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default=None)
+    medida_casera: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default=None)
     peso_unidad_g: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
     aplica_rotulado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     documento_receta_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
+    conservacion: Mapped[str] = mapped_column (String(500),nullable=True, default=None)
+
+    alergenos_precaucion: Mapped[List["Alergeno"]] = relationship(
+    "Alergeno",
+    secondary=productos_alergenos,
+    lazy="selectin",  # o "joined", según cómo consultes productos
+)
 
     @property
     def porciones_por_envase(self) -> Optional[float]:
