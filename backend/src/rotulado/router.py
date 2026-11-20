@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.database import get_db
@@ -161,6 +161,34 @@ def exportar_borrador_rotulo_endpoint(
     db: Session = Depends(get_db),
 ):
     return services.exportar_borrador(db, producto_id, datos)
+
+
+@router.get(
+    "/productos/{producto_id}/borrador-rotulo/exportar-pdf",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {"application/pdf": {}},
+            "description": "Borrador de rótulo con anexo de cálculos en PDF",
+        }
+    },
+    dependencies=[Depends(requiere_admin)],
+)
+def exportar_borrador_pdf_endpoint(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    usuario: Personal = Depends(requiere_admin),
+):
+    pdf_bytes = services.generar_pdf_borrador_rotulo(db, producto_id, usuario)
+    nombre_archivo = f"borrador_rotulo_producto_{producto_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{nombre_archivo}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 
 @router.post(

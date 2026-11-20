@@ -311,7 +311,7 @@ def test_guardar_y_obtener_lista_rotulo_db(session: Session):
 def test_guardar_ajuste_manual_deja_constancia(session: Session):
     prod = Producto(
         nombre="Alfajor Test",
-        unidadMedida=UnidadMedida.UNIDADES,
+        unidadMedida="unidades",
         activo=True,
     )
     session.add(prod)
@@ -382,7 +382,7 @@ def test_guardar_ajuste_manual_deja_constancia(session: Session):
 def test_guardar_directo_con_ajuste_manual(session: Session):
     prod = Producto(
         nombre="Galleta Manual Test",
-        unidadMedida=UnidadMedida.UNIDADES,
+        unidadMedida="unidades",
         activo=True,
     )
     session.add(prod)
@@ -423,7 +423,7 @@ def test_guardar_directo_con_ajuste_manual(session: Session):
 def test_cambiar_formato_aditivos(session: Session):
     prod = Producto(
         nombre="Budín Test",
-        unidadMedida=UnidadMedida.UNIDADES,
+        unidadMedida="unidades",
         activo=True,
     )
     session.add(prod)
@@ -582,7 +582,7 @@ def test_excepciones_varias(session: Session):
 
     prod_sin_lista = Producto(
         nombre="Prod Sin Lista Test",
-        unidadMedida=UnidadMedida.UNIDADES,
+        unidadMedida="unidades",
         activo=True,
     )
     session.add(prod_sin_lista)
@@ -1037,6 +1037,43 @@ def test_migraciones_tablas_rotulado_en_motor_vacio():
         )
     actualizar_tablas_rotulado(engine_nuevo)
     actualizar_tablas_rotulado(engine_nuevo)
+
+
+def test_generar_pdf_borrador_rotulo_con_anexo(session: Session):
+    prod, user = _crear_prod_y_user_aux(session, "Alfajor Artesanal PDF")
+    borrador = services.obtener_o_crear_borrador(session, prod.id)
+    borrador.denominacion_venta = "Alfajor relleno con dulce de leche"
+    borrador.contenido_neto = "70 g"
+    borrador.valor_energetico_kcal = 290.0
+    borrador.azucares_anadidos = 18.0
+    borrador.grasas_totales = 12.0
+    borrador.grasas_saturadas = 5.0
+    borrador.sodio = 95.0
+    borrador.porcion = "35 g (1/2 unidad)"
+    borrador.porciones_por_envase = "2"
+    session.commit()
+
+    pdf_bytes = services.generar_pdf_borrador_rotulo(session, prod.id, user)
+    assert pdf_bytes is not None
+    assert len(pdf_bytes) > 500
+    assert pdf_bytes.startswith(b"%PDF-")
+
+    # Verificar registro en borrador
+    session.refresh(borrador)
+    assert borrador.fecha_ultima_exportacion_pdf is not None
+    assert borrador.version_receta_exportada is not None
+    assert borrador.usuario_actualizacion is not None
+
+
+def test_generar_pdf_borrador_rotulo_rechaza_mencion_aprobacion(session: Session):
+    prod, user = _crear_prod_y_user_aux(session, "Galletitas")
+    borrador = services.obtener_o_crear_borrador(session, prod.id)
+    borrador.denominacion_venta = "Galletitas con rótulo aprobado por autoridad"
+    session.commit()
+
+    with pytest.raises(exceptions.MencionAprobacionNoPermitidaError):
+        services.generar_pdf_borrador_rotulo(session, prod.id, user)
+
 
 
 

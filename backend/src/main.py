@@ -74,6 +74,8 @@ async def _tarea_diaria_snapshot_vista_publica() -> None:
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    from src.rotulado.migraciones import actualizar_tablas_rotulado
+    actualizar_tablas_rotulado(engine)
     with SessionLocal() as db:
         asegurar_parametros_rotulado(db)
     if ENV == "DEV":

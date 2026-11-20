@@ -42,3 +42,7 @@ class ExportacionSinLeyendaError(BadRequest):
     DETAIL = ErrorCode.EXPORTACION_SIN_LEYENDA
 
 
+class MencionAprobacionNoPermitidaError(BadRequest):
+    DETAIL = ErrorCode.MENCION_APROBACION_NO_PERMITIDA
+
+

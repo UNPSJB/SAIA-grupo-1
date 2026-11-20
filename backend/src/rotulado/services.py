@@ -1294,6 +1294,8 @@ def mapear_respuesta_borrador(
         es_completo_para_tramite=es_compl,
         actualizado_el=borrador.actualizado_el,
         usuario_actualizacion=borrador.usuario_actualizacion,
+        fecha_ultima_exportacion_pdf=borrador.fecha_ultima_exportacion_pdf,
+        version_receta_exportada=borrador.version_receta_exportada,
     )
 
 
@@ -1434,5 +1436,232 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Aria
         leyenda_incluida=True,
         timestamp=datetime.now(),
     )
+
+
+def generar_pdf_borrador_rotulo(
+    db: Session,
+    producto_id: int,
+    usuario: Optional[Personal] = None,
+) -> bytes:
+    from src.rotulado.pdf import armar_pdf_borrador, validar_sin_menciones_aprobacion
+    from src.nutricion.services import resolver_receta_para_producto, normalizar_a_gramos
+    from src.recetas.services import convertir_detalle_a_gramos
+    from src.recetas.models import Receta, VersionReceta, RecetaDetalle
+    from src.insumos.models import Insumo
+    from src.rotulado_frontal.models import ConjuntoParametrosRotulado
+    from src.rotulado_frontal.constants import EstadoConjunto
+
+    borrador = obtener_o_crear_borrador(db, producto_id)
+    lista = obtener_lista_rotulo(db, producto_id)
+    datos_rotulo = mapear_respuesta_borrador(borrador, lista)
+
+    # Validar que no haya menciones de aprobación o certificación
+    validar_sin_menciones_aprobacion([
+        datos_rotulo.producto_nombre,
+        datos_rotulo.denominacion_venta or "",
+        datos_rotulo.lista_ingredientes_texto or "",
+    ])
+
+    fecha_emision = datetime.now()
+    nom_usuario = (
+        f"{usuario.nombre} {usuario.apellido}"
+        if usuario and getattr(usuario, "nombre", None)
+        else (getattr(usuario, "usuario", None) or "Administrador")
+    )
+
+    receta_info: Dict[str, Any] = {
+        "id": None,
+        "nombre": "Sin receta asignada",
+        "version": 1,
+        "fecha_creacion": fecha_emision.strftime("%d/%m/%Y"),
+        "rendimiento_final": 0.0,
+        "peso_total_ingredientes": 0.0,
+        "factor_rendimiento": 1.0,
+    }
+    composicion_ingredientes: List[Dict[str, Any]] = []
+    fuentes_ingredientes: List[Dict[str, Any]] = []
+
+    try:
+        receta = resolver_receta_para_producto(db, borrador.producto, None)
+    except Exception:
+        receta = None
+
+    if receta:
+        version = receta.version_actual
+        receta_info["id"] = receta.id
+        receta_info["nombre"] = receta.nombre
+        receta_info["version"] = version.version if version else 1
+        f_creac = version.creado_el if version and version.creado_el else receta.fecha_creacion
+        receta_info["fecha_creacion"] = f_creac.strftime("%d/%m/%Y") if f_creac else "-"
+
+        rend_final = (
+            version.rendimiento_final
+            if version and version.rendimiento_final and version.rendimiento_final > 0
+            else (receta.rendimiento_final or 0.0)
+        )
+        receta_info["rendimiento_final"] = rend_final
+
+        detalles: List[RecetaDetalle] = version.detalles if version else []
+        peso_total_g = 0.0
+        items_temp = []
+
+        for det in detalles:
+            insumo = db.get(Insumo, det.ingrediente_id) if det.ingrediente_id else None
+            tipo_obj = det.tipo_insumo
+            adit_obj = det.aditivo
+
+            cant_g_calc, _ = convertir_detalle_a_gramos(db, det)
+            cant_g = (
+                cant_g_calc
+                if cant_g_calc is not None
+                else normalizar_a_gramos(det.cantidad, det.unidad_medida)
+            )
+            peso_total_g += cant_g
+
+            tipo_desc = "Insumo base"
+            if det.es_aditivo or adit_obj:
+                func_t = det.clase_funcional or (adit_obj.clase_funcional if adit_obj else None) or "Aditivo tecnológico"
+                ins_num = det.numero_ins or (adit_obj.numero_ins if adit_obj else None) or ""
+                tipo_desc = f"Aditivo: {func_t} {f'(INS {ins_num})' if ins_num else ''}".strip()
+            elif tipo_obj:
+                tipo_desc = tipo_obj.nombre or "Materia prima"
+
+            fuente = None
+            fuente_det = None
+            for entidad in (tipo_obj, adit_obj, insumo):
+                if entidad is not None:
+                    f_val = getattr(entidad, "fuente_datos", None)
+                    if f_val and str(f_val).strip():
+                        fuente = str(f_val).strip()
+                        fuente_det = getattr(entidad, "fuente_detalle", None) or getattr(entidad, "alimento_referencia_id", None)
+                        break
+
+            items_temp.append({
+                "nombre": det.nombre,
+                "cantidad": det.cantidad,
+                "unidad_medida": det.unidad_medida,
+                "peso_gramos": cant_g,
+                "tipo": tipo_desc,
+                "fuente_datos": fuente or "Código Alimentario Argentino (CAA)",
+                "fuente_detalle": fuente_det or "-",
+            })
+
+        receta_info["peso_total_ingredientes"] = round(peso_total_g / 1000.0, 3) if peso_total_g >= 1000 else round(peso_total_g, 2)
+        factor_r = (rend_final / (peso_total_g / 1000.0)) if peso_total_g > 0 and rend_final > 0 else (rend_final / peso_total_g if peso_total_g > 0 else 1.0)
+        receta_info["factor_rendimiento"] = factor_r
+
+        for it in items_temp:
+            pct = (it["peso_gramos"] / peso_total_g * 100.0) if peso_total_g > 0 else 0.0
+            it["porcentaje"] = pct
+            composicion_ingredientes.append(it)
+            fuentes_ingredientes.append({
+                "nombre": it["nombre"],
+                "fuente_datos": it["fuente_datos"],
+                "fuente_detalle": it["fuente_detalle"],
+            })
+
+        composicion_ingredientes.sort(key=lambda x: x["peso_gramos"], reverse=True)
+
+    conjunto_vigente = db.scalar(
+        select(ConjuntoParametrosRotulado)
+        .where(ConjuntoParametrosRotulado.estado == EstadoConjunto.PUBLICADO)
+        .order_by(ConjuntoParametrosRotulado.fecha_vigencia.desc())
+        .limit(1)
+    )
+    if conjunto_vigente:
+        version_normativa = f"Versión {conjunto_vigente.version} ({conjunto_vigente.norma_origen or 'Ley 27.642'})"
+    else:
+        version_normativa = "Ley 27.642 - Etapa 2 / Modelo de Perfil de Nutrientes OPS/ANMAT"
+
+    kcal = borrador.valor_energetico_kcal or 0.0
+    gt = borrador.grasas_totales or 0.0
+    gs = borrador.grasas_saturadas or 0.0
+    az_anad = borrador.azucares_anadidos or 0.0
+    sodio_mg = borrador.sodio or 0.0
+
+    pct_az = (az_anad * 4 / kcal * 100) if kcal > 0 else 0.0
+    pct_gt = (gt * 9 / kcal * 100) if kcal > 0 else 0.0
+    pct_gs = (gs * 9 / kcal * 100) if kcal > 0 else 0.0
+    rel_sodio = (sodio_mg / kcal) if kcal > 0 else 0.0
+
+    exceso_az = pct_az >= 10.0 if (kcal > 0 and az_anad > 0) else False
+    exceso_gt = pct_gt >= 30.0 if (kcal > 0 and gt > 0) else False
+    exceso_gs = pct_gs >= 10.0 if (kcal > 0 and gs > 0) else False
+    exceso_sodio = (rel_sodio >= 1.0 or sodio_mg >= 300.0) if sodio_mg > 0 else False
+    exceso_cal = (kcal >= 275.0 and (exceso_az or exceso_gt or exceso_gs)) if kcal > 0 else False
+
+    detalles_sellos = [
+        {
+            "nutriente": "Azúcares añadidos",
+            "criterio": "Aporte calórico >= 10% energía",
+            "valor": f"{pct_az:.1f} % kcal" if kcal > 0 else "0.0 %",
+            "umbral": ">= 10.0 %",
+            "resultado": "SUPERADO (Sello)" if exceso_az else "No supera",
+        },
+        {
+            "nutriente": "Grasas totales",
+            "criterio": "Aporte calórico >= 30% energía",
+            "valor": f"{pct_gt:.1f} % kcal" if kcal > 0 else "0.0 %",
+            "umbral": ">= 30.0 %",
+            "resultado": "SUPERADO (Sello)" if exceso_gt else "No supera",
+        },
+        {
+            "nutriente": "Grasas saturadas",
+            "criterio": "Aporte calórico >= 10% energía",
+            "valor": f"{pct_gs:.1f} % kcal" if kcal > 0 else "0.0 %",
+            "umbral": ">= 10.0 %",
+            "resultado": "SUPERADO (Sello)" if exceso_gs else "No supera",
+        },
+        {
+            "nutriente": "Sodio",
+            "criterio": ">= 1 mg/kcal o >= 300 mg/100g",
+            "valor": f"{rel_sodio:.2f} mg/kcal ({sodio_mg:.1f} mg/100g)",
+            "umbral": ">= 1.0 ó >= 300",
+            "resultado": "SUPERADO (Sello)" if exceso_sodio else "No supera",
+        },
+        {
+            "nutriente": "Calorías (energía)",
+            "criterio": ">= 275 kcal/100g y exceso de nutriente",
+            "valor": f"{kcal:.1f} kcal/100g",
+            "umbral": ">= 275 kcal/100g",
+            "resultado": "SUPERADO (Sello)" if exceso_cal else "No supera",
+        },
+        {
+            "nutriente": "Edulcorantes",
+            "criterio": "Presencia de edulcorantes añadidos",
+            "valor": "Detectado" if borrador.contiene_edulcorantes else "No detectado",
+            "umbral": "Presencia",
+            "resultado": "APLICA LEYENDA" if borrador.contiene_edulcorantes else "No aplica",
+        },
+        {
+            "nutriente": "Cafeína",
+            "criterio": "Presencia de cafeína añadida",
+            "valor": "Detectado" if borrador.contiene_cafeina else "No detectado",
+            "umbral": "Presencia",
+            "resultado": "APLICA LEYENDA" if borrador.contiene_cafeina else "No aplica",
+        },
+    ]
+
+    calculo_sellos = {
+        "version_normativa": version_normativa,
+        "detalles": detalles_sellos,
+    }
+
+    pdf_bytes = armar_pdf_borrador(
+        datos_rotulo=datos_rotulo,
+        receta_info=receta_info,
+        composicion_ingredientes=composicion_ingredientes,
+        fuentes_ingredientes=fuentes_ingredientes,
+        calculo_sellos=calculo_sellos,
+        usuario_nombre=nom_usuario,
+        fecha_emision=fecha_emision,
+    )
+
+    borrador.fecha_ultima_exportacion_pdf = fecha_emision
+    borrador.version_receta_exportada = receta_info["version"]
+    borrador.usuario_actualizacion = getattr(usuario, "usuario", None) or nom_usuario
+    db.commit()
+
+    return pdf_bytes
 
 
