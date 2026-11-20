@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
-import type { ProductoConId, DocumentoReceta } from "./tipos";
+import type { ProductoConId } from "./tipos";
 import type { UnidadMedidaItem } from "../unidadesMedida/tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 import { SuccessAlertDialog } from "../../components/ui/alert-dialog";
+
+interface RecetaOpcion {
+  id: number;
+  nombre: string;
+  activo?: boolean;
+}
 
 const PRODUCTO_INICIAL: ProductoConId = {
   id: 0,
@@ -23,7 +29,7 @@ interface EditarProductoProps {
 
 export default function EditarProducto({ productoId, onSuccess, onCancel }: EditarProductoProps) {
   const [producto, setProducto] = useState<ProductoConId>(PRODUCTO_INICIAL);
-  const [recetas, setRecetas] = useState<DocumentoReceta[]>([]);
+  const [recetas, setRecetas] = useState<RecetaOpcion[]>([]);
   const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -35,7 +41,7 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
     async function cargarCatalogos() {
       try {
         const [resRecetas, resUnidades] = await Promise.all([
-          apiFetch("/documentos/?tipo=Receta"),
+          apiFetch("/recetas/"),
           apiFetch("/unidades-medida/?solo_activos=false"),
         ]);
         if (!cancelado) {
@@ -195,11 +201,13 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
             onChange={handleChange}
           >
             <option value="">-- Sin receta asociada --</option>
-            {recetas.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.titulo}
-              </option>
-            ))}
+            {recetas
+              .filter((r) => r.activo !== false || r.id === producto.id_receta)
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nombre}
+                </option>
+              ))}
           </select>
         </div>
 

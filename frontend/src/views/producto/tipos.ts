@@ -59,6 +59,39 @@ export interface DetalleAporteIngrediente {
   aportes: Record<string, number>;
 }
 
+export interface IngredienteIncompleto {
+  ingrediente_id: number;
+  nombre: string;
+  es_aditivo: boolean;
+  aporta_energia_sodio: boolean;
+  tipo_entidad: 'insumo' | 'tipo_insumo' | 'aditivo' | string;
+  entidad_id: number;
+  campos_faltantes: string[];
+  campos_faltantes_claves: string[];
+  valores_actuales?: Record<string, any>;
+}
+
+export interface IngredientesIncompletosResponse {
+  producto_id: number;
+  tabla_incompleta: boolean;
+  ingredientes_incompletos: IngredienteIncompleto[];
+}
+
+export interface CompletarIngredienteRequest {
+  producto_id?: number | null;
+  tipo_entidad: string;
+  entidad_id: number;
+  valores: Record<string, any>;
+}
+
+export interface CompletarIngredienteResponse {
+  mensaje: string;
+  recalculado: boolean;
+  tabla_incompleta: boolean;
+  ingredientes_incompletos: IngredienteIncompleto[];
+  informacion_nutricional?: InformacionNutricional | null;
+}
+
 export interface InformacionNutricional {
   id?: number;
   producto_id: number;
@@ -74,6 +107,8 @@ export interface InformacionNutricional {
   factor_rendimiento: number;
   fecha_calculo: string;
   calculado_por_usuario?: string | null;
+  es_incompleta?: boolean;
+  ingredientes_incompletos?: IngredienteIncompleto[];
   tabla_nutricional: NutrienteFila[];
   detalles_ingredientes?: DetalleAporteIngrediente[];
 }

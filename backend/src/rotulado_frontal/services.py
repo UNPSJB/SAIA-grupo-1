@@ -230,6 +230,9 @@ def calcular_rotulado(
     if not producto.activo:
         raise producto_exceptions.ProductoInactivo()
 
+    if not producto.aplica_rotulado:
+        raise exceptions.ProductoNoAplicaRotulado()
+
     estado_fisico = resolver_estado_fisico(producto, datos.estado_fisico)
     conjunto = obtener_vigente(db, fecha)
     valores = datos.valores.model_dump()

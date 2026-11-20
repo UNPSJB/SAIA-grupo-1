@@ -683,6 +683,7 @@ def autocompletar_datos_borrador(
             borrador.grasas_trans = info_nut.grasas_trans_porcion
             borrador.fibra_alimentaria = info_nut.fibra_alimentaria_porcion
             borrador.sodio = info_nut.sodio_mg_porcion
+            borrador.tabla_marcada_incompleta = bool(getattr(info_nut, "es_incompleta", False))
 
     if "ingredientes" in t_campos:
         borrador.ingredientes_editado_manualmente = False
@@ -773,6 +774,13 @@ def calcular_octogonos_e12(
         estado_mod = sess.get(EstadoModulo, CLAVE_MODULO_OCTOGONOS)
         if estado_mod is not None and not estado_mod.activo:
             return [], False, "El sistema de octógonos y leyendas precautorias se encuentra desactivado en Configuración."
+
+        if borrador.producto is not None and not borrador.producto.aplica_rotulado:
+            return (
+                [],
+                False,
+                "No corresponde el rotulado frontal porque el producto no se comercializa envasado en ausencia del cliente.",
+            )
 
     octogonos: List[schemas.OctogonoItem] = []
 
@@ -1018,6 +1026,20 @@ def detectar_datos_faltantes_y_tabla(
         motivos_incompleta.append(
             "La tabla nutricional está marcada expresamente como incompleta"
         )
+    else:
+        from sqlalchemy.orm import object_session
+        sess = object_session(borrador)
+        if sess is not None:
+            from src.nutricion.models import InformacionNutricionalProducto
+            info_nut = sess.scalar(
+                select(InformacionNutricionalProducto).where(
+                    InformacionNutricionalProducto.producto_id == borrador.producto_id
+                )
+            )
+            if info_nut and getattr(info_nut, "es_incompleta", False):
+                motivos_incompleta.append(
+                    "La tabla nutricional del producto está marcada como incompleta por ingredientes con datos faltantes"
+                )
 
     if not borrador.porcion or not borrador.porcion.strip():
         motivos_incompleta.append("Falta indicar el tamaño de porción de referencia")

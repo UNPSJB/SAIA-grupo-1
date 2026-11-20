@@ -70,7 +70,7 @@ interface ListaSellosProps {
 
 export const ListaSellos: React.FC<ListaSellosProps> = ({ leyendas, tamano }) =>
   leyendas.length === 0 ? (
-    <span className="rot-sin-sellos">✓ Sin sellos de advertencia</span>
+    <span className="rot-sin-sellos">✓ Sin sellos de advertencia (Producto exceptuado de octógonos)</span>
   ) : (
     <div className="rot-sellos">
       {leyendas.map((l) => (
