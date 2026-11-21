@@ -54,6 +54,7 @@ from src.rotulado_frontal.router import router as rotulado_frontal_router
 from src.rotulado_frontal.services import asegurar_datos_iniciales as asegurar_parametros_rotulado
 from src.nutricion.router import router as nutricion_router
 from src.alergenos.router import router as alergeno_router
+from src.utils.router import router as pdf_router
 
 ENV = settings.ENV.upper()
 ROOT_PATH = getattr(settings, f"ROOT_PATH_{ENV}", "")
@@ -161,3 +162,4 @@ app.include_router(recetas_router)
 app.include_router(rotulado_frontal_router, prefix="/rotulado-frontal", tags=["Rotulado frontal"], dependencies=SESION)
 app.include_router(nutricion_router)
 app.include_router(alergeno_router, dependencies=SOLO_ADMIN)
+app.include_router(pdf_router,dependencies=SESION)

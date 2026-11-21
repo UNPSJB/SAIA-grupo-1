@@ -28,6 +28,7 @@ def exportar_productos_pdf(
     }
     
     return generar_respuesta_pdf(
+        db=db,
         datos=datos,
         columnas=columnas,
         titulo_reporte="Listado de Productos Elaborados",

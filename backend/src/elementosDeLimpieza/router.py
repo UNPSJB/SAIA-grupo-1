@@ -27,6 +27,7 @@ def exportar_elementos_pdf(
     }
 
     return generar_respuesta_pdf(
+        db=db,
         datos=datos,
         columnas=columnas,
         titulo_reporte="Listado de Elementos de Limpieza",

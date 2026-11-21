@@ -125,6 +125,8 @@ import { ListadoAlergenos } from './views/alergeno/listado';
 import { NuevoAlergeno } from './views/alergeno/crearAlergeno';
 import { EditarAlergeno } from './views/alergeno/editarAlergeno';
 
+import ConfiguracionPdf from './views/crearYeditarPDF/ConfiguracionPdf';
+
 type VistaTipoInsumo = 'listado' | 'alta' | 'editar' | 'detalle';
 type VistaUnidadesMedida = 'listado' | 'alta' | 'editar';
 type VistaProveedores = 'listado' | 'alta' | 'editar';
@@ -237,6 +239,8 @@ function Aplicacion() {
   const [vistaAlergenos, setVistaAlergenos] = useState<VistaAlergenos>('listado');
   const [alergenoSeleccionado, setAlergenoSeleccionado] = useState<number | null>(null);
 
+  const [viendoConfigPdf, setViendoConfigPdf] = useState(false);
+
   const verLote = (loteId: number) => {
     setLoteSeleccionado(loteId);
     setVistaProduccion('detalle');
@@ -313,6 +317,7 @@ function Aplicacion() {
     setVistaPlanLimp('listado');
     setVistaRecetas('listado');
     setRecetaSeleccionada(null);
+    setViendoConfigPdf(false);
     setVistaChecklist('listado');
     setVistaMotivos('listado');
     setMotivoSeleccionado(null);
@@ -526,7 +531,9 @@ interface RegistroVencimientoRef {
             Configuraciones
           </button>
           <span className="dashboard-breadcrumb-separador">/</span>
-          <span className="dashboard-breadcrumb-actual">{ETIQUETAS_CONFIGURACION[modulo]}</span>
+          <span className="dashboard-breadcrumb-actual">
+            {viendoConfigPdf ? 'Configuración de PDF' : ETIQUETAS_CONFIGURACION[modulo]}
+          </span>
         </nav>
       </div>
     );
@@ -938,14 +945,20 @@ const irANotificacion = async (notif: NotificacionItem) => {
             }}
           />
           ) : modulo === 'configuraciones' ? (
-          <PanelConfiguraciones
-            estadoVistaPublica={estadoVistaPublica}
-            errorVistaPublica={errorVistaPublica}
-            onEstadoVistaPublica={aplicarEstadoVistaPublica}
-            onAbrirMaestro={(m) => cambiarModulo(m)}
-            onGestionarVistaPublica={() => setModulo('vistaPublica')}
-          />
-          ) : modulo === 'vistaPublica' ? (
+          viendoConfigPdf ? (
+            <ConfiguracionPdf
+              onCancel={() => setViendoConfigPdf(false)}
+              onSuccess={() => setViendoConfigPdf(false)}
+            />
+          ) : (<PanelConfiguraciones
+                estadoVistaPublica={estadoVistaPublica}
+                errorVistaPublica={errorVistaPublica}
+                onEstadoVistaPublica={aplicarEstadoVistaPublica}
+                onAbrirMaestro={(m) => cambiarModulo(m)}
+                onGestionarVistaPublica={() => setModulo('vistaPublica')}
+                onAbrirConfiguracionPdf={() => setViendoConfigPdf(true)}
+              />
+          )) : modulo === 'vistaPublica' ? (
           vistaPublicaHabilitada ? (
             <VistaPublica_Habilitada
               qrUrl={qrUrlPublica}

@@ -47,6 +47,7 @@ async def exportar_certificados_pdf(
     )
 
     return generar_respuesta_pdf(
+       db=db,
         datos=datos,
         columnas=columnas,
         titulo_reporte=titulo,

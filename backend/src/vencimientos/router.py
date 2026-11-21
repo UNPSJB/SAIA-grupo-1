@@ -35,6 +35,7 @@ def exportar_vencimientos_pdf(
     }
 
     return generar_respuesta_pdf(
+        db=db,
         datos=datos,
         columnas=columnas,
         titulo_reporte="Vencimientos Consolidados",
