@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ExportIcon } from '../../components/icons/ExportIcon';
+import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
+import type { FormatoGrafico } from '../../utils/exportarGraficos';
 import type { InformacionNutricional, ParametroRedondeo, VerificacionReferencia, IngredienteIncompleto } from './tipos';
+
+const LEYENDA_REVISION_PROFESIONAL =
+  'Valores calculados a partir de datos de referencia y recetas estructuradas. Deben ser revisados por un/a profesional revisor.';
 
 interface InformacionNutricionalModalProps {
   productoId: number;
@@ -27,8 +34,12 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
   const [cargandoParametros, setCargandoParametros] = useState(false);
   const [pesoUnidadG, setPesoUnidadG] = useState<number | null>(null);
   const [tamanoPorcion, setTamanoPorcion] = useState<string>('');
+  const [medidaCasera, setMedidaCasera] = useState<string>('');
   const [porcionesEnvase, setPorcionesEnvase] = useState<number | null>(null);
   const [descPorcion, setDescPorcion] = useState<string>('');
+  const [guardandoPorcion, setGuardandoPorcion] = useState(false);
+  const [exportModalAbierto, setExportModalAbierto] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [paramEditando, setParamEditando] = useState<ParametroRedondeo | null>(null);
   const [guardandoParam, setGuardandoParam] = useState(false);
   const [ingredientesIncompletos, setIngredientesIncompletos] = useState<IngredienteIncompleto[]>([]);
@@ -63,6 +74,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
         if (prodData.tamano_porcion_g != null) setTamanoPorcion(String(prodData.tamano_porcion_g));
         if (prodData.porciones_por_envase != null) setPorcionesEnvase(prodData.porciones_por_envase);
         if (prodData.descripcion_porcion != null) setDescPorcion(prodData.descripcion_porcion);
+        if (prodData.medida_casera != null) setMedidaCasera(prodData.medida_casera);
       }
       if (res.ok) {
         const data = await res.json();
@@ -73,6 +85,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
         if (data.tamano_porcion_g != null) setTamanoPorcion(String(data.tamano_porcion_g));
         if (data.porciones_por_envase != null) setPorcionesEnvase(data.porciones_por_envase);
         if (data.descripcion_porcion != null) setDescPorcion(data.descripcion_porcion);
+        if (data.medida_casera != null) setMedidaCasera(data.medida_casera);
       } else {
         const err = await res.json().catch(() => ({}));
         const msg = typeof err.detail === 'object' ? err.detail?.mensaje : (err.detail || 'No se pudo obtener la información nutricional.');
@@ -128,6 +141,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
           tamano_porcion_g: Number(tamanoPorcion),
           porciones_por_envase: porcionesCalculadas ?? undefined,
           descripcion_porcion: descPorcion || undefined,
+          medida_casera: medidaCasera.trim() || undefined,
         }),
       });
       if (res.ok) {
@@ -149,6 +163,345 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
     } finally {
       setCalculando(false);
     }
+  };
+
+  const guardarPorcionDeclarada = async () => {
+    if (!esAdministrador) return;
+    if (!tamanoPorcion || Number(tamanoPorcion) <= 0) {
+      setError('Debe indicar un tamaño de porción en gramos mayor a cero.');
+      return;
+    }
+    if (!medidaCasera.trim()) {
+      setError('La medida casera declarada es obligatoria (ej: 1 rebanada, 2 cucharadas, etc.).');
+      return;
+    }
+    setGuardandoPorcion(true);
+    setError(null);
+    setMensajeExito(null);
+    try {
+      const res = await apiFetch(`/nutricion/productos/${productoId}/porcion-declarada`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tamano_porcion_g: Number(tamanoPorcion),
+          medida_casera: medidaCasera.trim(),
+          porciones_por_envase: porcionesCalculadas ?? undefined,
+          descripcion_porcion: descPorcion.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInfo(data);
+        setMensajeExito('Porción y medida casera declaradas guardadas exitosamente.');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        const msg = typeof err.detail === 'object' ? err.detail?.mensaje : (err.detail || 'Error al guardar la porción declarada.');
+        setError(msg);
+      }
+    } catch {
+      setError('Error de comunicación con el servidor al guardar la porción declarada.');
+    } finally {
+      setGuardandoPorcion(false);
+    }
+  };
+
+  const exportarTablaAImagen = async (
+    infoTabla: InformacionNutricional,
+    nombreProd: string,
+    formato: 'png' | 'jpeg',
+    medidaCaseraTexto: string
+  ) => {
+    const scale = 2;
+    const width = 640;
+
+    const paddingX = 28;
+    const paddingY = 24;
+    const altoTitulo = 36;
+    const altoSubtitulo = 22;
+    const altoAlerta = infoTabla.es_incompleta ? 28 : 0;
+    const altoPorcion = 26;
+    const altoHeaderTabla = 32;
+    const altoFilas = infoTabla.tabla_nutricional.length * 25;
+    const altoPieCaa = 36;
+    const altoLeyenda = 65;
+    const totalHeight =
+      paddingY * 2 +
+      altoTitulo +
+      altoSubtitulo +
+      altoAlerta +
+      altoPorcion +
+      altoHeaderTabla +
+      altoFilas +
+      altoPieCaa +
+      altoLeyenda +
+      16;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = totalHeight * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('No se pudo inicializar el lienzo para generar la imagen.');
+
+    ctx.scale(scale, scale);
+
+    // Fondo blanco nítido
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, totalHeight);
+
+    // Borde exterior tipo panel de rótulo
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(14, 12, width - 28, totalHeight - 24);
+
+    let y = paddingY + 10;
+
+    // Título "INFORMACIÓN NUTRICIONAL"
+    ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'left';
+    ctx.fillText('INFORMACIÓN NUTRICIONAL', paddingX, y);
+    y += 6;
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(paddingX, y, width - paddingX * 2, 2.5);
+    y += 18;
+
+    // Nombre del producto
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#334155';
+    ctx.fillText(`Producto: ${nombreProd}`, paddingX, y);
+    y += 16;
+
+    if (infoTabla.es_incompleta) {
+      ctx.fillStyle = '#b91c1c';
+      ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillText('⚠️ ADVERTENCIA: Tabla calculada con datos nutricionales incompletos', paddingX, y);
+      y += 18;
+    }
+
+    // Porción y medida casera
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    const porcEnvTexto = infoTabla.porciones_por_envase
+      ? ` · Porciones por envase: aprox. ${infoTabla.porciones_por_envase}`
+      : '';
+    ctx.fillText(`Porción: ${infoTabla.tamano_porcion_g} g (${medidaCaseraTexto})${porcEnvTexto}`, paddingX, y);
+    y += 14;
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(paddingX, y, width - paddingX * 2, 1.5);
+    y += 18;
+
+    // Encabezados de columna
+    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'left';
+    ctx.fillText('Nutriente', paddingX, y);
+    ctx.textAlign = 'right';
+    ctx.fillText('Por 100 g', 320, y);
+    ctx.fillText(`Porción (${infoTabla.tamano_porcion_g} g)`, 460, y);
+    ctx.fillText('% VD (*)', width - paddingX, y);
+    y += 8;
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(paddingX, y);
+    ctx.lineTo(width - paddingX, y);
+    ctx.stroke();
+    y += 16;
+
+    // Filas de nutrientes
+    infoTabla.tabla_nutricional.forEach((f) => {
+      const esSub = ['azucares_totales', 'azucares_anadidos', 'grasas_saturadas', 'grasas_trans'].includes(
+        f.nutriente
+      );
+      ctx.textAlign = 'left';
+      ctx.font = esSub
+        ? 'normal 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif'
+        : 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillStyle = esSub ? '#475569' : '#0f172a';
+      const indentX = esSub ? paddingX + 16 : paddingX;
+      ctx.fillText(f.nombre_mostrar, indentX, y);
+
+      ctx.textAlign = 'right';
+      ctx.font = 'normal 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText(`${f.valor_100g_formateado} ${f.unidad}`, 320, y);
+
+      ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(`${f.valor_porcion_formateado} ${f.unidad}`, 460, y);
+
+      ctx.font = 'normal 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.fillText(f.vd_formateado, width - paddingX, y);
+
+      y += 5;
+      ctx.strokeStyle = '#f1f5f9';
+      ctx.beginPath();
+      ctx.moveTo(paddingX, y);
+      ctx.lineTo(width - paddingX, y);
+      ctx.stroke();
+      y += 18;
+    });
+
+    // Nota reglamentaria CAA
+    y += 4;
+    ctx.textAlign = 'left';
+    ctx.font = 'italic 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(
+      '(*) % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser',
+      paddingX,
+      y
+    );
+    y += 12;
+    ctx.fillText('mayores o menores según sus necesidades energéticas (Código Alimentario Argentino).', paddingX, y);
+    y += 14;
+
+    // CUADRO DESTACADO CON LA LEYENDA OBLIGATORIA DE REVISIÓN PROFESIONAL
+    const boxW = width - paddingX * 2;
+    const boxH = 48;
+    ctx.fillStyle = '#fef2f2';
+    ctx.fillRect(paddingX, y, boxW, boxH);
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(paddingX, y, boxW, boxH);
+
+    ctx.fillStyle = '#991b1b';
+    ctx.font = 'bold 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillText('⚠️ AVISO OBLIGATORIO DE REVISIÓN:', paddingX + 10, y + 17);
+    ctx.font = 'normal 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+    ctx.fillText(LEYENDA_REVISION_PROFESIONAL, paddingX + 10, y + 33);
+
+    const mimeType = formato === 'jpeg' ? 'image/jpeg' : 'image/png';
+    const quality = formato === 'jpeg' ? 0.95 : 1.0;
+    const dataUrl = canvas.toDataURL(mimeType, quality);
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `informacion_nutricional_${infoTabla.producto_id}.${formato}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const handleConfirmarExportacion = async (formato: FormatoGrafico) => {
+    if (!esAdministrador || !info) return;
+    // Validación: No permitir exportar sin la leyenda
+    if (!LEYENDA_REVISION_PROFESIONAL) {
+      setError('No se permite exportar la tabla nutricional sin la leyenda obligatoria.');
+      return;
+    }
+    setExportando(true);
+    setError(null);
+    try {
+      if (formato === 'pdf') {
+        await descargarPDF(
+          `/nutricion/productos/${productoId}/exportar-pdf`,
+          `informacion_nutricional_${productoId}.pdf`
+        );
+      } else {
+        await exportarTablaAImagen(
+          info,
+          nombreProducto,
+          formato,
+          medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción'
+        );
+      }
+      setExportModalAbierto(false);
+      setMensajeExito(`Tabla nutricional exportada exitosamente en formato ${formato.toUpperCase()}.`);
+    } catch (err: any) {
+      setError(err.message || 'Error al exportar la tabla nutricional.');
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const imprimirTabla = () => {
+    if (!info) return;
+    // Validación: No permitir imprimir sin la leyenda
+    if (!LEYENDA_REVISION_PROFESIONAL) {
+      setError('No se permite imprimir la tabla nutricional sin la leyenda obligatoria.');
+      return;
+    }
+    const ventanaImpresion = window.open('', '_blank');
+    if (!ventanaImpresion) {
+      setError('El navegador bloqueó la ventana emergente de impresión.');
+      return;
+    }
+
+    const filasHtml = info.tabla_nutricional
+      .map((f) => {
+        const esSub = ['azucares_totales', 'azucares_anadidos', 'grasas_saturadas', 'grasas_trans'].includes(f.nutriente);
+        return `
+          <tr style="border-bottom: 1px solid #e2e8f0; ${esSub ? 'color: #475569;' : 'font-weight: 600;'}">
+            <td style="padding: 5px 8px; ${esSub ? 'padding-left: 22px;' : ''}">${f.nombre_mostrar}</td>
+            <td style="padding: 5px 8px; text-align: right;">${f.valor_100g_formateado} ${f.unidad}</td>
+            <td style="padding: 5px 8px; text-align: right; font-weight: 700;">${f.valor_porcion_formateado} ${f.unidad}</td>
+            <td style="padding: 5px 8px; text-align: right;">${f.vd_formateado}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const medCaseraTexto = medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción';
+    const porcEnvaseTexto = info.porciones_por_envase ? ` · Porciones por envase: aprox. ${info.porciones_por_envase}` : '';
+
+    ventanaImpresion.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Información Nutricional - ${nombreProducto}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 30px; color: #0f172a; }
+            .panel { border: 2px solid #0f172a; border-radius: 6px; padding: 18px; max-width: 520px; margin: 0 auto; }
+            h2 { margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #0f172a; padding-bottom: 6px; }
+            .producto-nombre { font-size: 14px; font-weight: bold; margin-top: 6px; color: #334155; }
+            .porcion { font-size: 13px; margin: 8px 0; }
+            table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
+            th { border-bottom: 2px solid #0f172a; padding: 6px 8px; font-size: 12px; }
+            .nota-pie { font-size: 10px; color: #475569; margin-top: 8px; font-style: italic; line-height: 1.35; border-top: 1px solid #cbd5e1; padding-top: 6px; }
+            .cuadro-leyenda { margin-top: 12px; border: 1.5px solid #ef4444; background-color: #fef2f2; border-radius: 4px; padding: 10px; font-size: 11px; font-weight: bold; color: #991b1b; line-height: 1.4; }
+          </style>
+        </head>
+        <body>
+          <div class="panel">
+            <h2>Información Nutricional</h2>
+            <div class="producto-nombre">Producto: ${nombreProducto}</div>
+            <div class="porcion">
+              <strong>Porción:</strong> ${info.tamano_porcion_g} g (${medCaseraTexto})${porcEnvaseTexto}
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align: left;">Nutriente</th>
+                  <th style="text-align: right;">Por 100 g</th>
+                  <th style="text-align: right;">Porción (${info.tamano_porcion_g} g)</th>
+                  <th style="text-align: right;">% VD (*)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasHtml}
+              </tbody>
+            </table>
+            <div class="nota-pie">
+              (*) % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser mayores o menores según sus necesidades energéticas.
+            </div>
+            <div class="cuadro-leyenda">
+              ⚠️ AVISO OBLIGATORIO DE REVISIÓN: ${LEYENDA_REVISION_PROFESIONAL}
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() { window.close(); };
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    ventanaImpresion.document.close();
   };
 
   const abrirFormularioCompletar = (ing: IngredienteIncompleto) => {
@@ -286,6 +639,59 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
       setCargandoParametros(false);
     }
   };
+
+  if (!esAdministrador) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem',
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: '#0f172a',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '480px',
+            textAlign: 'center',
+            color: '#f8fafc',
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#ef4444', marginBottom: '1rem' }}>
+            lock
+          </span>
+          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', fontWeight: 700 }}>Acceso Restringido</h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+            Solo las personas con permiso de administrar pueden acceder a la tabla de rotulado nutricional y generar reportes.
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              backgroundColor: '#334155',
+              color: '#f8fafc',
+              border: '1px solid #475569',
+              borderRadius: '6px',
+              padding: '0.5rem 1.25rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -849,13 +1255,13 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
-                        Tamaño Porción (g)
+                        Tamaño Porción (g) *
                       </label>
                       <input
                         type="number"
                         min="1"
                         step="1"
-                        placeholder="Sin datos"
+                        placeholder="ej: 50"
                         value={tamanoPorcion}
                         onChange={(e) => setTamanoPorcion(e.target.value)}
                         style={{
@@ -864,7 +1270,27 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                           color: '#f8fafc',
                           padding: '0.4rem 0.6rem',
                           borderRadius: '6px',
-                          width: '100px',
+                          width: '95px',
+                          fontSize: '0.9rem',
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                        Medida casera declarada *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="ej: 1 rebanada, 2 galletitas"
+                        value={medidaCasera}
+                        onChange={(e) => setMedidaCasera(e.target.value)}
+                        style={{
+                          backgroundColor: '#0f172a',
+                          border: '1px solid #475569',
+                          color: '#f8fafc',
+                          padding: '0.4rem 0.6rem',
+                          borderRadius: '6px',
+                          width: '180px',
                           fontSize: '0.9rem',
                         }}
                       />
@@ -884,57 +1310,83 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                           color: '#94a3b8',
                           padding: '0.4rem 0.6rem',
                           borderRadius: '6px',
-                          width: '115px',
+                          width: '110px',
                           fontSize: '0.9rem',
                         }}
                       />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
-                        Descripción de porción
+                        Descripción adicional
                       </label>
                       <input
                         type="text"
                         value={descPorcion}
                         onChange={(e) => setDescPorcion(e.target.value)}
-                        placeholder="Sin datos"
+                        placeholder="Opcional"
                         style={{
                           backgroundColor: '#0f172a',
                           border: '1px solid #475569',
                           color: '#f8fafc',
                           padding: '0.4rem 0.6rem',
                           borderRadius: '6px',
-                          width: '180px',
+                          width: '140px',
                           fontSize: '0.9rem',
                         }}
                       />
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={guardarPorcionDeclarada}
+                      disabled={guardandoPorcion || calculando}
+                      style={{
+                        backgroundColor: '#059669',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.5rem 0.85rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        cursor: guardandoPorcion || calculando ? 'not-allowed' : 'pointer',
+                        opacity: guardandoPorcion || calculando ? 0.7 : 1,
+                      }}
+                      title="Guarda la porción y la medida casera declaradas del producto"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                        save
+                      </span>
+                      {guardandoPorcion ? 'Guardando...' : 'Guardar porción y medida'}
+                    </button>
+
                     <button
                       type="button"
                       onClick={ejecutarCalculo}
-                      disabled={calculando}
+                      disabled={calculando || guardandoPorcion}
                       style={{
                         backgroundColor: '#0284c7',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '6px',
-                        padding: '0.5rem 1rem',
-                        fontSize: '0.875rem',
+                        padding: '0.5rem 0.85rem',
+                        fontSize: '0.85rem',
                         fontWeight: 600,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem',
-                        cursor: calculando ? 'not-allowed' : 'pointer',
-                        opacity: calculando ? 0.7 : 1,
+                        gap: '0.4rem',
+                        cursor: calculando || guardandoPorcion ? 'not-allowed' : 'pointer',
+                        opacity: calculando || guardandoPorcion ? 0.7 : 1,
                       }}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
                         calculate
                       </span>
-                      {calculando ? 'Calculando...' : 'Calcular desde la receta'}
+                      {calculando ? 'Calculando...' : 'Recalcular'}
                     </button>
 
                     <button
@@ -1212,16 +1664,67 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                       borderBottom: '3px solid #f8fafc',
                       paddingBottom: '0.75rem',
                       marginBottom: '0.75rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      flexWrap: 'wrap',
+                      gap: '0.75rem',
                     }}
                   >
-                    <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Información Nutricional
-                    </h3>
-                    <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: '0.25rem' }}>
-                      Porción: <strong>{info.tamano_porcion_g} g</strong> {info.descripcion_porcion ? `(${info.descripcion_porcion})` : ''}
-                      {info.porciones_por_envase && (
-                        <span> · Porciones por envase: <strong>{info.porciones_por_envase}</strong></span>
-                      )}
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Información Nutricional
+                      </h3>
+                      <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: '0.25rem' }}>
+                        Porción: <strong>{info.tamano_porcion_g} g</strong> ({medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción'})
+                        {info.porciones_por_envase && (
+                          <span> · Porciones por envase: <strong>aprox. {info.porciones_por_envase}</strong></span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setExportModalAbierto(true)}
+                        disabled={exportando}
+                        className="btn-cancelar"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: exportando ? 'not-allowed' : 'pointer',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          padding: '0.45rem 0.85rem',
+                          borderRadius: '6px',
+                        }}
+                        title="Exportar la tabla nutricional en PNG, JPEG o PDF"
+                      >
+                        <ExportIcon size={17} /> Exportar Tabla
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={imprimirTabla}
+                        className="btn-cancelar"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          padding: '0.45rem 0.85rem',
+                          borderRadius: '6px',
+                        }}
+                        title="Imprimir la tabla de rotulado nutricional junto con la leyenda obligatoria"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                          print
+                        </span>
+                        Imprimir
+                      </button>
                     </div>
                   </div>
 
@@ -1294,6 +1797,31 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     }}
                   >
                     (*) % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser mayores o menores según sus necesidades energéticas (Resolución GMC 46/03 - Código Alimentario Argentino).
+                  </div>
+
+                  {/* LEYENDA VISIBLE OBLIGATORIA */}
+                  <div
+                    style={{
+                      marginTop: '1rem',
+                      padding: '0.85rem 1rem',
+                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                      border: '1.5px solid #ef4444',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      color: '#fca5a5',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ color: '#ef4444', fontSize: '26px', flexShrink: 0 }}>
+                      assignment_late
+                    </span>
+                    <div style={{ fontSize: '0.86rem', lineHeight: 1.4 }}>
+                      <strong style={{ color: '#f87171', display: 'block', marginBottom: '2px' }}>
+                        Aviso obligatorio de revisión profesional:
+                      </strong>
+                      {LEYENDA_REVISION_PROFESIONAL}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1432,6 +1960,19 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
           </button>
         </div>
       </div>
+
+      {info && (
+        <ConfirmExportGraficoDialog
+          open={exportModalAbierto}
+          tituloModal="Exportar Tabla Nutricional"
+          tituloGrafico={`Información Nutricional - ${nombreProducto}`}
+          iconoCard="📋"
+          filtrosAplicados={`Porción: ${info.tamano_porcion_g} g (${medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción'}) · Incluye leyenda obligatoria de revisión`}
+          loading={exportando}
+          onConfirm={handleConfirmarExportacion}
+          onCancel={() => setExportModalAbierto(false)}
+        />
+      )}
     </div>
   );
 };

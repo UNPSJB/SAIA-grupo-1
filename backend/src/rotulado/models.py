@@ -206,6 +206,12 @@ class BorradorRotulo(ModeloBase):
     tabla_editada_manualmente: Mapped[bool] = mapped_column(
         Boolean, default=False
     )
+    fecha_ultima_exportacion_pdf: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, default=None
+    )
+    version_receta_exportada: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, default=None
+    )
 
     actualizado_el: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, onupdate=datetime.now

@@ -682,3 +682,99 @@ def test_guardar_porcion_declarada_validaciones(session: Session):
             medida_casera="",
         )
 
+def test_generar_pdf_tabla_nutricional(session: Session):
+    services.asegurar_parametros_defecto(session)
+    ahora = datetime.now()
+    insumo = Insumo(
+        nombre="Harina Centeno PDF Test",
+        lote="L-PDF-01",
+        fechaRecepcion=ahora,
+        cantRecibida=10.0,
+        stock=10.0,
+        medida="kilogramos",
+        energia_kcal=330.0,
+        energia_kj=1380.0,
+        carbohidratos=65.0,
+        azucares_totales=2.0,
+        azucares_anadidos=0.0,
+        proteinas=11.0,
+        grasas_totales=1.8,
+        grasas_saturadas=0.3,
+        grasas_trans=0.0,
+        fibra_alimentaria=12.0,
+        sodio_mg=4.0,
+        fuente_datos="CAA",
+    )
+    session.add(insumo)
+    session.flush()
+
+    prod = Producto(
+        nombre="Pan Centeno para Exportar PDF",
+        descripcion="Molde 500g",
+        unidadMedida="kilogramos",
+        activo=True,
+        tamano_porcion_g=50.0,
+        medida_casera="1 rebanada",
+        porciones_por_envase=10.0,
+    )
+    session.add(prod)
+    session.flush()
+
+    receta = Receta(
+        nombre="Receta Centeno PDF",
+        id_producto=prod.id,
+        operario_legajo=1,
+        rendimiento_final=500.0,
+        activo=True,
+    )
+    session.add(receta)
+    session.flush()
+
+    version = VersionReceta(receta_id=receta.id, version=1, rendimiento_final=500.0, archivado=False, es_vigente=True)
+    session.add(version)
+    session.flush()
+
+    det = RecetaDetalle(
+        nombre="Harina Centeno",
+        version_receta_id=version.id,
+        ingrediente_id=insumo.id,
+        cantidad=500.0,
+        unidad_medida="GRAMOS",
+        es_aditivo=False,
+        descripcion_pasos="Horneado",
+    )
+    session.add(det)
+    session.commit()
+
+    # Calcular inicialmente
+    services.calcular_informacion_nutricional(session, prod.id)
+
+    # 1. Generación de PDF con leyenda obligatoria
+    pdf_bytes = services.generar_pdf_tabla_nutricional(session, prod.id, incluir_leyenda=True)
+    assert isinstance(pdf_bytes, bytes)
+    assert pdf_bytes.startswith(b"%PDF-")
+    assert len(pdf_bytes) > 1000
+
+    # 2. Validación: no permitir exportar sin leyenda obligatoria
+    with pytest.raises(services.NutricionException) as exc_info:
+        services.generar_pdf_tabla_nutricional(session, prod.id, incluir_leyenda=False)
+    assert "No se permite exportar la tabla nutricional sin la leyenda obligatoria" in str(exc_info.value.detail)
+
+    # 3. Generación de Imagen (PNG y JPEG) con leyenda obligatoria
+    png_bytes = services.generar_imagen_tabla_nutricional(session, prod.id, formato="png", incluir_leyenda=True)
+    assert isinstance(png_bytes, bytes)
+    assert png_bytes.startswith(b"\x89PNG")
+    assert len(png_bytes) > 1000
+
+    jpeg_bytes = services.generar_imagen_tabla_nutricional(session, prod.id, formato="jpeg", incluir_leyenda=True)
+    assert isinstance(jpeg_bytes, bytes)
+    assert jpeg_bytes.startswith(b"\xff\xd8")
+    assert len(jpeg_bytes) > 1000
+
+    # 4. Validación de imagen: no permitir exportar sin leyenda obligatoria
+    with pytest.raises(services.NutricionException) as exc_info_img:
+        services.generar_imagen_tabla_nutricional(session, prod.id, incluir_leyenda=False)
+    assert "No se permite exportar la tabla nutricional sin la leyenda obligatoria" in str(exc_info_img.value.detail)
+
+
+

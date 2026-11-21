@@ -212,6 +212,8 @@ class BorradorRotuloResponse(BaseModel):
     es_completo_para_tramite: bool = False
     actualizado_el: datetime
     usuario_actualizacion: Optional[str] = None
+    fecha_ultima_exportacion_pdf: Optional[datetime] = None
+    version_receta_exportada: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
