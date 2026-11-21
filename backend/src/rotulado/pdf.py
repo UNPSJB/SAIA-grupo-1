@@ -223,7 +223,9 @@ def armar_pdf_borrador(
 
     # --- 1.1 CARA FRONTAL (Nombre, Denominación, Neto y Sellos) ---
     tiene_sellos = bool(datos_rotulo.tiene_octogonos and datos_rotulo.octogonos)
-    alto_cara_frontal = 36 if tiene_sellos else 28
+    total_sellos = len(datos_rotulo.octogonos) if tiene_sellos else 0
+    S_octogono = (21.0 if total_sellos >= 4 else 22.5) if tiene_sellos else 0.0
+    alto_cara_frontal = (18.0 + S_octogono + 4.5) if tiene_sellos else 26.0
 
     pdf.set_fill_color(255, 255, 255)
     pdf.set_draw_color(30, 41, 59)
@@ -245,28 +247,132 @@ def armar_pdf_borrador(
     neto_txt = f"CONTENIDO NETO: {datos_rotulo.contenido_neto or 'No especificado'}"
     pdf.cell(ancho_rot - 6, 3.5, _texto(neto_txt), align="C")
 
-    # Sellos frontales en la cara frontal
+    # Sellos frontales en la cara frontal (Octógonos regulares Ley 27.642)
     if tiene_sellos:
-        y_sellos = y_rot + 15.5
-        total_sellos = len(datos_rotulo.octogonos)
-        ancho_sello = min(40.0, (ancho_rot - 12) / max(total_sellos, 1))
-        alto_sello = 15.0
-        x_inicio_sellos = x_rot + (ancho_rot - (ancho_sello * total_sellos + (total_sellos - 1) * 3)) / 2
+        y_sellos = y_rot + 16.0
+        gap = 4.0
+        anchos_sellos = []
+        for o in datos_rotulo.octogonos:
+            if getattr(o, "tipo", "octogono") == "micro_sello":
+                anchos_sellos.append(44.0)
+            else:
+                anchos_sellos.append(S_octogono)
+
+        ancho_total_sellos = sum(anchos_sellos) + (total_sellos - 1) * gap
+        max_disp = ancho_rot - 12.0
+        if ancho_total_sellos > max_disp:
+            factor = max_disp / ancho_total_sellos
+            anchos_sellos = [w * factor for w in anchos_sellos]
+            gap = gap * factor
+            S_octogono = S_octogono * factor
+            ancho_total_sellos = max_disp
+
+        x_inicio_sellos = x_rot + (ancho_rot - ancho_total_sellos) / 2
+        x_actual = x_inicio_sellos
 
         for idx, o in enumerate(datos_rotulo.octogonos):
-            x_s = x_inicio_sellos + idx * (ancho_sello + 3)
-            pdf.set_fill_color(0, 0, 0)
-            pdf.set_draw_color(255, 255, 255)
-            pdf.set_line_width(0.5)
-            pdf.rect(x_s, y_sellos, ancho_sello, alto_sello, style="FD", round_corners=True, corner_radius=2)
+            w_item = anchos_sellos[idx]
+            tipo_item = getattr(o, "tipo", "octogono")
+            texto_item = getattr(o, "texto", str(o))
 
-            lineas = 1 if len(o.texto) < 18 else (2 if len(o.texto) < 32 else 3)
-            alto_txt = lineas * 2.8
-            y_txt = y_sellos + (alto_sello - alto_txt) / 2
-            pdf.set_xy(x_s + 0.8, y_txt)
-            pdf.set_font(FUENTE, "B", 5.8 if len(o.texto) < 22 else 4.8)
-            pdf.set_text_color(255, 255, 255)
-            pdf.multi_cell(ancho_sello - 1.6, 2.8, _texto(o.texto), align="C")
+            if tipo_item == "micro_sello":
+                # Micro-sello rectangular reglamentario (edulcorantes / cafeína)
+                h_micro = 14.0
+                y_micro = y_sellos + (S_octogono - h_micro) / 2
+                pdf.set_fill_color(0, 0, 0)
+                pdf.rect(x_actual, y_micro, w_item, h_micro, style="F", round_corners=True, corner_radius=1.2)
+
+                b = 0.6
+                pdf.set_draw_color(255, 255, 255)
+                pdf.set_line_width(0.3)
+                pdf.rect(x_actual + b, y_micro + b, w_item - 2 * b, h_micro - 2 * b, style="D", round_corners=True, corner_radius=0.8)
+
+                partes = texto_item.upper().split(" - ")
+                l1 = partes[0] if len(partes) > 0 else texto_item
+                l2 = partes[1] if len(partes) > 1 else ""
+
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_font(FUENTE, "B", 4.8)
+                pdf.set_xy(x_actual + 1, y_micro + 1.8)
+                pdf.cell(w_item - 2, 2.4, _texto(l1), align="C")
+                if l2:
+                    pdf.set_xy(x_actual + 1, y_micro + 4.4)
+                    pdf.cell(w_item - 2, 2.2, _texto(l2), align="C")
+
+                pdf.set_font(FUENTE, "", 3.4)
+                pdf.set_xy(x_actual + 1, y_micro + (7.8 if l2 else 5.5))
+                pdf.cell(w_item - 2, 1.8, "Ministerio de Salud", align="C")
+            else:
+                # Octógono regular de 8 lados (Ley 27.642)
+                S = w_item
+                c = S * 0.2929
+                pts_outer = [
+                    (x_actual + c, y_sellos),
+                    (x_actual + S - c, y_sellos),
+                    (x_actual + S, y_sellos + c),
+                    (x_actual + S, y_sellos + S - c),
+                    (x_actual + S - c, y_sellos + S),
+                    (x_actual + c, y_sellos + S),
+                    (x_actual, y_sellos + S - c),
+                    (x_actual, y_sellos + c),
+                ]
+                pdf.set_fill_color(0, 0, 0)
+                pdf.polygon(pts_outer, style="F")
+
+                # Borde interior blanco reglamentario
+                b = 0.7
+                S2 = S - 2 * b
+                c2 = S2 * 0.2929
+                pts_inner = [
+                    (x_actual + b + c2, y_sellos + b),
+                    (x_actual + b + S2 - c2, y_sellos + b),
+                    (x_actual + b + S2, y_sellos + b + c2),
+                    (x_actual + b + S2, y_sellos + b + S2 - c2),
+                    (x_actual + b + S2 - c2, y_sellos + b + S2),
+                    (x_actual + b + c2, y_sellos + b + S2),
+                    (x_actual + b, y_sellos + b + S2 - c2),
+                    (x_actual + b, y_sellos + b + c2),
+                ]
+                pdf.set_draw_color(255, 255, 255)
+                pdf.set_line_width(0.35)
+                pdf.polygon(pts_inner, style="D")
+
+                # División reglamentaria de las líneas de texto
+                texto_upper = texto_item.upper().strip()
+                if texto_upper.startswith("EXCESO EN "):
+                    resto = texto_upper[len("EXCESO EN "):].strip()
+                    palabras_resto = resto.split()
+                    if len(palabras_resto) == 1:
+                        lineas = ["EXCESO EN", palabras_resto[0]]
+                    elif len(palabras_resto) == 2:
+                        lineas = ["EXCESO EN", palabras_resto[0], palabras_resto[1]]
+                    else:
+                        lineas = ["EXCESO EN", " ".join(palabras_resto[:2]), " ".join(palabras_resto[2:])]
+                else:
+                    palabras = texto_upper.split()
+                    if len(palabras) <= 2:
+                        lineas = [texto_upper]
+                    else:
+                        lineas = [" ".join(palabras[:2]), " ".join(palabras[2:])]
+
+                pdf.set_text_color(255, 255, 255)
+                font_size = 5.0 if len(lineas) >= 3 else 5.8
+                line_h = 2.3 if len(lineas) >= 3 else 2.7
+                gap_pie = 0.7
+                alto_pie = 1.8
+                total_h = len(lineas) * line_h + gap_pie + alto_pie
+                y_start = y_sellos + (S - total_h) / 2
+
+                pdf.set_font(FUENTE, "B", font_size)
+                for idx_l, l in enumerate(lineas):
+                    pdf.set_xy(x_actual + 1.2, y_start + idx_l * line_h)
+                    pdf.cell(S - 2.4, line_h, _texto(l), align="C")
+
+                pdf.set_xy(x_actual + 1.2, y_start + len(lineas) * line_h + gap_pie)
+                pdf.set_font(FUENTE, "", 3.4)
+                pdf.cell(S - 2.4, alto_pie, "Ministerio de Salud", align="C")
+
+            x_actual += w_item + gap
     else:
         pdf.set_xy(x_rot + 6, y_rot + 16)
         pdf.set_font(FUENTE, "I", 7.2)
