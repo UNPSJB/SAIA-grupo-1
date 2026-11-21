@@ -26,6 +26,7 @@ import type {
   OctogonoItem,
 } from "./tiposBorradorRotulo";
 import { useAuth } from "../../auth/useAuth";
+import { ExportIcon } from "../../components/icons/ExportIcon";
 import "../../styles/formularioAlta.css";
 
 interface BorradorRotuloProps {
@@ -595,23 +596,24 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               type="button"
               onClick={handleDescargarBorradorPDF}
               disabled={descargandoPdf}
-              className="btn-primario"
+              className="btn-cancelar"
               style={{
-                padding: "8px 20px",
-                fontSize: "0.95rem",
-                fontWeight: 700,
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: "8px",
+                gap: "6px",
+                cursor: descargandoPdf ? "not-allowed" : "pointer",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                padding: "0.45rem 0.85rem",
+                borderRadius: "6px",
               }}
+              title="Exportar el borrador del rótulo en PDF junto con el anexo técnico de cálculos"
             >
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                picture_as_pdf
-              </span>
+              <ExportIcon size={17} />
               <span>
                 {descargandoPdf
                   ? "Generando..."
-                  : "Exportar Borrador (PDF con Cálculos)"}
+                  : "Exportar Borrador"}
               </span>
             </button>
           )}
@@ -619,20 +621,23 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             type="button"
             onClick={handleExportarBorrador}
             disabled={exportando}
-            className="btn-secundario"
+            className="btn-cancelar"
             style={{
-              padding: "8px 18px",
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
-              gap: "8px",
+              gap: "6px",
+              cursor: exportando ? "not-allowed" : "pointer",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              padding: "0.45rem 0.85rem",
+              borderRadius: "6px",
             }}
+            title="Abrir vista de impresión y exportación rápida"
           >
             <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
               print
             </span>
-            <span>{exportando ? "Preparando..." : "Vista Impresión"}</span>
+            <span>{exportando ? "Preparando..." : "Imprimir"}</span>
           </button>
         </div>
       </div>
@@ -2339,25 +2344,30 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             <button
               type="button"
               onClick={imprimirBorrador}
-              className="btn-secundario"
-              style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              className="btn-cancelar"
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "0.45rem 0.85rem", borderRadius: "6px" }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
                 print
               </span>
-              <span>Vista de Impresión (HTML)</span>
+              <span>Vista de Impresión</span>
             </button>
             {esAdministrador && (
               <button
                 type="button"
                 onClick={handleDescargarBorradorPDF}
                 disabled={descargandoPdf}
-                className="btn-primario"
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                className="btn-cancelar"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "0.45rem 0.85rem",
+                  borderRadius: "6px",
+                  cursor: descargandoPdf ? "not-allowed" : "pointer",
+                }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                  picture_as_pdf
-                </span>
+                <ExportIcon size={17} />
                 <span>
                   {descargandoPdf
                     ? "Generando..."
