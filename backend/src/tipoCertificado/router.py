@@ -28,6 +28,7 @@ async def exportar_tipos_certificados_pdf(
   }
 
   return generar_respuesta_pdf(
+      db=db,
       datos=datos,
       columnas=columnas,
       titulo_reporte="Listado de Tipos de Certificados",

@@ -44,6 +44,7 @@ def exportar_controles_pdf(
     }
 
     return generar_respuesta_pdf(
+        db=db,
         datos=datos,
         columnas=columnas,
         titulo_reporte="Listado de Controles Sanitarios",
