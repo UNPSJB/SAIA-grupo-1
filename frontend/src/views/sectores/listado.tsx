@@ -9,6 +9,7 @@ import { descargarPDF } from '../../utils/exportarPdf';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 
 interface ListadoSectoresProps {
   onNuevoClick?: () => void;
@@ -19,6 +20,7 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
   onNuevoClick,
   onEditarClick,
 }) => {
+  const { mostrarExito, mostrarError } = useAlertaOperacion();
   const [sectores, setSectores] = useState<Sector[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -64,12 +66,19 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
       const res = await apiFetch(`/sectores/${sectorAEliminar.id}`, { method: 'DELETE' });
       if (res.ok) {
         setSectores((prev) => prev.filter((s) => s.id !== sectorAEliminar.id));
+        mostrarExito('Sector eliminado', 'El sector fue dado de baja correctamente.');
       } else {
         const err = await res.json().catch(() => ({}));
-        setErrorMsg(err.detail || 'No se pudo eliminar el sector.');
+        const mensaje = typeof err.detail === 'string'
+          ? err.detail
+          : 'No se pudo eliminar el sector.';
+        setErrorMsg(mensaje);
+        mostrarError('No se pudo eliminar el sector', mensaje);
       }
     } catch {
-      setErrorMsg('Error de conexión al eliminar el sector.');
+      const mensaje = 'Error de conexión al eliminar el sector.';
+      setErrorMsg(mensaje);
+      mostrarError('Error de conexión', mensaje);
     } finally {
       setDialogAbierto(false);
       setSectorAEliminar(null);

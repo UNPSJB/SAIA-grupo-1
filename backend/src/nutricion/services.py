@@ -34,6 +34,8 @@ from src.nutricion.schemas import (
 )
 from src.nutricion.exceptions import (
     NutricionException,
+    InsumoNoEncontrado,
+    ProductoNoEncontrado,
     ProductoSinRecetaError,
     RecetaSinIngredientesError,
     RendimientoInvalidoError,
@@ -166,7 +168,7 @@ def actualizar_nutricion_insumo(
 ) -> Insumo:
     insumo = db.get(Insumo, insumo_id)
     if not insumo:
-        raise NutricionException("Insumo no encontrado", status_code=404)
+        raise InsumoNoEncontrado()
 
     updates = datos.model_dump(exclude_unset=True)
     for clave, valor in updates.items():
@@ -184,7 +186,7 @@ def actualizar_nutricion_insumo(
 def obtener_nutricion_insumo(db: Session, insumo_id: int) -> Insumo:
     insumo = db.get(Insumo, insumo_id)
     if not insumo:
-        raise NutricionException("Insumo no encontrado", status_code=404)
+        raise InsumoNoEncontrado()
     return insumo
 
 def normalizar_a_gramos(cantidad: float, unidad: str) -> float:
@@ -403,7 +405,7 @@ def calcular_informacion_nutricional(
 
     producto = db.get(Producto, producto_id)
     if not producto:
-        raise NutricionException("Producto no encontrado", status_code=404)
+        raise ProductoNoEncontrado()
 
     receta = resolver_receta_para_producto(db, producto, receta_id)
 
@@ -675,7 +677,7 @@ def obtener_informacion_nutricional_producto(
     migrar_columnas_nutricionales(db)
     producto = db.get(Producto, producto_id)
     if not producto:
-        raise NutricionException("Producto no encontrado", status_code=404)
+        raise ProductoNoEncontrado()
 
     incompletos = []
     try:

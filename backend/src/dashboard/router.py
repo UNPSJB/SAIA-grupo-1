@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from src.dashboard import schemas, services
@@ -67,19 +67,14 @@ def obtener_historico_consumo(
     unidad: Optional[str] = Query(None, description="Unidad de medida a filtrar (L, ML, KG, G, UN)"),
     db: Session = Depends(get_db),
 ):
-    try:
-        return services.obtener_historico_consumo(
-            db=db,
-            desde=desde,
-            hasta=hasta,
-            insumo_id=insumo_id,
-            agrupacion_tiempo=agrupacion_tiempo,
-            unidad=unidad,
-        )
-    except RangoFechasInvalidoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return services.obtener_historico_consumo(
+        db=db,
+        desde=desde,
+        hasta=hasta,
+        insumo_id=insumo_id,
+        agrupacion_tiempo=agrupacion_tiempo,
+        unidad=unidad,
+    )
 
 
 @router.get("/cumplimiento-detallado", response_model=schemas.CumplimientoDetalladoResponse)
@@ -89,17 +84,12 @@ def obtener_cumplimiento_detallado(
     sector_id: Optional[int] = Query(None, description="Filtrar por sector"),
     db: Session = Depends(get_db),
 ):
-    try:
-        return services.obtener_cumplimiento_detallado(
-            db=db,
-            desde=desde,
-            hasta=hasta,
-            sector_id=sector_id,
-        )
-    except RangoFechasInvalidoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return services.obtener_cumplimiento_detallado(
+        db=db,
+        desde=desde,
+        hasta=hasta,
+        sector_id=sector_id,
+    )
 
 @router.get("/produccion", response_model=schemas.ProduccionDashboardResponse)
 def obtener_produccion(

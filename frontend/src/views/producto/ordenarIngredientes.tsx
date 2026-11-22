@@ -57,8 +57,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
   const [formato, setFormato] =
     useState<FormatoDeclaracionAditivos>("ins_y_nombre");
   const [items, setItems] = useState<ItemIngrediente[]>([]);
-  const [, setAjustadoManualmente] =
-    useState<boolean>(false);
+  const [, setAjustadoManualmente] = useState<boolean>(false);
   const [, setFechaAjuste] = useState<string | null>(null);
   const [, setUsuarioAjuste] = useState<string | null>(null);
   const [textoRotulo, setTextoRotulo] = useState<string>("");

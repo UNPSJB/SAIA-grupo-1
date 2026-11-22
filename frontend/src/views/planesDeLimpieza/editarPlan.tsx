@@ -10,6 +10,7 @@ import type { TareaConId } from "../tareas/tipos";
 import { ConfirmAlertDialog, ErrorAlertDialog } from "../../components/ui/alert-dialog";
 import { Dialog, DialogContent } from "../../components/ui/dialog";
 import { apiFetch } from '../../api/client';
+import { useAlertaOperacion } from "../../contexto/AlertaOperacionContext";
 
 const PLAN_INICIAL: PlanConId = {
   id: 0,
@@ -41,6 +42,7 @@ interface EditarPlanDeLimpizaProps {
 }
 
 export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCancel }: EditarPlanDeLimpizaProps) {
+  const { mostrarExito, mostrarError } = useAlertaOperacion();
   const [planLimpieza, setPlanLimp] = useState<PlanConId>(PLAN_INICIAL);
   const [tipoObjetivo, setTipoObjetivo] = useState<'equipo' | 'sector'>('equipo');
   const [loading, setLoading] = useState(false);
@@ -125,27 +127,27 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
     }
 
     if (!planLimpieza.nombre.trim()) {
-      setErrorMsg("El nombre del plan no puede estar vacío.");
+      mostrarError("Nombre requerido", "El nombre del plan no puede estar vacío.");
       return;
     }
 
     if (planLimpieza.nombre.trim().length < 4) {
-      setErrorMsg("El nombre debe tener al menos 4 caracteres.");
+      mostrarError("Nombre inválido", "El nombre debe tener al menos 4 caracteres.");
       return;
     }
 
     if (!soloLetrasYNumeros(planLimpieza.nombre)) {
-      setErrorMsg("No se permiten caracteres especiales en el nombre.");
+      mostrarError("Nombre inválido", "No se permiten caracteres especiales en el nombre.");
       return;
     }
 
     if (tipoObjetivo === 'equipo' && !planLimpieza.equipo_id) {
-      setErrorMsg("Debe seleccionar un equipo.");
+      mostrarError("Equipo requerido", "Debe seleccionar un equipo.");
       return;
     }
 
     if (tipoObjetivo === 'sector' && !planLimpieza.sector_id) {
-      setErrorMsg("Debe seleccionar un sector.");
+      mostrarError("Sector requerido", "Debe seleccionar un sector.");
       return;
     }
 
@@ -180,10 +182,9 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
         throw new Error(mensaje);
       }
 
-      setSuccessMsg("Plan de Limpieza fue Editado exitosamente");
-      onSuccess?.();
+      mostrarExito("Plan de Limpieza actualizado", "Los cambios del plan se guardaron correctamente.", 3000, onSuccess);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
+      mostrarError("No se pudo actualizar el plan", err instanceof Error ? err.message : "Error de conexión con el servidor.");
     } finally {
       setLoading(false);
     }

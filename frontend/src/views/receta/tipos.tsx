@@ -105,6 +105,7 @@ export interface ChecklistRecetaItem {
   nombre_etapa: string;
   descripcion_pasos: string;
   ingrediente_id?: number | null;
+  tipo_insumo_id?: number | null;
   nombre_ingrediente?: string | null;
   cantidad: number;
   unidad_medida: string;

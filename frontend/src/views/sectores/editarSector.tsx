@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 
 interface EditarSectorProps {
   sectorId: number | null;
@@ -9,6 +10,7 @@ interface EditarSectorProps {
 }
 
 export const EditarSector: React.FC<EditarSectorProps> = ({ sectorId, onSuccess, onCancel }) => {
+  const { mostrarExito, mostrarError } = useAlertaOperacion();
   const [nombre, setNombre] = useState('');
   const [loading, setLoading] = useState(false);
   const [cargandoDatos, setCargandoDatos] = useState(true);
@@ -47,11 +49,11 @@ export const EditarSector: React.FC<EditarSectorProps> = ({ sectorId, onSuccess,
 
     const nombreLimpio = nombre.trim();
     if (!nombreLimpio) {
-      setErrorMsg('El nombre del sector no puede estar vacío.');
+      mostrarError('Nombre requerido', 'El nombre del sector no puede estar vacío.');
       return;
     }
     if (nombreLimpio.length < 2) {
-      setErrorMsg('El nombre debe tener al menos 2 caracteres.');
+      mostrarError('Nombre inválido', 'El nombre debe tener al menos 2 caracteres.');
       return;
     }
 
@@ -74,10 +76,16 @@ export const EditarSector: React.FC<EditarSectorProps> = ({ sectorId, onSuccess,
         throw new Error(msg);
       }
 
-      setSuccessMsg('Sector editado exitosamente.');
-      onSuccess?.();
+      mostrarExito(
+        'Sector actualizado',
+        'Los cambios del sector se guardaron correctamente.',
+        3000,
+        onSuccess,
+      );
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al editar el sector.');
+      const mensaje = err instanceof Error ? err.message : 'Error al editar el sector.';
+      setErrorMsg(mensaje);
+      mostrarError('No se pudo actualizar el sector', mensaje);
     } finally {
       setLoading(false);
     }

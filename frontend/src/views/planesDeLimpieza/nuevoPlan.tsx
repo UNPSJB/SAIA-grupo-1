@@ -7,6 +7,7 @@ import type { TareaConId } from "../tareas/tipos";
 import NuevaTarea from "../tareas/nuevaTarea";
 import { apiFetch } from '../../api/client';
 import { Dialog, DialogContent } from "../../components/ui/dialog";
+import { useAlertaOperacion } from "../../contexto/AlertaOperacionContext";
 
 const PLAN_INICIAL: PlanForm = {
   nombre: "",
@@ -25,6 +26,7 @@ interface NuevoPlanDeLimpizaProps {
 }
 
 export default function NuevoPlanDeLimpieza({ onSuccess, onCancel }: NuevoPlanDeLimpizaProps) {
+  const { mostrarExito, mostrarError } = useAlertaOperacion();
   const [planLimpieza, setPlanLimp] = useState<PlanForm>(PLAN_INICIAL);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -49,32 +51,32 @@ export default function NuevoPlanDeLimpieza({ onSuccess, onCancel }: NuevoPlanDe
     }
 
     if (!planLimpieza.nombre.trim()) {
-      setErrorMsg("El nombre del plan no puede estar vacío.");
+      mostrarError("Nombre requerido", "El nombre del plan no puede estar vacío.");
       return;
     }
 
     if (planLimpieza.nombre.trim().length < 4) {
-      setErrorMsg("El nombre debe tener al menos 4 caracteres.");
+      mostrarError("Nombre inválido", "El nombre debe tener al menos 4 caracteres.");
       return;
     }
 
     if (!soloLetrasYNumeros(planLimpieza.nombre)) {
-      setErrorMsg("No se permiten caracteres especiales en el nombre.");
+      mostrarError("Nombre inválido", "No se permiten caracteres especiales en el nombre.");
       return;
     }
 
     if (planLimpieza.fecha_inicio > HOY) {
-      setErrorMsg("La fecha no puede ser mayor a la fecha actual");
+      mostrarError("Fecha inválida", "La fecha no puede ser mayor a la fecha actual.");
       return;
     }
 
     if (planLimpieza.tipo_objetivo === "equipo" && !planLimpieza.equipo_id) {
-      setErrorMsg("Debe seleccionar un equipo.");
+      mostrarError("Equipo requerido", "Debe seleccionar un equipo.");
       return;
     }
 
     if (planLimpieza.tipo_objetivo === "sector" && !planLimpieza.sector_id) {
-      setErrorMsg("Debe seleccionar un sector.");
+      mostrarError("Sector requerido", "Debe seleccionar un sector.");
       return;
     }
 
@@ -111,12 +113,11 @@ export default function NuevoPlanDeLimpieza({ onSuccess, onCancel }: NuevoPlanDe
         throw new Error(mensaje);
       }
 
-      setSuccessMsg("Plan de Limpieza dado de alta exitosamente");
       setPlanLimp(PLAN_INICIAL);
       setTareas([]);
-      onSuccess?.();
+      mostrarExito("Plan de Limpieza creado", "El plan de limpieza se registró correctamente.", 3000, onSuccess);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Error de conexión con el servidor.");
+      mostrarError("No se pudo crear el plan", err instanceof Error ? err.message : "Error de conexión con el servidor.");
     } finally {
       setLoading(false);
     }

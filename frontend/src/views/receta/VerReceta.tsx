@@ -338,7 +338,7 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
                     >
                       <span style={{ fontWeight: 600, color: 'var(--color-texto)' }}>
                         {etapa.nombre} — {etapa.cantidad} {etapa.unidad_medida} (
-                        {etapa.nombre_ingrediente ?? `Insumo #${etapa.ingrediente_id}`})
+                        {etapa.nombre_ingrediente ?? `Tipo de insumo #${etapa.tipo_insumo_id}`})
                       </span>
                       <span style={{ fontSize: '0.82rem', color: 'var(--color-texto-sec)' }}>
                         {etapa.es_aditivo ? 'Aditivo' : 'Ingrediente'}

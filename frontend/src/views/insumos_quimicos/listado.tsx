@@ -10,6 +10,7 @@ import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 
 interface Props {
   onNuevo: () => void;
@@ -25,6 +26,7 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({
   onVerConsumoHistorico,
 }) => {
   const { esAdministrador } = useAuth();
+  const { mostrarExito } = useAlertaOperacion();
   const [insumos, setInsumos] = useState<InsumoQuimico[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [exportando, setExportando] = useState<boolean>(false);
@@ -75,7 +77,17 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({
   const ejecutarToggle = async () => {
     if (!quimicoAConfirmar) return;
     try {
-      await apiFetch(`/api/insumos-quimicos/${quimicoAConfirmar.id}/toggle`, { method: 'PATCH' });
+      const res = await apiFetch(`/api/insumos-quimicos/${quimicoAConfirmar.id}/toggle`, { method: 'PATCH' });
+      if (!res.ok) {
+        const datos = await res.json().catch(() => null);
+        throw new Error(typeof datos?.detail === 'string' ? datos.detail : 'No se pudo cambiar el estado del insumo químico.');
+      }
+      mostrarExito(
+        quimicoAConfirmar.activo ? 'Insumo químico dado de baja' : 'Insumo químico reactivado',
+        quimicoAConfirmar.activo
+          ? 'El insumo químico quedó inactivo.'
+          : 'El insumo químico volvió a estar activo.',
+      );
       setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error(err);

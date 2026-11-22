@@ -487,7 +487,7 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
                                       </span>
                                       <span className="tarea-expandida-plan">
                                         {item.nombre_receta} · {item.cantidad} {item.unidad_medida} (
-                                        {item.nombre_ingrediente || `Insumo #${item.ingrediente_id}`}
+                                        {item.nombre_ingrediente || `Tipo de insumo #${item.tipo_insumo_id}`}
                                         )
                                       </span>
                                       {item.estado === 'no_realizado' ? (

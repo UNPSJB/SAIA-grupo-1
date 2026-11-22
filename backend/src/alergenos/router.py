@@ -24,3 +24,7 @@ async def read_alergeno(alergeno_id: int, db: Session = Depends(get_db)):
 @router.put("/{alergeno_id}",response_model=schemas.Alergeno)
 async def update_alergeno(alergeno_id:int,alerg:schemas.AlergenoUpdate,db: Session = (Depends(get_db))):
     return services.actualizar_alergeno(db,alergeno_id,alerg)
+
+@router.delete("/{alergeno_id}", response_model=schemas.Alergeno)
+async def delete_alergeno(alergeno_id: int, db: Session = Depends(get_db)):
+    return services.eliminar_alergeno(db, alergeno_id)

@@ -4,6 +4,7 @@ import { OPCIONES_TIPO } from './tipos';
 import type { UnidadMedidaItem } from '../unidadesMedida/tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 
 interface Props {
   onVolver: () => void;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
+  const { mostrarExito } = useAlertaOperacion();
   const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [formData, setFormData] = useState<{
     nombre: string;
@@ -93,7 +95,12 @@ export const NuevoInsumoQuimico: React.FC<Props> = ({ onVolver, onCreado }) => {
         throw new Error(errorData.detail || 'Error al guardar el insumo');
       }
 
-      onCreado();
+      mostrarExito(
+        'Insumo químico creado',
+        'El insumo químico se registró correctamente.',
+        3000,
+        onCreado,
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error de conexión con el backend');
     } finally {

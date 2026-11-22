@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 import { SIMBOLOS_ALERGENOS } from './tipos';
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 
 interface NuevoAlergenoProps {
   onSuccess?: () => void;
@@ -9,28 +10,26 @@ interface NuevoAlergenoProps {
 }
 
 export const NuevoAlergeno: React.FC<NuevoAlergenoProps> = ({ onSuccess, onCancel }) => {
+  const { mostrarExito, mostrarError } = useAlertaOperacion();
   const [nombre, setNombre] = useState('');
   const [simbolo, setSimbolo] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg(null);
-    setSuccessMsg(null);
-
     const nombreLimpio = nombre.trim();
     if (!nombreLimpio) {
-      setErrorMsg('El nombre del alérgeno no puede estar vacío.');
+      mostrarError('Nombre requerido', 'El nombre del alérgeno no puede estar vacío.');
       return;
     }
     if (nombreLimpio.length < 2) {
-      setErrorMsg('El nombre debe tener al menos 2 caracteres.');
+      mostrarError('Nombre inválido', 'El nombre debe tener al menos 2 caracteres.');
       return;
     }
     if (!simbolo) {
-      setErrorMsg('Debe seleccionar un símbolo para el alérgeno.');
+      mostrarError('Símbolo requerido', 'Debe seleccionar un símbolo para el alérgeno.');
       return;
     }
 
@@ -53,12 +52,18 @@ export const NuevoAlergeno: React.FC<NuevoAlergenoProps> = ({ onSuccess, onCance
         throw new Error(msg);
       }
 
-      setSuccessMsg('Alérgeno creado exitosamente.');
       setNombre('');
       setSimbolo('');
-      onSuccess?.();
+      mostrarExito(
+        'Alérgeno creado',
+        'El alérgeno se registró correctamente.',
+        3000,
+        onSuccess,
+      );
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al registrar el alérgeno.');
+      const mensaje = err instanceof Error ? err.message : 'Error al registrar el alérgeno.';
+      setErrorMsg(mensaje);
+      mostrarError('No se pudo crear el alérgeno', mensaje);
     } finally {
       setLoading(false);
     }
@@ -72,7 +77,6 @@ export const NuevoAlergeno: React.FC<NuevoAlergenoProps> = ({ onSuccess, onCance
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
-      {successMsg && <div className="alerta-exito">{successMsg}</div>}
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">

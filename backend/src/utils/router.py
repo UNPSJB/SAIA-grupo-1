@@ -19,7 +19,7 @@ def obtener_logo_pdf(nombre_archivo: str):
     nombre_seguro = os.path.basename(nombre_archivo)
     ruta = pdf.LOGOS_DIR / nombre_seguro
     if not ruta.is_file():
-        raise pdf.HTTPException(status_code=404, detail="Logo no encontrado.")
+        raise exceptions.LogoNoEncontrado()
     return FileResponse(path=str(ruta))
 
 @router.post("/upload-logo", response_model=schemas.PdfResponse)
