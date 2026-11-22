@@ -7,6 +7,9 @@ import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { VistaPublicaProvider } from './views/vistaPublica/contextDeVistaPublica.tsx'
 import { AlertaOperacionProvider } from './contexto/AlertaOperacionContext.tsx'
+import { iniciarTablasResponsive } from './utils/tablasResponsive.ts'
+
+iniciarTablasResponsive()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

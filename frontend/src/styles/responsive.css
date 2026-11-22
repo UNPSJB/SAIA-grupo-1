@@ -160,3 +160,134 @@ body {
     max-height: calc(100dvh - 1rem) !important;
   }
 }
+
+/* =========================================================
+   Tablas como tarjetas en celular
+   Cada fila pasa a ser una tarjeta: el primer dato queda como título y el
+   resto se lista con el nombre de su columna al lado. El nombre lo pone
+   src/utils/tablasResponsive.ts en el atributo data-label de cada celda.
+   Para que una tabla no se convierta: clase "tabla-sin-tarjetas".
+   Los selectores llevan "table." para ganarle a los estilos de cada módulo,
+   que se cargan después que este archivo.
+   ========================================================= */
+@media (max-width: 640px) {
+  /* el recuadro de la tabla desaparece: cada tarjeta tiene el suyo */
+  .tabla-wrapper:has(> table.tabla-custom:not(.tabla-sin-tarjetas)),
+  .tabla-wrapper-incidentes:has(> table.tabla-custom-incidentes:not(.tabla-sin-tarjetas)) {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  table.tabla-custom:not(.tabla-sin-tarjetas),
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  table.tabla-custom:not(.tabla-sin-tarjetas) thead,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) thead {
+    display: none;
+  }
+
+  table.tabla-custom:not(.tabla-sin-tarjetas) tbody,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  /* la tarjeta */
+  table.tabla-custom:not(.tabla-sin-tarjetas) tbody tr,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) tbody tr {
+    display: block;
+    padding: 0.8rem 0.95rem;
+    background-color: var(--color-superficie);
+    border: 1px solid var(--color-borde);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-sombra) 6%, transparent);
+  }
+
+  /* cada dato: nombre de la columna a la izquierda, valor a la derecha */
+  table.tabla-custom:not(.tabla-sin-tarjetas) td,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) td {
+    display: grid;
+    grid-template-columns: minmax(84px, 38%) minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: baseline;
+    padding: 0.3rem 0;
+    border: none;
+    font-size: 0.875rem;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    background: transparent;
+  }
+
+  table.tabla-custom:not(.tabla-sin-tarjetas) td::before,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) td::before {
+    content: attr(data-label);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-texto-sec);
+  }
+
+  /* el primer dato es el título de la tarjeta */
+  table.tabla-custom:not(.tabla-sin-tarjetas) td:first-child,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) td:first-child {
+    grid-template-columns: minmax(0, 1fr);
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  /* sin nombre de columna (título, fila de "cargando" o "sin datos"): sin etiqueta */
+  table.tabla-custom:not(.tabla-sin-tarjetas) td:first-child::before,
+  table.tabla-custom:not(.tabla-sin-tarjetas) td[data-label=""]::before,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) td:first-child::before,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) td[data-label=""]::before {
+    display: none;
+  }
+  table.tabla-custom:not(.tabla-sin-tarjetas) td[data-label=""],
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) td[data-label=""] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  table.tabla-custom:not(.tabla-sin-tarjetas) td[colspan],
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) td[colspan] {
+    border-bottom: none;
+    margin-bottom: 0;
+    font-weight: 400;
+    text-align: center;
+  }
+
+  /* los botones de acción van al pie de la tarjeta, a la derecha */
+  table.tabla-custom:not(.tabla-sin-tarjetas) td[data-acciones],
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) td[data-acciones] {
+    display: flex;
+    justify-content: flex-end;
+    width: auto;
+    margin-top: 0.4rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--color-borde);
+  }
+  table.tabla-custom:not(.tabla-sin-tarjetas) td[data-acciones]::before,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) td[data-acciones]::before {
+    display: none;
+  }
+  table.tabla-custom:not(.tabla-sin-tarjetas) .acciones-btns {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  /* botones de ícono un poco más grandes para tocarlos con el dedo */
+  table.tabla-custom:not(.tabla-sin-tarjetas) .btn-icon,
+  table.tabla-custom-incidentes:not(.tabla-sin-tarjetas) .btn-icon {
+    min-width: 38px;
+    min-height: 38px;
+  }
+}
