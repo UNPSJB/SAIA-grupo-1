@@ -43,7 +43,7 @@ export const ProductosPublicos: React.FC = () => {
           <p>Por el momento no hay productos para mostrar.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px', marginTop: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))', gap: '16px', marginTop: '20px' }}>
           {productos.map(p => (
             <div key={p.id} className="dashboard-card" style={{ padding: '18px', justifyContent: 'flex-start', minHeight: 'auto', gap: '8px' }}>
               <h2 style={{ fontSize: '1.05rem', margin: 0 }}>{p.nombre}</h2>

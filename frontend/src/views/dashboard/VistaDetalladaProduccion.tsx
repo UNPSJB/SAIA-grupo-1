@@ -120,7 +120,7 @@ interface ModalDetalleLoteProps {
 
 const ModalDetalleLote: React.FC<ModalDetalleLoteProps> = ({ lote, onClose }) => {
   return (
-    <div
+    <div className="resp-modal-fondo"
       style={{
         position: 'fixed',
         top: 0,
@@ -136,7 +136,7 @@ const ModalDetalleLote: React.FC<ModalDetalleLoteProps> = ({ lote, onClose }) =>
       }}
       onClick={onClose}
     >
-      <div
+      <div className="resp-modal-caja"
         style={{
           backgroundColor: 'var(--color-superficie)',
           borderRadius: '12px',
@@ -172,7 +172,7 @@ const ModalDetalleLote: React.FC<ModalDetalleLoteProps> = ({ lote, onClose }) =>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))',
               gap: '14px',
               marginBottom: '20px',
               padding: '16px',
@@ -1250,7 +1250,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
           gap: '12px',
           marginBottom: '1.5rem',
         }}
@@ -1775,7 +1775,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(460px, 100%), 1fr))',
           gap: '16px',
           marginBottom: '1.5rem',
         }}

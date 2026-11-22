@@ -223,7 +223,7 @@ export const TareasNoRealizadas: React.FC<TareasNoRealizadasProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
           gap: '1rem',
           marginBottom: '1.5rem',
         }}

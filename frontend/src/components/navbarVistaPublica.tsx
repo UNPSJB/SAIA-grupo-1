@@ -58,7 +58,7 @@ export const NavbarPublica: React.FC<NavbarPublicaProps> = ({
       </nav>
 
       {/* Espaciador invisible para equilibrar el diseño a la derecha */}
-      <div style={{ width: '100px' }} />
+      <div className="navbar-espaciador" />
     </header>
   );
 };

@@ -97,7 +97,7 @@ export const NuevoAlergeno: React.FC<NuevoAlergenoProps> = ({ onSuccess, onCance
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(105px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(105px, 100%), 1fr))',
               gap: '10px',
               marginTop: '8px',
             }}

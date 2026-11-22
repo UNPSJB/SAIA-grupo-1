@@ -194,7 +194,7 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
           border: '1px solid var(--border, #334155)',
           marginBottom: '20px',
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
           gap: '16px',
         }}
       >

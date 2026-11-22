@@ -694,7 +694,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
   }
 
   return (
-    <div
+    <div className="resp-modal-fondo"
       style={{
         position: 'fixed',
         inset: 0,
@@ -707,7 +707,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
         padding: '1rem',
       }}
     >
-      <div
+      <div className="resp-modal-caja"
         style={{
           backgroundColor: '#0f172a',
           border: '1px solid #334155',
@@ -1011,7 +1011,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     </button>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '0.75rem' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
                         Fuente de Información Nutricional *
@@ -1067,7 +1067,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#38bdf8', marginBottom: '0.5rem' }}>
                       Valores por 100g de ingrediente:
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.6rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(130px, 100%), 1fr))', gap: '0.6rem' }}>
                       <div>
                         <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Energía (kcal) *</label>
                         <input

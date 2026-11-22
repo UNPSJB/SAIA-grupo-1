@@ -718,7 +718,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                               tarea.responsable_legajo === usuario?.legajo) &&
                             checklist.estado === 'pendiente' &&
                             tarea.estado === 'pendiente' && (
-                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <div className="tarea-acciones" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                 <button
                                   type="button"
                                   className="btn-guardar"
@@ -744,7 +744,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             checklist.estado === 'pendiente' &&
                             tarea.estado !== 'vencido' &&
                             (tarea.estado === 'pendiente' || tarea.estado === 'no_realizado') && (
-                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <div className="tarea-acciones" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                 <button
                                   type="button"
                                   className="btn-guardar"

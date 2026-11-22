@@ -205,7 +205,7 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(140px, 100%), 1fr))',
               gap: '8px',
               marginTop: '6px',
             }}

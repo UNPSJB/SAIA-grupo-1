@@ -819,3 +819,42 @@
   font-size: 0.82rem;
   font-weight: 500;
 }
+
+/* =========================================================
+   RESPONSIVE: tarjetas del dashboard (cortes en src/styles/responsive.css)
+   ========================================================= */
+@media (max-width: 640px) {
+  .dashboard-titulo-fila {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Título y controles de cada tarjeta: los controles bajan si no entran */
+  .dashboard-card-header {
+    flex-wrap: wrap;
+  }
+  .dashboard-card-header h2 {
+    white-space: normal;
+  }
+  .dashboard-header-controles {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-fila-3 {
+    height: auto;
+    min-height: auto;
+  }
+
+  /* Dona y métricas una debajo de la otra */
+  .dashboard-dona-fila {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .dashboard-dona-bloque {
+    width: 100%;
+  }
+  .dashboard-cumplimiento-metricas-box {
+    min-width: 0;
+  }
+}

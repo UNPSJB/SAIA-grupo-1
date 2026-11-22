@@ -137,7 +137,7 @@
 
 .rot-datos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   gap: 0.9rem 1.5rem;
 }
 
@@ -160,7 +160,7 @@
 
 .rot-form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: 0 1rem;
 }
 
@@ -339,7 +339,7 @@
 
 .rot-valores-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
   gap: 0 1rem;
 }
 
@@ -396,6 +396,13 @@
 .rot-btn-chico {
   padding: 0.35rem 0.75rem !important;
   font-size: 0.8rem !important;
+}
+
+@media (max-width: 1024px) {
+  /* 7 columnas no entran en tablet: pasan a 3 por fila */
+  .rot-fila-condicion {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {

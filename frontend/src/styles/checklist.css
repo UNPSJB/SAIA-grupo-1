@@ -163,7 +163,7 @@
 
 .checklist-meta-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: 1rem;
   margin-bottom: 1.25rem;
 }
@@ -190,7 +190,7 @@
 
 .metricas-fila {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
   gap: 0.75rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
@@ -379,7 +379,7 @@
 
 .tarea-detalles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   gap: 0.75rem;
   font-size: 0.85rem;
   background-color: var(--code-bg);
@@ -805,7 +805,7 @@
 
 .tareas-expandidas-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: 0.85rem;
 }
 
@@ -934,5 +934,48 @@
   .modal-overlay .modal-content {
     padding: 1.1rem;
     max-height: calc(100dvh - 1rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .checklist-cabecera-card {
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .checklist-cabecera-top {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .checklist-cabecera-top h2 {
+    font-size: 1.25rem;
+  }
+
+  /* Tarjeta de tarea: datos arriba y botones debajo, a todo el ancho */
+  .tarea-item-card {
+    padding: 0.85rem 0.9rem;
+  }
+  .tarea-item-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .tarea-titulo-fila {
+    flex-wrap: wrap;
+  }
+  .tarea-acciones {
+    flex-wrap: wrap;
+  }
+  .tarea-acciones > button {
+    flex: 1 1 auto;
+    min-height: 40px;
+  }
+
+  .tarea-img-miniatura {
+    max-width: 100%;
+  }
+  .tareas-expandidas-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 }

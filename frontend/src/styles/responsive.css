@@ -142,3 +142,21 @@ body {
     overflow-y: auto;
   }
 }
+
+/* Para grillas con columnas fijadas inline (style={{ gridTemplateColumns }}):
+   en celular las pasa a una sola columna */
+@media (max-width: 640px) {
+  .resp-columna-movil {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Para modales armados con estilos inline: en celular usan casi toda la pantalla */
+@media (max-width: 640px) {
+  .resp-modal-fondo {
+    padding: 0.5rem !important;
+  }
+  .resp-modal-caja {
+    max-height: calc(100dvh - 1rem) !important;
+  }
+}

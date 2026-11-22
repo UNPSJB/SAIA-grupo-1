@@ -1780,7 +1780,7 @@ function LayoutVistaPublica() {
       />
 
       {/* Contenido principal de la página */}
-      <main style={{ padding: '32px 36px', maxWidth: '1200px', margin: '0 auto' }}>
+      <main className="navbar-main-content">
         {moduloPublico === 'estadisticas' && <Panel_Publico />}
         
         {moduloPublico === 'productos' && <ProductosPublicos />}

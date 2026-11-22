@@ -618,7 +618,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
               gap: '12px',
               marginBottom: '1.5rem',
             }}
@@ -1005,7 +1005,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                     </ResponsiveContainer>
                   </div>
 
-                  <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                  <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '10px' }}>
                     {(datos?.desglose_por_sector || []).map((s) => (
                       <div
                         key={`sector-card-${s.id}`}
@@ -1062,7 +1062,7 @@ export const VistaDetalladaCumplimiento: React.FC<VistaDetalladaCumplimientoProp
                         </ResponsiveContainer>
                       </div>
 
-                      <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                      <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '10px' }}>
                         {datos.desglose_por_equipo.map((eq) => (
                           <div
                             key={`equipo-card-${eq.id}`}

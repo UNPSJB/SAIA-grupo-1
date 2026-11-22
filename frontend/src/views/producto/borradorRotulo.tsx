@@ -799,7 +799,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))",
           gap: "16px",
         }}
       >
@@ -961,7 +961,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(480px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(480px, 100%), 1fr))",
           gap: "24px",
         }}
       >
@@ -1664,7 +1664,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     placeholder="Ej: Pan de molde blanco enriquecido..."
                   />
                 </div>
-                <div
+                <div className="resp-columna-movil"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
@@ -1835,7 +1835,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   </div>
                 )}
 
-                <div
+                <div className="resp-columna-movil"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
@@ -1939,7 +1939,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   </label>
                 </div>
 
-                <div
+                <div className="resp-columna-movil"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
@@ -1973,7 +1973,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   </div>
                 </div>
 
-                <div
+                <div className="resp-columna-movil"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "repeat(3, 1fr)",

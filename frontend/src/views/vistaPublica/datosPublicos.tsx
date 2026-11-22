@@ -355,7 +355,7 @@ export const Panel_Publico: React.FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
             gap: '16px',
             width: '100%',
             marginBottom: '1.5rem',
@@ -731,7 +731,7 @@ export const Panel_Publico: React.FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(460px, 100%), 1fr))',
             gap: '20px',
             width: '100%',
             marginBottom: '1.5rem',
