@@ -11,12 +11,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuBadge,
   SidebarRail,
   SidebarTrigger,
   useSidebar,
 } from './ui/sidebar';
-import { useAlertasSistema } from '../hooks/useAlertasSistema';
 
 export type Modulo =
   | 'dashboard'
@@ -317,7 +315,6 @@ const ICONOS_GRUPO: Record<string, React.ReactNode> = {
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
   const { esAdministrador } = useAuth();
   const { isMobile, setOpenMobile } = useSidebar();
-  const { totalIncidentes, incidentesCriticos, vencimientosVencidos, vencimientosProximos } = useAlertasSistema();
 
   const gruposBase: GrupoNavegacion[] = [
     {
@@ -435,34 +432,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
                       >
                         <span className="saia-sidebar-menu-icon">{item.icono}</span>
                         <span className="saia-sidebar-menu-label">{item.label}</span>
-                        {(() => {
-                          const conteo =
-                            item.id === 'incidentes'
-                              ? totalIncidentes
-                              : item.id === 'vencimientos'
-                              ? vencimientosVencidos + vencimientosProximos
-                              : 0;
-                          const esCritico =
-                            item.id === 'incidentes'
-                              ? incidentesCriticos > 0
-                              : item.id === 'vencimientos'
-                              ? vencimientosVencidos > 0
-                              : false;
-
-                          if (conteo <= 0) return null;
-                          return (
-                            <SidebarMenuBadge
-                              style={{
-                                backgroundColor: esCritico ? 'var(--color-error-bg)' : undefined,
-                                color: esCritico ? 'var(--color-error-texto)' : undefined,
-                                borderColor: esCritico ? 'var(--color-error)' : undefined,
-                                fontWeight: 700,
-                              }}
-                            >
-                              {conteo}
-                            </SidebarMenuBadge>
-                          );
-                        })()}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
