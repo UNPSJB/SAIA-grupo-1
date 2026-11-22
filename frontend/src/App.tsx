@@ -861,14 +861,13 @@ const irANotificacion = async (notif: NotificacionItem) => {
         />
 
         <div
-          style={{
-            padding:
-              modulo === 'dashboard'
-                ? '14px 24px'
-                : modulo === 'insumos'
-                ? '1rem 1.25rem'
-                : '32px 36px',
-          }}
+          className={`saia-contenido ${
+            modulo === 'dashboard'
+              ? 'saia-contenido--dashboard'
+              : modulo === 'insumos'
+              ? 'saia-contenido--compacto'
+              : ''
+          }`.trim()}
         >
         {renderBreadcrumb()}
         {renderBreadcrumbConfiguracion()}

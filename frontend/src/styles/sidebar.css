@@ -682,3 +682,139 @@ button.saia-sidebar-group-label:hover {
     transform: translateY(0);
   }
 }
+
+/* =========================================================
+   RESPONSIVE (cortes en src/styles/responsive.css)
+   ========================================================= */
+
+/* Área de contenido debajo del header. En escritorio mantiene los valores de siempre */
+.saia-contenido {
+  padding: 32px 36px;
+  box-sizing: border-box;
+}
+.saia-contenido--dashboard {
+  padding: 14px 24px;
+}
+.saia-contenido--compacto {
+  padding: 1rem 1.25rem;
+}
+
+/* El migas de pan nunca más ancho que la pantalla */
+.saia-contenido .dashboard-breadcrumb {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ---------- Tablet ---------- */
+@media (max-width: 1024px) {
+  .saia-contenido {
+    padding: 24px;
+  }
+  .saia-contenido--dashboard,
+  .saia-contenido--compacto {
+    padding: 14px 20px;
+  }
+
+  .saia-contenido .modulo-container {
+    padding: 0 0.5rem;
+  }
+}
+
+/* ---------- Celular ---------- */
+@media (max-width: 640px) {
+  :root {
+    --saia-header-alto: 60px;
+  }
+
+  /* La barra lateral sale de la grilla y se abre como panel superpuesto */
+  .saia-sidebar[data-mobile="true"] {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: min(288px, 85vw);
+    min-width: 0;
+    z-index: 1100;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                background-color 0.2s ease,
+                border-color 0.2s ease;
+    box-shadow: none;
+  }
+  .saia-sidebar[data-mobile="true"][data-mobile-open="true"] {
+    transform: translateX(0);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+  }
+  .saia-sidebar[data-mobile="true"] .saia-sidebar-rail {
+    display: none;
+  }
+
+  /* Fondo oscuro detrás del panel; al tocarlo se cierra */
+  .saia-sidebar-fondo {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    background-color: rgba(0, 0, 0, 0.45);
+    animation: saiaFondoEntrada 0.2s ease-out;
+  }
+
+  /* Header */
+  .saia-app-header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .saia-header-menu-btn {
+    margin-right: auto;
+  }
+  .saia-app-header-acciones {
+    gap: 8px;
+  }
+  /* Del usuario queda solo el avatar; el nombre aparece al abrir el menú */
+  .saia-header-usuario-btn .saia-user-info {
+    display: none;
+  }
+  .saia-header-usuario-btn {
+    padding: 4px 6px 4px 4px;
+    gap: 4px;
+  }
+  .saia-header-usuario-menu {
+    max-width: calc(100vw - 24px);
+  }
+
+  /* Las notificaciones ocupan el ancho de la pantalla, pegadas al header */
+  .saia-alertas-popover {
+    position: fixed;
+    top: calc(var(--saia-header-alto) + 6px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100dvh - var(--saia-header-alto) - 24px);
+  }
+
+  /* Contenido */
+  .saia-contenido,
+  .saia-contenido--dashboard,
+  .saia-contenido--compacto {
+    padding: 16px;
+  }
+
+  .saia-contenido .modulo-container {
+    padding: 0;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+  }
+  .saia-contenido .modulo-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .saia-contenido .dashboard-breadcrumb {
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+  }
+}
+
+@keyframes saiaFondoEntrada {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

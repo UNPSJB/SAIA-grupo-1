@@ -14,6 +14,7 @@ import {
   SidebarMenuBadge,
   SidebarRail,
   SidebarTrigger,
+  useSidebar,
 } from './ui/sidebar';
 import { useAlertasSistema } from '../hooks/useAlertasSistema';
 
@@ -315,6 +316,7 @@ const ICONOS_GRUPO: Record<string, React.ReactNode> = {
 
 export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo }) => {
   const { esAdministrador } = useAuth();
+  const { isMobile, setOpenMobile } = useSidebar();
   const { totalIncidentes, incidentesCriticos, vencimientosVencidos, vencimientosProximos } = useAlertasSistema();
 
   const gruposBase: GrupoNavegacion[] = [
@@ -388,7 +390,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         <button
           type="button"
           className="saia-brand"
-          onClick={() => onCambiarModulo(esAdministrador ? 'dashboard' : 'checklist')}
+          onClick={() => {
+            onCambiarModulo(esAdministrador ? 'dashboard' : 'checklist');
+            if (isMobile) setOpenMobile(false);
+          }}
           title="Ir al inicio de SAIA"
         >
           <span className="saia-brand-logo" aria-hidden="true">

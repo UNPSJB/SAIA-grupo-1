@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import '../../styles/sidebar.css';
-import { BREAKPOINTS } from '../../utils/breakpoints';
+import { MEDIA_MOVIL, MEDIA_TABLET, useMediaQuery } from '../../utils/breakpoints';
 
 const SIDEBAR_STORAGE_KEY = 'saia_sidebar_open';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
@@ -17,7 +17,8 @@ interface SidebarContextProps {
 
 const SidebarContext = createContext<SidebarContextProps | null>(null);
 
-function useSidebar(): SidebarContextProps {
+// eslint-disable-next-line react-refresh/only-export-components
+export function useSidebar(): SidebarContextProps {
   const context = useContext(SidebarContext);
   if (!context) {
     throw new Error('useSidebar debe usarse dentro de un <SidebarProvider>.');
@@ -40,7 +41,7 @@ export const SidebarProvider: React.FC<SidebarProviderProps> = ({
   children,
   ...props
 }) => {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia(MEDIA_MOVIL).matches);
   const [openMobile, setOpenMobile] = useState(false);
 
   const [_open, _setOpen] = useState<boolean>(() => {
@@ -64,16 +65,53 @@ export const SidebarProvider: React.FC<SidebarProviderProps> = ({
     [setOpenProp, open]
   );
 
+  // En celular el botón abre/cierra el panel superpuesto; en tablet y escritorio, expande/contrae
   const toggleSidebar = useCallback(() => {
-    setOpen((prev) => !prev);
-  }, [setOpen]);
+    if (isMobile) {
+      setOpenMobile((prev) => !prev);
+    } else {
+      setOpen((prev) => !prev);
+    }
+  }, [isMobile, setOpen]);
+
+  const esTablet = useMediaQuery(MEDIA_TABLET);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= BREAKPOINTS.movil);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    const mql = window.matchMedia(MEDIA_MOVIL);
+    const actualizar = () => {
+      setIsMobile(mql.matches);
+      if (!mql.matches) setOpenMobile(false);
+    };
+    actualizar();
+    mql.addEventListener('change', actualizar);
+    return () => mql.removeEventListener('change', actualizar);
   }, []);
+
+  // Al pasar a tablet la barra queda en modo íconos para dejar lugar al contenido.
+  // No se guarda en localStorage: al volver a escritorio se respeta la preferencia guardada.
+  useEffect(() => {
+    if (esTablet && !isMobile && !setOpenProp) {
+      _setOpen(false);
+    } else if (!esTablet && !setOpenProp) {
+      const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      _setOpen(saved !== null ? saved === 'true' : defaultOpen);
+    }
+  }, [esTablet, isMobile, setOpenProp, defaultOpen]);
+
+  // Con el panel abierto en celular: Escape lo cierra y la página de fondo no se desplaza
+  useEffect(() => {
+    if (!isMobile || !openMobile) return;
+    const cerrarConEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenMobile(false);
+    };
+    const overflowPrevio = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', cerrarConEscape);
+    return () => {
+      document.body.style.overflow = overflowPrevio;
+      window.removeEventListener('keydown', cerrarConEscape);
+    };
+  }, [isMobile, openMobile]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -89,7 +127,8 @@ export const SidebarProvider: React.FC<SidebarProviderProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [toggleSidebar]);
 
-  const state: 'expanded' | 'collapsed' = open ? 'expanded' : 'collapsed';
+  // En celular el panel siempre se muestra completo (con textos), nunca en modo íconos
+  const state: 'expanded' | 'collapsed' = isMobile || open ? 'expanded' : 'collapsed';
 
   const contextValue = useMemo<SidebarContextProps>(
     () => ({
@@ -132,20 +171,33 @@ export const Sidebar: React.FC<SidebarUIProps> = ({
   children,
   ...props
 }) => {
-  const { state } = useSidebar();
+  const { state, isMobile, openMobile, setOpenMobile } = useSidebar();
 
   return (
-    <aside
-      data-slot="sidebar"
-      data-state={state}
-      data-collapsible={collapsible}
-      data-variant={variant}
-      data-side={side}
-      className={`saia-sidebar ${className}`.trim()}
-      {...props}
-    >
-      {children}
-    </aside>
+    <>
+      {isMobile && openMobile && (
+        <div
+          className="saia-sidebar-fondo"
+          aria-hidden="true"
+          onClick={() => setOpenMobile(false)}
+        />
+      )}
+      <aside
+        data-slot="sidebar"
+        data-state={state}
+        data-collapsible={collapsible}
+        data-variant={variant}
+        data-side={side}
+        data-mobile={isMobile ? 'true' : undefined}
+        data-mobile-open={isMobile ? String(openMobile) : undefined}
+        aria-hidden={isMobile && !openMobile ? true : undefined}
+        inert={isMobile && !openMobile ? true : undefined}
+        className={`saia-sidebar ${className}`.trim()}
+        {...props}
+      >
+        {children}
+      </aside>
+    </>
   );
 };
 
@@ -301,8 +353,11 @@ export const SidebarMenuButton: React.FC<SidebarMenuButtonProps> = ({
   tooltip,
   className = '',
   children,
+  onClick,
   ...props
 }) => {
+  const { isMobile, setOpenMobile } = useSidebar();
+
   return (
     <button
       type="button"
@@ -310,6 +365,11 @@ export const SidebarMenuButton: React.FC<SidebarMenuButtonProps> = ({
       data-active={isActive ? 'true' : 'false'}
       title={tooltip}
       className={`saia-sidebar-menu-button ${className}`.trim()}
+      onClick={(e) => {
+        onClick?.(e);
+        // en celular, al elegir una opción se cierra el panel
+        if (isMobile) setOpenMobile(false);
+      }}
       {...props}
     >
       {children}
@@ -373,14 +433,20 @@ export const SidebarTrigger: React.FC<React.ComponentProps<'button'>> = ({
   onClick,
   ...props
 }) => {
-  const { toggleSidebar, state } = useSidebar();
+  const { toggleSidebar, state, isMobile } = useSidebar();
 
   return (
     <button
       type="button"
       data-slot="sidebar-trigger"
       className={`saia-sidebar-trigger ${className}`.trim()}
-      title={state === 'expanded' ? 'Contraer menú lateral (Ctrl+B)' : 'Expandir menú lateral (Ctrl+B)'}
+      title={
+        isMobile
+          ? 'Cerrar menú'
+          : state === 'expanded'
+          ? 'Contraer menú lateral (Ctrl+B)'
+          : 'Expandir menú lateral (Ctrl+B)'
+      }
       aria-label="Alternar barra lateral"
       onClick={(e) => {
         onClick?.(e);

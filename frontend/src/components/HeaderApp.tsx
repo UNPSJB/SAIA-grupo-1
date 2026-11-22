@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { NotificacionesPopover } from './alertas/NotificacionesPopover';
+import { useSidebar } from './ui/sidebar';
 
 interface HeaderAppProps {
   onNavegarNotificacion: React.ComponentProps<typeof NotificacionesPopover>['onNavegar'];
@@ -13,6 +14,7 @@ interface HeaderAppProps {
 // Barra superior de la app: notificaciones, modo claro/oscuro y menú del usuario
 export const HeaderApp: React.FC<HeaderAppProps> = ({ onNavegarNotificacion, onIrAIncidentes, onIrAVencimientos, onIrAConfiguracion }) => {
   const { usuario, esAdministrador, logout } = useAuth();
+  const { isMobile, openMobile, setOpenMobile } = useSidebar();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +46,24 @@ export const HeaderApp: React.FC<HeaderAppProps> = ({ onNavegarNotificacion, onI
 
   return (
     <header className="saia-app-header">
+      {/* solo en celular: abre el menú lateral, que ahí está oculto */}
+      {isMobile && (
+        <button
+          type="button"
+          className="saia-campana-btn saia-header-menu-btn"
+          onClick={() => setOpenMobile(!openMobile)}
+          title="Abrir menú"
+          aria-label="Abrir menú"
+          aria-expanded={openMobile}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="4" x2="20" y1="6" y2="6" />
+            <line x1="4" x2="20" y1="12" y2="12" />
+            <line x1="4" x2="20" y1="18" y2="18" />
+          </svg>
+        </button>
+      )}
+
       <div className="saia-app-header-acciones">
         <NotificacionesPopover
           onNavegar={onNavegarNotificacion}
