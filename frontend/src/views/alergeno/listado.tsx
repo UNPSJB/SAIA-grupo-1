@@ -5,6 +5,7 @@ import { ConfirmAlertDialog } from '../../components/ui/alert-dialog';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 
 interface ListadoAlergenosProps {
   onNuevoClick?: () => void;
@@ -15,6 +16,7 @@ export const ListadoAlergenos: React.FC<ListadoAlergenosProps> = ({
   onNuevoClick,
   onEditarClick,
 }) => {
+  const { mostrarExito, mostrarError } = useAlertaOperacion();
   const [alergenos, setAlergenos] = useState<Alergeno[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,12 +60,19 @@ export const ListadoAlergenos: React.FC<ListadoAlergenosProps> = ({
       const res = await apiFetch(`/alergenos/${alergenoAEliminar.id}`, { method: 'DELETE' });
       if (res.ok) {
         setAlergenos((prev) => prev.filter((a) => a.id !== alergenoAEliminar.id));
+        mostrarExito('Alérgeno eliminado', 'El alérgeno fue dado de baja correctamente.');
       } else {
         const err = await res.json().catch(() => ({}));
-        setErrorMsg(err.detail || 'No se pudo eliminar el alérgeno.');
+        const mensaje = typeof err.detail === 'string'
+          ? err.detail
+          : 'No se pudo eliminar el alérgeno.';
+        setErrorMsg(mensaje);
+        mostrarError('No se pudo eliminar el alérgeno', mensaje);
       }
     } catch {
-      setErrorMsg('Error de conexión al eliminar el alérgeno.');
+      const mensaje = 'Error de conexión al eliminar el alérgeno.';
+      setErrorMsg(mensaje);
+      mostrarError('Error de conexión', mensaje);
     } finally {
       setDialogAbierto(false);
       setAlergenoAEliminar(null);

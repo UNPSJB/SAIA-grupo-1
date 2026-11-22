@@ -472,7 +472,7 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
                       <tr key={etapa.id}>
                         <td style={{ fontWeight: 500 }}>{etapa.nombre}</td>
                         <td>
-                          {etapa.nombre_ingrediente ?? `Insumo #${etapa.ingrediente_id}`}
+                          {etapa.nombre_ingrediente ?? `Tipo de insumo #${etapa.tipo_insumo_id}`}
                           {etapa.es_aditivo ? ' (Aditivo)' : ''}
                         </td>
                         <td style={{ color: 'var(--color-texto-sec)' }}>

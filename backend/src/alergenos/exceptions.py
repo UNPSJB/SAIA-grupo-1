@@ -7,7 +7,7 @@ class Nombre_Vacio(BadRequest):
 class Imagen_Vacia(BadRequest):
     DETAIL=ErrorCode.IMAGEN_VACIA
 
-class Alergenos_cero(BadRequest):
+class Alergenos_cero(NotFound):
     DETAIL=ErrorCode.NO_HAY_ALERGENOS
 
 class Nombre_Duplicado(BadRequest):

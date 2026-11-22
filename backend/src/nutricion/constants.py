@@ -1,3 +1,12 @@
+class ErrorCode:
+    INSUMO_NO_ENCONTRADO = "Insumo no encontrado"
+    PRODUCTO_NO_ENCONTRADO = "Producto no encontrado"
+    PRODUCTO_SIN_RECETA = "El producto no tiene una receta estructurada asociada para calcular la información nutricional."
+    RECETA_SIN_INGREDIENTES = "La receta no contiene ingredientes para calcular la información nutricional."
+    RENDIMIENTO_INVALIDO = "El rendimiento final de la receta debe ser mayor a cero."
+    PORCION_INVALIDA = "El tamaño de la porción debe ser mayor a cero."
+
+
 NUTRIENTES_DEFECTO_CAA = [
     {
         "nutriente": "energia_kcal",
@@ -142,3 +151,9 @@ REFERENCIA_CATEDRA_PAN_CAMPO = {
     },
     "tolerancia_porcentaje": 5.0,
 }
+
+LEYENDA_REVISION_PROFESIONAL = (
+    "Valores calculados a partir de datos de referencia y recetas estructuradas. "
+    "Deben ser revisados por un/a profesional revisor."
+)
+

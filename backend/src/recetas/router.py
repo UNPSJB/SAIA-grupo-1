@@ -2,7 +2,7 @@ from datetime import date
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile,status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile,status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from src.personal.models import Personal

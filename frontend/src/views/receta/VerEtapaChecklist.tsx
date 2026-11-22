@@ -475,7 +475,7 @@ export const DetalleChecklistReceta: React.FC<DetalleChecklistRecetaProps> = ({
                               <span className="tarea-nombre">{etapa.nombre_etapa}</span>
                               <span className="tarea-frecuencia">
                                 {etapa.cantidad} {etapa.unidad_medida} ·{' '}
-                                {etapa.nombre_ingrediente || `Insumo #${etapa.ingrediente_id}`}
+                                {etapa.nombre_ingrediente || `Tipo de insumo #${etapa.tipo_insumo_id}`}
                               </span>
                               {etapa.estado === 'no_realizado' ? (
                                 <span
@@ -604,7 +604,7 @@ export const DetalleChecklistReceta: React.FC<DetalleChecklistRecetaProps> = ({
                             <span>Ingrediente Requerido</span>
                             <div className="tarea-insumos-lista">
                               <span className="insumo-chip">
-                                {etapa.nombre_ingrediente || `Insumo #${etapa.ingrediente_id}`}:{' '}
+                                {etapa.nombre_ingrediente || `Tipo de insumo #${etapa.tipo_insumo_id}`}:{' '}
                                 {etapa.cantidad} {etapa.unidad_medida}
                               </span>
                             </div>
@@ -653,7 +653,7 @@ export const DetalleChecklistReceta: React.FC<DetalleChecklistRecetaProps> = ({
                 <label>Ingrediente y Cantidad a Utilizar</label>
                 <p style={{ margin: '0.25rem 0 0', fontWeight: 600 }}>
                   {etapaSeleccionada.nombre_ingrediente ||
-                    `Insumo #${etapaSeleccionada.ingrediente_id}`}{' '}
+                    `Tipo de insumo #${etapaSeleccionada.tipo_insumo_id}`}{' '}
                   — {etapaSeleccionada.cantidad} {etapaSeleccionada.unidad_medida}
                 </p>
               </div>

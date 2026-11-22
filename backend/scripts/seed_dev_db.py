@@ -109,6 +109,8 @@ from src.rotulado_frontal.services import (
     calcular_desde_nutricion_producto,
 )
 from src.rotulado_frontal.schemas import CalculoIn as RotuladoFrontalCalculoIn
+from src.utils.models import PD_EFE
+from src.utils.pdf import _obtener_o_crear_config_pdf
 
 INSUMOS = [
     ("Harina 000", "HAR3-2409", 12, 150, 450.0, 320.0, "kilogramos"),
@@ -2277,6 +2279,7 @@ def main() -> None:
     db.commit()
 
     regenerar_snapshot_seguro(db)
+    _obtener_o_crear_config_pdf(db)
 
     db.close()
 

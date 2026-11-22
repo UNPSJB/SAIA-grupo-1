@@ -717,7 +717,7 @@ def _crear_lote_desde_checklist_completado(
     acumulado_por_lote_insumo: Dict[int, float] = {}
     for it in checklist.items:
         if it.estado == EstadoEtapaRecetaItem.REALIZADO:
-            lote_ins_id = it.lote_insumo_usado_id or it.ingrediente_id
+            lote_ins_id = it.lote_insumo_usado_id
             if lote_ins_id and it.cantidad > 0:
                 acumulado_por_lote_insumo[lote_ins_id] = (
                     acumulado_por_lote_insumo.get(lote_ins_id, 0.0) + float(it.cantidad)
@@ -768,16 +768,28 @@ def completar_etapa_checklist(
         lote_ins = db.get(Insumo, lote_elegido_id)
         if not lote_ins or not lote_ins.activo:
             raise exceptions.StockInsumoInsuficienteReceta("El lote de insumo seleccionado no existe o está inactivo.")
+        if item.tipo_insumo_id and lote_ins.tipo_insumo_id != item.tipo_insumo_id:
+            raise exceptions.StockInsumoInsuficienteReceta(
+                "El lote seleccionado no corresponde al tipo de insumo requerido por la etapa."
+            )
         if float(lote_ins.stock) + 1e-6 < float(item.cantidad):
             raise exceptions.StockInsumoInsuficienteReceta(
                 f"Stock insuficiente en el lote {lote_ins.lote}: disponible {lote_ins.stock}, requerido {item.cantidad}."
             )
         lote_ins.stock = round(max(0.0, float(lote_ins.stock) - float(item.cantidad)), 3)
         item.lote_insumo_usado_id = lote_ins.id
-        item.ingrediente_id = lote_ins.id
-    elif checklist.id_producto and item.ingrediente_id:
-        lote_ins = db.get(Insumo, item.ingrediente_id)
-        if lote_ins and float(lote_ins.stock) >= float(item.cantidad):
+    elif checklist.id_producto and item.tipo_insumo_id:
+        lotes = list(
+            db.scalars(
+                select(Insumo).where(
+                    Insumo.tipo_insumo_id == item.tipo_insumo_id,
+                    Insumo.activo == True,
+                    Insumo.stock >= float(item.cantidad),
+                ).order_by(Insumo.fechaVencimiento.asc())
+            ).all()
+        )
+        if lotes:
+            lote_ins = lotes[0]
             lote_ins.stock = round(max(0.0, float(lote_ins.stock) - float(item.cantidad)), 3)
             item.lote_insumo_usado_id = lote_ins.id
 

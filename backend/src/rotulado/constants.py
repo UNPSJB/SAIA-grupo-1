@@ -9,9 +9,11 @@ class ErrorCode:
     SIN_LOTES_DISPONIBLES = "No hay lotes con insumos registrados para este producto"
     BORRADOR_NO_ENCONTRADO = "Borrador de rótulo no encontrado"
     EXPORTACION_SIN_LEYENDA = "No se puede exportar el borrador sin la leyenda regulatoria obligatoria"
+    MENCION_APROBACION_NO_PERMITIDA = "No se permite incluir menciones de aprobación, conformidad o certificación del rótulo"
 
 
 LEYENDA_BORRADOR_OBLIGATORIA = "BORRADOR: debe ser revisado por un/a profesional y por la autoridad sanitaria competente antes de su uso"
+DISCLAIMER_NO_APROBACION = "ADVERTENCIA REGULATORIA: Este documento constituye un borrador de trabajo técnico preliminar. Carece de validez como certificación o aprobación legal y no acredita conformidad ante la autoridad sanitaria."
 MENSAJE_SIN_OCTOGONOS = "No corresponde incluir sellos ni advertencias nutricionales en la cara principal."
 
 

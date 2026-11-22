@@ -13,5 +13,9 @@ class Formato_Invalido(BadRequest):
 class Tamanio_Error(BadRequest):
     DETAIL=ErrorCode.TAMANIO_ERROR
 
-class Calibracion_No_Encontrada(BadRequest):
+class Calibracion_No_Encontrada(NotFound):
     DETAIL=ErrorCode.CALIBRACION_NO_ECONTRADA
+
+
+class Archivo_Calibracion_No_Encontrado(NotFound):
+    DETAIL=ErrorCode.ARCHIVO_NO_ENCONTRADO

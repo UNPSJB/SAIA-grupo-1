@@ -38,5 +38,6 @@ class AlergenoUpdate(BaseModel):
 
 class Alergeno(AlergenoBase):
      id:int
+     activo: bool = True
 
      model_config=ConfigDict(from_attributes=True)

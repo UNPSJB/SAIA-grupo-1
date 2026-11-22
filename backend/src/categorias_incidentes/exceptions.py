@@ -1,34 +1,19 @@
-from fastapi import HTTPException, status
+from src.categorias_incidentes.constants import ErrorCode
+from src.exceptions import BadRequest, NotFound
 
 
-class CategoriaNoEncontrada(HTTPException):
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Categoría de incidente no encontrada.",
-        )
+class CategoriaNoEncontrada(NotFound):
+    DETAIL = ErrorCode.CATEGORIA_NO_ENCONTRADA
 
 
-class CategoriaNombreDuplicado(HTTPException):
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe una categoría de incidente con ese nombre.",
-        )
+class CategoriaNombreDuplicado(BadRequest):
+    DETAIL = ErrorCode.CATEGORIA_NOMBRE_DUPLICADO
 
 
-class CategoriaNombreVacio(HTTPException):
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nombre de la categoría no puede estar vacío.",
-        )
+class CategoriaNombreVacio(BadRequest):
+    DETAIL = ErrorCode.CATEGORIA_NOMBRE_VACIO
 
 
-class CategoriaConIncidentes(HTTPException):
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se puede eliminar la categoría porque tiene incidentes asociados.",
-        )
+class CategoriaConIncidentes(BadRequest):
+    DETAIL = ErrorCode.CATEGORIA_CON_INCIDENTES
 

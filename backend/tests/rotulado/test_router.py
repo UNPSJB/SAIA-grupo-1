@@ -308,3 +308,11 @@ def test_borrador_rotulo_endpoints_router(session: Session):
     assert data_auto["lote_editado_manualmente"] is False
     assert data_auto["denominacion_editada_manualmente"] is False
 
+    # Test exportar PDF con anexo de cálculo
+    res_pdf = client.get(f"/productos/{prod.id}/borrador-rotulo/exportar-pdf")
+    assert res_pdf.status_code == 200
+    assert res_pdf.headers["content-type"] == "application/pdf"
+    assert res_pdf.content.startswith(b"%PDF-")
+    assert f"borrador_rotulo_producto_{prod.id}.pdf" in res_pdf.headers["content-disposition"]
+
+

@@ -32,7 +32,7 @@ export const VerDetalleReceta: React.FC<VerDetalleRecetaProps> = ({
             <input
               id="etapa-ingrediente"
               type="text"
-              value={detalle.nombre_ingrediente ?? `Insumo #${detalle.ingrediente_id}`}
+              value={detalle.nombre_ingrediente ?? `Tipo de insumo #${detalle.tipo_insumo_id}`}
               disabled
             />
           </div>

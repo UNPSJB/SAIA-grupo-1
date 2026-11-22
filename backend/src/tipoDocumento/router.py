@@ -23,6 +23,7 @@ def exportar_tipos_documentos_pdf(
     }
     
     return generar_respuesta_pdf(
+        db=db,
         datos=datos,
         columnas=columnas,
         titulo_reporte="Listado de Tipos de Documentos",

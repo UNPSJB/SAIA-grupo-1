@@ -9,7 +9,7 @@ class Nombre_Invalido(BadRequest):
 class NombreConNumeros(BadRequest):
     DETAIL=ErrorCode.NOMBRE_CON_NUMEROS
 
-class TareNoEncontrada(BadRequest):
+class TareNoEncontrada(NotFound):
     DETAIL=ErrorCode.TAREA_NO_ENCONTRADA
 
 class FRECUENCIAInvalida(ValueError):

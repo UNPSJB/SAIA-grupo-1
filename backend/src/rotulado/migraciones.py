@@ -150,6 +150,8 @@ def actualizar_tablas_rotulado(engine: Engine) -> None:
             ("contenido_neto_editado_manualmente", "BOOLEAN NOT NULL DEFAULT 0"),
             ("sellos_editados_manualmente", "BOOLEAN NOT NULL DEFAULT 0"),
             ("tabla_editada_manualmente", "BOOLEAN NOT NULL DEFAULT 0"),
+            ("fecha_ultima_exportacion_pdf", "DATETIME"),
+            ("version_receta_exportada", "INTEGER"),
         ]
         with engine.begin() as conexion:
             for nombre_col, tipo_col in columnas_nuevas:

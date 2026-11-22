@@ -24,6 +24,7 @@ export interface Producto {
   tamano_porcion_g?: number | null;
   porciones_por_envase?: number | null;
   descripcion_porcion?: string | null;
+  medida_casera?: string | null;
   peso_unidad_g?: number | null;
   aplica_rotulado?: boolean;
   activo: boolean;
@@ -109,6 +110,7 @@ export interface InformacionNutricional {
   tamano_porcion_g: number;
   porciones_por_envase?: number | null;
   descripcion_porcion?: string | null;
+  medida_casera?: string | null;
   rendimiento_final_receta: number;
   peso_total_ingredientes: number;
   factor_rendimiento: number;
@@ -118,6 +120,13 @@ export interface InformacionNutricional {
   ingredientes_incompletos?: IngredienteIncompleto[];
   tabla_nutricional: NutrienteFila[];
   detalles_ingredientes?: DetalleAporteIngrediente[];
+}
+
+export interface GuardarPorcionDeclaradaRequest {
+  tamano_porcion_g: number;
+  medida_casera: string;
+  porciones_por_envase?: number | null;
+  descripcion_porcion?: string | null;
 }
 
 export interface ParametroRedondeo {

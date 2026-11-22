@@ -37,6 +37,7 @@ interface PanelConfiguracionesProps {
   onEstadoVistaPublica: (estado: EstadoVistaPublica) => void;
   onAbrirMaestro: (modulo: Modulo) => void;
   onGestionarVistaPublica: () => void;
+  onAbrirConfiguracionPdf?: () => void;
 }
 
 export function PanelConfiguraciones({
@@ -45,6 +46,7 @@ export function PanelConfiguraciones({
   onEstadoVistaPublica,
   onAbrirMaestro,
   onGestionarVistaPublica,
+  onAbrirConfiguracionPdf,
 }: PanelConfiguracionesProps) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,11 +65,21 @@ export function PanelConfiguraciones({
     }
   }
 
+  function handleIrConfiguracionPdf() {
+    if (onAbrirConfiguracionPdf) {
+      onAbrirConfiguracionPdf();
+      return;
+    }
+    // Si agregás 'configuracionPdf' al tipo `Modulo`, podés usar directamente:
+    // onAbrirMaestro('configuracionPdf' as Modulo);
+    onAbrirMaestro('rotuladoFrontal');
+  }
+
   return (
     <div className="modulo-container configuraciones">
       <div className="modulo-header">
         <h1>Configuraciones</h1>
-        <div className="subtitulo">Maestros básicos, rotulado y parámetros de la vista pública</div>
+        <div className="subtitulo">Maestros básicos, rotulado, diseño de PDF y parámetros de la vista pública</div>
       </div>
 
       <section className="config-panel-seccion">
@@ -88,6 +100,16 @@ export function PanelConfiguraciones({
           <button type="button" className="config-panel-tarjeta" onClick={() => onAbrirMaestro('rotuladoFrontal')}>
             <span className="config-panel-tarjeta-titulo">Rotulado Frontal</span>
             <span className="config-panel-tarjeta-desc">Parámetros normativos, reglas de exceso y activación del módulo de sellos de advertencia.</span>
+          </button>
+        </div>
+      </section>
+
+      <section className="config-panel-seccion">
+        <h2 className="config-panel-titulo">Exportación y PDF</h2>
+        <div className="config-panel-grilla">
+          <button type="button" className="config-panel-tarjeta" onClick={handleIrConfiguracionPdf}>
+            <span className="config-panel-tarjeta-titulo">Configuración de PDF</span>
+            <span className="config-panel-tarjeta-desc">Encabezado, pie de página, logo (PNG/JPG) y tipografía para los reportes exportados.</span>
           </button>
         </div>
       </section>

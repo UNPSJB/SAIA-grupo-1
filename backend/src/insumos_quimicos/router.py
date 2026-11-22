@@ -1,6 +1,7 @@
 from datetime import date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
+from src.insumos_quimicos import exceptions
 from sqlalchemy.orm import Session
 from src.autenticacion.dependencies import requiere_admin, get_usuario_actual
 from src.database import get_db
@@ -12,7 +13,7 @@ from .schemas import (
     AgrupacionTiempo,
 )
 from .services import InsumoQuimicoService, obtener_historico_consumo, obtener_para_exportar, obtener_consumo_historico_para_exportar
-from .exceptions import InsumoQuimicoException, RangoFechasInvalidoException
+from src.insumos_quimicos.exceptions import InsumoQuimicoException, RangoFechasInvalidoException
 from src.utils.csv import generar_respuesta_csv
 from src.utils.pdf import generar_respuesta_pdf
 
@@ -39,9 +40,9 @@ def exportar_historico_consumo_pdf(
             busqueda=busqueda,
         )
     except RangoFechasInvalidoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise exceptions.RangoFechasInvalido(str(e))
     except InsumoQuimicoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise exceptions.InsumoQuimicoError(str(e))
 
     columnas = {
         "fecha_hora": "Fecha / Hora",
@@ -83,9 +84,9 @@ def exportar_historico_consumo_csv(
             busqueda=busqueda,
         )
     except RangoFechasInvalidoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise exceptions.RangoFechasInvalido(str(e))
     except InsumoQuimicoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise exceptions.InsumoQuimicoError(str(e))
 
     columnas = {
         "fecha_hora": "Fecha / Hora",
@@ -126,6 +127,7 @@ def exportar_pdf(
     }
 
     return generar_respuesta_pdf(
+        db=db,
         datos=datos,
         columnas=columnas,
         titulo_reporte="Listado de Insumos Químicos",
@@ -190,9 +192,9 @@ def historico_consumo(
             unidad=unidad,
         )
     except RangoFechasInvalidoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise exceptions.RangoFechasInvalido(str(e))
     except InsumoQuimicoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise exceptions.InsumoQuimicoError(str(e))
 
 @router.post("", response_model=InsumoQuimicoResponse, status_code=status.HTTP_201_CREATED,
              dependencies=[Depends(requiere_admin)])
@@ -200,18 +202,18 @@ def crear(insumo: InsumoQuimicoCreate, db: Session = Depends(get_db)):
     try:
         return InsumoQuimicoService.create(db, insumo)
     except InsumoQuimicoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise exceptions.InsumoQuimicoError(str(e))
 
 @router.put("/{insumo_id}", response_model=InsumoQuimicoResponse, dependencies=[Depends(requiere_admin)])
 def actualizar(insumo_id: int, insumo: InsumoQuimicoUpdate, db: Session = Depends(get_db)):
     try:
         return InsumoQuimicoService.update(db, insumo_id, insumo)
     except InsumoQuimicoException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise exceptions.InsumoQuimicoError(str(e))
 
 @router.patch("/{insumo_id}/toggle", response_model=InsumoQuimicoResponse, dependencies=[Depends(requiere_admin)])
 def toggle_estado(insumo_id: int, db: Session = Depends(get_db)):
     try:
         return InsumoQuimicoService.toggle_estado(db, insumo_id)
     except InsumoQuimicoException as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise exceptions.InsumoQuimicoError(str(e))
