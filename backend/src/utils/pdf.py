@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import urllib.request
-from fastapi import HTTPException, Response, UploadFile, status
+from fastapi import Response, UploadFile
+from src.utils import exceptions
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -53,10 +54,7 @@ def guardar_logo_pdf(db: Session, archivo_logo: UploadFile) -> models.PD_EFE:
     content_type = (archivo_logo.content_type or "").lower()
 
     if extension not in EXTENSIONES_LOGO_VALIDAS or content_type not in CONTENT_TYPES_LOGO_VALIDOS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Solo se permiten imágenes en formato PNG o JPG.",
-        )
+        raise exceptions.NoPermitido()
 
     LOGOS_DIR.mkdir(parents=True, exist_ok=True)
     ext_final = ".jpg" if extension == ".jpeg" else extension

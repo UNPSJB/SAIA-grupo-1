@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 
 interface NuevoSectorProps {
   onSuccess?: () => void;
@@ -8,6 +9,7 @@ interface NuevoSectorProps {
 }
 
 export const NuevoSector: React.FC<NuevoSectorProps> = ({ onSuccess, onCancel }) => {
+  const { mostrarExito, mostrarError } = useAlertaOperacion();
   const [nombre, setNombre] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -20,11 +22,11 @@ export const NuevoSector: React.FC<NuevoSectorProps> = ({ onSuccess, onCancel })
 
     const nombreLimpio = nombre.trim();
     if (!nombreLimpio) {
-      setErrorMsg('El nombre del sector no puede estar vacío.');
+      mostrarError('Nombre requerido', 'El nombre del sector no puede estar vacío.');
       return;
     }
     if (nombreLimpio.length < 2) {
-      setErrorMsg('El nombre debe tener al menos 2 caracteres.');
+      mostrarError('Nombre inválido', 'El nombre debe tener al menos 2 caracteres.');
       return;
     }
 
@@ -47,11 +49,17 @@ export const NuevoSector: React.FC<NuevoSectorProps> = ({ onSuccess, onCancel })
         throw new Error(msg);
       }
 
-      setSuccessMsg('Sector creado exitosamente.');
       setNombre('');
-      onSuccess?.();
+      mostrarExito(
+        'Sector creado',
+        'El sector se registró correctamente.',
+        3000,
+        onSuccess,
+      );
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al registrar el sector.');
+      const mensaje = err instanceof Error ? err.message : 'Error al registrar el sector.';
+      setErrorMsg(mensaje);
+      mostrarError('No se pudo crear el sector', mensaje);
     } finally {
       setLoading(false);
     }

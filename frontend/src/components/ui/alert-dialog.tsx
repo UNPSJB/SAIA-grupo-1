@@ -164,6 +164,7 @@ interface ErrorAlertDialogProps {
   title?: string;
   description: string;
   size?: "default" | "sm";
+  autoCloseMs?: number;
 }
 
 export const ErrorAlertDialog: React.FC<ErrorAlertDialogProps> = ({
@@ -172,7 +173,26 @@ export const ErrorAlertDialog: React.FC<ErrorAlertDialogProps> = ({
   title = "No se pudo completar la acción",
   description,
   size = "default",
+  autoCloseMs = 0,
 }) => {
+  const [aceptando, setAceptando] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) setAceptando(false);
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open || autoCloseMs <= 0) return;
+    const temporizador = window.setTimeout(onClose, autoCloseMs);
+    return () => window.clearTimeout(temporizador);
+  }, [open, autoCloseMs, onClose]);
+
+  const aceptar = () => {
+    if (aceptando) return;
+    setAceptando(true);
+    window.setTimeout(onClose, 1000);
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <AlertDialogContent size={size}>
@@ -188,9 +208,14 @@ export const ErrorAlertDialog: React.FC<ErrorAlertDialogProps> = ({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction variant="destructive" onClick={onClose}>
-            Entendido
-          </AlertDialogAction>
+          <button
+            type="button"
+            className="alert-dialog-action danger"
+            disabled={aceptando}
+            onClick={aceptar}
+          >
+            {aceptando ? "Cerrando..." : "Entendido"}
+          </button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -204,6 +229,7 @@ interface SuccessAlertDialogProps {
   description?: string;
   confirmText?: string;
   size?: "default" | "sm";
+  autoCloseMs?: number;
 }
 
 export const SuccessAlertDialog: React.FC<SuccessAlertDialogProps> = ({
@@ -213,7 +239,26 @@ export const SuccessAlertDialog: React.FC<SuccessAlertDialogProps> = ({
   description = "Los cambios se registraron correctamente en el sistema.",
   confirmText = "Aceptar",
   size = "sm",
+  autoCloseMs = 3000,
 }) => {
+  const [aceptando, setAceptando] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) setAceptando(false);
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open || autoCloseMs <= 0) return;
+    const temporizador = window.setTimeout(onClose, autoCloseMs);
+    return () => window.clearTimeout(temporizador);
+  }, [open, autoCloseMs, onClose]);
+
+  const aceptar = () => {
+    if (aceptando) return;
+    setAceptando(true);
+    window.setTimeout(onClose, 3000);
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <AlertDialogContent size={size}>
@@ -228,9 +273,14 @@ export const SuccessAlertDialog: React.FC<SuccessAlertDialogProps> = ({
           {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction variant="success" onClick={onClose}>
-            {confirmText}
-          </AlertDialogAction>
+          <button
+            type="button"
+            className="alert-dialog-action success"
+            disabled={aceptando}
+            onClick={aceptar}
+          >
+            {aceptando ? "Cerrando..." : confirmText}
+          </button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

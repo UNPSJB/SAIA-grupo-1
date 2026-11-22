@@ -4,6 +4,7 @@ import { OPCIONES_TIPO } from './tipos';
 import type { UnidadMedidaItem } from '../unidadesMedida/tipos';
 import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 
 interface Props {
   insumo: InsumoQuimico;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export const EditarDetalle: React.FC<Props> = ({ insumo, onVolver, onActualizado }) => {
+  const { mostrarExito } = useAlertaOperacion();
   const [unidades, setUnidades] = useState<UnidadMedidaItem[]>([]);
   const [formData, setFormData] = useState<{
     nombre: string;
@@ -98,7 +100,12 @@ export const EditarDetalle: React.FC<Props> = ({ insumo, onVolver, onActualizado
         throw new Error(errorData.detail || 'Error al actualizar el insumo');
       }
 
-      onActualizado();
+      mostrarExito(
+        'Insumo químico actualizado',
+        'Los cambios del insumo químico se guardaron correctamente.',
+        3000,
+        onActualizado,
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error de conexión');
     } finally {

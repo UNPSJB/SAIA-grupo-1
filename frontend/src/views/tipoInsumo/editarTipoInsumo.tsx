@@ -3,6 +3,7 @@ import '../../styles/formularioAlta.css';
 import { apiFetch } from '../../api/client';
 import type { TipoInsumo, TipoInsumoForm } from './tipos';
 import type { UnidadMedidaItem } from '../unidadesMedida/tipos';
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 
 interface AlergenoItem {
   id: number;
@@ -17,6 +18,7 @@ interface EditarTipoInsumoProps {
 }
 
 export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSuccess, onCancel }) => {
+  const { mostrarExito, mostrarError } = useAlertaOperacion();
   const [form, setForm] = useState<TipoInsumoForm & { alergeno_ids: number[] }>({
     nombre: '',
     descripcion: '',
@@ -107,11 +109,11 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
 
     const nombreLimpio = form.nombre.trim();
     if (!nombreLimpio) {
-      setErrorMsg('El nombre del tipo de insumo no puede estar vacío.');
+      mostrarError('Nombre requerido', 'El nombre del tipo de insumo no puede estar vacío.');
       return;
     }
     if (!form.unidad_medida_id) {
-      setErrorMsg('Debe seleccionar una unidad de medida.');
+      mostrarError('Unidad requerida', 'Debe seleccionar una unidad de medida.');
       return;
     }
 
@@ -138,10 +140,9 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
         throw new Error(msg);
       }
 
-      setSuccessMsg('Tipo de insumo actualizado exitosamente.');
-      onSuccess?.();
+      mostrarExito('Tipo de insumo actualizado', 'Los cambios del tipo de insumo se guardaron correctamente.', 3000, onSuccess);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Error al actualizar el tipo de insumo.');
+      mostrarError('No se pudo actualizar el tipo de insumo', err instanceof Error ? err.message : 'Error al actualizar el tipo de insumo.');
     } finally {
       setLoading(false);
     }

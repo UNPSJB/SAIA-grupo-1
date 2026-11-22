@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 import uuid
-from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from src.indentificadorDeQR.models import IndentificadorUnico
@@ -53,7 +52,7 @@ def crear_IdentificadorUnico(db:Session,ident:schemas.IdentificadorQRCreate,urld
 def verificar_identificadorQR(db:Session,identificador_id:str) -> schemas.IdentificadorQR:
     db_identQR = db.scalar(select(IndentificadorUnico).where(IndentificadorUnico.id_alfanumerico == identificador_id))
     if not db_identQR:
-        raise HTTPException(status_code=404, detail="El código QR no existe")
+        raise exceptions.CodigoQRNoEncontrado()
     if db_identQR.estado is False:
             raise exceptions.CodigoQRInHabilitado()
     return db_identQR
@@ -62,7 +61,7 @@ def verificar_identificadorQR(db:Session,identificador_id:str) -> schemas.Identi
 def editar_identificadorQr(db:Session,identificador_id:str)-> schemas.IdentificadorQR:
      db_identQR = db.scalar(select(IndentificadorUnico).where(IndentificadorUnico.id_alfanumerico == identificador_id))
      if not db_identQR:
-         raise HTTPException(status_code=404, detail="El código QR no existe")
+         raise exceptions.CodigoQRNoEncontrado()
 
      db_identQR.estado=False
 
@@ -75,7 +74,7 @@ def actualizar_ver_grafico(db: Session, identificador_id: str, ident: schemas.Id
     db_identQR = db.scalar(select(IndentificadorUnico).where(IndentificadorUnico.id_alfanumerico == identificador_id))
     
     if not db_identQR:
-        raise HTTPException(status_code=404, detail="El código QR no existe")
+        raise exceptions.CodigoQRNoEncontrado()
 
     # Si viene el valor de ver_grafico, lo actualizamos
     if ident.ver_grafico is not None:
@@ -90,7 +89,7 @@ def actualizar_ver_acercaDeNosotros(db: Session, identificador_id: str, ident: s
     db_identQR = db.scalar(select(IndentificadorUnico).where(IndentificadorUnico.id_alfanumerico == identificador_id))
     
     if not db_identQR:
-        raise HTTPException(status_code=404, detail="El código QR no existe")
+        raise exceptions.CodigoQRNoEncontrado()
 
     
     if ident.verAcercaDeNosotros is not None:
@@ -105,7 +104,7 @@ def actualizar_ver_productos(db: Session, identificador_id: str, ident: schemas.
     db_identQR = db.scalar(select(IndentificadorUnico).where(IndentificadorUnico.id_alfanumerico == identificador_id))
 
     if not db_identQR:
-        raise HTTPException(status_code=404, detail="El código QR no existe")
+        raise exceptions.CodigoQRNoEncontrado()
 
     if ident.verProductos is not None:
         db_identQR.verProductos = ident.verProductos

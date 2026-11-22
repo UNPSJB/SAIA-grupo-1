@@ -1,9 +1,9 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from src.autenticacion.dependencies import requiere_admin
 from src.database import get_db
-from src.indentificadorDeQR import schemas, services
+from src.indentificadorDeQR import schemas, services, exceptions
 from src.indentificadorDeQR.snapshot import leer_snapshot_vista_publica
 from src.producto import schemas as producto_schemas
 
@@ -15,7 +15,7 @@ router=APIRouter(prefix="/identificadorQR",tags=["identificadorQR"])
 def obtener_snapshot_publico():
     contenido = leer_snapshot_vista_publica()
     if contenido is None:
-        raise HTTPException(status_code=404, detail="Snapshot público no disponible")
+        raise exceptions.SnapshotPublicoNoDisponible()
     return Response(
         content=contenido,
         media_type="application/json",

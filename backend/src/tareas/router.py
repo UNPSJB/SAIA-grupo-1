@@ -1,5 +1,6 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
+from src.tareas import exceptions
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.tareas import schemas, services
@@ -31,9 +32,6 @@ def delete_tarea(tarea_id: int, db: Session = Depends(get_db)):
     eliminado = services.eliminar_tarea(db, tarea_id)
 
     if not eliminado:
-        raise HTTPException(
-            status_code=404,
-            detail="La tarea no existe"
-        )
+        raise exceptions.TareNoEncontrada()
 
     return Response(status_code=204)

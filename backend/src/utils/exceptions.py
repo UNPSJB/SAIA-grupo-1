@@ -11,3 +11,7 @@ class NoPermitido(BadRequest):
 
 class NoPermitodMB(BadRequest):
     DETAIL=ErrorCode.NO_PERMITIDOMB
+
+
+class LogoNoEncontrado(NotFound):
+    DETAIL=ErrorCode.LOGO_NO_ENCONTRADO

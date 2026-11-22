@@ -27,6 +27,8 @@ export const setToken = (token: string | null): void => {
 
 type ManejadorSesionVencida = () => void;
 let alVencerSesion: ManejadorSesionVencida | null = null;
+type ManejadorErrorHttp = (estado: number, mensaje: string) => void;
+let alFallarHttp: ManejadorErrorHttp | null = null;
 
 /** La sesión (AuthProvider) se registra acá para enterarse cuando el servidor rechaza el token. */
 export const registrarAlVencerSesion = (manejador: ManejadorSesionVencida): (() => void) => {
@@ -35,6 +37,30 @@ export const registrarAlVencerSesion = (manejador: ManejadorSesionVencida): (() 
     if (alVencerSesion === manejador) alVencerSesion = null;
   };
 };
+
+export const registrarAlertaErrorHttp = (manejador: ManejadorErrorHttp): (() => void) => {
+  alFallarHttp = manejador;
+  return () => {
+    if (alFallarHttp === manejador) alFallarHttp = null;
+  };
+};
+
+async function obtenerMensajeError(respuesta: Response): Promise<string> {
+  const copia = respuesta.clone();
+  const datos = await copia.json().catch(() => null) as
+    | { detail?: unknown; message?: unknown }
+    | null;
+  if (typeof datos?.detail === 'string') return datos.detail;
+  if (typeof datos?.message === 'string') return datos.message;
+
+  const mensajes: Record<number, string> = {
+    400: 'Los datos enviados no son válidos.',
+    401: 'Tu sesión no está autorizada o venció.',
+    403: 'No tenés permisos para realizar esta acción.',
+    500: 'Ocurrió un error interno en el servidor.',
+  };
+  return mensajes[respuesta.status] || 'No se pudo completar la solicitud.';
+}
 
 /**
  * Reemplazo de `fetch` para hablar con el backend: recibe la ruta relativa ('/personal'),
@@ -48,6 +74,11 @@ export async function apiFetch(ruta: string, init: RequestInit = {}): Promise<Re
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const respuesta = await fetch(`${API_URL}${ruta}`, { ...init, headers });
+
+  if ([400, 401, 403, 500].includes(respuesta.status)) {
+    const mensaje = await obtenerMensajeError(respuesta);
+    alFallarHttp?.(respuesta.status, mensaje);
+  }
 
   if (respuesta.status === 401 && token) {
     // TODO(renovación de token): este es el ÚNICO punto donde se maneja el vencimiento.

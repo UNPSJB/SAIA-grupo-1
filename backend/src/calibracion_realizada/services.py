@@ -3,7 +3,7 @@ import mimetypes
 from pathlib import Path
 import shutil
 from typing import List, Optional
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -27,7 +27,7 @@ def obtener_archivo_calibracion(nombre_archivo: str, inline: bool = False) -> Fi
     nombre_seguro = Path(nombre_archivo).name
     ruta_completa = (ARCHIVOS_DIR / nombre_seguro).resolve()
     if not ruta_completa.is_file() or not str(ruta_completa).startswith(str(ARCHIVOS_DIR.resolve())):
-        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        raise exceptions.Archivo_Calibracion_No_Encontrado()
     tipo_media, _ = mimetypes.guess_type(str(ruta_completa))
     if not tipo_media:
         tipo_media = "application/pdf" if ruta_completa.suffix.lower() == ".pdf" else "application/octet-stream"
