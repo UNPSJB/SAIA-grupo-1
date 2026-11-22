@@ -398,7 +398,7 @@
   font-size: 0.8rem !important;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 640px) {
   .rot-fila-condicion,
   .rot-fila-aplicabilidad {
     grid-template-columns: 1fr 1fr;

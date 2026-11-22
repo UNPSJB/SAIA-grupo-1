@@ -1,0 +1,144 @@
+/*
+ * Base responsive del sistema.
+ *
+ * Cortes (usar siempre estos, no inventar otros):
+ *   - Celular:    @media (max-width: 640px)
+ *   - Tablet:     @media (max-width: 1024px)
+ *   - Escritorio: lo que no entra en los anteriores (sin media query)
+ *
+ * CSS no permite variables dentro de @media, por eso los valores van escritos.
+ * Si se cambian, actualizar también src/utils/breakpoints.ts.
+ *
+ * Las utilidades llevan el prefijo "resp-" para no chocar con las clases de cada módulo.
+ */
+
+/* ---------- Reglas globales de seguridad ---------- */
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+body {
+  overflow-wrap: break-word;
+}
+
+/* ---------- Grillas ---------- */
+
+/* Columnas automáticas: entran tantas como quepan, cada una de 240px como mínimo */
+.resp-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 1rem;
+}
+
+/* Grillas fijas que pasan a menos columnas en pantallas chicas */
+.resp-grid-2,
+.resp-grid-3,
+.resp-grid-4 {
+  display: grid;
+  gap: 1rem;
+}
+.resp-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.resp-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.resp-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+@media (max-width: 1024px) {
+  .resp-grid-3,
+  .resp-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .resp-grid-2,
+  .resp-grid-3,
+  .resp-grid-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Filas que se apilan ---------- */
+
+/* Fila flexible que en celular pasa a columna */
+.resp-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .resp-fila {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Botonera de formulario/modal: en celular los botones ocupan todo el ancho
+   y el principal (último) queda arriba */
+.resp-botonera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .resp-botonera {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .resp-botonera > * {
+    width: 100%;
+  }
+}
+
+/* ---------- Anchos ---------- */
+
+@media (max-width: 640px) {
+  .resp-ancho-completo-movil {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ---------- Mostrar / ocultar ---------- */
+
+@media (max-width: 640px) {
+  .resp-ocultar-movil { display: none !important; }
+}
+
+@media (max-width: 1024px) {
+  .resp-ocultar-tablet { display: none !important; }
+}
+
+@media (min-width: 641px) {
+  .resp-solo-movil { display: none !important; }
+}
+
+/* ---------- Tablas ---------- */
+
+/* Contenedor con scroll horizontal para cualquier tabla */
+.resp-tabla-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---------- Modales ---------- */
+
+/* En celular el modal ocupa toda la pantalla */
+@media (max-width: 640px) {
+  .resp-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    overflow-y: auto;
+  }
+}

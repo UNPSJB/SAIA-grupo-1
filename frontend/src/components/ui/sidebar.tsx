@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import '../../styles/sidebar.css';
+import { BREAKPOINTS } from '../../utils/breakpoints';
 
 const SIDEBAR_STORAGE_KEY = 'saia_sidebar_open';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
@@ -68,7 +69,7 @@ export const SidebarProvider: React.FC<SidebarProviderProps> = ({
   }, [setOpen]);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => setIsMobile(window.innerWidth <= BREAKPOINTS.movil);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);

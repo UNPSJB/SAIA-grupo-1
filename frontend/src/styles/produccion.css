@@ -95,7 +95,7 @@
   cursor: not-allowed;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .insumo-fila {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -139,7 +139,7 @@
   margin: 0 0 0.75rem 0;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .lote-detalle-datos {
     grid-template-columns: 1fr;
     gap: 0.15rem;

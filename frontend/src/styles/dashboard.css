@@ -83,7 +83,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .modulo-container.dashboard-container,
 .dashboard-container {
   max-width: 1550px;
