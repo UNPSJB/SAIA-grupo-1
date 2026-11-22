@@ -1239,3 +1239,34 @@
 .etiqueta-categoria:hover {
   filter: brightness(1.03);
 }
+
+/* =========================================================
+   RESPONSIVE (cortes en src/styles/responsive.css)
+   ========================================================= */
+@media (max-width: 640px) {
+  .modal-incidente-overlay {
+    padding: 0.5rem;
+  }
+  .modal-incidente-contenido {
+    max-height: calc(100dvh - 1rem);
+    border-radius: 12px;
+  }
+  .modal-incidente-footer {
+    padding: 0.85rem 1rem;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  .modal-incidente-footer > button {
+    width: 100%;
+  }
+
+  .tabla-custom-incidentes th,
+  .tabla-custom-incidentes td {
+    padding: 0.7rem 0.6rem;
+    font-size: 0.82rem;
+  }
+  .modal-incidente-body {
+    padding: 1rem;
+  }
+}

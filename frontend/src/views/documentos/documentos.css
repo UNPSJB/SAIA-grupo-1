@@ -188,3 +188,30 @@
 .formulario-box-documento {
   max-width: 860px;
 }
+
+/* =========================================================
+   RESPONSIVE: modales de documentos (cortes en src/styles/responsive.css)
+   ========================================================= */
+@media (max-width: 640px) {
+  .modal-backdrop {
+    padding: 0.5rem;
+  }
+  .modal-caja,
+  .modal-caja.modal-caja-amplia {
+    width: 100%;
+    max-height: calc(100dvh - 1rem);
+  }
+  .modal-caja .modal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .modal-caja .modal-footer > button {
+    width: 100%;
+  }
+  .modal-caja .modal-header,
+  .modal-caja .modal-body,
+  .modal-caja .modal-footer {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

@@ -1492,3 +1492,119 @@ dialog .btn-guardar{
         grid-row: auto;
     }
 }
+/* =========================================================
+   RESPONSIVE: tablas, formularios, filtros, paginación y modales
+   (cortes en src/styles/responsive.css)
+   ========================================================= */
+
+/* Las tablas siempre se desplazan de costado en lugar de romper la página */
+.tabla-wrapper,
+.tabla-wrapper-incidentes {
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1024px) {
+  .tabla-custom th,
+  .tabla-custom td {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+}
+
+@media (max-width: 640px) {
+  /* ---------- Tablas ---------- */
+  .tabla-custom th,
+  .tabla-custom td {
+    padding: 0.7rem 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  /* La primera columna queda fija al desplazar la tabla de costado */
+  .tabla-custom th:first-child,
+  .tabla-custom td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: inherit;
+    box-shadow: 1px 0 0 var(--color-borde);
+  }
+  .tabla-custom thead tr th:first-child {
+    background-color: var(--color-fondo);
+  }
+  .tabla-custom tbody tr td:first-child {
+    background-color: var(--color-superficie);
+  }
+  .tabla-custom tbody tr:hover td:first-child {
+    background-color: var(--color-fondo);
+  }
+
+  .acciones-col {
+    width: auto;
+  }
+
+  /* ---------- Encabezado de listados y filtros ---------- */
+  .listado-top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  .listado-top-bar .btn-agregar,
+  .accion-agregar,
+  .accion-agregar .btn-agregar {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .filtros-top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  .filtros-top-bar > *,
+  .input-busqueda,
+  .select-filtro {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* ---------- Formularios ---------- */
+  /* 16px evita que el celular haga zoom al tocar un campo */
+  .form-group input,
+  .form-group select,
+  .form-group textarea,
+  .input-busqueda,
+  .select-filtro {
+    font-size: 16px;
+  }
+
+  .form-acciones {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  .form-acciones > button,
+  .form-acciones > a {
+    width: 100%;
+  }
+
+  .acciones-botones-container {
+    flex-wrap: wrap;
+  }
+
+  /* ---------- Paginación ---------- */
+  .saia-paginacion-controles {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ---------- Modal genérico (.modal-abierto / .modal-content) ---------- */
+  .modal-abierto {
+    padding: 0.5rem;
+    box-sizing: border-box;
+  }
+  .modal-abierto .modal-content {
+    padding: 1.1rem;
+    max-height: calc(100dvh - 1rem);
+  }
+}

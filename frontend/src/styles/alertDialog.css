@@ -334,3 +334,34 @@
   padding-right: 2rem;
 }
 
+
+/* =========================================================
+   RESPONSIVE (cortes en src/styles/responsive.css)
+   ========================================================= */
+@media (max-width: 640px) {
+  .alert-dialog-content {
+    width: calc(100% - 1rem);
+    padding: 1.15rem;
+  }
+
+  .shadcn-dialog-content,
+  .shadcn-dialog-content[data-size="sm"],
+  .shadcn-dialog-content[data-size="lg"],
+  .shadcn-dialog-content[data-size="xl"] {
+    width: calc(100% - 1rem);
+    max-width: none;
+    max-height: calc(100dvh - 1rem);
+    padding: 1.15rem;
+  }
+
+  /* Botones apilados a todo el ancho, el principal arriba */
+  .alert-dialog-footer,
+  .shadcn-dialog-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .alert-dialog-footer > button,
+  .shadcn-dialog-footer > button {
+    width: 100%;
+  }
+}
