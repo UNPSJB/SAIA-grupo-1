@@ -73,3 +73,16 @@ def test_router_eliminar_proveedor(session: Session):
     res_rest = client.post(f"/proveedores/{p_id}/restaurar")
     assert res_rest.status_code == status.HTTP_200_OK
     assert res_rest.json()["activo"] is True
+
+
+def test_router_exportar_csv_y_pdf(session: Session):
+    res_csv = client.get("/proveedores/exportar-csv")
+    assert res_csv.status_code == status.HTTP_200_OK
+    assert "text/csv" in res_csv.headers["content-type"]
+    assert "Nombre del Proveedor" in res_csv.text
+
+    res_pdf = client.get("/proveedores/exportar-pdf")
+    assert res_pdf.status_code == status.HTTP_200_OK
+    assert res_pdf.headers["content-type"] == "application/pdf"
+    assert 'filename="proveedores.pdf"' in res_pdf.headers["content-disposition"]
+    assert res_pdf.content.startswith(b"%PDF")

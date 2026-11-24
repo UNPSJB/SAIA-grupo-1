@@ -5,8 +5,20 @@ from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.database import get_db
 from src.tipoInsumo import schemas, services
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/insumos/tipos", tags=["tipos_insumos"])
+
+
+COLUMNAS_EXPORTACION = {
+    "id": "ID",
+    "nombre": "Nombre del Tipo de Insumo",
+    "descripcion": "Descripción",
+    "unidadMedida": "Unidad de Medida",
+    "stockTotal": "Stock Total",
+    "totalLotes": "Total de Lotes",
+    "estado": "Estado",
+}
 
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
@@ -18,19 +30,28 @@ def exportar_tipos_insumos_csv(
     datos = services.obtener_tipos_insumos_para_csv(
         db, busqueda=busqueda, solo_activos=solo_activos
     )
-    columnas = {
-        "id": "ID",
-        "nombre": "Nombre del Tipo de Insumo",
-        "descripcion": "Descripción",
-        "unidadMedida": "Unidad de Medida",
-        "stockTotal": "Stock Total",
-        "totalLotes": "Total de Lotes",
-        "estado": "Estado",
-    }
     return generar_respuesta_csv(
         datos=datos,
-        columnas=columnas,
+        columnas=COLUMNAS_EXPORTACION,
         nombre_archivo="tipos_insumos.csv",
+    )
+
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_tipos_insumos_pdf(
+    busqueda: Optional[str] = Query(None),
+    solo_activos: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_tipos_insumos_para_csv(
+        db, busqueda=busqueda, solo_activos=solo_activos
+    )
+    return generar_respuesta_pdf(
+        db=db,
+        datos=datos,
+        columnas=COLUMNAS_EXPORTACION,
+        titulo_reporte="Listado de Tipos de Insumo",
+        nombre_archivo="tipos_insumos.pdf",
     )
 
 

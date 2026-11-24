@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { TipoInsumo } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 
 interface ListadoTiposInsumosProps {
   onNuevoClick?: (esAditivo?: boolean) => void;
@@ -111,7 +112,7 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
     return matchBusqueda && matchEstado;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -121,12 +122,16 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
       }
 
       const queryString = params.toString();
-      const url = `/insumos/tipos/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'tipos_insumos.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/insumos/tipos/exportar-pdf${query}`, 'tipos_insumos.pdf');
+      } else {
+        await descargarCSV(`/insumos/tipos/exportar-csv${query}`, 'tipos_insumos.csv');
+      }
       setDialogExportarAbierto(false);
     } catch (err) {
-      setErrorDialogMsg(err instanceof Error ? err.message : 'Error al exportar tipos de insumos a CSV.');
+      setErrorDialogMsg(err instanceof Error ? err.message : `Error al exportar tipos de insumos a ${formato.toUpperCase()}.`);
     } finally {
       setExportando(false);
     }
@@ -165,7 +170,7 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (

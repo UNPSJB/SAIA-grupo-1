@@ -137,3 +137,12 @@ def test_router_detalle_y_restaurar_tipo_insumo(session: Session):
     res_rest = client.post(f"/insumos/tipos/{tipo_id}/restaurar")
     assert res_rest.status_code == status.HTTP_200_OK
     assert res_rest.json()["activo"] is True
+
+
+def test_router_exportar_pdf(session: Session):
+    client.post("/insumos/tipos/", json={"nombre": "Miel de Abejas"})
+    res = client.get("/insumos/tipos/exportar-pdf?busqueda=Miel")
+    assert res.status_code == status.HTTP_200_OK
+    assert res.headers["content-type"] == "application/pdf"
+    assert 'filename="tipos_insumos.pdf"' in res.headers["content-disposition"]
+    assert res.content.startswith(b"%PDF")

@@ -6,6 +6,10 @@ import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 
 interface ListadoAlergenosProps {
   onNuevoClick?: () => void;
@@ -24,6 +28,8 @@ export const ListadoAlergenos: React.FC<ListadoAlergenosProps> = ({
   const [alergenoAEliminar, setAlergenoAEliminar] = useState<Alergeno | null>(null);
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -79,6 +85,30 @@ export const ListadoAlergenos: React.FC<ListadoAlergenosProps> = ({
     }
   };
 
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+      if (busqueda.trim()) params.append('busqueda', busqueda.trim());
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
+
+      if (formato === 'pdf') {
+        await descargarPDF(`/alergenos/exportar-pdf${query}`, 'alergenos.pdf');
+      } else {
+        await descargarCSV(`/alergenos/exportar-csv${query}`, 'alergenos.csv');
+      }
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      mostrarError(
+        'Error',
+        err instanceof Error ? err.message : `Error al exportar los alérgenos a ${formato.toUpperCase()}.`
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
   const alergenosFiltrados = alergenos.filter((a) => {
     const term = busqueda.toLowerCase().trim();
     return !term || a.nombre.toLowerCase().includes(term);
@@ -105,6 +135,15 @@ export const ListadoAlergenos: React.FC<ListadoAlergenosProps> = ({
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setDialogExportarAbierto(true)}
+            className="btn-cancelar"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <ExportIcon /> Exportar
+          </button>
+
           {onNuevoClick && (
             <button onClick={onNuevoClick} className="btn-guardar">
               + Nuevo Alérgeno
@@ -201,6 +240,15 @@ export const ListadoAlergenos: React.FC<ListadoAlergenosProps> = ({
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="alérgenos"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={alergenosFiltrados.length}
+        filtrosAplicados={busqueda.trim() ? `Búsqueda: "${busqueda.trim()}"` : 'Sin filtros aplicados'}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ConfirmAlertDialog

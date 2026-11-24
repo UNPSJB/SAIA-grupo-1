@@ -990,3 +990,86 @@ def marcar_etapa_no_realizada(
     db.commit()
     db.refresh(item)
     return item
+
+def obtener_recetas_para_exportar(
+    db: Session,
+    busqueda: Optional[str] = None,
+    vigencia: Optional[str] = None,
+    aditivos: Optional[str] = None,
+) -> List[Dict[str, object]]:
+    """Recetas filtradas con los mismos criterios del listado, listas para CSV/PDF."""
+    termino = (busqueda or "").lower().strip()
+    filas: List[Dict[str, object]] = []
+
+    for r in listar_recetas(db):
+        etapas = r.detalles or []
+
+        if termino:
+            coincide = (
+                termino in (r.nombre or "").lower()
+                or termino in (r.nombre_operario or "").lower()
+                or any(termino in (d.nombre or "").lower() for d in etapas)
+            )
+            if not coincide:
+                continue
+
+        tiene_version_vigente = r.version_vigente is not None
+        if vigencia and vigencia != "TODOS":
+            if (vigencia == "VIGENTES") != tiene_version_vigente:
+                continue
+
+        tiene_aditivos = any(d.es_aditivo for d in etapas)
+        if aditivos and aditivos != "TODOS":
+            if (aditivos == "CON_ADITIVOS") != tiene_aditivos:
+                continue
+
+        version = r.version_actual
+        filas.append(
+            {
+                "id": r.id,
+                "nombre": r.nombre,
+                "producto": r.nombre_producto or "-",
+                "rendimiento_final": r.rendimiento_final,
+                "version": f"v{version.version}" if version else "-",
+                "vigencia": "Vigente" if tiene_version_vigente else "No vigente",
+                "etapas": len(etapas),
+                "con_aditivos": "Sí" if tiene_aditivos else "No",
+                "responsable": r.nombre_operario or "-",
+                "estado": "Activo" if r.activo else "Inactivo",
+            }
+        )
+    return filas
+
+
+def obtener_checklists_receta_para_exportar(
+    db: Session,
+    fecha: Optional[date] = None,
+    estado: Optional[str] = None,
+    responsable_legajo: Optional[int] = None,
+) -> List[Dict[str, object]]:
+    """Listado de checklists de receta (una fila por checklist) para CSV/PDF."""
+    filas: List[Dict[str, object]] = []
+    for c in listar_checklists_receta(
+        db, fecha=fecha, estado=estado, responsable_legajo=responsable_legajo
+    ):
+        receta = db.get(Receta, c.receta_id) if c.receta_id else None
+        producto = db.get(Producto, c.id_producto) if c.id_producto else None
+        nombre_receta = (
+            receta.nombre if receta else (c.items[0].nombre_receta if c.items else "-")
+        )
+        filas.append(
+            {
+                "id": c.id,
+                "fecha": c.fecha.strftime("%d/%m/%Y"),
+                "receta": nombre_receta,
+                "producto": producto.nombre if producto else "-",
+                "cantidad_objetivo": c.cantidad_objetivo if c.cantidad_objetivo is not None else "-",
+                "responsable": c.nombre_responsable or "-",
+                "fecha_vencimiento": c.fecha_vencimiento.strftime("%d/%m/%Y"),
+                "estado": c.estado.value.capitalize(),
+                "etapas_completadas": f"{c.etapas_completadas}/{c.total_etapas}",
+                "etapas_no_realizadas": c.etapas_no_realizadas,
+                "cumplimiento": f"{c.porcentaje_cumplimiento}%",
+            }
+        )
+    return filas

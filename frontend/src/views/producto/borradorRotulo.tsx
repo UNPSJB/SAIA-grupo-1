@@ -28,6 +28,7 @@ import type {
 import { useAuth } from "../../auth/useAuth";
 import { ExportIcon } from "../../components/icons/ExportIcon";
 import "../../styles/formularioAlta.css";
+import { Octogono } from "../rotuladoFrontal/Octogono";
 
 interface BorradorRotuloProps {
   productoId: number;
@@ -379,42 +380,19 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
       <div
         key={item.id}
         style={{
-          width: "128px",
-          height: "128px",
-          backgroundColor: "#000000",
-          color: "#ffffff",
-          clipPath:
-            "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
-          padding: "16px 12px",
-          textAlign: "center",
-          boxShadow: "0 6px 14px rgba(0,0,0,0.4)",
-          border: "4px solid #ffffff",
-          outline: "3px solid #000000",
-          boxSizing: "border-box",
+          gap: "4px",
         }}
       >
+        <Octogono leyenda={item.texto} tamano={140} />
         <span
           style={{
-            fontSize: "0.85rem",
-            fontWeight: 900,
-            lineHeight: 1.15,
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-          }}
-        >
-          {item.texto}
-        </span>
-        <span
-          style={{
-            fontSize: "0.58rem",
-            fontWeight: 700,
-            color: "#d1d5db",
-            marginTop: "6px",
-            letterSpacing: "0.5px",
+            fontSize: "0.68rem",
+            fontWeight: 600,
+            color: "var(--color-texto-sec)",
+            letterSpacing: "0.3px",
           }}
         >
           Ministerio de Salud

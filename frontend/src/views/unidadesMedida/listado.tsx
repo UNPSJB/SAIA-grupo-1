@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import type { UnidadMedidaItem } from './tipos';
 import '../../styles/formularioAlta.css';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
 
 interface ListadoUnidadesMedidaProps {
   onNuevoClick?: () => void;
@@ -120,7 +121,7 @@ export const ListadoUnidadesMedida: React.FC<ListadoUnidadesMedidaProps> = ({
     return matchBusqueda && matchEstado;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
       const params = new URLSearchParams();
@@ -130,13 +131,17 @@ export const ListadoUnidadesMedida: React.FC<ListadoUnidadesMedidaProps> = ({
       }
 
       const queryString = params.toString();
-      const url = `/unidades-medida/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, 'unidades_medida.csv');
+      if (formato === 'pdf') {
+        await descargarPDF(`/unidades-medida/exportar-pdf${query}`, 'unidades_medida.pdf');
+      } else {
+        await descargarCSV(`/unidades-medida/exportar-csv${query}`, 'unidades_medida.csv');
+      }
       setDialogExportarAbierto(false);
     } catch (err) {
       setErrorDialogMsg(
-        err instanceof Error ? err.message : 'Error al exportar unidades de medida a CSV.'
+        err instanceof Error ? err.message : `Error al exportar unidades de medida a ${formato.toUpperCase()}.`
       );
     } finally {
       setExportando(false);
@@ -170,7 +175,7 @@ export const ListadoUnidadesMedida: React.FC<ListadoUnidadesMedidaProps> = ({
             className="btn-cancelar"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (

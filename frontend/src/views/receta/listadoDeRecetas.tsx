@@ -6,8 +6,9 @@ import { Paginacion } from '../../components/ui/paginacion';
 import { usePaginacion } from '../../components/ui/usePaginacion';
 import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
-import { ConfirmExportDialog } from '../../components/ui/confirmExportDialog';
-import { CsvIcon } from '../../components/icons/CsvIcon';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 
 interface ListadoRecetasProps {
   onNuevoClick?: () => void;
@@ -80,7 +81,7 @@ export const ListadoRecetas: React.FC<ListadoRecetasProps> = ({
     return coincideBusqueda && coincideVigencia && coincideAditivos;
   });
 
-  const ejecutarExportacion = async () => {
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
     try {
       setExportando(true);
 
@@ -90,13 +91,17 @@ export const ListadoRecetas: React.FC<ListadoRecetasProps> = ({
       if (filtroAditivos !== 'TODOS') params.append('aditivos', filtroAditivos);
 
       const queryString = params.toString();
-      const url = `/recetas/exportar-csv${queryString ? `?${queryString}` : ''}`;
+      const query = queryString ? `?${queryString}` : '';
 
-      await descargarCSV(url, "recetas.csv");
+      if (formato === 'pdf') {
+        await descargarPDF(`/recetas/exportar-pdf${query}`, 'recetas.pdf');
+      } else {
+        await descargarCSV(`/recetas/exportar-csv${query}`, 'recetas.csv');
+      }
       setDialogExportarAbierto(false);
     } catch (error) {
       mostrarError('Error', 
-        error instanceof Error ? error.message : "Error al exportar las recetas a CSV."
+        error instanceof Error ? error.message : `Error al exportar las recetas a ${formato.toUpperCase()}.`
       );
     } finally {
       setExportando(false);
@@ -138,7 +143,7 @@ export const ListadoRecetas: React.FC<ListadoRecetasProps> = ({
             className="btn-cancelar"
             style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <CsvIcon /> Exportar CSV
+            <ExportIcon /> Exportar
           </button>
 
           {onNuevoClick && (

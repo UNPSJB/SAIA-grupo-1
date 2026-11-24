@@ -11,6 +11,8 @@ from src.autenticacion.dependencies import requiere_admin, get_usuario_actual,re
 from src.database import get_db
 from src.recetas import schemas, services, exceptions
 from src.exceptions import PermissionDenied
+from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 
 
@@ -51,6 +53,98 @@ async def generar_checklist_receta_endpoint(
 ):
     datos = datos.model_copy(update={"responsable_legajo": usuario.legajo})
     return services.generar_checklist_receta(db, datos)
+
+
+COLUMNAS_RECETAS_EXPORTACION = {
+    "id": "ID",
+    "nombre": "Nombre de la Receta",
+    "producto": "Producto",
+    "rendimiento_final": "Rendimiento Final",
+    "version": "Versión",
+    "vigencia": "Vigencia",
+    "etapas": "Etapas",
+    "con_aditivos": "Con Aditivos",
+    "responsable": "Responsable",
+    "estado": "Estado",
+}
+
+COLUMNAS_CHECKLIST_RECETA_EXPORTACION = {
+    "id": "ID",
+    "fecha": "Fecha",
+    "receta": "Receta",
+    "producto": "Producto",
+    "cantidad_objetivo": "Cantidad Objetivo",
+    "responsable": "Responsable",
+    "fecha_vencimiento": "Vencimiento",
+    "estado": "Estado",
+    "etapas_completadas": "Etapas Completadas",
+    "etapas_no_realizadas": "No Realizadas",
+    "cumplimiento": "Cumplimiento",
+}
+
+
+@router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
+def exportar_recetas_csv(
+    busqueda: Optional[str] = Query(None),
+    vigencia: Optional[str] = Query(None),
+    aditivos: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_recetas_para_exportar(db, busqueda, vigencia, aditivos)
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=COLUMNAS_RECETAS_EXPORTACION,
+        nombre_archivo="recetas.csv",
+    )
+
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_recetas_pdf(
+    busqueda: Optional[str] = Query(None),
+    vigencia: Optional[str] = Query(None),
+    aditivos: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_recetas_para_exportar(db, busqueda, vigencia, aditivos)
+    return generar_respuesta_pdf(
+        db=db,
+        datos=datos,
+        columnas=COLUMNAS_RECETAS_EXPORTACION,
+        titulo_reporte="Listado de Recetas",
+        nombre_archivo="recetas.pdf",
+    )
+
+
+@router.get("/checklist/exportar-csv", dependencies=[Depends(requiere_admin)])
+def exportar_checklists_receta_csv(
+    fecha: Optional[date] = Query(None),
+    estado: Optional[str] = Query(None),
+    responsable_legajo: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_checklists_receta_para_exportar(db, fecha, estado, responsable_legajo)
+    return generar_respuesta_csv(
+        datos=datos,
+        columnas=COLUMNAS_CHECKLIST_RECETA_EXPORTACION,
+        nombre_archivo="checklists_recetas.csv",
+    )
+
+
+@router.get("/checklist/exportar-pdf", dependencies=[Depends(requiere_admin)])
+def exportar_checklists_receta_pdf(
+    fecha: Optional[date] = Query(None),
+    estado: Optional[str] = Query(None),
+    responsable_legajo: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_checklists_receta_para_exportar(db, fecha, estado, responsable_legajo)
+    return generar_respuesta_pdf(
+        db=db,
+        datos=datos,
+        columnas=COLUMNAS_CHECKLIST_RECETA_EXPORTACION,
+        titulo_reporte="Listado de Checklists de Recetas",
+        nombre_archivo="checklists_recetas.pdf",
+    )
 
 
 @router.get(

@@ -5,8 +5,18 @@ from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.database import get_db
 from src.unidadesMedida import schemas, services
 from src.utils.csv import generar_respuesta_csv
+from src.utils.pdf import generar_respuesta_pdf
 
 router = APIRouter(prefix="/unidades-medida", tags=["unidades-medida"])
+
+
+COLUMNAS_EXPORTACION = {
+    "id": "ID",
+    "nombre": "Nombre",
+    "abreviatura": "Abreviatura",
+    "totalReferencias": "Total Asociados",
+    "estado": "Estado",
+}
 
 
 @router.get("/exportar-csv", dependencies=[Depends(get_usuario_actual)])
@@ -18,17 +28,28 @@ def exportar_unidades_medida_csv(
     datos = services.obtener_unidades_para_csv(
         db, busqueda=busqueda, solo_activos=solo_activos
     )
-    columnas = {
-        "id": "ID",
-        "nombre": "Nombre",
-        "abreviatura": "Abreviatura",
-        "totalReferencias": "Total Asociados",
-        "estado": "Estado",
-    }
     return generar_respuesta_csv(
         datos=datos,
-        columnas=columnas,
+        columnas=COLUMNAS_EXPORTACION,
         nombre_archivo="unidades_medida.csv",
+    )
+
+
+@router.get("/exportar-pdf", dependencies=[Depends(get_usuario_actual)])
+def exportar_unidades_medida_pdf(
+    busqueda: Optional[str] = Query(None),
+    solo_activos: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    datos = services.obtener_unidades_para_csv(
+        db, busqueda=busqueda, solo_activos=solo_activos
+    )
+    return generar_respuesta_pdf(
+        db=db,
+        datos=datos,
+        columnas=COLUMNAS_EXPORTACION,
+        titulo_reporte="Listado de Unidades de Medida",
+        nombre_archivo="unidades_medida.pdf",
     )
 
 

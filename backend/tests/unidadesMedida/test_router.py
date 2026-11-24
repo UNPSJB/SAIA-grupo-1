@@ -74,3 +74,11 @@ def test_router_permisos_operador_unidades_medida(session: Session) -> None:
         assert res_del.status_code == status.HTTP_403_FORBIDDEN
     finally:
         app.dependency_overrides[get_usuario_actual] = lambda: USUARIO_DE_PRUEBA
+
+
+def test_router_exportar_pdf_unidades_medida(session: Session) -> None:
+    res_pdf = client.get("/unidades-medida/exportar-pdf")
+    assert res_pdf.status_code == status.HTTP_200_OK
+    assert res_pdf.headers["content-type"] == "application/pdf"
+    assert 'filename="unidades_medida.pdf"' in res_pdf.headers["content-disposition"]
+    assert res_pdf.content.startswith(b"%PDF")

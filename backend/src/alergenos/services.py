@@ -90,3 +90,23 @@ def eliminar_alergeno(db: Session, alergeno_id: int) -> Alergeno:
     db.commit()
     db.refresh(db_alergeno)
     return db_alergeno
+
+def obtener_alergenos_para_exportar(
+    db: Session, busqueda: Optional[str] = None
+) -> List[dict]:
+    """Alérgenos activos (filtrados por nombre) con sus tipos de insumo asociados."""
+    termino = (busqueda or "").lower().strip()
+    filas = []
+    for a in listar_alergenos(db):
+        if termino and termino not in a.nombre.lower():
+            continue
+        tipos = sorted(t.nombre for t in a.tipos_insumos if t.activo)
+        filas.append(
+            {
+                "id": a.id,
+                "nombre": a.nombre,
+                "tipos_insumos": ", ".join(tipos) if tipos else "-",
+                "total_tipos": len(tipos),
+            }
+        )
+    return filas

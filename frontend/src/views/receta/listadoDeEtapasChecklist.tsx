@@ -8,6 +8,10 @@ import '../../styles/checklist.css';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../auth/useAuth';
 import { VerReceta } from './VerReceta';
+import { descargarCSV } from '../../utils/exportarCsv';
+import { descargarPDF } from '../../utils/exportarPdf';
+import { ConfirmExportDialog, type FormatoExportacion } from '../../components/ui/confirmExportDialog';
+import { ExportIcon } from '../../components/icons/ExportIcon';
 
 interface ListadoChecklistsRecetaProps {
   onDetalleClick: (id: number) => void;
@@ -53,6 +57,8 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
   const [checklistExpandido, setChecklistExpandido] = useState<number | null>(null);
   const [recetaIdSeleccionada, setRecetaIdSeleccionada] = useState<number | null>(null);
   const columnas = esAdministrador ? 6 : 5;
+  const [exportando, setExportando] = useState(false);
+  const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
 
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
@@ -70,6 +76,43 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
       title: titulo,
       message: mensaje,
     });
+  };
+
+  const ejecutarExportacion = async (formato: FormatoExportacion) => {
+    try {
+      setExportando(true);
+      const params = new URLSearchParams();
+      if (fechaFiltro) params.append('fecha', fechaFiltro);
+      if (estadoFiltro) params.append('estado', estadoFiltro);
+      if (responsableFiltro) params.append('responsable_legajo', responsableFiltro);
+      const queryString = params.toString();
+      const query = queryString ? `?${queryString}` : '';
+
+      if (formato === 'pdf') {
+        await descargarPDF(`/recetas/checklist/exportar-pdf${query}`, 'checklists_recetas.pdf');
+      } else {
+        await descargarCSV(`/recetas/checklist/exportar-csv${query}`, 'checklists_recetas.csv');
+      }
+      setDialogExportarAbierto(false);
+    } catch (err) {
+      mostrarError(
+        err instanceof Error ? err.message : `Error al exportar los checklists de recetas a ${formato.toUpperCase()}.`,
+        'No se pudo exportar'
+      );
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const resumenFiltrosExportacion = () => {
+    const partes: string[] = [];
+    if (fechaFiltro) partes.push(`Fecha: ${fechaFiltro}`);
+    if (estadoFiltro) partes.push(`Estado: ${estadoFiltro}`);
+    if (responsableFiltro) {
+      const p = personal.find((x) => String(x.legajo) === responsableFiltro);
+      partes.push(`Operador: ${p ? `${p.apellido}, ${p.nombre}` : responsableFiltro}`);
+    }
+    return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
   };
 
   const recargarChecklists = async (
@@ -240,6 +283,16 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
         </div>
 
         <div className="top-bar-acciones" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {esAdministrador && (
+            <button
+              type="button"
+              onClick={() => setDialogExportarAbierto(true)}
+              className="btn-cancelar"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <ExportIcon /> Exportar
+            </button>
+          )}
           {checklistHoyId && (
             <button
               onClick={() => onDetalleClick(checklistHoyId)}
@@ -570,6 +623,15 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
         onCambiarPagina={setPaginaActual}
         onCambiarFilasPorPagina={setFilasPorPagina}
         etiqueta="checklists de recetas"
+      />
+
+      <ConfirmExportDialog
+        open={dialogExportarAbierto}
+        totalRegistros={totalRegistros}
+        filtrosAplicados={resumenFiltrosExportacion()}
+        loading={exportando}
+        onConfirm={ejecutarExportacion}
+        onCancel={() => setDialogExportarAbierto(false)}
       />
 
       <ErrorAlertDialog
