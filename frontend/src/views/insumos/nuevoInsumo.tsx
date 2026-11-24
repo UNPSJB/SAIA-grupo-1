@@ -234,7 +234,7 @@ export default function NuevoInsumo({ esAditivoInicial = false, onSuccess, onCan
             required
           >
             <option value="" disabled>
-              {esAditivo ? 'Seleccione un aditivo...' : 'Seleccione un ingrediente genérico...'}
+              {esAditivo ? 'Seleccione un aditivo...' : 'Seleccione un tipo de ingrediente...'}
             </option>
             {tiposFiltrados.map((t) => (
               <option key={t.id} value={t.id}>

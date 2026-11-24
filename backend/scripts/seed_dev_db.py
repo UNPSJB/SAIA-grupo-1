@@ -1387,6 +1387,7 @@ def main() -> None:
     p_chipa = Producto(nombre="Chipa Tradicional", descripcion="Bolsa de chipá de queso y almidón de mandioca 0,5 kg", unidad_medida_id=unidades_map["kilogramos"], equivalencia_gramos_unidad=1000.0, cantidad_por_envase=0.5, peso_unidad_g=500.0, conservacion="Mantener refrigerado a 4°C o congelado a -18°C.", aplica_rotulado=True, activo=True, visible_publico=True)
     p_ciabatta = Producto(nombre="Ciabatta Rústica", descripcion="Pan italiano de alta hidratación 300g (venta directa sin envase)", unidad_medida_id=unidades_map["gramos"], equivalencia_gramos_unidad=1.0, cantidad_por_envase=300.0, peso_unidad_g=300.0, tamano_porcion_g=50.0, medida_casera="1 trozo", conservacion="Consumir preferentemente en el día.", aplica_rotulado=False, activo=True, visible_publico=False)
     p_milanesa = Producto(nombre="Milanesa de Pollo", descripcion="Milanesas de pollo rebozadas acondicionadas en bandejas de 2 kg (lapso de aptitud 72 hs)", unidad_medida_id=unidades_map["kilogramos"], equivalencia_gramos_unidad=1000.0, cantidad_por_envase=2.0, peso_unidad_g=2000.0, tamano_porcion_g=130.0, porciones_por_envase=15.38, descripcion_porcion="130 g (1/2 unidad)", medida_casera="1/2 unidad", conservacion="Conservar refrigerado, entre 0 y 5°C. Cocinar completamente antes de consumir. Al final de cocción, no se deberán desprender jugos rosados ni vestigios de tal color en la superficie de corte.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_limonada = Producto(nombre="Limonada Artesanal", descripcion="Bebida refrescante de limón en botella de 2 L", unidad_medida_id=unidades_map["litros"], equivalencia_gramos_unidad=1020.0, cantidad_por_envase=2.0, peso_unidad_g=2040.0, tamano_porcion_g=200.0, descripcion_porcion="1 vaso (200 g)", medida_casera="1 vaso", conservacion="Conservar refrigerado entre 2°C y 6°C. Una vez abierto consumir dentro de las 48 horas.", aplica_rotulado=True, activo=True, visible_publico=True)
 
     p_pan.alergenos_precaucion = [alergenos_map["Granos de sésamo"], alergenos_map["Soja"]]
     p_medialunas.alergenos_precaucion = [alergenos_map["Frutos de cáscara"], alergenos_map["Soja"]]
@@ -1394,7 +1395,7 @@ def main() -> None:
     p_lactal.alergenos_precaucion = [alergenos_map["Huevo"], alergenos_map["Soja"]]
     p_salvado.alergenos_precaucion = [alergenos_map["Frutos de cáscara"], alergenos_map["Lácteos"]]
 
-    db.add_all([p_pan, p_medialunas, p_baguette, p_torta, p_lactal, p_salvado, p_facturas, p_budin, p_chipa, p_ciabatta, p_milanesa])
+    db.add_all([p_pan, p_medialunas, p_baguette, p_torta, p_lactal, p_salvado, p_facturas, p_budin, p_chipa, p_ciabatta, p_milanesa, p_limonada])
     db.commit()
 
     insumos_map = {i.nombre: i for i in db.query(Insumo).all()}
@@ -2528,12 +2529,103 @@ def main() -> None:
         usuario=marcos,
     )
 
+    receta_limonada = Receta(
+        nombre="Limonada Artesanal",
+        rendimiento_final=5.0,
+        id_producto=p_limonada.id,
+        operario_legajo=sofia.legajo,
+        activo=True,
+    )
+    db.add(receta_limonada)
+    db.flush()
+
+    version_limonada = VersionReceta(
+        receta_id=receta_limonada.id,
+        version=1,
+        rendimiento_final=5.0,
+        archivado=False,
+        es_vigente=True,
+        creado_por_legajo=sofia.legajo,
+        creado_por_usuario="Sofia Gomez",
+    )
+    db.add(version_limonada)
+    db.flush()
+
+    db.add_all([
+        RecetaDetalle(
+            nombre="Dilución de Agua Potable filtrada",
+            version_receta_id=version_limonada.id,
+            tipo_insumo_id=insumos_map["Agua Potable"].tipo_insumo_id,
+            cantidad=9.0,
+            unidad_medida="LITROS",
+            es_aditivo=False,
+            descripcion_pasos="Cargar agua potable filtrada en tanque de mezcla.",
+            parametros_control_json=json.dumps([
+                {"nombre_dato": "Temperatura agua", "unidad_medida": "°C", "condicion": "RANGO", "umbral_minimo": 4.0, "umbral_maximo": 12.0}
+            ]),
+        ),
+        RecetaDetalle(
+            nombre="Disolución de Azúcar Común",
+            version_receta_id=version_limonada.id,
+            tipo_insumo_id=insumos_map["Azucar Comun"].tipo_insumo_id,
+            cantidad=1.1,
+            unidad_medida="KILOGRAMOS",
+            es_aditivo=False,
+            descripcion_pasos="Disolver completamente el azúcar con agitación constante.",
+        ),
+        RecetaDetalle(
+            nombre="Ajuste de acidez con Ácido cítrico",
+            version_receta_id=version_limonada.id,
+            tipo_insumo_id=tipos_dict["Ácido cítrico"],
+            cantidad=100.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=True,
+            clase_funcional="Acidulante",
+            numero_ins="330",
+            descripcion_pasos="Agregar ácido cítrico y verificar pH final antes de embotellar.",
+            parametros_control_json=json.dumps([
+                {"nombre_dato": "pH final", "unidad_medida": "pH", "condicion": "RANGO", "umbral_minimo": 2.5, "umbral_maximo": 3.2}
+            ]),
+        ),
+    ])
+    db.commit()
+
+    lote_budin_seed = LoteProduccion(
+        codigo=f"L-{hoy.strftime('%Y%m%d')}-901",
+        producto_id=p_budin.id,
+        fecha=hoy.date() - timedelta(days=1),
+        cantidad=6.0,
+        responsable_legajo=sofia.legajo,
+    )
+    lote_limonada_seed = LoteProduccion(
+        codigo=f"L-{hoy.strftime('%Y%m%d')}-902",
+        producto_id=p_limonada.id,
+        fecha=hoy.date(),
+        cantidad=10.0,
+        responsable_legajo=sofia.legajo,
+    )
+    db.add_all([lote_budin_seed, lote_limonada_seed])
+    db.flush()
+
+    db.add_all([
+        InsumoLote(lote_id=lote_budin_seed.id, insumo_id=insumos_map["Harina 0000"].id, cantidad=0.84),
+        InsumoLote(lote_id=lote_budin_seed.id, insumo_id=insumos_map["Azucar Comun"].id, cantidad=0.54),
+        InsumoLote(lote_id=lote_budin_seed.id, insumo_id=insumos_map["Manteca"].id, cantidad=0.36),
+        InsumoLote(lote_id=lote_budin_seed.id, insumo_id=insumos_map["Canela Molida"].id, cantidad=0.03),
+        InsumoLote(lote_id=lote_limonada_seed.id, insumo_id=insumos_map["Agua Potable"].id, cantidad=18.0),
+        InsumoLote(lote_id=lote_limonada_seed.id, insumo_id=insumos_map["Azucar Comun"].id, cantidad=2.2),
+    ])
+    db.commit()
+
+    calcular_informacion_nutricional(db, p_limonada.id, receta_id=receta_limonada.id, usuario_actual="Sofia Gomez")
+
     from src.rotulado.services import sincronizar_rotulo_desde_receta
     sincronizar_rotulo_desde_receta(db, p_budin.id, usuario=marcos)
     sincronizar_rotulo_desde_receta(db, p_milanesa.id, usuario=marcos)
+    sincronizar_rotulo_desde_receta(db, p_limonada.id, usuario=marcos)
 
     asegurar_rotulado_frontal(db)
-    for prod_rotulo in [p_pan, p_medialunas, p_baguette, p_lactal, p_salvado, p_torta, p_budin, p_milanesa]:
+    for prod_rotulo in [p_pan, p_medialunas, p_baguette, p_lactal, p_salvado, p_torta, p_budin, p_milanesa, p_limonada]:
         calcular_desde_nutricion_producto(db, prod_rotulo.id, usuario=marcos)
         obtener_o_crear_borrador(db, prod_rotulo.id)
         autocompletar_datos_borrador(db, prod_rotulo.id, usuario=marcos)
