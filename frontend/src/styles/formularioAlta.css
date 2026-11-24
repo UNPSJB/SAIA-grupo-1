@@ -1675,3 +1675,18 @@ dialog .btn-guardar{
 .alergeno-chip-texto {
   line-height: 1.2;
 }
+/* Modal "Configurar Datos del Rótulo": campos integrados con el tema */
+.rotulo-modal-form .form-group {
+  margin-bottom: 0;
+}
+
+.rotulo-modal-form .form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.rotulo-modal-form input[type="checkbox"] {
+  width: auto;
+}

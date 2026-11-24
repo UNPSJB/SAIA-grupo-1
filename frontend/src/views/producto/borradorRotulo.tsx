@@ -464,7 +464,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
           <button
             type="button"
             onClick={cargarBorrador}
-            className="btn-primario"
+            className="btn-guardar"
             style={{ padding: "8px 20px" }}
           >
             Reintentar
@@ -1583,6 +1583,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
           </div>
 
           <div
+            className="rotulo-modal-form"
             style={{
               padding: "16px 4px",
               overflowY: "auto",
@@ -1594,7 +1595,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
           >
             {pestanaModal === "general" && (
               <>
-                <div className="campo">
+                <div className="form-group">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "6px" }}>
                     <label style={{ margin: 0 }}>Denominación de Venta Reglamentaria</label>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -1637,7 +1638,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     gap: "12px",
                   }}
                 >
-                  <div className="campo">
+                  <div className="form-group">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "6px" }}>
                       <label style={{ margin: 0 }}>Contenido Neto</label>
                       {borrador.contenido_neto_editado_manualmente && (
@@ -1660,7 +1661,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                       placeholder="Ej: 500 g, 1 kg"
                     />
                   </div>
-                  <div className="campo">
+                  <div className="form-group">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "6px" }}>
                       <label style={{ margin: 0 }}>Identificación de Lote</label>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -1697,7 +1698,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     />
                   </div>
                 </div>
-                <div className="campo">
+                <div className="form-group">
                   <label>Fecha de Duración Mínima / Vencimiento</label>
                   <input
                     type="text"
@@ -1776,7 +1777,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                       </span>
                       <span>Datos Obligatorios del Importador (Capítulo V CAA)</span>
                     </div>
-                    <div className="campo">
+                    <div className="form-group">
                       <label>Razón Social o Titular del Importador *</label>
                       <input
                         type="text"
@@ -1787,7 +1788,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                         placeholder="Ej: Importadora Andina S.A."
                       />
                     </div>
-                    <div className="campo">
+                    <div className="form-group">
                       <label>Domicilio Legal / Fiscal del Importador *</label>
                       <input
                         type="text"
@@ -1808,7 +1809,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     gap: "12px",
                   }}
                 >
-                  <div className="campo">
+                  <div className="form-group">
                     <label>R.N.P.A. / R.P.P.A. (Dato declarado)</label>
                     <input
                       type="text"
@@ -1819,7 +1820,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                       placeholder="Ej: 02-584930"
                     />
                   </div>
-                  <div className="campo">
+                  <div className="form-group">
                     <label>R.N.E.</label>
                     <input
                       type="text"
@@ -1831,7 +1832,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     />
                   </div>
                 </div>
-                <div className="campo">
+                <div className="form-group">
                   <label>Razón Social / Titular Elaborador</label>
                   <input
                     type="text"
@@ -1842,7 +1843,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     placeholder="Ej: Panificadora del Sur S.A."
                   />
                 </div>
-                <div className="campo">
+                <div className="form-group">
                   <label>Dirección y Domicilio de Elaboración</label>
                   <input
                     type="text"
@@ -1853,7 +1854,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     placeholder="Ej: Ruta 3 Km 1400, Trelew, Chubut"
                   />
                 </div>
-                <div className="campo">
+                <div className="form-group">
                   <label>País de Origen</label>
                   <input
                     type="text"
@@ -1986,7 +1987,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
 
             {pestanaModal === "uso" && (
               <>
-                <div className="campo">
+                <div className="form-group">
                   <label>Instrucciones de Conservación</label>
                   <textarea
                     rows={3}
@@ -2000,7 +2001,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     placeholder="Ej: Mantener en lugar fresco y seco. Una vez abierto conservar cerrado."
                   />
                 </div>
-                <div className="campo">
+                <div className="form-group">
                   <label>Modo de Empleo / Preparación</label>
                   <textarea
                     rows={3}
@@ -2019,7 +2020,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             <button
               type="button"
               onClick={() => setModalEditarAbierto(false)}
-              className="btn-secundario"
+              className="btn-cancelar"
             >
               Cancelar
             </button>
@@ -2027,7 +2028,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               type="button"
               onClick={handleGuardarCambios}
               disabled={guardando}
-              className="btn-primario"
+              className="btn-guardar"
             >
               {guardando ? "Guardando..." : "Guardar Cambios"}
             </button>
