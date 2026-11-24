@@ -413,7 +413,7 @@ export const TareasNoRealizadas: React.FC<TareasNoRealizadasProps> = ({
                                 item.frecuencia === 'diaria'
                                   ? 'var(--color-primario-fondo, #eff6ff)'
                                   : item.frecuencia === 'semanal'
-                                  ? 'var(--color-alerta-fondo, #fffbeb)'
+                                  ? 'var(--color-alerta-bg)'
                                   : 'var(--color-exito-fondo, #ecfdf5)',
                               color:
                                 item.frecuencia === 'diaria'
@@ -464,9 +464,9 @@ export const TareasNoRealizadas: React.FC<TareasNoRealizadasProps> = ({
                               borderRadius: '4px',
                               fontSize: '0.75rem',
                               fontWeight: 700,
-                              backgroundColor: 'var(--color-alerta-fondo, #fffbeb)',
+                              backgroundColor: 'var(--color-alerta-bg)',
                               color: 'var(--color-alerta-texto, #b45309)',
-                              border: '1px solid var(--color-alerta-borde, #fde68a)',
+                              border: '1px solid color-mix(in srgb, var(--color-alerta) 40%, transparent)',
                               textTransform: 'capitalize',
                             }}
                           >

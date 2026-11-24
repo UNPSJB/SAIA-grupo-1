@@ -1507,17 +1507,22 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                   </div>
                   <div style={{ width: '100%', height: 360 }}>
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <ComposedChart data={datosControlEstadistico.puntos} margin={{ top: 16, right: 30, left: 10, bottom: 25 }}>
+                      <ComposedChart data={datosControlEstadistico.puntos} margin={{ top: 16, right: 30, left: 30, bottom: 25 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
                         <XAxis
                           dataKey="codigo"
                           stroke={colores.textoSec}
                           fontSize={12}
                           tickLine={false}
-                          interval={0}
-                          angle={datosControlEstadistico.puntos.length > 8 ? -20 : 0}
+                          interval={datosControlEstadistico.puntos.length > 20 ? Math.ceil(datosControlEstadistico.puntos.length / 20) - 1 : 0}
+                          minTickGap={8}
+                          tickFormatter={(c: string) => {
+                            const m = /^L-\d{4}(\d{2})(\d{2})-(\d+)$/.exec(c || '');
+                            return m ? `${m[2]}/${m[1]} #${m[3]}` : c;
+                          }}
+                          angle={datosControlEstadistico.puntos.length > 8 ? -35 : 0}
                           textAnchor={datosControlEstadistico.puntos.length > 8 ? 'end' : 'middle'}
-                          height={datosControlEstadistico.puntos.length > 8 ? 40 : 25}
+                          height={datosControlEstadistico.puntos.length > 8 ? 70 : 25}
                         />
                         <YAxis
                           stroke={colores.textoSec}

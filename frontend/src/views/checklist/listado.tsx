@@ -321,9 +321,9 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
               onClick={onTareasNoRealizadasClick}
               className="btn-guardar"
               style={{
-                backgroundColor: 'var(--color-alerta-fondo, #fffbeb)',
-                color: 'var(--color-alerta-texto, #b45309)',
-                border: '1px solid var(--color-alerta-borde, #fde68a)',
+                backgroundColor: 'var(--color-alerta-bg)',
+                color: 'var(--color-alerta-texto)',
+                border: '1px solid color-mix(in srgb, var(--color-alerta) 40%, transparent)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.5rem',
@@ -531,7 +531,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                             <span
                               className="badge-reasignada-pill"
                               style={{
-                                backgroundColor: 'var(--color-alerta-fondo, #fffbeb)',
+                                backgroundColor: 'var(--color-alerta-bg)',
                                 color: 'var(--color-alerta, #d97706)',
                                 border: '1px solid var(--color-alerta, #f59e0b)',
                                 padding: '2px 8px',

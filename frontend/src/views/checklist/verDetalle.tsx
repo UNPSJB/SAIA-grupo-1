@@ -675,7 +675,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                                 <span
                                   className="badge-estado reasignado"
                                   style={{
-                                    backgroundColor: 'var(--color-alerta-fondo, #fffbeb)',
+                                    backgroundColor: 'var(--color-alerta-bg)',
                                     color: 'var(--color-alerta, #d97706)',
                                     border: '1px solid var(--color-alerta, #f59e0b)',
                                   }}
