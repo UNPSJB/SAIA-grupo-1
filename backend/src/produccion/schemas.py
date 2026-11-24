@@ -5,12 +5,11 @@ from src.produccion import exceptions
 
 
 class Producto(BaseModel):
-    """Lo que el lote muestra del producto; el resto se consulta en /productos."""
-
     id: int
     nombre: str
-    # todos los lotes del producto se miden en esta unidad
     unidadMedida: str
+    cantidad_por_envase: Optional[float] = None
+    peso_unidad_g: Optional[float] = None
     activo: bool
     model_config = ConfigDict(from_attributes=True)
 

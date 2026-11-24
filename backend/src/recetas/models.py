@@ -182,7 +182,8 @@ class RecetaDetalle(ModeloBase):
     __tablename__ = "recetas_detalle"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    nombre: Mapped[str] = mapped_column(String(50), index=True, nullable=False)
+    etapa: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, default=None)
+    nombre: Mapped[str] = mapped_column(String(80), index=True, nullable=False)
     version_receta_id: Mapped[int] = mapped_column(ForeignKey("versiones_receta.id"), index=True, nullable=False)
     tipo_insumo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tipos_insumos.id"), index=True, nullable=True)
     aditivo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("aditivos.id"), index=True, nullable=True)
@@ -246,7 +247,7 @@ class RecetaDetalle(ModeloBase):
             return self.tipo_insumo.nombre
         if self.aditivo:
             return self.aditivo.nombre
-        return "Desconocido"
+        return ""
 
     @property
     def parametros_control(self) -> list:
@@ -355,7 +356,8 @@ class ChecklistRecetaItem(ModeloBase):
     detalle_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("recetas_detalle.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    nombre_etapa: Mapped[str] = mapped_column(String(50), index=True)
+    etapa: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, default=None)
+    nombre_etapa: Mapped[str] = mapped_column(String(80), index=True)
     descripcion_pasos: Mapped[str] = mapped_column(Text, nullable=False)
 
     ingrediente_id: Mapped[Optional[int]] = mapped_column(
@@ -367,6 +369,7 @@ class ChecklistRecetaItem(ModeloBase):
     lote_insumo_usado_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("insumos.id", ondelete="SET NULL"), nullable=True
     )
+    lotes_insumo_usados_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
     cantidad: Mapped[float] = mapped_column(Float, nullable=False)
     unidad_medida_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("unidades_medida.id"), index=True, nullable=False, default=1
@@ -465,6 +468,16 @@ class ChecklistRecetaItem(ModeloBase):
             return []
         try:
             data = json.loads(self.valores_registrados_json)
+            return data if isinstance(data, list) else []
+        except Exception:
+            return []
+
+    @property
+    def lotes_insumo_usados(self) -> list:
+        if not self.lotes_insumo_usados_json:
+            return []
+        try:
+            data = json.loads(self.lotes_insumo_usados_json)
             return data if isinstance(data, list) else []
         except Exception:
             return []

@@ -10,10 +10,9 @@ import '../../styles/produccion.css';
 interface DetalleLoteProps {
   loteId: number;
   onVolver: () => void;
-  onGestionarInsumos?: (lote: LoteProduccion) => void;
 }
 
-export const DetalleLote: React.FC<DetalleLoteProps> = ({ loteId, onVolver, onGestionarInsumos }) => {
+export const DetalleLote: React.FC<DetalleLoteProps> = ({ loteId, onVolver }) => {
   const [lote, setLote] = useState<LoteProduccion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verChecklistId, setVerChecklistId] = useState<number | null>(null);
@@ -80,15 +79,10 @@ export const DetalleLote: React.FC<DetalleLoteProps> = ({ loteId, onVolver, onGe
           {lote.checklist_receta_id && (
             <button
               type="button"
-              className="btn-cancelar"
+              className="btn-guardar"
               onClick={() => setVerChecklistId(lote.checklist_receta_id!)}
             >
               Ver Checklist de Receta (#{lote.checklist_receta_id})
-            </button>
-          )}
-          {lote.editable && onGestionarInsumos && (
-            <button type="button" className="btn-agregar" onClick={() => onGestionarInsumos(lote)}>
-              Gestionar insumos
             </button>
           )}
         </div>
@@ -101,7 +95,10 @@ export const DetalleLote: React.FC<DetalleLoteProps> = ({ loteId, onVolver, onGe
         <dd>{formatearFecha(lote.fecha)}</dd>
         <dt>Cantidad producida</dt>
         <dd>
-          {lote.cantidad} {lote.producto.unidadMedida}
+          {lote.cantidad} unidades/envases
+          {lote.producto.cantidad_por_envase
+            ? ` (${Math.round(lote.cantidad * lote.producto.cantidad_por_envase * 100) / 100} ${lote.producto.unidadMedida})`
+            : ''}
         </dd>
         <dt>Responsable</dt>
         <dd>

@@ -9,13 +9,6 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../components/ui/dialog";
-import {
   ConfirmAlertDialog,
   ErrorAlertDialog,
 } from "../../components/ui/alert-dialog";
@@ -31,20 +24,6 @@ interface OrdenarIngredientesProps {
   onVolver: () => void;
   onPrevisualizarBorrador?: () => void;
 }
-
-const FUNCIONES_COMUNES = [
-  "Conservante",
-  "Emulsionante",
-  "Acidulante",
-  "Colorante",
-  "Estabilizante",
-  "Antioxidante",
-  "Aromatizante / Saborizante",
-  "Leudante químico",
-  "Espesante",
-  "Humectante",
-  "Regulador de acidez",
-];
 
 export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
   productoId,
@@ -117,17 +96,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
       (it.funcion || "").toLowerCase().includes("saboriz")
   ).length;
 
-  const [modalAbierto, setModalAbierto] = useState<boolean>(false);
-  const [indiceEdicion, setIndiceEdicion] = useState<number | null>(null);
-  const [formNombre, setFormNombre] = useState<string>("");
-  const [formDenominacion, setFormDenominacion] = useState<string>("");
-  const [formPorcentaje, setFormPorcentaje] = useState<string>("");
-  const [formEsAditivo, setFormEsAditivo] = useState<boolean>(false);
-  const [formFuncion, setFormFuncion] = useState<string>("");
-  const [formIns, setFormIns] = useState<string>("");
-  const [formEsAroma, setFormEsAroma] = useState<boolean>(false);
-
-  const [dialogResetAbierto, setDialogResetAbierto] = useState<boolean>(false);
   const [dialogImportarAbierto, setDialogImportarAbierto] =
     useState<boolean>(false);
 
@@ -173,44 +141,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
     cargarDatos();
   }, [productoId]);
 
-  const previsualizar = async (
-    itemsActuales: ItemIngrediente[],
-    formatoActual: FormatoDeclaracionAditivos
-  ) => {
-    if (itemsActuales.length === 0) {
-      setTextoRotulo("");
-      return;
-    }
-    try {
-      const res = await apiFetch(
-        `/productos/${productoId}/ingredientes-rotulo/previsualizar`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            formato_aditivos: formatoActual,
-            items: itemsActuales.map((it) => ({
-              nombre: it.nombre,
-              denominacion_rotulo: it.denominacion_rotulo || it.nombre,
-              porcentaje: it.porcentaje,
-              es_aditivo: it.es_aditivo,
-              funcion: it.funcion || null,
-              numero_ins: it.numero_ins || null,
-              es_aromatizante: it.es_aromatizante || false,
-            })),
-          }),
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setTextoRotulo(data.texto_rotulo);
-        setItems(data.items);
-      }
-    } catch {
-      return;
-    }
-  };
-
   const cambiarFormatoAditivos = async (
     nuevoFormato: FormatoDeclaracionAditivos
   ) => {
@@ -247,147 +177,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
     if (itemsActualizados.length > 0) {
       const decs = itemsActualizados.map((i) => i.texto_declaracion);
       setTextoRotulo(`INGREDIENTES: ${decs.join(", ")}.`);
-    }
-  };
-
-  const eliminarItem = (indice: number) => {
-    const filtrados = items.filter((_, idx) => idx !== indice);
-    setAjustadoManualmente(false);
-    if (filtrados.length === 0) {
-      setItems([]);
-      setTextoRotulo("");
-    } else {
-      previsualizar(filtrados, formato);
-    }
-  };
-
-  const abrirModalNuevo = () => {
-    setIndiceEdicion(null);
-    setFormNombre("");
-    setFormDenominacion("");
-    setFormPorcentaje("");
-    setFormEsAditivo(false);
-    setFormFuncion("");
-    setFormIns("");
-    setFormEsAroma(false);
-    setModalAbierto(true);
-  };
-
-  const abrirModalEditar = (indice: number) => {
-    const it = items[indice];
-    setIndiceEdicion(indice);
-    setFormNombre(it.nombre);
-    setFormDenominacion(it.denominacion_rotulo || it.nombre);
-    setFormPorcentaje(it.porcentaje.toString());
-    setFormEsAditivo(it.es_aditivo);
-    setFormFuncion(it.funcion || "");
-    setFormIns(it.numero_ins || "");
-    setFormEsAroma(it.es_aromatizante || false);
-    setModalAbierto(true);
-  };
-
-  const guardarModalItem = () => {
-    const pct = parseFloat(formPorcentaje);
-    if (!formNombre.trim()) {
-      setErrorMsg("El nombre del ingrediente o aditivo es obligatorio.");
-      return;
-    }
-    if (isNaN(pct) || pct <= 0 || pct > 100) {
-      setErrorMsg("El porcentaje debe ser un número entre 0 y 100.");
-      return;
-    }
-    if (formEsAditivo && !formFuncion.trim() && !formEsAroma) {
-      setErrorMsg("Debe especificar una función para el aditivo.");
-      return;
-    }
-
-    const esAromaFinal =
-      formEsAroma ||
-      formFuncion.toLowerCase().includes("aroma") ||
-      formFuncion.toLowerCase().includes("saboriz");
-
-    let dec = formDenominacion.trim() || formNombre.trim();
-    if (formEsAditivo) {
-      if (esAromaFinal) {
-        dec = formFuncion.trim() || "Aromatizante";
-      } else {
-        const func = formFuncion.trim() || "Aditivo";
-        const nom = formDenominacion.trim() || formNombre.trim();
-        const ins = formIns.trim();
-        if (!ins) {
-          dec = `${func} (${nom})`;
-        } else if (formato === "solo_ins") {
-          dec = `${func} (INS ${ins})`;
-        } else if (formato === "solo_nombre") {
-          dec = `${func} (${nom})`;
-        } else if (formato === "nombre_e_ins") {
-          dec = `${func} (${nom}, INS ${ins})`;
-        } else {
-          dec = `${func} (INS ${ins} - ${nom})`;
-        }
-      }
-    }
-
-    const nuevoItem: ItemIngrediente = {
-      nombre: formNombre.trim(),
-      denominacion_rotulo: formDenominacion.trim() || formNombre.trim(),
-      porcentaje: pct,
-      es_aditivo: formEsAditivo,
-      funcion: formEsAditivo ? formFuncion.trim() || null : null,
-      numero_ins: formEsAditivo ? formIns.trim() || null : null,
-      es_aromatizante: esAromaFinal,
-      texto_declaracion: dec,
-    };
-
-    let copia: ItemIngrediente[];
-    if (indiceEdicion !== null) {
-      copia = [...items];
-      copia[indiceEdicion] = nuevoItem;
-    } else {
-      copia = [...items, nuevoItem];
-    }
-
-    setModalAbierto(false);
-    setAjustadoManualmente(false);
-    previsualizar(copia, formato);
-  };
-
-  const ejecutarRestablecerAutomatico = async () => {
-    setDialogResetAbierto(false);
-    setLoading(true);
-    try {
-      const res = await apiFetch(
-        `/productos/${productoId}/ingredientes-rotulo/previsualizar`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            formato_aditivos: formato,
-            items: items.map((it) => ({
-              nombre: it.nombre,
-              denominacion_rotulo: it.denominacion_rotulo || it.nombre,
-              porcentaje: it.porcentaje,
-              es_aditivo: it.es_aditivo,
-              funcion: it.funcion || null,
-              numero_ins: it.numero_ins || null,
-              es_aromatizante: it.es_aromatizante || false,
-            })),
-          }),
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data.items);
-        setTextoRotulo(data.texto_rotulo);
-        setAjustadoManualmente(false);
-        setFechaAjuste(null);
-        setUsuarioAjuste(null);
-        setExitoMsg("Se restableció el orden automático según proporción.");
-      }
-    } catch {
-      setErrorMsg("Error al restablecer el orden automático.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -570,96 +359,63 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
             justifyContent: "space-between",
             alignItems: "center",
             flexWrap: "wrap",
-            gap: "16px",
-            padding: "16px 20px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.92rem", fontWeight: 600 }}>Criterio de Orden:</span>
-            <Badge variant="activo" style={{ padding: "5px 10px", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", gap: "5px" }}>
-              <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
-                check_circle
-              </span>
-              <span>Proporción decreciente (mayor a menor)</span>
-            </Badge>
-          </div>
-
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-            <button
-              type="button"
-              className="btn-cancelar"
-              style={{ fontSize: "0.88rem", padding: "7px 14px", display: "inline-flex", alignItems: "center", gap: "5px" }}
-              onClick={() => setDialogImportarAbierto(true)}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                download
-              </span>
-              <span>Importar de lote</span>
-            </button>
-            <button
-              type="button"
-              className="btn-agregar"
-              style={{ fontSize: "0.88rem", padding: "7px 16px", display: "inline-flex", alignItems: "center", gap: "5px" }}
-              onClick={abrirModalNuevo}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                add
-              </span>
-              <span>Agregar ingrediente / aditivo</span>
-            </button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card style={{ marginBottom: "20px", width: "100%", boxSizing: "border-box", border: "1px solid var(--color-borde)" }}>
-        <CardContent
-          style={{
-            display: "flex",
-            alignItems: "center",
-            flexWrap: "wrap",
             gap: "14px",
             padding: "14px 20px",
           }}
         >
-          <span style={{ fontSize: "0.92rem", fontWeight: 600 }}>
-            Formato de declaración de aditivos:
-          </span>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {[
-              { id: "ins_y_nombre", label: "INS y Nombre" },
-              { id: "nombre_e_ins", label: "Nombre e INS" },
-              { id: "solo_ins", label: "Solo INS" },
-              { id: "solo_nombre", label: "Solo Nombre" },
-            ].map((opc) => (
-              <button
-                key={opc.id}
-                type="button"
-                onClick={() =>
-                  cambiarFormatoAditivos(opc.id as FormatoDeclaracionAditivos)
-                }
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: "6px",
-                  border: "1px solid",
-                  borderColor:
-                    formato === opc.id
-                      ? "var(--color-texto)"
-                      : "var(--color-borde)",
-                  background:
-                    formato === opc.id
-                      ? "var(--color-texto)"
-                      : "transparent",
-                  color: formato === opc.id ? "var(--color-superficie)" : "var(--color-texto)",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  fontWeight: formato === opc.id ? 600 : 400,
-                  transition: "all 0.15s ease",
-                }}
-              >
-                {opc.label}
-              </button>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "14px" }}>
+            <span style={{ fontSize: "0.92rem", fontWeight: 600 }}>
+              Formato de declaración de aditivos:
+            </span>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {[
+                { id: "ins_y_nombre", label: "INS y Nombre" },
+                { id: "nombre_e_ins", label: "Nombre e INS" },
+                { id: "solo_ins", label: "Solo INS" },
+                { id: "solo_nombre", label: "Solo Nombre" },
+              ].map((opc) => (
+                <button
+                  key={opc.id}
+                  type="button"
+                  onClick={() =>
+                    cambiarFormatoAditivos(opc.id as FormatoDeclaracionAditivos)
+                  }
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "6px",
+                    border: "1px solid",
+                    borderColor:
+                      formato === opc.id
+                        ? "var(--color-texto)"
+                        : "var(--color-borde)",
+                    background:
+                      formato === opc.id
+                        ? "var(--color-texto)"
+                        : "transparent",
+                    color: formato === opc.id ? "var(--color-superficie)" : "var(--color-texto)",
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    fontWeight: formato === opc.id ? 600 : 400,
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {opc.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          <button
+            type="button"
+            className="btn-cancelar"
+            style={{ fontSize: "0.88rem", padding: "7px 14px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+            onClick={() => setDialogImportarAbierto(true)}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+              refresh
+            </span>
+            <span>Actualizar desde último lote</span>
+          </button>
         </CardContent>
       </Card>
 
@@ -710,7 +466,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                   fontSize: "0.98rem",
                 }}
               >
-                Aún no hay ingredientes ni aditivos cargados para este producto.
+                Todavía no hay lotes de producción con insumos registrados para este producto. Los ingredientes y aditivos se cargarán automáticamente a partir de los insumos utilizados en el lote.
               </p>
               <div
                 style={{
@@ -721,22 +477,14 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               >
                 <button
                   type="button"
-                  className="btn-agregar"
-                  style={{ fontSize: "0.9rem", padding: "8px 18px" }}
-                  onClick={abrirModalNuevo}
-                >
-                  + Agregar primer ingrediente
-                </button>
-                <button
-                  type="button"
                   className="btn-cancelar"
                   style={{ fontSize: "0.9rem", padding: "8px 18px", display: "inline-flex", alignItems: "center", gap: "6px" }}
                   onClick={() => setDialogImportarAbierto(true)}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                    download
+                    refresh
                   </span>
-                  <span>Cargar desde producción</span>
+                  <span>Sincronizar desde producción</span>
                 </button>
               </div>
             </div>
@@ -745,7 +493,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               style={{
                 width: "100%",
                 maxWidth: "100%",
-                overflowX: "hidden",
+                overflowX: "auto",
                 margin: 0,
                 padding: 0,
                 boxSizing: "border-box",
@@ -762,21 +510,20 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                 }}
               >
                 <colgroup>
-                  <col style={{ width: "55px" }} />
-                  <col style={{ width: "24%" }} />
-                  <col style={{ width: "17%" }} />
-                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "76px" }} />
+                  <col style={{ width: "25%" }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "13%" }} />
                   <col />
-                  <col style={{ width: "70px" }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th
                       style={{
                         textAlign: "center",
-                        padding: "0.75rem 0.25rem",
+                        padding: "0.75rem 0.4rem",
                         fontSize: "0.76rem",
-                        whiteSpace: "normal",
+                        whiteSpace: "nowrap",
                         boxSizing: "border-box",
                       }}
                     >
@@ -822,17 +569,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       }}
                     >
                       Declaración Rótulo
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "center",
-                        padding: "0.75rem 0.25rem",
-                        fontSize: "0.76rem",
-                        whiteSpace: "nowrap",
-                        boxSizing: "border-box",
-                      }}
-                    >
-                      Acciones
                     </th>
                   </tr>
                 </thead>
@@ -958,63 +694,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                       >
                         {it.texto_declaracion ||
                           (it.denominacion_rotulo || it.nombre)}
-                      </td>
-
-                      <td
-                        style={{
-                          textAlign: "center",
-                          padding: "0.75rem 0.25rem",
-                          whiteSpace: "nowrap",
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            gap: "4px",
-                          }}
-                        >
-                          <button
-                            type="button"
-                            className="btn-icon btn-editar"
-                            title="Editar"
-                            onClick={() => abrirModalEditar(idx)}
-                            style={{
-                              padding: "0",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              width: "25px",
-                              height: "25px",
-                              borderRadius: "4px",
-                            }}
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                              edit
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-icon btn-eliminar"
-                            title="Eliminar"
-                            onClick={() => eliminarItem(idx)}
-                            style={{
-                              padding: "0",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              width: "25px",
-                              height: "25px",
-                              borderRadius: "4px",
-                            }}
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                              delete
-                            </span>
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1307,178 +986,11 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
         </CardContent>
       </Card>
 
-      <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
-        <DialogContent size="default">
-          <DialogHeader>
-            <DialogTitle>
-              {indiceEdicion !== null
-                ? "Editar Ingrediente / Aditivo"
-                : "Agregar Ingrediente o Aditivo"}
-            </DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={(e) => { e.preventDefault(); guardarModalItem(); }}>
-            <div className="form-group" style={{ marginBottom: "14px" }}>
-              <label htmlFor="formNombre">Nombre Comercial / Insumo *</label>
-              <input
-                id="formNombre"
-                type="text"
-                value={formNombre}
-                onChange={(e) => setFormNombre(e.target.value)}
-                placeholder="Ej. Harina de trigo 0000, Lecitina de soja"
-                required
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: "14px" }}>
-              <label htmlFor="formDenominacion">
-                Denominación para el Rótulo (opcional)
-              </label>
-              <input
-                id="formDenominacion"
-                type="text"
-                value={formDenominacion}
-                onChange={(e) => setFormDenominacion(e.target.value)}
-                placeholder="Nombre legal que saldrá en la lista de ingredientes"
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: "14px" }}>
-              <label htmlFor="formPorcentaje">Proporción (%) *</label>
-              <input
-                id="formPorcentaje"
-                type="number"
-                step="0.01"
-                min="0.01"
-                max="100"
-                value={formPorcentaje}
-                onChange={(e) => setFormPorcentaje(e.target.value)}
-                placeholder="Ej. 65.5"
-                required
-              />
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "16px",
-                padding: "8px 12px",
-                background: "var(--color-superficie)",
-                border: "1px solid var(--color-borde)",
-                borderRadius: "6px",
-              }}
-            >
-              <input
-                id="formEsAditivo"
-                type="checkbox"
-                checked={formEsAditivo}
-                onChange={(e) => setFormEsAditivo(e.target.checked)}
-                style={{ width: "16px", height: "16px" }}
-              />
-              <label
-                htmlFor="formEsAditivo"
-                style={{ fontWeight: 600, cursor: "pointer", margin: 0 }}
-              >
-                ¿Es un aditivo alimentario?
-              </label>
-            </div>
-
-            {formEsAditivo && (
-              <div
-                style={{
-                  padding: "14px",
-                  background: "rgba(147, 51, 234, 0.05)",
-                  border: "1px solid rgba(147, 51, 234, 0.2)",
-                  borderRadius: "8px",
-                  marginBottom: "16px",
-                }}
-              >
-                <div className="form-group" style={{ marginBottom: "12px" }}>
-                  <label htmlFor="formFuncion">Función Tecnológica *</label>
-                  <input
-                    id="formFuncion"
-                    type="text"
-                    list="funciones-sugeridas"
-                    value={formFuncion}
-                    onChange={(e) => setFormFuncion(e.target.value)}
-                    placeholder="Ej. Conservante, Emulsionante, Aromatizante"
-                  />
-                  <datalist id="funciones-sugeridas">
-                    {FUNCIONES_COMUNES.map((f) => (
-                      <option key={f} value={f} />
-                    ))}
-                  </datalist>
-                </div>
-
-                <div className="form-group" style={{ marginBottom: "12px" }}>
-                  <label htmlFor="formIns">Número INS (opcional)</label>
-                  <input
-                    id="formIns"
-                    type="text"
-                    value={formIns}
-                    onChange={(e) => setFormIns(e.target.value)}
-                    placeholder="Ej. 202, 322, 330"
-                  />
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <input
-                    id="formEsAroma"
-                    type="checkbox"
-                    checked={formEsAroma}
-                    onChange={(e) => setFormEsAroma(e.target.checked)}
-                    style={{ width: "16px", height: "16px" }}
-                  />
-                  <label
-                    htmlFor="formEsAroma"
-                    style={{ fontSize: "0.85rem", cursor: "pointer", margin: 0 }}
-                  >
-                    Es aromatizante / saborizante (se declarará solo por su
-                    función)
-                  </label>
-                </div>
-              </div>
-            )}
-
-            <DialogFooter>
-              <button
-                type="button"
-                className="btn-cancelar"
-                onClick={() => setModalAbierto(false)}
-              >
-                Cancelar
-              </button>
-              <button type="submit" className="btn-guardar">
-                {indiceEdicion !== null ? "Guardar Cambios" : "Agregar"}
-              </button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmAlertDialog
-        open={dialogResetAbierto}
-        title="¿Restablecer orden automático?"
-        description="Se recalculará la secuencia ordenando los ingredientes por porcentaje decreciente y colocando los aditivos al final agrupados por función. Se perderán los ajustes manuales de posición."
-        confirmText="Restablecer"
-        cancelText="Cancelar"
-        onConfirm={ejecutarRestablecerAutomatico}
-        onCancel={() => setDialogResetAbierto(false)}
-      />
-
       <ConfirmAlertDialog
         open={dialogImportarAbierto}
-        title="¿Importar insumos del lote de producción?"
-        description="Se calcularán las proporciones porcentuales de los insumos usados en el lote de producción más reciente de este producto y se clasificarán automáticamente en ingredientes y aditivos."
-        confirmText="Importar"
+        title="¿Actualizar insumos desde el último lote?"
+        description="Se volverán a calcular las proporciones porcentuales de los insumos usados en el lote de producción más reciente de este producto."
+        confirmText="Actualizar"
         cancelText="Cancelar"
         onConfirm={ejecutarImportarLote}
         onCancel={() => setDialogImportarAbierto(false)}

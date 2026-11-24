@@ -14,7 +14,7 @@ export const DetalleEvaluacion: React.FC<DetalleEvaluacionProps> = ({ detalle, p
   <div>
     {pasos && pasos.length > 0 && (
       <div style={{ marginBottom: '1.5rem' }}>
-        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#1e293b' }}>
+        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: 'var(--color-texto)' }}>
           Cálculo paso a paso frente al umbral
         </h4>
         <div className="tabla-wrapper">
@@ -34,7 +34,13 @@ export const DetalleEvaluacion: React.FC<DetalleEvaluacionProps> = ({ detalle, p
                   <td>
                     <strong>{p.criterio}</strong>
                   </td>
-                  <td>{p.tiene_agregado}</td>
+                  <td>
+                    {typeof p.tiene_agregado === 'boolean'
+                      ? p.tiene_agregado
+                        ? 'Sí'
+                        : 'No'
+                      : p.tiene_agregado}
+                  </td>
                   <td>{p.calculo_realizado}</td>
                   <td>{p.umbral}</td>
                   <td>

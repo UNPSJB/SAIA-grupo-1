@@ -13,6 +13,8 @@ class ProductoBase(BaseModel):
     tamano_porcion_g: Optional[float] = None
     porciones_por_envase: Optional[float] = None
     descripcion_porcion: Optional[str] = None
+    equivalencia_gramos_unidad: Optional[float] = None
+    cantidad_por_envase: Optional[float] = None
     peso_unidad_g: Optional[float] = None
     aplica_rotulado: Optional[bool] = True
     conservacion:Optional[str] = None
@@ -55,6 +57,11 @@ class ProductoUpdate(ProductoBase):
     tamano_porcion_g: Optional[float] = None
     porciones_por_envase: Optional[float] = None
     descripcion_porcion: Optional[str] = None
+    equivalencia_gramos_unidad: Optional[float] = None
+    cantidad_por_envase: Optional[float] = None
+    tamano_porcion_g: Optional[float] = None
+    equivalencia_gramos_unidad: Optional[float] = None
+    cantidad_por_envase: Optional[float] = None
     peso_unidad_g: Optional[float] = None
     aplica_rotulado: Optional[bool] = None
     alergenos_precaucion_ids:Optional[list[int]]=None
@@ -86,6 +93,8 @@ class ProductoResponse(ProductoBase):
     unidad_medida_abreviatura: Optional[str] = None
     id_receta: Optional[int] = None
     nombre_receta: Optional[str] = None
+    equivalencia_gramos_unidad: Optional[float] = None
+    cantidad_por_envase: Optional[float] = None
     peso_unidad_g: Optional[float] = None
     aplica_rotulado: bool = True
     activo: bool

@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import type { ClaseFuncional, RecetaDetalleConId, RecetaDetalleForm } from "./tipos";
+import {
+  ETAPAS_PREDEFINIDAS,
+  formatearReglaUmbral,
+  type CondicionUmbral,
+  type ParametroControlReceta,
+  type RecetaDetalleConId,
+} from "./tipos";
 import "../../styles/formularioAlta.css";
 import { apiFetch } from "../../api/client";
 
@@ -14,6 +20,17 @@ interface TipoInsumoOption {
   numero_ins?: string | null;
 }
 
+interface ItemInsumoPaso {
+  key: number;
+  tipo_insumo_id: number;
+  nombre_ingrediente: string;
+  cantidad: number;
+  unidad_medida: string;
+  es_aditivo: boolean;
+  clase_funcional: string | null;
+  numero_ins: string | null;
+}
+
 const obtenerUnidadDeTipo = (tipo?: TipoInsumoOption): string => {
   if (!tipo) return "";
   return (
@@ -24,48 +41,52 @@ const obtenerUnidadDeTipo = (tipo?: TipoInsumoOption): string => {
   );
 };
 
-const DETALLE_INICIAL: RecetaDetalleForm = {
-  tipo_insumo_id: "",
-  nombre: "",
-  cantidad: "",
-  unidad_medida: "",
-  es_aditivo: false,
-  clase_funcional: "",
-  numero_ins: "",
-  descripcion_pasos: "",
-};
-
-const CLASES_FUNCIONALES: ClaseFuncional[] = [
-  "Conservante",
-  "Antioxidante",
-  "Colorante",
-  "Edulcorante",
-  "Aromatizante",
-  "Leudante químico",
-  "Emulsionante",
-  "Acidulante",
-  "Estabilizante",
-  "Espesante",
-  "Humectante",
-  "Regulador de acidez",
-  "Potenciador de sabor",
-  "Estimulante",
-];
-
 interface NuevoDetalleRecetaProps {
+  etapaInicial?: string;
+  etapasExistentes?: string[];
   onSuccess?: () => void;
   onCancel?: () => void;
   onAgregarLocal?: (detalle: RecetaDetalleConId) => void;
+  onAgregarMultiples?: (detalles: RecetaDetalleConId[]) => void;
 }
 
 export default function NuevoDetalleReceta({
+  etapaInicial = "",
+  etapasExistentes = [],
   onAgregarLocal,
+  onAgregarMultiples,
   onSuccess,
   onCancel,
 }: NuevoDetalleRecetaProps) {
-  const [detalle, setDetalle] = useState<RecetaDetalleForm>(DETALLE_INICIAL);
+  const [etapa, setEtapa] = useState<string>(etapaInicial || "Preparación");
+  const [etapaPersonalizada, setEtapaPersonalizada] = useState<string>("");
+  const [nombrePaso, setNombrePaso] = useState<string>("");
+  const [descripcionPasos, setDescripcionPasos] = useState<string>("");
+
   const [tiposInsumos, setTiposInsumos] = useState<TipoInsumoOption[]>([]);
+  const [insumosPaso, setInsumosPaso] = useState<ItemInsumoPaso[]>([]);
+  const [esAditivoNuevo, setEsAditivoNuevo] = useState<boolean>(false);
+  const [tipoInsumoId, setTipoInsumoId] = useState<number | "">("");
+  const [cantidadInsumo, setCantidadInsumo] = useState<string>("");
+  const [unidadInsumo, setUnidadInsumo] = useState<string>("");
+  const [claseFuncional, setClaseFuncional] = useState<string>("");
+  const [numeroIns, setNumeroIns] = useState<string>("");
+
+  const [umbrales, setUmbrales] = useState<ParametroControlReceta[]>([]);
+  const [nombreUmbral, setNombreUmbral] = useState<string>("");
+  const [unidadUmbral, setUnidadUmbral] = useState<string>("");
+  const [condicionUmbral, setCondicionUmbral] = useState<CondicionUmbral>("RANGO");
+  const [valorMin, setValorMin] = useState<string>("");
+  const [valorMax, setValorMax] = useState<string>("");
+  const [valorUnico, setValorUnico] = useState<string>("");
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (etapaInicial) {
+      setEtapa(etapaInicial);
+    }
+  }, [etapaInicial]);
 
   useEffect(() => {
     let cancelado = false;
@@ -85,289 +106,554 @@ export default function NuevoDetalleReceta({
     };
   }, []);
 
-  function handleCambiarCategoria(esAditivoNuevo: boolean) {
-    setDetalle((prev) => ({
-      ...prev,
-      es_aditivo: esAditivoNuevo,
-      tipo_insumo_id: "",
-      unidad_medida: "",
-      clase_funcional: "",
-      numero_ins: "",
-    }));
+  const opcionesEtapa = Array.from(
+    new Set([...ETAPAS_PREDEFINIDAS, ...etapasExistentes.filter(Boolean)])
+  );
+
+  const tiposFiltrados = tiposInsumos.filter((t) =>
+    esAditivoNuevo ? Boolean(t.es_aditivo) : !t.es_aditivo
+  );
+
+  const esAromatizante = claseFuncional.toLowerCase().includes("aromatizante");
+
+  function handleCambiarCategoria(esAdit: boolean) {
+    setEsAditivoNuevo(esAdit);
+    setTipoInsumoId("");
+    setUnidadInsumo("");
+    setClaseFuncional("");
+    setNumeroIns("");
   }
 
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) {
-    const { name, value } = e.target;
+  function handleSeleccionTipo(idStr: string) {
+    const idNum = idStr ? Number(idStr) : "";
+    setTipoInsumoId(idNum);
+    if (idNum !== "") {
+      const elegido = tiposInsumos.find((t) => t.id === idNum);
+      setUnidadInsumo(obtenerUnidadDeTipo(elegido));
+      setClaseFuncional(elegido?.clase_funcional || "");
+      setNumeroIns(elegido?.numero_ins || "");
+    } else {
+      setUnidadInsumo("");
+      setClaseFuncional("");
+      setNumeroIns("");
+    }
+  }
 
-    if (name === "tipo_insumo_id") {
-      const tipoElegido = tiposInsumos.find((i) => i.id === Number(value));
-      const unidadAutocompletada = obtenerUnidadDeTipo(tipoElegido);
+  function agregarInsumoAPaso() {
+    setErrorMsg(null);
+    if (tipoInsumoId === "") {
+      setErrorMsg(
+        esAditivoNuevo
+          ? "Seleccione un aditivo para agregar al paso."
+          : "Seleccione un ingrediente para agregar al paso."
+      );
+      return;
+    }
+    const cantNum = Number(cantidadInsumo);
+    if (!cantidadInsumo || Number.isNaN(cantNum) || cantNum <= 0) {
+      setErrorMsg("La cantidad del insumo debe ser mayor a 0.");
+      return;
+    }
+    if (esAditivoNuevo) {
+      if (!claseFuncional.trim()) {
+        setErrorMsg("El aditivo requiere una clase funcional.");
+        return;
+      }
+      if (!esAromatizante && !numeroIns.trim()) {
+        setErrorMsg("El aditivo requiere un número INS.");
+        return;
+      }
+    }
+    const elegido = tiposInsumos.find((t) => t.id === Number(tipoInsumoId));
+    setInsumosPaso((prev) => [
+      ...prev,
+      {
+        key: Date.now() + prev.length,
+        tipo_insumo_id: Number(tipoInsumoId),
+        nombre_ingrediente: elegido ? elegido.nombre : `Insumo #${tipoInsumoId}`,
+        cantidad: cantNum,
+        unidad_medida: unidadInsumo.trim() || "gramos",
+        es_aditivo: esAditivoNuevo,
+        clase_funcional: esAditivoNuevo ? claseFuncional.trim() : null,
+        numero_ins: esAditivoNuevo && numeroIns.trim() ? numeroIns.trim() : null,
+      },
+    ]);
+    setTipoInsumoId("");
+    setCantidadInsumo("");
+    setUnidadInsumo("");
+    setClaseFuncional("");
+    setNumeroIns("");
+  }
 
-      setDetalle((prev) => ({
-        ...prev,
-        tipo_insumo_id: value ? Number(value) : "",
-        unidad_medida: unidadAutocompletada || prev.unidad_medida,
-        es_aditivo: tipoElegido ? Boolean(tipoElegido.es_aditivo) : prev.es_aditivo,
-        clase_funcional: tipoElegido?.clase_funcional || "",
-        numero_ins: tipoElegido?.numero_ins || "",
-      }));
+  function agregarUmbralAPaso() {
+    setErrorMsg(null);
+    const nom = nombreUmbral.trim();
+    if (!nom) {
+      setErrorMsg("Ingrese el nombre del parámetro de control (ej: Temperatura interna).");
       return;
     }
 
-    setDetalle((prev) => ({ ...prev, [name]: value }));
+    let minVal: number | null = null;
+    let maxVal: number | null = null;
+
+    if (condicionUmbral === "RANGO") {
+      if (valorMin === "" || valorMax === "") {
+        setErrorMsg("Para un rango debe indicar valor mínimo y valor máximo.");
+        return;
+      }
+      minVal = Number(valorMin);
+      maxVal = Number(valorMax);
+      if (Number.isNaN(minVal) || Number.isNaN(maxVal) || minVal > maxVal) {
+        setErrorMsg("El valor mínimo no puede ser mayor que el valor máximo.");
+        return;
+      }
+    } else if (condicionUmbral === "MENOR_QUE") {
+      if (valorUnico === "" || Number.isNaN(Number(valorUnico))) {
+        setErrorMsg("Indique el valor límite superior.");
+        return;
+      }
+      maxVal = Number(valorUnico);
+    } else if (condicionUmbral === "MAYOR_QUE") {
+      if (valorUnico === "" || Number.isNaN(Number(valorUnico))) {
+        setErrorMsg("Indique el valor límite inferior.");
+        return;
+      }
+      minVal = Number(valorUnico);
+    } else if (condicionUmbral === "EXACTO") {
+      if (valorUnico === "" || Number.isNaN(Number(valorUnico))) {
+        setErrorMsg("Indique el valor exacto requerido.");
+        return;
+      }
+      minVal = Number(valorUnico);
+      maxVal = Number(valorUnico);
+    }
+
+    setUmbrales((prev) => [
+      ...prev,
+      {
+        nombre_dato: nom,
+        unidad_medida: unidadUmbral.trim() || null,
+        condicion: condicionUmbral,
+        umbral_minimo: minVal,
+        umbral_maximo: maxVal,
+      },
+    ]);
+
+    setNombreUmbral("");
+    setUnidadUmbral("");
+    setValorMin("");
+    setValorMax("");
+    setValorUnico("");
   }
 
   function handleGuardar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorMsg(null);
 
-    function soloLetrasYNumeros(nombre: string): boolean {
-      const patron = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ0-9\s]+$/;
-      return patron.test(nombre);
-    }
+    const etapaFinal = (etapa === "__OTRA__" ? etapaPersonalizada : etapa).trim() || "General";
+    const nombreLimpio = nombrePaso.trim();
+    const descLimpia = descripcionPasos.trim();
 
-    if (!detalle.nombre.trim()) {
-      setErrorMsg("El nombre de la etapa no puede estar vacío.");
+    if (nombreLimpio.length < 2) {
+      setErrorMsg("El nombre del paso debe tener al menos 2 caracteres.");
+      return;
+    }
+    if (!descLimpia) {
+      setErrorMsg("La descripción / procedimiento del paso no puede estar vacía.");
       return;
     }
 
-    if (detalle.nombre.trim().length < 2) {
-      setErrorMsg("El nombre de la etapa debe tener al menos 2 caracteres.");
-      return;
-    }
-
-    if (!soloLetrasYNumeros(detalle.nombre)) {
-      setErrorMsg("No se permiten caracteres especiales en el nombre de la etapa.");
-      return;
-    }
-
-    if (!detalle.tipo_insumo_id) {
-      setErrorMsg("Debe seleccionar un tipo de insumo.");
-      return;
-    }
-
-    if (detalle.cantidad === "" || Number(detalle.cantidad) <= 0) {
-      setErrorMsg("La cantidad tiene que ser mayor a 0.");
-      return;
-    }
-
-    if (!detalle.unidad_medida.trim()) {
-      setErrorMsg("La unidad de medida no puede estar vacía.");
-      return;
-    }
-
-    if (detalle.es_aditivo) {
-      if (!detalle.clase_funcional) {
-        setErrorMsg("El aditivo tiene que tener una clase funcional.");
+    const listaInsumosFinal = [...insumosPaso];
+    if (tipoInsumoId !== "" && cantidadInsumo !== "" && Number(cantidadInsumo) > 0) {
+      if (esAditivoNuevo && !claseFuncional.trim()) {
+        setErrorMsg("El aditivo seleccionado requiere una clase funcional.");
         return;
       }
-      const esAromatizante = detalle.clase_funcional.toLowerCase().includes("aromatizante");
-      if (!esAromatizante && !detalle.numero_ins.trim()) {
-        setErrorMsg("El aditivo tiene que tener un número INS.");
+      if (esAditivoNuevo && !esAromatizante && !numeroIns.trim()) {
+        setErrorMsg("El aditivo seleccionado requiere un número INS.");
         return;
       }
+      const elegido = tiposInsumos.find((t) => t.id === Number(tipoInsumoId));
+      listaInsumosFinal.push({
+        key: Date.now() + 999,
+        tipo_insumo_id: Number(tipoInsumoId),
+        nombre_ingrediente: elegido ? elegido.nombre : `Insumo #${tipoInsumoId}`,
+        cantidad: Number(cantidadInsumo),
+        unidad_medida: unidadInsumo.trim() || "gramos",
+        es_aditivo: esAditivoNuevo,
+        clase_funcional: esAditivoNuevo ? claseFuncional.trim() : null,
+        numero_ins: esAditivoNuevo && numeroIns.trim() ? numeroIns.trim() : null,
+      });
     }
 
-    if (!detalle.descripcion_pasos.trim()) {
-      setErrorMsg("La descripción de pasos no puede estar vacía.");
-      return;
+    const baseId = Date.now();
+    const detallesGenerados: RecetaDetalleConId[] =
+      listaInsumosFinal.length > 0
+        ? listaInsumosFinal.map((item, idx) => ({
+            id: baseId + idx,
+            version_receta_id: 0,
+            etapa: etapaFinal,
+            nombre: nombreLimpio,
+            tipo_insumo_id: item.tipo_insumo_id,
+            nombre_ingrediente: item.nombre_ingrediente,
+            cantidad: item.cantidad,
+            unidad_medida: item.unidad_medida,
+            es_aditivo: item.es_aditivo,
+            clase_funcional: item.clase_funcional,
+            numero_ins: item.numero_ins,
+            descripcion_pasos: descLimpia,
+            parametros_control: idx === 0 ? umbrales : [],
+          }))
+        : [
+            {
+              id: baseId,
+              version_receta_id: 0,
+              etapa: etapaFinal,
+              nombre: nombreLimpio,
+              tipo_insumo_id: null,
+              nombre_ingrediente: null,
+              cantidad: 0,
+              unidad_medida: "unidades",
+              es_aditivo: false,
+              clase_funcional: null,
+              numero_ins: null,
+              descripcion_pasos: descLimpia,
+              parametros_control: umbrales,
+            },
+          ];
+
+    if (onAgregarMultiples) {
+      onAgregarMultiples(detallesGenerados);
+    } else if (onAgregarLocal) {
+      detallesGenerados.forEach((d) => onAgregarLocal(d));
     }
 
-    const tipoSeleccionado = tiposInsumos.find((i) => i.id === Number(detalle.tipo_insumo_id));
-
-    onAgregarLocal?.({
-      id: Date.now(),
-      version_receta_id: 0,
-      nombre: detalle.nombre.trim(),
-      tipo_insumo_id: Number(detalle.tipo_insumo_id),
-      nombre_ingrediente: tipoSeleccionado ? tipoSeleccionado.nombre : null,
-      cantidad: Number(detalle.cantidad),
-      unidad_medida: detalle.unidad_medida.trim(),
-      es_aditivo: detalle.es_aditivo,
-      clase_funcional: detalle.es_aditivo && detalle.clase_funcional ? detalle.clase_funcional : null,
-      numero_ins: detalle.es_aditivo && detalle.numero_ins.trim() ? detalle.numero_ins.trim() : null,
-      descripcion_pasos: detalle.descripcion_pasos.trim(),
-    });
-
-    setDetalle(DETALLE_INICIAL);
     onSuccess?.();
   }
 
-  function handleCancelar() {
-    setDetalle(DETALLE_INICIAL);
-    setErrorMsg(null);
-    onCancel?.();
-  }
-
-  const tiposFiltrados = tiposInsumos.filter((t) =>
-    detalle.es_aditivo ? Boolean(t.es_aditivo) : !t.es_aditivo
-  );
-  const esAromatizante = (detalle.clase_funcional || "").toLowerCase().includes("aromatizante");
-
   return (
-    <div className="modulo-container formulario-box">
+    <div
+      className="modulo-container formulario-box"
+      style={{ maxHeight: "82vh", overflowY: "auto", paddingRight: "8px" }}
+    >
       <div className="modulo-header">
-        <h1>Nueva Etapa de Receta</h1>
+        <h1>Nuevo Paso de Receta</h1>
+        <div className="subtitulo">Etapa, descripción, insumos y umbrales de control</div>
       </div>
 
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
 
       <form onSubmit={handleGuardar}>
         <div className="form-group">
-          <label>¿Qué vas a cargar en esta etapa? *</label>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <label htmlFor="etapa-select">Etapa *</label>
+          <select
+            id="etapa-select"
+            value={etapa}
+            onChange={(e) => setEtapa(e.target.value)}
+            required
+          >
+            {opcionesEtapa.map((op) => (
+              <option key={op} value={op}>
+                {op}
+              </option>
+            ))}
+            <option value="__OTRA__">+ Otra etapa personalizada...</option>
+          </select>
+        </div>
+
+        {etapa === "__OTRA__" && (
+          <div className="form-group">
+            <label htmlFor="etapa-custom">Nombre de la Nueva Etapa *</label>
+            <input
+              id="etapa-custom"
+              type="text"
+              placeholder="Ej: Empanado, Envasado, Refrigerado..."
+              value={etapaPersonalizada}
+              onChange={(e) => setEtapaPersonalizada(e.target.value)}
+              required
+            />
+          </div>
+        )}
+
+        <div className="form-group">
+          <label htmlFor="nombre-paso">Nombre del Paso *</label>
+          <input
+            id="nombre-paso"
+            type="text"
+            placeholder="Ej: Mezclado de secos, Horneado inicial, Control de cámara..."
+            value={nombrePaso}
+            onChange={(e) => setNombrePaso(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="desc-paso">Descripción / Procedimiento *</label>
+          <textarea
+            id="desc-paso"
+            placeholder="Describe las instrucciones a seguir en este paso..."
+            value={descripcionPasos}
+            onChange={(e) => setDescripcionPasos(e.target.value)}
+            rows={3}
+            required
+          />
+        </div>
+
+        <div
+          style={{
+            border: "1px solid var(--color-borde, #334155)",
+            borderRadius: "8px",
+            padding: "14px",
+            marginBottom: "16px",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: "10px", fontSize: "0.95rem" }}>
+            Ingredientes / Aditivos del Paso (opcional, puede agregar varios)
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
             <button
               type="button"
-              className={!detalle.es_aditivo ? "btn-guardar" : "btn-cancelar"}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+              className={!esAditivoNuevo ? "btn-guardar" : "btn-cancelar"}
+              style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "6px 12px" }}
               onClick={() => handleCambiarCategoria(false)}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>nutrition</span>
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>nutrition</span>
               Ingrediente
             </button>
             <button
               type="button"
-              className={detalle.es_aditivo ? "btn-guardar" : "btn-cancelar"}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+              className={esAditivoNuevo ? "btn-guardar" : "btn-cancelar"}
+              style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "6px 12px" }}
               onClick={() => handleCambiarCategoria(true)}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>science</span>
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>science</span>
               Aditivo
             </button>
           </div>
-        </div>
 
-        <div className="form-group">
-          <label htmlFor="nombre">Nombre de la Etapa</label>
-          <input
-            id="nombre"
-            name="nombre"
-            type="text"
-            placeholder="Ej: Etapa 1 Amasado"
-            value={detalle.nombre}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="tipo_insumo_id">
-            {detalle.es_aditivo ? "Aditivo *" : "Ingrediente *"}
-          </label>
-          <select
-            id="tipo_insumo_id"
-            name="tipo_insumo_id"
-            value={detalle.tipo_insumo_id}
-            onChange={handleChange}
-            required
-          >
-            <option value="" disabled>
-              {detalle.es_aditivo ? "Seleccione un aditivo" : "Seleccione un ingrediente"}
-            </option>
-            {tiposFiltrados.map((tipo) => {
-              const unidad = obtenerUnidadDeTipo(tipo);
-              return (
-                <option key={tipo.id} value={tipo.id}>
-                  {detalle.es_aditivo
-                    ? `${tipo.nombre}${tipo.clase_funcional ? ` — ${tipo.clase_funcional}` : ""}${tipo.numero_ins ? ` (${tipo.numero_ins})` : ""}${unidad ? ` [${unidad}]` : ""}`
-                    : `${tipo.nombre} ${unidad ? `(${unidad})` : ""}`}
-                </option>
-              );
-            })}
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="cantidad">Cantidad</label>
-          <input
-            id="cantidad"
-            name="cantidad"
-            type="number"
-            step="any"
-            min="0.01"
-            placeholder="Introduce la cantidad"
-            value={detalle.cantidad}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="unidad_medida">Unidad de Medida</label>
-          <input
-            id="unidad_medida"
-            name="unidad_medida"
-            type="text"
-            placeholder="Se autocompleta al elegir el insumo"
-            value={detalle.unidad_medida}
-            onChange={handleChange}
-            disabled
-          />
-        </div>
-
-        {detalle.es_aditivo && (
-          <>
-            <div className="form-group">
-              <label htmlFor="clase_funcional">Clase Funcional</label>
-              <select
-                id="clase_funcional"
-                name="clase_funcional"
-                value={detalle.clase_funcional}
-                onChange={handleChange}
-                required
-              >
-                <option value="" disabled>
-                  Seleccione la clase funcional
-                </option>
-                {CLASES_FUNCIONALES.map((cf) => (
-                  <option key={cf} value={cf}>
-                    {cf}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(140px, 100%), 1fr))", gap: "8px", marginBottom: "8px" }}>
+            <select
+              value={tipoInsumoId}
+              style={{ minWidth: 0 }}
+              onChange={(e) => handleSeleccionTipo(e.target.value)}
+            >
+              <option value="">
+                {esAditivoNuevo ? "Seleccione aditivo..." : "Seleccione ingrediente..."}
+              </option>
+              {tiposFiltrados.map((t) => {
+                const u = obtenerUnidadDeTipo(t);
+                return (
+                  <option key={t.id} value={t.id}>
+                    {esAditivoNuevo
+                      ? `${t.nombre}${t.clase_funcional ? ` — ${t.clase_funcional}` : ""}${t.numero_ins ? ` (${t.numero_ins})` : ""}${u ? ` [${u}]` : ""}`
+                      : `${t.nombre}${u ? ` (${u})` : ""}`}
                   </option>
-                ))}
-                {detalle.clase_funcional &&
-                  !CLASES_FUNCIONALES.includes(detalle.clase_funcional) && (
-                    <option value={detalle.clase_funcional}>{detalle.clase_funcional}</option>
-                  )}
-              </select>
-            </div>
+                );
+              })}
+            </select>
 
-            <div className="form-group">
-              <label htmlFor="numero_ins">
-                Número INS {esAromatizante ? "(Opcional para aromatizantes)" : "*"}
-              </label>
+            <input
+              type="number"
+              step="any"
+              min="0.01"
+              placeholder="Cantidad"
+              value={cantidadInsumo}
+              onChange={(e) => setCantidadInsumo(e.target.value)}
+            />
+
+            <input
+              type="text"
+              placeholder="Unidad"
+              value={unidadInsumo}
+              disabled
+            />
+          </div>
+
+          {esAditivoNuevo && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(150px, 100%), 1fr))", gap: "8px", marginBottom: "8px" }}>
               <input
-                id="numero_ins"
-                name="numero_ins"
                 type="text"
-                placeholder="Ej: INS 282"
-                value={detalle.numero_ins}
-                onChange={handleChange}
-                required={!esAromatizante}
+                placeholder="Clase funcional (desde catálogo)"
+                value={claseFuncional || ""}
+                disabled
+                readOnly
+              />
+
+              <input
+                type="text"
+                placeholder={esAromatizante ? "INS (No aplica)" : "Número INS (desde catálogo)"}
+                value={numeroIns || (tipoInsumoId !== "" ? "No aplica" : "")}
+                disabled
+                readOnly
               />
             </div>
-          </>
-        )}
+          )}
 
-        <div className="form-group">
-          <label htmlFor="descripcion_pasos">Procedimiento / Pasos</label>
-          <textarea
-            id="descripcion_pasos"
-            name="descripcion_pasos"
-            placeholder="Introduce los pasos del procedimiento"
-            value={detalle.descripcion_pasos}
-            onChange={handleChange}
-            rows={4}
-            required
-          />
+          <button
+            type="button"
+            className="btn-cancelar"
+            style={{ width: "100%", marginBottom: insumosPaso.length > 0 ? "10px" : "0" }}
+            onClick={agregarInsumoAPaso}
+          >
+            + Agregar {esAditivoNuevo ? "aditivo" : "ingrediente"} a este paso
+          </button>
+
+          {insumosPaso.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {insumosPaso.map((item) => (
+                <div
+                  key={item.key}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-borde, #334155)",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <span>
+                    <strong>{item.nombre_ingrediente}</strong> — {item.cantidad} {item.unidad_medida}
+                    {item.es_aditivo && item.clase_funcional
+                      ? ` (${item.clase_funcional}${item.numero_ins ? ` · ${item.numero_ins}` : ""})`
+                      : ""}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-icon btn-eliminar"
+                    title="Quitar"
+                    onClick={() =>
+                      setInsumosPaso((prev) => prev.filter((x) => x.key !== item.key))
+                    }
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>close</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            border: "1px solid var(--color-borde, #334155)",
+            borderRadius: "8px",
+            padding: "14px",
+            marginBottom: "16px",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: "10px", fontSize: "0.95rem" }}>
+            Umbrales / Controles de Calidad del Paso (opcional)
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(150px, 100%), 1fr))", gap: "8px", marginBottom: "8px" }}>
+            <input
+              type="text"
+              placeholder="Parámetro (Ej: Temperatura interna, pH, Tiempo)"
+              value={nombreUmbral}
+              onChange={(e) => setNombreUmbral(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Unidad (Ej: °C, min, pH)"
+              value={unidadUmbral}
+              onChange={(e) => setUnidadUmbral(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(130px, 100%), 1fr))", gap: "8px", marginBottom: "8px" }}>
+            <select
+              value={condicionUmbral}
+              onChange={(e) => setCondicionUmbral(e.target.value as CondicionUmbral)}
+            >
+              <option value="RANGO">Dentro del rango (mín - máx)</option>
+              <option value="MENOR_QUE">Por debajo del valor (≤)</option>
+              <option value="MAYOR_QUE">Por arriba del valor (≥)</option>
+              <option value="EXACTO">Valor exacto (=)</option>
+            </select>
+
+            {condicionUmbral === "RANGO" ? (
+              <>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Mínimo"
+                  value={valorMin}
+                  onChange={(e) => setValorMin(e.target.value)}
+                />
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Máximo"
+                  value={valorMax}
+                  onChange={(e) => setValorMax(e.target.value)}
+                />
+              </>
+            ) : (
+              <input
+                type="number"
+                step="any"
+                placeholder={
+                  condicionUmbral === "MENOR_QUE"
+                    ? "Valor máximo"
+                    : condicionUmbral === "MAYOR_QUE"
+                    ? "Valor mínimo"
+                    : "Valor exacto"
+                }
+                value={valorUnico}
+                onChange={(e) => setValorUnico(e.target.value)}
+              />
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="btn-cancelar"
+            style={{ width: "100%", marginBottom: umbrales.length > 0 ? "10px" : "0" }}
+            onClick={agregarUmbralAPaso}
+          >
+            + Agregar umbral de control
+          </button>
+
+          {umbrales.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {umbrales.map((u, idx) => (
+                <div
+                  key={`${u.nombre_dato}-${idx}`}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-borde, #334155)",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <span>
+                    <strong>{u.nombre_dato}</strong>: {formatearReglaUmbral(u)}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-icon btn-eliminar"
+                    title="Quitar umbral"
+                    onClick={() => setUmbrales((prev) => prev.filter((_, i) => i !== idx))}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>close</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar">
-            Guardar
+            Guardar Paso
           </button>
-          <button type="button" className="btn-cancelar" onClick={handleCancelar}>
+          <button type="button" className="btn-cancelar" onClick={onCancel}>
             Cancelar
           </button>
         </div>

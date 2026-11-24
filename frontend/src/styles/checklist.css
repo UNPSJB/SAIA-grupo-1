@@ -385,11 +385,41 @@
   background-color: var(--code-bg);
   padding: 0.75rem;
   border-radius: 6px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .tarea-detalle-dato {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lote-asignacion-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.lote-asignacion-fila.con-quitar {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+}
+
+@media (max-width: 640px) {
+  .tarea-detalles-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lote-asignacion-fila,
+  .lote-asignacion-fila.con-quitar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .lote-asignacion-fila select {
+    grid-column: 1 / -1;
+  }
+}
   gap: 0.15rem;
 }
 

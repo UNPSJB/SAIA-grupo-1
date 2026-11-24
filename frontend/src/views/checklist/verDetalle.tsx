@@ -817,7 +817,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                           </div>
 
 
-                          <div className="tarea-detalle-dato" style={{ gridColumn: 'span 2' }}>
+                          <div className="tarea-detalle-dato" style={{ gridColumn: '1 / -1' }}>
                             <span>Insumos Químicos Consumidos</span>
                             {tarea.insumos_utilizados &&
                             tarea.insumos_utilizados.length > 0 ? (
@@ -835,7 +835,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                             )}
                           </div>
 
-                          <div className="tarea-detalle-dato" style={{ gridColumn: 'span 2' }}>
+                          <div className="tarea-detalle-dato" style={{ gridColumn: '1 / -1' }}>
                             <span>Evidencia Fotográfica</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.2rem' }}>
                               {tarea.imagen ? (

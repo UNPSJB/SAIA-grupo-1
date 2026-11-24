@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { RecetaConId, RecetaDetalleConId, VersionRecetaItem } from './tipos';
+import { formatearReglaUmbral, type RecetaConId, type RecetaDetalleConId, type VersionRecetaItem } from './tipos';
 import '../../styles/formularioAlta.css';
 import { VerDetalleReceta } from './VerEtapaReceta';
 import { ModalHistorialVersionesReceta } from './ModalHistorialReceta';
@@ -205,12 +205,12 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
             </div>
 
             <div className="form-group">
-              <label htmlFor="rendimiento_final">Rendimiento Final</label>
+              <label htmlFor="rendimiento_final">Rendimiento Final (unidades / envases)</label>
               <input
                 id="rendimiento_final"
                 name="rendimiento_final"
                 type="text"
-                value={versionMostrada?.rendimiento_final ?? receta.rendimiento_final}
+                value={`${versionMostrada?.rendimiento_final ?? receta.rendimiento_final} u.`}
                 disabled
               />
             </div>
@@ -306,57 +306,114 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
 
           <div className="form-group">
             <label>
-              Etapas de la Receta (Versión v{versionMostrada?.version ?? 1})
+              Etapas y Pasos de la Receta (Versión v{versionMostrada?.version ?? 1})
             </label>
             {etapas.length === 0 ? (
               <input type="text" value="Sin etapas registradas en esta versión" disabled />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {etapas.map((etapa: RecetaDetalleConId) => (
-                  <div
-                    key={etapa.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '0.75rem',
-                      padding: '0.55rem 0.75rem 0.55rem 1rem',
-                      backgroundColor: 'var(--code-bg)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '6px',
-                      fontSize: '0.95rem',
-                      color: 'var(--text-h)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.15rem',
-                        minWidth: 0,
-                      }}
-                    >
-                      <span style={{ fontWeight: 600, color: 'var(--color-texto)' }}>
-                        {etapa.nombre} — {etapa.cantidad} {etapa.unidad_medida} (
-                        {etapa.nombre_ingrediente ?? `Tipo de insumo #${etapa.tipo_insumo_id}`})
-                      </span>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--color-texto-sec)' }}>
-                        {etapa.es_aditivo ? 'Aditivo' : 'Ingrediente'}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-icon btn-ver"
-                      title="Ver detalles de la etapa"
-                      onClick={() => {
-                        setEtapaSeleccionada(etapa);
-                        setModalVerEtapa(true);
-                      }}
-                    >
-                      <span className="material-symbols-outlined">visibility</span>
-                    </button>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {Array.from(new Set(etapas.map((e: RecetaDetalleConId) => e.etapa || 'General'))).map(
+                  (nombreContenedor) => {
+                    const pasosGrupo = etapas.filter(
+                      (e: RecetaDetalleConId) => (e.etapa || 'General') === nombreContenedor
+                    );
+                    return (
+                      <div
+                        key={nombreContenedor}
+                        style={{
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: '0.5rem 0.85rem',
+                            fontWeight: 700,
+                            fontSize: '0.92rem',
+                            backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                            borderBottom: '1px solid var(--border)',
+                          }}
+                        >
+                          Etapa: {nombreContenedor} ({pasosGrupo.length})
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', padding: '0.55rem' }}>
+                          {pasosGrupo.map((etapa: RecetaDetalleConId) => (
+                            <div
+                              key={etapa.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '0.75rem',
+                                padding: '0.55rem 0.75rem',
+                                backgroundColor: 'var(--code-bg)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '6px',
+                                fontSize: '0.92rem',
+                                color: 'var(--text-h)',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '0.2rem',
+                                  minWidth: 0,
+                                }}
+                              >
+                                <span style={{ fontWeight: 600, color: 'var(--color-texto)' }}>
+                                  {etapa.nombre}
+                                  {etapa.tipo_insumo_id
+                                    ? ` — ${etapa.cantidad} ${etapa.unidad_medida} (${
+                                        etapa.nombre_ingrediente ?? `Tipo de insumo #${etapa.tipo_insumo_id}`
+                                      })`
+                                    : ''}
+                                </span>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-texto-sec)' }}>
+                                  {etapa.tipo_insumo_id
+                                    ? etapa.es_aditivo
+                                      ? `Aditivo${etapa.clase_funcional ? ` · ${etapa.clase_funcional}` : ''}${etapa.numero_ins ? ` · ${etapa.numero_ins}` : ''}`
+                                      : 'Ingrediente'
+                                    : 'Control / Procedimiento'}
+                                </span>
+                                {etapa.parametros_control && etapa.parametros_control.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                                    {etapa.parametros_control.map((p, pIdx) => (
+                                      <span
+                                        key={pIdx}
+                                        style={{
+                                          fontSize: '0.74rem',
+                                          padding: '2px 6px',
+                                          borderRadius: '4px',
+                                          backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                                          color: '#38bdf8',
+                                        }}
+                                      >
+                                        {p.nombre_dato}: {formatearReglaUmbral(p)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                className="btn-icon btn-ver"
+                                title="Ver detalles del paso"
+                                onClick={() => {
+                                  setEtapaSeleccionada(etapa);
+                                  setModalVerEtapa(true);
+                                }}
+                              >
+                                <span className="material-symbols-outlined">visibility</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
               </div>
             )}
           </div>

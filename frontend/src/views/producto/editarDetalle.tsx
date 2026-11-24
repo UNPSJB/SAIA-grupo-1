@@ -120,6 +120,40 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
       return;
     }
 
+    const unidadSel = unidades.find((u) => u.id === Number(producto.unidad_medida_id));
+    const nomU = (unidadSel?.nombre || "").toLowerCase();
+    const esGramos = ["gramos", "gramo", "g"].includes(nomU);
+    const eqG = esGramos
+      ? 1
+      : producto.equivalencia_gramos_unidad && Number(producto.equivalencia_gramos_unidad) > 0
+      ? Number(producto.equivalencia_gramos_unidad)
+      : ["kilogramos", "kilogramo", "kg"].includes(nomU)
+      ? 1000
+      : null;
+    const cantEnv =
+      producto.cantidad_por_envase && Number(producto.cantidad_por_envase) > 0
+        ? Number(producto.cantidad_por_envase)
+        : null;
+    const pesoCalculado =
+      eqG && cantEnv
+        ? Math.round(eqG * cantEnv * 100) / 100
+        : producto.peso_unidad_g && Number(producto.peso_unidad_g) > 0
+        ? Number(producto.peso_unidad_g)
+        : null;
+    const tamPorcion =
+      producto.tamano_porcion_g && Number(producto.tamano_porcion_g) > 0
+        ? Number(producto.tamano_porcion_g)
+        : null;
+
+    if (!esGramos && !eqG) {
+      setErrorMsg("Debe indicar a cuántos gramos equivale 1 unidad de la medida seleccionada.");
+      return;
+    }
+    if (!cantEnv) {
+      setErrorMsg("Debe indicar cuánto contiene 1 unidad / envase discreto del producto.");
+      return;
+    }
+
     const payload = {
       nombre: producto.nombre.trim(),
       descripcion: producto.descripcion?.trim() || null,
@@ -127,7 +161,10 @@ export default function EditarProducto({ productoId, onSuccess, onCancel }: Edit
       alergenos_precaucion_ids: producto.alergenos_precaucion_ids || [],
       unidad_medida_id: Number(producto.unidad_medida_id),
       id_receta: producto.id_receta ? Number(producto.id_receta) : null,
-      peso_unidad_g: producto.peso_unidad_g && Number(producto.peso_unidad_g) > 0 ? Number(producto.peso_unidad_g) : null,
+      equivalencia_gramos_unidad: eqG,
+      cantidad_por_envase: cantEnv,
+      peso_unidad_g: pesoCalculado,
+      tamano_porcion_g: tamPorcion,
       aplica_rotulado: producto.aplica_rotulado !== false,
     };
 
@@ -240,26 +277,123 @@ function toggleAlergenoPrecaucion(alergenoId: number) {
           </select>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="peso_unidad_g">
-            Peso equivalente de 1 unidad de producto (en gramos)
-          </label>
-          <input
-            id="peso_unidad_g"
-            name="peso_unidad_g"
-            type="number"
-            min="1"
-            step="any"
-            placeholder="Sin datos"
-            value={producto.peso_unidad_g ?? ""}
-            onChange={(e) =>
-              setProducto({
-                ...producto,
-                peso_unidad_g: e.target.value ? Number(e.target.value) : null,
-              })
-            }
-          />
-        </div>
+        {(() => {
+          const unidadSel = unidades.find((u) => u.id === Number(producto.unidad_medida_id));
+          const nomU = (unidadSel?.nombre || "").toLowerCase();
+          const esGramos = ["gramos", "gramo", "g"].includes(nomU);
+          const esKilos = ["kilogramos", "kilogramo", "kg"].includes(nomU);
+          const etiquetaUnidad = unidadSel ? unidadSel.abreviatura || unidadSel.nombre : "unidad";
+          const eqVal = esGramos
+            ? 1
+            : producto.equivalencia_gramos_unidad ?? (esKilos ? 1000 : "");
+          const cantEnv = producto.cantidad_por_envase ?? "";
+          const pesoEnvaseG =
+            eqVal && cantEnv ? Math.round(Number(eqVal) * Number(cantEnv) * 100) / 100 : null;
+          const tamPorc = producto.tamano_porcion_g ?? "";
+          const porcionesEnv =
+            pesoEnvaseG && tamPorc && Number(tamPorc) > 0
+              ? Math.round((pesoEnvaseG / Number(tamPorc)) * 100) / 100
+              : null;
+
+          return (
+            <>
+              {unidadSel && !esGramos && (
+                <div className="form-group">
+                  <label htmlFor="equivalencia_gramos_unidad">
+                    1 {etiquetaUnidad} equivale a (gramos){" "}
+                    <span style={{ color: "var(--color-error-texto)" }}>*</span>
+                  </label>
+                  <input
+                    id="equivalencia_gramos_unidad"
+                    name="equivalencia_gramos_unidad"
+                    type="number"
+                    min="0.01"
+                    step="any"
+                    required
+                    placeholder={`Ej: 1000 para 1 ${etiquetaUnidad}`}
+                    value={eqVal}
+                    onChange={(e) =>
+                      setProducto({
+                        ...producto,
+                        equivalencia_gramos_unidad: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                  />
+                </div>
+              )}
+
+              <div className="form-group">
+                <label htmlFor="cantidad_por_envase">
+                  Contenido de 1 unidad / envase del producto (en {unidadSel ? unidadSel.nombre : "su unidad"}){" "}
+                  <span style={{ color: "var(--color-error-texto)" }}>*</span>
+                </label>
+                <input
+                  id="cantidad_por_envase"
+                  name="cantidad_por_envase"
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  required
+                  placeholder={
+                    unidadSel
+                      ? `Ej: 2 para un envase de 2 ${etiquetaUnidad}`
+                      : "Cantidad por unidad discreta del producto"
+                  }
+                  value={cantEnv}
+                  onChange={(e) =>
+                    setProducto({
+                      ...producto,
+                      cantidad_por_envase: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="tamano_porcion_g">Tamaño de Porción (en gramos)</label>
+                <input
+                  id="tamano_porcion_g"
+                  name="tamano_porcion_g"
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  placeholder="Ej: 200 g por porción"
+                  value={tamPorc}
+                  onChange={(e) =>
+                    setProducto({
+                      ...producto,
+                      tamano_porcion_g: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                />
+              </div>
+
+              {pesoEnvaseG !== null && (
+                <div
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--color-borde)",
+                    marginBottom: "14px",
+                    fontSize: "0.86rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px",
+                  }}
+                >
+                  <span>
+                    <strong>Peso de 1 envase / unidad:</strong> {pesoEnvaseG} g
+                  </span>
+                  {porcionesEnv !== null && (
+                    <span>
+                      <strong>Porciones por envase (calculado):</strong> {porcionesEnv}
+                    </span>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         <div className="form-group" style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "0.75rem" }}>
           <input

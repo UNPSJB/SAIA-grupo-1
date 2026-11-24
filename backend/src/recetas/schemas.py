@@ -12,6 +12,7 @@ from src.recetas.models import CLASE_FUNCIONAL, EstadoEtapaRecetaItem, EstadoGen
 class ParametroControlReceta(BaseModel):
     nombre_dato: str
     unidad_medida: Optional[str] = None
+    condicion: str = "RANGO"
     umbral_minimo: Optional[float] = None
     umbral_maximo: Optional[float] = None
     requerimientos: Optional[str] = None
@@ -20,6 +21,7 @@ class ParametroControlReceta(BaseModel):
 class ValorControlRegistrado(BaseModel):
     nombre_dato: str
     unidad_medida: Optional[str] = None
+    condicion: Optional[str] = "RANGO"
     valor_registrado: str
     umbral_minimo: Optional[float] = None
     umbral_maximo: Optional[float] = None
@@ -27,10 +29,11 @@ class ValorControlRegistrado(BaseModel):
 
 
 class RecetaDetalleBase(BaseModel):
+    etapa: Optional[str] = Field(default=None, max_length=80)
     tipo_insumo_id: Optional[int] = None
     aditivo_id: Optional[int] = None
-    nombre: str = Field(max_length=50)
-    cantidad: float
+    nombre: str = Field(max_length=80)
+    cantidad: float = 0.0
     unidad_medida_id: Optional[int] = None
     unidad_medida: Optional[str] = Field(default=None, max_length=20)
     es_aditivo: bool = False
@@ -45,7 +48,7 @@ class RecetaDetalleCreate(RecetaDetalleBase):
     @field_validator("cantidad")
     @classmethod
     def validar_cantidad(cls, v: float) -> float:
-        if v > 0:
+        if v >= 0:
             return v
         raise exceptions.CantidadInvalida()
 
@@ -59,9 +62,11 @@ class RecetaDetalleCreate(RecetaDetalleBase):
 
     @model_validator(mode="after")
     def validar_reglas_aditivo(self) -> "RecetaDetalleCreate":
+        tiene_insumo = self.tipo_insumo_id is not None or self.aditivo_id is not None
+        if tiene_insumo and self.cantidad <= 0:
+            raise exceptions.CantidadInvalida()
         if (
-            self.tipo_insumo_id is None
-            and self.aditivo_id is None
+            tiene_insumo
             and self.unidad_medida_id is None
             and not self.unidad_medida
         ):
@@ -91,7 +96,8 @@ class RecetaDetalleCreate(RecetaDetalleBase):
     def validar_nombre(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return None
-        if v and all(c.isalnum() or c.isspace() for c in v):
+        permitidos = set(".,;:-°/()_+")
+        if v and all(c.isalnum() or c.isspace() or c in permitidos for c in v):
             return v
         raise exceptions.NombreInvalido()
 
@@ -133,7 +139,10 @@ class VersionRecetaCreate(VersionRecetaBase):
     def validar_al_menos_un_ingrediente(self) -> "VersionRecetaCreate":
         if not self.detalles:
             raise exceptions.AgregueIngredientes()
-        tiene_ingrediente = any(not d.es_aditivo for d in self.detalles)
+        tiene_ingrediente = any(
+            (d.tipo_insumo_id is not None or d.aditivo_id is not None) and not d.es_aditivo
+            for d in self.detalles
+        )
         if not tiene_ingrediente:
             raise exceptions.AgregueIngredientes()
         return self
@@ -373,9 +382,22 @@ class RecetaEscaladaResponse(BaseModel):
     ingredientes: List[IngredienteEscaladoItem]
 
 
+class LoteInsumoUsadoInput(BaseModel):
+    lote_insumo_id: int
+    cantidad: float = Field(..., gt=0)
+
+
+class LoteInsumoUsadoItem(BaseModel):
+    lote_insumo_id: int
+    lote_codigo: Optional[str] = None
+    nombre: Optional[str] = None
+    cantidad: float
+
+
 class CompletarEtapaSchema(BaseModel):
     observaciones: Optional[str] = None
     lote_insumo_id: Optional[int] = None
+    lotes_insumo: List[LoteInsumoUsadoInput] = Field(default_factory=list)
     valores_control: List[ValorControlRegistrado] = Field(default_factory=list)
 
 
@@ -392,11 +414,13 @@ class ChecklistRecetaItemResponse(BaseModel):
     version_receta_id: Optional[int] = None
     nombre_receta: str
     detalle_id: Optional[int] = None
+    etapa: Optional[str] = None
     nombre_etapa: str
     descripcion_pasos: str
     ingrediente_id: Optional[int] = None
     tipo_insumo_id: Optional[int] = None
     lote_insumo_usado_id: Optional[int] = None
+    lotes_insumo_usados: List[LoteInsumoUsadoItem] = Field(default_factory=list)
     nombre_ingrediente: Optional[str] = None
     cantidad: float
     unidad_medida: str

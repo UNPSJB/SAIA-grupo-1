@@ -225,7 +225,7 @@ export const ModalHistorialVersionesReceta: React.FC<ModalHistorialRecetaProps> 
                             formatearFecha(v.fecha_vencimiento || v.creado_el)
                           )}
                         </td>
-                        <td>{v.rendimiento_final}</td>
+                        <td>{v.rendimiento_final} u.</td>
                         <td>{v.usuario || "admin"}</td>
                         <td style={{ color: "var(--color-texto)", fontSize: "0.85rem" }}>
                           {v.detalles ? `${v.detalles.length} etapa(s)` : "—"}

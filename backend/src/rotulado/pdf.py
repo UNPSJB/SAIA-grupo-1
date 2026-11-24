@@ -497,8 +497,8 @@ def armar_pdf_borrador(
             f"Fecha versión: {receta_info.get('fecha_creacion', '-')}",
         ],
         [
-            f"Rendimiento final: {receta_info.get('rendimiento_final', '-')} kg/l",
-            f"Peso total insumos: {receta_info.get('peso_total_ingredientes', '-')} kg/l",
+            f"Rendimiento final: {receta_info.get('rendimiento_final', '-')} u.",
+            f"Peso total insumos: {receta_info.get('peso_total_ingredientes', '-')} g",
             f"Factor rendimiento: {receta_info.get('factor_rendimiento', 1.0):.4f}",
         ],
         [

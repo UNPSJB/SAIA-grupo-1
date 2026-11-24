@@ -361,23 +361,41 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
           </div>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="equivalencia_gramos">Equivalencia en Gramos (por 1 unidad de medida)</label>
-          <input
-            id="equivalencia_gramos"
-            name="equivalencia_gramos"
-            type="number"
-            min="0.01"
-            step="any"
-            value={form.equivalencia_gramos ?? ''}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                equivalencia_gramos: e.target.value ? Number(e.target.value) : '',
-              })
-            }
-          />
-        </div>
+        {(() => {
+          const unidadSel = unidades.find((u) => u.id === Number(form.unidad_medida_id));
+          const nomU = (unidadSel?.nombre || '').toLowerCase();
+          const esMasa = ['gramos', 'kilogramos', 'toneladas', 'gramo', 'kilogramo', 'tonelada'].includes(nomU);
+          const etiquetaU = unidadSel ? unidadSel.abreviatura || unidadSel.nombre : 'unidad';
+          return (
+            <div className="form-group">
+              <label htmlFor="equivalencia_gramos">
+                {unidadSel && !esMasa
+                  ? `1 ${etiquetaU} equivale a (gramos) *`
+                  : 'Equivalencia en gramos (opcional para unidades de masa)'}
+              </label>
+              <input
+                id="equivalencia_gramos"
+                name="equivalencia_gramos"
+                type="number"
+                min="0.01"
+                step="any"
+                required={Boolean(unidadSel && !esMasa)}
+                placeholder={
+                  unidadSel && !esMasa
+                    ? `Ej: ¿cuántos gramos pesa 1 ${etiquetaU}?`
+                    : 'Ej: 1000 para 1 KG'
+                }
+                value={form.equivalencia_gramos ?? ''}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    equivalencia_gramos: e.target.value ? Number(e.target.value) : '',
+                  })
+                }
+              />
+            </div>
+          );
+        })()}
 
         <div className="form-group">
           <label htmlFor="descripcion">Descripción</label>

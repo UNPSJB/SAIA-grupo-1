@@ -195,6 +195,17 @@ def previsualizar_orden(
     )
 
 
+def _cantidad_insumo_a_gramos(cantidad: float, medida: Optional[str]) -> float:
+    m = (medida or "").strip().lower()
+    if m in ("kg", "kilogramo", "kilogramos", "kilo", "kilos", "l", "lt", "lts", "litro", "litros"):
+        return cantidad * 1000.0
+    if m in ("tn", "tonelada", "toneladas"):
+        return cantidad * 1_000_000.0
+    if m in ("mg", "miligramo", "miligramos"):
+        return cantidad / 1000.0
+    return cantidad
+
+
 def obtener_lista_rotulo(
     db: Session, producto_id: int
 ) -> Optional[ListaIngredientesRotulo]:
@@ -202,7 +213,10 @@ def obtener_lista_rotulo(
     consulta = select(ListaIngredientesRotulo).where(
         ListaIngredientesRotulo.producto_id == producto_id
     )
-    return db.scalars(consulta).first()
+    lista = db.scalars(consulta).first()
+    if lista is not None and lista.items:
+        return lista
+    return sincronizar_lista_desde_lote(db, producto_id)
 
 
 def guardar_lista_rotulo(
@@ -416,58 +430,100 @@ def importar_desde_lote(
     producto_id: int,
     lote_id: Optional[int] = None,
 ) -> schemas.PrevisualizarOrdenResponse:
-    producto = obtener_producto_o_404(db, producto_id)
+    obtener_producto_o_404(db, producto_id)
 
+    lote = None
     if lote_id is not None:
         lote = db.get(LoteProduccion, lote_id)
         if lote is None or lote.producto_id != producto_id:
             raise exceptions.SinLotesDisponibles()
     else:
-        consulta_lote = (
+        consulta_lotes = (
             select(LoteProduccion)
             .where(LoteProduccion.producto_id == producto_id)
             .order_by(LoteProduccion.fecha.desc(), LoteProduccion.id.desc())
         )
-        lote = db.scalars(consulta_lote).first()
+        for candidato in db.scalars(consulta_lotes).all():
+            if candidato.insumos:
+                lote = candidato
+                break
 
     if lote is None or not lote.insumos:
         raise exceptions.SinLotesDisponibles()
 
-    total_cant = sum(float(il.cantidad) for il in lote.insumos)
+    agrupados: Dict[str, Dict[str, Any]] = {}
+    for il in lote.insumos:
+        insumo = il.insumo
+        tipo_obj = getattr(insumo, "tipo", None) if insumo else None
+        nombre_insumo = (
+            (tipo_obj.nombre if tipo_obj and getattr(tipo_obj, "nombre", None) else None)
+            or (insumo.nombre if insumo else "Insumo")
+        )
+        medida = getattr(insumo, "medida", None) if insumo else None
+        cant_g = _cantidad_insumo_a_gramos(float(il.cantidad), medida)
+        clave = nombre_insumo.strip().lower()
+
+        if clave not in agrupados:
+            es_adit_catalogo = bool(
+                (tipo_obj and getattr(tipo_obj, "es_aditivo", False))
+                or (insumo and getattr(insumo, "es_aditivo", False))
+            )
+            funcion_catalogo = (
+                getattr(tipo_obj, "clase_funcional", None) if tipo_obj else None
+            )
+            ins_catalogo = (
+                getattr(tipo_obj, "numero_ins", None) if tipo_obj else None
+            )
+
+            es_adit = es_adit_catalogo or any(
+                w in nombre_insumo.lower()
+                for w in ["aditivo", "esencia", "colorante", "conservante", "polvo de hornear", "lecitina"]
+            )
+            funcion_sugerida = funcion_catalogo if es_adit else None
+            es_aroma = False
+            if funcion_sugerida and (
+                "aroma" in funcion_sugerida.lower()
+                or "saboriz" in funcion_sugerida.lower()
+            ):
+                es_aroma = True
+                es_adit = True
+            elif "esencia" in nombre_insumo.lower() or "vainilla" in nombre_insumo.lower():
+                funcion_sugerida = funcion_sugerida or "Aromatizante"
+                es_aroma = True
+                es_adit = True
+            elif "polvo de hornear" in nombre_insumo.lower():
+                funcion_sugerida = funcion_sugerida or "Leudante químico"
+                es_adit = True
+
+            agrupados[clave] = {
+                "nombre": nombre_insumo,
+                "cantidad_g": cant_g,
+                "es_aditivo": es_adit,
+                "funcion": funcion_sugerida,
+                "numero_ins": ins_catalogo if es_adit else None,
+                "es_aromatizante": es_aroma,
+            }
+        else:
+            agrupados[clave]["cantidad_g"] += cant_g
+
+    total_cant = sum(v["cantidad_g"] for v in agrupados.values())
     if total_cant <= 0:
         raise exceptions.PorcentajeInvalido()
 
     items_create = []
-    for il in lote.insumos:
-        insumo = il.insumo
-        nombre_insumo = insumo.nombre if insumo else "Insumo"
-        pct = round((float(il.cantidad) / total_cant) * 100.0, 2)
+    for datos_item in agrupados.values():
+        pct = round((datos_item["cantidad_g"] / total_cant) * 100.0, 2)
         if pct <= 0:
             pct = 0.01
-
-        es_adit = any(
-            w in nombre_insumo.lower()
-            for w in ["aditivo", "esencia", "colorante", "conservante", "polvo de hornear", "lecitina"]
-        )
-        funcion_sugerida = None
-        es_aroma = False
-        if "esencia" in nombre_insumo.lower() or "vainilla" in nombre_insumo.lower():
-            funcion_sugerida = "Aromatizante"
-            es_aroma = True
-            es_adit = True
-        elif "polvo de hornear" in nombre_insumo.lower():
-            funcion_sugerida = "Leudante químico"
-            es_adit = True
-
         items_create.append(
             schemas.ItemIngredienteCreate(
-                nombre=nombre_insumo,
-                denominacion_rotulo=nombre_insumo,
+                nombre=datos_item["nombre"],
+                denominacion_rotulo=datos_item["nombre"],
                 porcentaje=pct,
-                es_aditivo=es_adit,
-                funcion=funcion_sugerida,
-                numero_ins=None,
-                es_aromatizante=es_aroma,
+                es_aditivo=datos_item["es_aditivo"],
+                funcion=datos_item["funcion"],
+                numero_ins=datos_item["numero_ins"],
+                es_aromatizante=datos_item["es_aromatizante"],
             )
         )
 
@@ -476,6 +532,52 @@ def importar_desde_lote(
         items=items_create,
     )
     return previsualizar_orden(req)
+
+
+def sincronizar_lista_desde_lote(
+    db: Session,
+    producto_id: int,
+    lote_id: Optional[int] = None,
+    usuario: Optional[Any] = None,
+) -> Optional[ListaIngredientesRotulo]:
+    try:
+        preview = importar_desde_lote(db, producto_id, lote_id=lote_id)
+    except (exceptions.SinLotesDisponibles, exceptions.PorcentajeInvalido, exceptions.ListaVacia):
+        return None
+
+    lista_actual = db.scalars(
+        select(ListaIngredientesRotulo).where(
+            ListaIngredientesRotulo.producto_id == producto_id
+        )
+    ).first()
+    formato = (
+        lista_actual.formato_aditivos
+        if lista_actual and lista_actual.formato_aditivos
+        else FormatoDeclaracionAditivos.INS_Y_NOMBRE
+    )
+
+    items_create = [
+        schemas.ItemIngredienteCreate(
+            nombre=it.nombre,
+            denominacion_rotulo=it.denominacion_rotulo or it.nombre,
+            porcentaje=it.porcentaje,
+            es_aditivo=it.es_aditivo,
+            funcion=it.funcion,
+            numero_ins=it.numero_ins,
+            es_aromatizante=it.es_aromatizante,
+        )
+        for it in preview.items
+    ]
+    return guardar_lista_rotulo(
+        db=db,
+        producto_id=producto_id,
+        datos=schemas.ListaIngredientesCreate(
+            formato_aditivos=formato,
+            ajustado_manualmente=False,
+            items=items_create,
+        ),
+        usuario=usuario,
+    )
 
 
 def mapear_respuesta_lista(
@@ -538,6 +640,71 @@ def _obtener_abreviatura_unidad(producto: Producto) -> str:
     return mapa.get(val, val or "kg")
 
 
+def _construir_contenido_neto_sugerido(producto: Producto) -> str:
+    unidad_str = _obtener_abreviatura_unidad(producto)
+    cant_env = getattr(producto, "cantidad_por_envase", None)
+    if cant_env is not None and float(cant_env) > 0:
+        num = float(cant_env)
+        num_str = str(int(num)) if num == int(num) else f"{round(num, 2):g}"
+        return f"{num_str} {unidad_str}"
+    peso_u = getattr(producto, "peso_unidad_g", None)
+    if peso_u is not None and float(peso_u) > 0:
+        num = float(peso_u)
+        num_str = str(int(num)) if num == int(num) else f"{round(num, 2):g}"
+        return f"{num_str} g"
+    return f"1 {unidad_str}"
+
+
+def _sincronizar_tabla_nutricional_en_borrador(
+    db: Session,
+    producto: Producto,
+    borrador: BorradorRotulo,
+    recalcular: bool = True,
+) -> None:
+    if borrador.tabla_editada_manualmente:
+        return
+
+    if recalcular:
+        from src.nutricion.services import calcular_informacion_nutricional
+
+        try:
+            calcular_informacion_nutricional(db, producto_id=producto.id)
+        except Exception:
+            pass
+
+    from src.nutricion.models import InformacionNutricionalProducto
+
+    info_nut = db.scalar(
+        select(InformacionNutricionalProducto).where(
+            InformacionNutricionalProducto.producto_id == producto.id
+        )
+    )
+    if not info_nut:
+        return
+
+    if info_nut.tamano_porcion_g:
+        porc_num = float(info_nut.tamano_porcion_g)
+        porc_str = str(int(porc_num)) if porc_num == int(porc_num) else f"{porc_num:.1f}"
+        borrador.porcion = f"{porc_str} g"
+    if info_nut.porciones_por_envase:
+        pe_num = float(info_nut.porciones_por_envase)
+        borrador.porciones_por_envase = (
+            str(int(pe_num)) if pe_num == int(pe_num) else f"{round(pe_num, 2):g}"
+        )
+    borrador.valor_energetico_kcal = info_nut.energia_kcal_porcion
+    borrador.valor_energetico_kj = info_nut.energia_kj_porcion
+    borrador.carbohidratos = info_nut.carbohidratos_porcion
+    borrador.azucares_totales = info_nut.azucares_totales_porcion
+    borrador.azucares_anadidos = info_nut.azucares_anadidos_porcion
+    borrador.proteinas = info_nut.proteinas_porcion
+    borrador.grasas_totales = info_nut.grasas_totales_porcion
+    borrador.grasas_saturadas = info_nut.grasas_saturadas_porcion
+    borrador.grasas_trans = info_nut.grasas_trans_porcion
+    borrador.fibra_alimentaria = info_nut.fibra_alimentaria_porcion
+    borrador.sodio = info_nut.sodio_mg_porcion
+    borrador.tabla_marcada_incompleta = bool(getattr(info_nut, "es_incompleta", False))
+
+
 def obtener_o_crear_borrador(
     db: Session, producto_id: int
 ) -> BorradorRotulo:
@@ -547,7 +714,28 @@ def obtener_o_crear_borrador(
         .filter(BorradorRotulo.producto_id == producto_id)
         .first()
     )
+    contenido_sugerido = _construir_contenido_neto_sugerido(producto)
     if borrador:
+        cambio = False
+        if (
+            not borrador.contenido_neto_editado_manualmente
+            and borrador.contenido_neto != contenido_sugerido
+        ):
+            borrador.contenido_neto = contenido_sugerido
+            cambio = True
+        if (
+            not borrador.tabla_editada_manualmente
+            and (
+                borrador.porcion is None
+                or borrador.valor_energetico_kcal is None
+                or borrador.tabla_marcada_incompleta
+            )
+        ):
+            _sincronizar_tabla_nutricional_en_borrador(db, producto, borrador, recalcular=True)
+            cambio = True
+        if cambio:
+            db.commit()
+            db.refresh(borrador)
         return borrador
 
     u_lote = (
@@ -557,12 +745,11 @@ def obtener_o_crear_borrador(
         .first()
     )
     cod_lote = u_lote.codigo if u_lote else "L-001"
-    unidad_str = _obtener_abreviatura_unidad(producto)
 
     nuevo_borrador = BorradorRotulo(
         producto_id=producto_id,
         denominacion_venta=producto.nombre,
-        contenido_neto=f"1 {unidad_str}",
+        contenido_neto=contenido_sugerido,
         rnpa_rppa=None,
         rne=None,
         razon_social="SAIA Alimentos S.A.",
@@ -578,6 +765,9 @@ def obtener_o_crear_borrador(
         modo_calculo_octogonos="automatico",
     )
     db.add(nuevo_borrador)
+    db.commit()
+    db.refresh(nuevo_borrador)
+    _sincronizar_tabla_nutricional_en_borrador(db, producto, nuevo_borrador, recalcular=True)
     db.commit()
     db.refresh(nuevo_borrador)
     return nuevo_borrador
@@ -653,7 +843,7 @@ def autocompletar_datos_borrador(
         borrador.denominacion_editada_manualmente = False
 
     if "contenido_neto" in t_campos:
-        borrador.contenido_neto = f"1 {unidad_str}"
+        borrador.contenido_neto = _construir_contenido_neto_sugerido(producto)
         borrador.contenido_neto_editado_manualmente = False
 
     if "sellos" in t_campos:
@@ -662,28 +852,7 @@ def autocompletar_datos_borrador(
 
     if "tabla" in t_campos:
         borrador.tabla_editada_manualmente = False
-        from src.nutricion.models import InformacionNutricionalProducto
-        info_nut = db.scalar(
-            select(InformacionNutricionalProducto).where(
-                InformacionNutricionalProducto.producto_id == producto_id
-            )
-        )
-        if info_nut:
-            borrador.porcion = f"{int(info_nut.tamano_porcion_g)} g" if info_nut.tamano_porcion_g else borrador.porcion
-            if info_nut.porciones_por_envase:
-                borrador.porciones_por_envase = str(int(info_nut.porciones_por_envase))
-            borrador.valor_energetico_kcal = info_nut.energia_kcal_porcion
-            borrador.valor_energetico_kj = info_nut.energia_kj_porcion
-            borrador.carbohidratos = info_nut.carbohidratos_porcion
-            borrador.azucares_totales = info_nut.azucares_totales_porcion
-            borrador.azucares_anadidos = info_nut.azucares_anadidos_porcion
-            borrador.proteinas = info_nut.proteinas_porcion
-            borrador.grasas_totales = info_nut.grasas_totales_porcion
-            borrador.grasas_saturadas = info_nut.grasas_saturadas_porcion
-            borrador.grasas_trans = info_nut.grasas_trans_porcion
-            borrador.fibra_alimentaria = info_nut.fibra_alimentaria_porcion
-            borrador.sodio = info_nut.sodio_mg_porcion
-            borrador.tabla_marcada_incompleta = bool(getattr(info_nut, "es_incompleta", False))
+        _sincronizar_tabla_nutricional_en_borrador(db, producto, borrador, recalcular=True)
 
     if "ingredientes" in t_campos:
         borrador.ingredientes_editado_manualmente = False
@@ -1661,6 +1830,8 @@ def generar_pdf_borrador_rotulo(
             insumo = db.get(Insumo, det_ing_id) if det_ing_id else None
             tipo_obj = det.tipo_insumo
             adit_obj = det.aditivo
+            if not insumo and not tipo_obj and not adit_obj:
+                continue
 
             cant_g_calc, _ = convertir_detalle_a_gramos(db, det)
             cant_g = (

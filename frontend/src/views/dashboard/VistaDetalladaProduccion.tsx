@@ -113,6 +113,23 @@ const formatearFechaVisual = (fechaIso: string): string => {
   return fechaIso;
 };
 
+const cantidadLoteEnUnidad = (l: LoteProduccion): number => {
+  const cant = Number(l.cantidad) || 0;
+  const cantEnv = l.producto?.cantidad_por_envase;
+  return cantEnv && cantEnv > 0 ? Math.round(cant * cantEnv * 100) / 100 : cant;
+};
+
+const formatearCantidadLote = (l: LoteProduccion): string => {
+  const cant = Number(l.cantidad) || 0;
+  const cantEnv = l.producto?.cantidad_por_envase;
+  const uAbrev = abreviarUnidad(l.producto?.unidadMedida || '');
+  if (cantEnv && cantEnv > 0) {
+    const total = Math.round(cant * cantEnv * 100) / 100;
+    return `${cant} u. (${total} ${uAbrev})`;
+  }
+  return `${cant} ${uAbrev}`;
+};
+
 interface ModalDetalleLoteProps {
   lote: LoteProduccion;
   onClose: () => void;
@@ -194,7 +211,7 @@ const ModalDetalleLote: React.FC<ModalDetalleLoteProps> = ({ lote, onClose }) =>
                 Cantidad Producida
               </span>
               <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-primario)', marginTop: '2px' }}>
-                {lote.cantidad} {abreviarUnidad(lote.producto.unidadMedida)}
+                {formatearCantidadLote(lote)}
               </div>
             </div>
             <div>
@@ -688,7 +705,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     }
 
     const n = filtrados.length;
-    const cantidades = filtrados.map((l) => Number(l.cantidad) || 0);
+    const cantidades = filtrados.map((l) => cantidadLoteEnUnidad(l));
     const media = cantidades.reduce((a, b) => a + b, 0) / n;
 
     let varianza = 0;
@@ -707,7 +724,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     let fueraDeControl = 0;
 
     const puntos = filtrados.map((l, index) => {
-      const cant = Number(l.cantidad) || 0;
+      const cant = cantidadLoteEnUnidad(l);
       const esFuera = n > 1 && sigma > 0 ? cant > ucl || cant < lcl : false;
       const esAdv = n > 1 && sigma > 0 && !esFuera ? cant > uwcl || cant < lwcl : false;
 
@@ -836,7 +853,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
           });
         }
         const item = mapa.get(key)!;
-        item.cantidad += Number(l.cantidad) || 0;
+        item.cantidad += cantidadLoteEnUnidad(l);
         item.lotes += 1;
       }
     }
@@ -905,7 +922,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
       }
       const item = mapaProds.get(nom)!;
       item.lotes += 1;
-      item.cantidad += Number(l.cantidad) || 0;
+      item.cantidad += cantidadLoteEnUnidad(l);
     }
 
     let prodLider: { nombre: string; lotes: number; cantidad: number; unidad: string } | null = null;
@@ -2051,7 +2068,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                           {l.producto.nombre}
                         </td>
                         <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: 'var(--color-texto)' }}>
-                          {l.cantidad} {abreviarUnidad(l.producto.unidadMedida)}
+                          {formatearCantidadLote(l)}
                         </td>
                         <td style={{ padding: '10px 12px', color: 'var(--color-texto)' }}>
                           <span>{l.nombre_responsable}</span>
