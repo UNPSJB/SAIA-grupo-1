@@ -217,6 +217,18 @@ class RecetaDetalle(ModeloBase):
     )
 
     @property
+    def ingrediente_id(self) -> Optional[int]:
+        return self.tipo_insumo_id
+
+    @ingrediente_id.setter
+    def ingrediente_id(self, val: Optional[int]) -> None:
+        self.tipo_insumo_id = val
+
+    @property
+    def ingrediente(self):
+        return self.tipo_insumo
+
+    @property
     def unidad_medida(self) -> str:
         if self.unidad_medida_rel:
             return self.unidad_medida_rel.nombre.lower()

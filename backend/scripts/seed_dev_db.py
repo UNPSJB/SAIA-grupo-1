@@ -541,6 +541,8 @@ def main() -> None:
         "Carne de Pollo": {"energia_kcal": 106.0, "energia_kj": 443.5, "carbohidratos": 0.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 20.3, "grasas_totales": 2.65, "grasas_saturadas": 0.71, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 75.0},
         "Pan Rallado": {"energia_kcal": 308.0, "energia_kj": 1299.0, "carbohidratos": 64.9, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 11.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 4.63, "sodio_mg": 480.0},
         "Butter (Rebozador con Sal)": {"energia_kcal": 132.0, "energia_kj": 552.0, "carbohidratos": 28.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 21.6, "grasas_totales": 0.3, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 5000.0},
+        "Canela Molida": {"energia_kcal": 247.0, "energia_kj": 1033.4, "carbohidratos": 80.6, "azucares_totales": 2.2, "azucares_anadidos": 0.0, "proteinas": 4.0, "grasas_totales": 1.2, "grasas_saturadas": 0.3, "grasas_trans": 0.0, "fibra_alimentaria": 53.1, "sodio_mg": 10.0},
+        "Canela": {"energia_kcal": 247.0, "energia_kj": 1033.4, "carbohidratos": 80.6, "azucares_totales": 2.2, "azucares_anadidos": 0.0, "proteinas": 4.0, "grasas_totales": 1.2, "grasas_saturadas": 0.3, "grasas_trans": 0.0, "fibra_alimentaria": 53.1, "sodio_mg": 10.0},
     }
     for insumo_obj in db.query(Insumo).all():
         if insumo_obj.nombre in datos_nutricionales:
@@ -1974,6 +1976,7 @@ def main() -> None:
     db.commit()
 
     calcular_informacion_nutricional(db, p_torta.id, receta_id=receta_torta.id, usuario_actual="Marcos Diaz")
+    calcular_informacion_nutricional(db, p_budin.id, receta_id=receta_budin.id, usuario_actual="Sofia Gomez")
 
     op_milanesa = operador_user if operador_user else juan
     receta_milanesa = Receta(
@@ -2336,9 +2339,10 @@ def main() -> None:
 
     from src.rotulado.services import sincronizar_rotulo_desde_receta
     sincronizar_rotulo_desde_receta(db, p_milanesa.id, usuario=marcos)
+    sincronizar_rotulo_desde_receta(db, p_budin.id, usuario=marcos)
 
     asegurar_rotulado_frontal(db)
-    for prod_rotulo in [p_pan, p_medialunas, p_baguette, p_lactal, p_salvado, p_torta, p_milanesa]:
+    for prod_rotulo in [p_pan, p_medialunas, p_baguette, p_lactal, p_salvado, p_torta, p_budin, p_milanesa]:
         calcular_desde_nutricion_producto(db, prod_rotulo.id, usuario=marcos)
         obtener_o_crear_borrador(db, prod_rotulo.id)
         autocompletar_datos_borrador(db, prod_rotulo.id, usuario=marcos)

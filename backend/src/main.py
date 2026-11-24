@@ -10,6 +10,7 @@ from src.models import ModeloBase
 
 from src.config import settings
 from src.logger import setup_logging
+import src.produccion.models
 
 from src.insumos.router import router as insumos_router, operador_router as insumos_operador_router
 from src.equipos.router import router as equipos_router

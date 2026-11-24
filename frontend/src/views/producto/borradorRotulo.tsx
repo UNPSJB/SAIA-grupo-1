@@ -47,7 +47,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
   const [modalEditarAbierto, setModalEditarAbierto] = useState<boolean>(false);
   const [guardando, setGuardando] = useState<boolean>(false);
   const [pestanaModal, setPestanaModal] = useState<
-    "general" | "establecimiento" | "nutricion" | "sellos" | "uso"
+    "general" | "establecimiento" | "sellos" | "uso"
   >("general");
 
   const [formData, setFormData] = useState<BorradorRotuloUpdate>({});
@@ -325,95 +325,70 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
   };
 
   const renderOctogonoSello = (item: OctogonoItem) => {
-    if (item.tipo === "micro_sello") {
+    if (item.tipo === "micro_sello" || item.texto.startsWith("CONTIENE ")) {
+      const lineas = item.texto.includes(":")
+        ? item.texto.split(":")
+        : [item.texto];
       return (
-        <div
-          key={item.id}
-          style={{
-            backgroundColor: "#000000",
-            color: "#ffffff",
-            border: "2.5px solid #ffffff",
-            outline: "2.5px solid #000000",
-            borderRadius: "4px",
-            padding: "8px 14px",
-            textAlign: "center",
-            maxWidth: "240px",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.35)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            gap: "2px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "0.78rem",
-              fontWeight: 900,
-              lineHeight: 1.15,
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-            }}
-          >
-            {item.texto}
-          </div>
-          <div
-            style={{
-              fontSize: "0.62rem",
-              fontWeight: 700,
-              color: "#cccccc",
-              letterSpacing: "0.5px",
-            }}
-          >
-            Ministerio de Salud
-          </div>
+        <div key={item.id} style={{ display: "inline-block", filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.35))", margin: "4px" }}>
+          <svg width="220" height="64" viewBox="0 0 220 64" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="0" width="220" height="64" rx="4" fill="#000000" />
+            <rect x="3" y="3" width="214" height="58" rx="2" fill="#000000" stroke="#ffffff" strokeWidth="2.5" />
+            <text x="110" y="24" textAnchor="middle" fill="#ffffff" fontWeight="900" fontSize="10.5" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="0.4">
+              {lineas[0].trim()}
+            </text>
+            {lineas[1] && (
+              <text x="110" y="40" textAnchor="middle" fill="#ffffff" fontWeight="800" fontSize="9" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="0.3">
+                {lineas[1].trim()}
+              </text>
+            )}
+            <text x="110" y="54" textAnchor="middle" fill="#ffffff" fontWeight="700" fontSize="6.5" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="0.2">
+              Ministerio de Salud
+            </text>
+          </svg>
         </div>
       );
     }
 
+    const textoLimpio = item.texto.toUpperCase().trim();
+    const esExceso = textoLimpio.startsWith("EXCESO EN ");
+    const resto = esExceso ? textoLimpio.replace("EXCESO EN ", "") : textoLimpio;
+    const palabrasResto = resto.split(" ");
+
     return (
-      <div
-        key={item.id}
-        style={{
-          width: "128px",
-          height: "128px",
-          backgroundColor: "#000000",
-          color: "#ffffff",
-          clipPath:
-            "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "16px 12px",
-          textAlign: "center",
-          boxShadow: "0 6px 14px rgba(0,0,0,0.4)",
-          border: "4px solid #ffffff",
-          outline: "3px solid #000000",
-          boxSizing: "border-box",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "0.85rem",
-            fontWeight: 900,
-            lineHeight: 1.15,
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-          }}
-        >
-          {item.texto}
-        </span>
-        <span
-          style={{
-            fontSize: "0.58rem",
-            fontWeight: 700,
-            color: "#d1d5db",
-            marginTop: "6px",
-            letterSpacing: "0.5px",
-          }}
-        >
-          Ministerio de Salud
-        </span>
+      <div key={item.id} style={{ display: "inline-block", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.35))", margin: "6px" }}>
+        <svg width="124" height="124" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="35,0 85,0 120,35 120,85 85,120 35,120 0,85 0,35" fill="#000000" />
+          <polygon points="36,4 84,4 116,36 116,84 84,116 36,116 4,84 4,36" fill="#000000" stroke="#ffffff" strokeWidth="2.5" />
+          {esExceso ? (
+            <>
+              <text x="60" y={palabrasResto.length > 1 ? 40 : 46} textAnchor="middle" fill="#ffffff" fontWeight="900" fontSize="11" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="0.5">
+                EXCESO EN
+              </text>
+              {palabrasResto.length === 1 ? (
+                <text x="60" y="66" textAnchor="middle" fill="#ffffff" fontWeight="900" fontSize="13" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="0.5">
+                  {palabrasResto[0]}
+                </text>
+              ) : (
+                <>
+                  <text x="60" y="58" textAnchor="middle" fill="#ffffff" fontWeight="900" fontSize="11.5" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="0.5">
+                    {palabrasResto[0]}
+                  </text>
+                  <text x="60" y="74" textAnchor="middle" fill="#ffffff" fontWeight="900" fontSize="11.5" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="0.5">
+                    {palabrasResto.slice(1).join(" ")}
+                  </text>
+                </>
+              )}
+            </>
+          ) : (
+            <text x="60" y="56" textAnchor="middle" fill="#ffffff" fontWeight="900" fontSize="11" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="0.5">
+              {textoLimpio}
+            </text>
+          )}
+          <text x="60" y="102" textAnchor="middle" fill="#ffffff" fontWeight="700" fontSize="6.8" fontFamily="Arial, Helvetica, sans-serif" letterSpacing="0.3">
+            Ministerio de Salud
+          </text>
+        </svg>
       </div>
     );
   };
@@ -498,6 +473,48 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
   const filasNutricionales = borrador.filas_tabla_nutricional || [];
   const octogonos = borrador.octogonos || [];
 
+  const resolverDestinoFaltante = (item: string) => {
+    const t = item.toLowerCase();
+    if (t.includes("ingrediente")) {
+      return { tipo: "ingredientes" as const, etiqueta: "Completar lista de ingredientes" };
+    }
+    if (
+      t.includes("rnpa") ||
+      t.includes("rppa") ||
+      t.includes("rne") ||
+      t.includes("rpe") ||
+      t.includes("razón social") ||
+      t.includes("titular") ||
+      t.includes("domicilio") ||
+      t.includes("dirección") ||
+      t.includes("origen") ||
+      t.includes("importador") ||
+      t.includes("establecimiento")
+    ) {
+      return { tipo: "modal" as const, pestana: "establecimiento" as const, etiqueta: "Completar en Registros y Origen" };
+    }
+    if (t.includes("conservación") || t.includes("empleo") || t.includes("preparación") || t.includes("uso")) {
+      return { tipo: "modal" as const, pestana: "uso" as const, etiqueta: "Completar en Conservación y Uso" };
+    }
+    if (t.includes("sello") || t.includes("advertencia") || t.includes("octógono")) {
+      return { tipo: "modal" as const, pestana: "sellos" as const, etiqueta: "Configurar en Sellos" };
+    }
+    return { tipo: "modal" as const, pestana: "general" as const, etiqueta: "Completar en Datos Generales" };
+  };
+
+  const handleClicFaltante = (item: string) => {
+    const destino = resolverDestinoFaltante(item);
+    if (destino.tipo === "ingredientes" && onIrAIngredientes) {
+      onIrAIngredientes();
+    } else if (destino.tipo === "modal") {
+      setPestanaModal(destino.pestana);
+      setModalEditarAbierto(true);
+    } else {
+      setPestanaModal("general");
+      setModalEditarAbierto(true);
+    }
+  };
+
   return (
     <div
       style={{
@@ -555,23 +572,6 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             style={{ padding: "8px 16px", fontSize: "0.95rem" }}
           >
             Volver al producto
-          </button>
-          <button
-            type="button"
-            onClick={onIrAIngredientes}
-            className="btn-secundario"
-            style={{
-              padding: "8px 16px",
-              fontSize: "0.95rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-              format_list_numbered
-            </span>
-            <span>Lista de Ingredientes y Aditivos</span>
           </button>
           <button
             type="button"
@@ -639,48 +639,6 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             </span>
             <span>{exportando ? "Preparando..." : "Imprimir"}</span>
           </button>
-        </div>
-      </div>
-
-      <div
-        style={{
-          backgroundColor: "var(--color-superficie)",
-          border: "1px solid var(--color-borde)",
-          borderRadius: "10px",
-          padding: "16px 20px",
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-        }}
-      >
-        <span
-          className="material-symbols-outlined"
-          style={{ fontSize: "28px", color: "var(--color-texto-sec)", lineHeight: 1 }}
-        >
-          verified
-        </span>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              color: "var(--color-texto-sec)",
-              fontWeight: 700,
-              fontSize: "0.78rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-            }}
-          >
-            Leyenda Regulatoria Obligatoria (CAA / Disposición ANMAT)
-          </div>
-          <div
-            style={{
-              color: "var(--color-texto)",
-              fontWeight: 600,
-              fontSize: "0.98rem",
-              marginTop: "2px",
-            }}
-          >
-            {borrador.leyenda_obligatoria}
-          </div>
         </div>
       </div>
 
@@ -843,20 +801,74 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             >
               Requerido para trámite oficial ante autoridad sanitaria:
             </p>
-            <ul
+            <div
               style={{
-                margin: "4px 0 0 18px",
-                padding: 0,
-                color: "var(--color-texto)",
-                fontSize: "0.85rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                marginTop: "6px",
               }}
             >
-              {datosFaltantes.map((item, idx) => (
-                <li key={idx} style={{ marginTop: "3px" }}>
-                  <strong>{item}</strong>
-                </li>
-              ))}
-            </ul>
+              {datosFaltantes.map((item, idx) => {
+                const destino = resolverDestinoFaltante(item);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleClicFaltante(item)}
+                    title={destino.etiqueta}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "10px",
+                      padding: "9px 12px",
+                      borderRadius: "8px",
+                      backgroundColor: "var(--color-fondo)",
+                      border: "1px solid var(--color-borde)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      width: "100%",
+                      boxSizing: "border-box",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "var(--color-primario, #2563eb)";
+                      e.currentTarget.style.backgroundColor = "rgba(37, 99, 235, 0.05)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "var(--color-borde)";
+                      e.currentTarget.style.backgroundColor = "var(--color-fondo)";
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "var(--color-primario, #2563eb)", flexShrink: 0 }}>
+                        edit_note
+                      </span>
+                      <span style={{ fontWeight: 600, color: "var(--color-texto)", fontSize: "0.88rem" }}>
+                        {item}
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: "0.78rem",
+                        fontWeight: 700,
+                        color: "var(--color-primario, #2563eb)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span>Completar</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+                        arrow_forward
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div
@@ -1558,26 +1570,6 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setPestanaModal("nutricion")}
-              style={{
-                padding: "6px 14px",
-                borderRadius: "6px",
-                fontWeight: pestanaModal === "nutricion" ? 700 : 500,
-                backgroundColor:
-                  pestanaModal === "nutricion"
-                    ? "var(--color-primario, #2563eb)"
-                    : "transparent",
-                color:
-                  pestanaModal === "nutricion" ? "#ffffff" : "var(--color-texto)",
-                border: "none",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-              }}
-            >
-              Tabla Nutricional
-            </button>
-            <button
-              type="button"
               onClick={() => setPestanaModal("sellos")}
               style={{
                 padding: "6px 14px",
@@ -1662,13 +1654,24 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                       setFormData({ ...formData, denominacion_venta: e.target.value })
                     }
                     placeholder="Ej: Pan de molde blanco enriquecido..."
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--color-borde)",
+                      backgroundColor: "var(--color-fondo)",
+                      color: "var(--color-texto)",
+                      fontSize: "0.95rem",
+                      marginTop: "6px",
+                    }}
                   />
                 </div>
                 <div className="resp-columna-movil"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    gap: "12px",
+                    gap: "14px",
                   }}
                 >
                   <div className="campo">
@@ -1692,6 +1695,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                         setFormData({ ...formData, contenido_neto: e.target.value })
                       }
                       placeholder="Ej: 500 g, 1 kg"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        border: "1px solid var(--color-borde)",
+                        backgroundColor: "var(--color-fondo)",
+                        color: "var(--color-texto)",
+                        fontSize: "0.95rem",
+                        marginTop: "6px",
+                      }}
                     />
                   </div>
                   <div className="campo">
@@ -1728,6 +1742,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                         setFormData({ ...formData, lote: e.target.value })
                       }
                       placeholder="Ej: L-20261109"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        border: "1px solid var(--color-borde)",
+                        backgroundColor: "var(--color-fondo)",
+                        color: "var(--color-texto)",
+                        fontSize: "0.95rem",
+                        marginTop: "6px",
+                      }}
                     />
                   </div>
                 </div>
@@ -1740,6 +1765,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                       setFormData({ ...formData, fecha_duracion: e.target.value })
                     }
                     placeholder="Ej: 30 días a partir de la elaboración / 15/12/2026"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--color-borde)",
+                      backgroundColor: "var(--color-fondo)",
+                      color: "var(--color-texto)",
+                      fontSize: "0.95rem",
+                      marginTop: "6px",
+                    }}
                   />
                 </div>
               </>
@@ -1819,6 +1855,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                           setFormData({ ...formData, razon_social_importador: e.target.value })
                         }
                         placeholder="Ej: Importadora Andina S.A."
+                        style={{
+                          width: "100%",
+                          boxSizing: "border-box",
+                          padding: "10px 14px",
+                          borderRadius: "8px",
+                          border: "1px solid var(--color-borde)",
+                          backgroundColor: "var(--color-fondo)",
+                          color: "var(--color-texto)",
+                          fontSize: "0.95rem",
+                          marginTop: "6px",
+                        }}
                       />
                     </div>
                     <div className="campo">
@@ -1830,6 +1877,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                           setFormData({ ...formData, domicilio_importador: e.target.value })
                         }
                         placeholder="Ej: Av. del Libertador 1200, CABA"
+                        style={{
+                          width: "100%",
+                          boxSizing: "border-box",
+                          padding: "10px 14px",
+                          borderRadius: "8px",
+                          border: "1px solid var(--color-borde)",
+                          backgroundColor: "var(--color-fondo)",
+                          color: "var(--color-texto)",
+                          fontSize: "0.95rem",
+                          marginTop: "6px",
+                        }}
                       />
                     </div>
                   </div>
@@ -1839,7 +1897,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    gap: "12px",
+                    gap: "14px",
                   }}
                 >
                   <div className="campo">
@@ -1851,6 +1909,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                         setFormData({ ...formData, rnpa_rppa: e.target.value })
                       }
                       placeholder="Ej: 02-584930"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        border: "1px solid var(--color-borde)",
+                        backgroundColor: "var(--color-fondo)",
+                        color: "var(--color-texto)",
+                        fontSize: "0.95rem",
+                        marginTop: "6px",
+                      }}
                     />
                   </div>
                   <div className="campo">
@@ -1862,6 +1931,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                         setFormData({ ...formData, rne: e.target.value })
                       }
                       placeholder="Ej: 02-034821"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        border: "1px solid var(--color-borde)",
+                        backgroundColor: "var(--color-fondo)",
+                        color: "var(--color-texto)",
+                        fontSize: "0.95rem",
+                        marginTop: "6px",
+                      }}
                     />
                   </div>
                 </div>
@@ -1874,6 +1954,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                       setFormData({ ...formData, razon_social: e.target.value })
                     }
                     placeholder="Ej: Panificadora del Sur S.A."
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--color-borde)",
+                      backgroundColor: "var(--color-fondo)",
+                      color: "var(--color-texto)",
+                      fontSize: "0.95rem",
+                      marginTop: "6px",
+                    }}
                   />
                 </div>
                 <div className="campo">
@@ -1885,6 +1976,17 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                       setFormData({ ...formData, direccion_origen: e.target.value })
                     }
                     placeholder="Ej: Ruta 3 Km 1400, Trelew, Chubut"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--color-borde)",
+                      backgroundColor: "var(--color-fondo)",
+                      color: "var(--color-texto)",
+                      fontSize: "0.95rem",
+                      marginTop: "6px",
+                    }}
                   />
                 </div>
                 <div className="campo">
@@ -1896,230 +1998,18 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                       setFormData({ ...formData, pais_origen: e.target.value })
                     }
                     placeholder="Ej: Industria Argentina / Brasil / Italia"
-                  />
-                </div>
-              </>
-            )}
-
-            {pestanaModal === "nutricion" && (
-              <>
-                <div
-                  style={{
-                    backgroundColor: "#fef3c7",
-                    border: "1px solid #f59e0b",
-                    padding: "10px 14px",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    id="chk-incompleta"
-                    checked={formData.tabla_marcada_incompleta || false}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        tabla_marcada_incompleta: e.target.checked,
-                      })
-                    }
-                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
-                  />
-                  <label
-                    htmlFor="chk-incompleta"
                     style={{
-                      cursor: "pointer",
-                      fontSize: "0.92rem",
-                      fontWeight: 600,
-                      color: "#92400e",
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--color-borde)",
+                      backgroundColor: "var(--color-fondo)",
+                      color: "var(--color-texto)",
+                      fontSize: "0.95rem",
+                      marginTop: "6px",
                     }}
-                  >
-                    Marcar Tabla Nutricional como INCOMPLETA (en desarrollo/análisis)
-                  </label>
-                </div>
-
-                <div className="resp-columna-movil"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "12px",
-                  }}
-                >
-                  <div className="campo">
-                    <label>Porción Declarada</label>
-                    <input
-                      type="text"
-                      value={formData.porcion || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          porcion: e.target.value,
-                        })
-                      }
-                      placeholder="Ej: 30 g (1 porción)"
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Porciones por Envase</label>
-                    <input
-                      type="text"
-                      value={formData.porciones_por_envase || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, porciones_por_envase: e.target.value })
-                      }
-                      placeholder="Ej: Aprox. 16 porciones"
-                    />
-                  </div>
-                </div>
-
-                <div className="resp-columna-movil"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: "10px",
-                  }}
-                >
-                  <div className="campo">
-                    <label>Valor Energético (kcal)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.valor_energetico_kcal ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          valor_energetico_kcal: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Carbohidratos (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.carbohidratos ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          carbohidratos: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Azúcares Totales (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.azucares_totales ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          azucares_totales: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Azúcares Añadidos (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.azucares_anadidos ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          azucares_anadidos: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Proteínas (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.proteinas ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          proteinas: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Grasas Totales (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.grasas_totales ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          grasas_totales: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Grasas Saturadas (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.grasas_saturadas ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          grasas_saturadas: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Grasas Trans (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.grasas_trans ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          grasas_trans: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Fibra Alimentaria (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.fibra_alimentaria ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          fibra_alimentaria: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Sodio (mg)</label>
-                    <input
-                      type="number"
-                      step="1"
-                      value={formData.sodio ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          sodio: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
+                  />
                 </div>
               </>
             )}
@@ -2244,9 +2134,11 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             {pestanaModal === "uso" && (
               <>
                 <div className="campo">
-                  <label>Instrucciones de Conservación</label>
+                  <label style={{ fontWeight: 600, fontSize: "0.92rem", color: "var(--color-texto)" }}>
+                    Instrucciones de Conservación
+                  </label>
                   <textarea
-                    rows={3}
+                    rows={4}
                     value={formData.instrucciones_conservacion || ""}
                     onChange={(e) =>
                       setFormData({
@@ -2254,29 +2146,62 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                         instrucciones_conservacion: e.target.value,
                       })
                     }
-                    placeholder="Ej: Mantener en lugar fresco y seco. Una vez abierto conservar cerrado."
+                    placeholder="Ej: Mantener en lugar fresco y seco. Una vez abierto conservar cerrado en heladera entre 2° y 8°C."
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "12px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--color-borde)",
+                      backgroundColor: "var(--color-fondo)",
+                      color: "var(--color-texto)",
+                      fontSize: "0.95rem",
+                      marginTop: "6px",
+                      minHeight: "95px",
+                      lineHeight: "1.5",
+                      resize: "vertical",
+                      display: "block",
+                    }}
                   />
                 </div>
                 <div className="campo">
-                  <label>Modo de Empleo / Preparación</label>
+                  <label style={{ fontWeight: 600, fontSize: "0.92rem", color: "var(--color-texto)" }}>
+                    Modo de Empleo / Preparación
+                  </label>
                   <textarea
-                    rows={3}
+                    rows={4}
                     value={formData.modo_empleo || ""}
                     onChange={(e) =>
                       setFormData({ ...formData, modo_empleo: e.target.value })
                     }
                     placeholder="Ej: Listo para consumo. Tostar ligeramente antes de servir si se desea."
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "12px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--color-borde)",
+                      backgroundColor: "var(--color-fondo)",
+                      color: "var(--color-texto)",
+                      fontSize: "0.95rem",
+                      marginTop: "6px",
+                      minHeight: "95px",
+                      lineHeight: "1.5",
+                      resize: "vertical",
+                      display: "block",
+                    }}
                   />
                 </div>
               </>
             )}
           </div>
 
-          <DialogFooter style={{ borderTop: "1px solid var(--color-borde)", paddingTop: "12px" }}>
+          <DialogFooter style={{ borderTop: "1px solid var(--color-borde)", paddingTop: "14px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
             <button
               type="button"
               onClick={() => setModalEditarAbierto(false)}
               className="btn-secundario"
+              style={{ padding: "9px 20px", fontSize: "0.95rem" }}
             >
               Cancelar
             </button>
@@ -2284,7 +2209,8 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
               type="button"
               onClick={handleGuardarCambios}
               disabled={guardando}
-              className="btn-primario"
+              className="btn-guardar"
+              style={{ padding: "9px 22px", fontSize: "0.95rem" }}
             >
               {guardando ? "Guardando..." : "Guardar Cambios"}
             </button>

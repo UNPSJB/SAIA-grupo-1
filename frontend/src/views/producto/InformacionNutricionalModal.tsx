@@ -275,11 +275,10 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
     if (infoTabla.es_incompleta) {
       ctx.fillStyle = '#b91c1c';
       ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
-      ctx.fillText(<><span className="material-symbols-outlined">warning</span> ADVERTENCIA: Tabla calculada con datos nutricionales incompletos</>, paddingX, y);
+      ctx.fillText('ADVERTENCIA: Tabla calculada con datos nutricionales incompletos', paddingX, y);
       y += 18;
     }
 
-    // Porción y medida casera
     ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
     ctx.fillStyle = '#0f172a';
     const porcEnvTexto = infoTabla.porciones_por_envase
@@ -371,7 +370,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
 
     ctx.fillStyle = '#991b1b';
     ctx.font = 'bold 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
-    ctx.fillText(<><span className="material-symbols-outlined">warning</span> AVISO OBLIGATORIO DE REVISIÓN:</>, paddingX + 10, y + 17);
+    ctx.fillText('AVISO OBLIGATORIO DE REVISIÓN:', paddingX + 10, y + 17);
     ctx.font = 'normal 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
     ctx.fillText(LEYENDA_REVISION_PROFESIONAL, paddingX + 10, y + 33);
 
@@ -489,7 +488,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
               (*) % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser mayores o menores según sus necesidades energéticas.
             </div>
             <div class="cuadro-leyenda">
-              <span className="material-symbols-outlined">warning</span> AVISO OBLIGATORIO DE REVISIÓN: ${LEYENDA_REVISION_PROFESIONAL}
+              <span class="material-symbols-outlined">warning</span> AVISO OBLIGATORIO DE REVISIÓN: ${LEYENDA_REVISION_PROFESIONAL}
             </div>
           </div>
           <script>
@@ -657,30 +656,27 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
       >
         <div
           style={{
-            backgroundColor: '#0f172a',
-            border: '1px solid #334155',
+            backgroundColor: 'var(--color-superficie, #ffffff)',
+            border: '1px solid var(--color-borde, #e2e8f0)',
             borderRadius: '12px',
             padding: '2rem',
             maxWidth: '480px',
             textAlign: 'center',
-            color: '#f8fafc',
+            color: 'var(--color-texto, #0f172a)',
           }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#ef4444', marginBottom: '1rem' }}>
             lock
           </span>
           <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', fontWeight: 700 }}>Acceso Restringido</h3>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+          <p style={{ color: 'var(--color-texto-sec, #64748b)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
             Solo las personas con permiso de administrar pueden acceder a la tabla de rotulado nutricional y generar reportes.
           </p>
           <button
             type="button"
             onClick={onClose}
+            className="btn-cancelar"
             style={{
-              backgroundColor: '#334155',
-              color: '#f8fafc',
-              border: '1px solid #475569',
-              borderRadius: '6px',
               padding: '0.5rem 1.25rem',
               fontWeight: 600,
               cursor: 'pointer',
@@ -709,43 +705,43 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
     >
       <div className="resp-modal-caja"
         style={{
-          backgroundColor: '#0f172a',
-          border: '1px solid #334155',
+          backgroundColor: 'var(--color-superficie, #ffffff)',
+          border: '1px solid var(--color-borde, #e2e8f0)',
           borderRadius: '12px',
           width: '100%',
           maxWidth: '920px',
           maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.18)',
           overflow: 'hidden',
-          color: '#f8fafc',
+          color: 'var(--color-texto, #0f172a)',
         }}
       >
         <div
           style={{
             padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid #1e293b',
+            borderBottom: '1px solid var(--color-borde, #e2e8f0)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: '#1e293b',
+            backgroundColor: 'var(--color-superficie, #ffffff)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '28px', color: '#38bdf8' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '28px', color: 'var(--color-primario, #2563eb)' }}>
               monitoring
             </span>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-texto, #0f172a)' }}>
                   Información Nutricional Oficial
                 </h2>
                 {Boolean(info?.es_incompleta || ingredientesIncompletos.length > 0) ? (
                   <span
                     style={{
                       backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                      color: '#f87171',
+                      color: '#ef4444',
                       border: '1px solid #ef4444',
                       padding: '0.15rem 0.5rem',
                       borderRadius: '4px',
@@ -763,7 +759,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                   <span
                     style={{
                       backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                      color: '#4ade80',
+                      color: '#16a34a',
                       border: '1px solid #22c55e',
                       padding: '0.15rem 0.5rem',
                       borderRadius: '4px',
@@ -779,10 +775,10 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                   </span>
                 ) : null}
               </div>
-              <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
-                Producto: <strong style={{ color: '#f1f5f9' }}>{nombreProducto}</strong>
+              <div style={{ fontSize: '0.875rem', color: 'var(--color-texto-sec, #64748b)' }}>
+                Producto: <strong style={{ color: 'var(--color-texto, #0f172a)' }}>{nombreProducto}</strong>
                 {info?.nombre_receta && (
-                  <span> · Receta vinculada: <span style={{ color: '#38bdf8' }}>{info.nombre_receta}</span></span>
+                  <span> · Receta vinculada: <span style={{ color: 'var(--color-primario, #2563eb)' }}>{info.nombre_receta}</span></span>
                 )}
               </div>
             </div>
@@ -792,7 +788,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#94a3b8',
+              color: 'var(--color-texto-sec, #64748b)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -878,7 +874,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                       Advertencia: Ingredientes con Datos Nutricionales Faltantes o sin Fuente Registrada
                     </strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#cbd5e1' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-texto-sec, #64748b)' }}>
                     Para no generar una tabla que parezca completa pero está calculada con datos faltantes, se deben completar los nutrientes obligatorios o la fuente de los siguientes ingredientes:
                   </p>
 
@@ -887,8 +883,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                       <div
                         key={`${ing.tipo_entidad}-${ing.entidad_id}-${ing.ingrediente_id}`}
                         style={{
-                          backgroundColor: '#1e293b',
-                          border: '1px solid #334155',
+                          backgroundColor: 'var(--color-superficie, #ffffff)',
+                          border: '1px solid var(--color-borde, #e2e8f0)',
                           borderRadius: '6px',
                           padding: '0.65rem 0.85rem',
                           display: 'flex',
@@ -900,7 +896,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                       >
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.9rem' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--color-texto, #0f172a)', fontSize: '0.9rem' }}>
                               {ing.nombre}
                             </span>
                             <span
@@ -975,12 +971,11 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                 </div>
               )}
 
-              {/* Formulario para completar datos faltantes desde la misma pantalla */}
               {ingredienteACompletar && (
                 <div
                   style={{
-                    backgroundColor: '#1e293b',
-                    border: '2px solid #38bdf8',
+                    backgroundColor: 'var(--color-fondo, #f8fafc)',
+                    border: '1px solid var(--color-primario, #2563eb)',
                     borderRadius: '8px',
                     padding: '1.25rem',
                     display: 'flex',
@@ -990,14 +985,14 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span className="material-symbols-outlined" style={{ color: '#38bdf8', fontSize: '24px' }}>
+                      <span className="material-symbols-outlined" style={{ color: 'var(--color-primario, #2563eb)', fontSize: '24px' }}>
                         edit_document
                       </span>
                       <div>
-                        <strong style={{ fontSize: '1.05rem', color: '#f8fafc' }}>
+                        <strong style={{ fontSize: '1.05rem', color: 'var(--color-texto, #0f172a)' }}>
                           Completar datos nutricionales: {ingredienteACompletar.nombre}
                         </strong>
-                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-texto-sec, #64748b)' }}>
                           Tipo: {ingredienteACompletar.tipo_entidad} · {ingredienteACompletar.es_aditivo ? 'Aditivo' : 'Ingrediente estándar'}
                         </div>
                       </div>
@@ -1005,7 +1000,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     <button
                       type="button"
                       onClick={() => setIngredienteACompletar(null)}
-                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--color-texto-sec, #64748b)', cursor: 'pointer' }}
                     >
                       <span className="material-symbols-outlined">close</span>
                     </button>
@@ -1013,7 +1008,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '0.75rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-texto-sec, #64748b)', marginBottom: '0.25rem' }}>
                         Fuente de Información Nutricional *
                       </label>
                       <input
@@ -1023,9 +1018,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         value={formValores['fuente_datos'] || ''}
                         onChange={(e) => setFormValores({ ...formValores, fuente_datos: e.target.value })}
                         style={{
-                          backgroundColor: '#0f172a',
-                          border: '1px solid #475569',
-                          color: '#fff',
+                          backgroundColor: 'var(--color-superficie, #ffffff)',
+                          border: '1px solid var(--color-borde, #cbd5e1)',
+                          color: 'var(--color-texto, #0f172a)',
                           padding: '0.45rem 0.6rem',
                           borderRadius: '6px',
                           width: '100%',
@@ -1042,7 +1037,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-texto-sec, #64748b)', marginBottom: '0.25rem' }}>
                         Detalle / Referencia de Fuente (Opcional)
                       </label>
                       <input
@@ -1051,9 +1046,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         value={formValores['fuente_detalle'] || ''}
                         onChange={(e) => setFormValores({ ...formValores, fuente_detalle: e.target.value })}
                         style={{
-                          backgroundColor: '#0f172a',
-                          border: '1px solid #475569',
-                          color: '#fff',
+                          backgroundColor: 'var(--color-superficie, #ffffff)',
+                          border: '1px solid var(--color-borde, #cbd5e1)',
+                          color: 'var(--color-texto, #0f172a)',
                           padding: '0.45rem 0.6rem',
                           borderRadius: '6px',
                           width: '100%',
@@ -1063,130 +1058,130 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     </div>
                   </div>
 
-                  <div style={{ borderTop: '1px solid #334155', paddingTop: '0.75rem' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#38bdf8', marginBottom: '0.5rem' }}>
+                  <div style={{ borderTop: '1px solid var(--color-borde, #cbd5e1)', paddingTop: '0.75rem' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primario, #2563eb)', marginBottom: '0.5rem' }}>
                       Valores por 100g de ingrediente:
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(130px, 100%), 1fr))', gap: '0.6rem' }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Energía (kcal) *</label>
+                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Energía (kcal) *</label>
                         <input
                           type="number"
                           step="0.1"
                           placeholder="0"
                           value={formValores['energia_kcal'] ?? ''}
                           onChange={(e) => setFormValores({ ...formValores, energia_kcal: e.target.value })}
-                          style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                          style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Sodio (mg) *</label>
+                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Sodio (mg) *</label>
                         <input
                           type="number"
                           step="0.1"
                           placeholder="0"
                           value={formValores['sodio_mg'] ?? ''}
                           onChange={(e) => setFormValores({ ...formValores, sodio_mg: e.target.value })}
-                          style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                          style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                         />
                       </div>
 
                       {!ingredienteACompletar.es_aditivo && (
                         <>
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Carbohidratos (g)</label>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Carbohidratos (g)</label>
                             <input
                               type="number"
                               step="0.1"
                               placeholder="0"
                               value={formValores['carbohidratos'] ?? ''}
                               onChange={(e) => setFormValores({ ...formValores, carbohidratos: e.target.value })}
-                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                              style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                             />
                           </div>
 
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Azúcares Totales (g)</label>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Azúcares Totales (g)</label>
                             <input
                               type="number"
                               step="0.1"
                               placeholder="0"
                               value={formValores['azucares_totales'] ?? ''}
                               onChange={(e) => setFormValores({ ...formValores, azucares_totales: e.target.value })}
-                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                              style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                             />
                           </div>
 
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Azúcares Añadidos (g)</label>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Azúcares Añadidos (g)</label>
                             <input
                               type="number"
                               step="0.1"
                               placeholder="0"
                               value={formValores['azucares_anadidos'] ?? ''}
                               onChange={(e) => setFormValores({ ...formValores, azucares_anadidos: e.target.value })}
-                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                              style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                             />
                           </div>
 
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Proteínas (g)</label>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Proteínas (g)</label>
                             <input
                               type="number"
                               step="0.1"
                               placeholder="0"
                               value={formValores['proteinas'] ?? ''}
                               onChange={(e) => setFormValores({ ...formValores, proteinas: e.target.value })}
-                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                              style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                             />
                           </div>
 
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Grasas Totales (g)</label>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Grasas Totales (g)</label>
                             <input
                               type="number"
                               step="0.1"
                               placeholder="0"
                               value={formValores['grasas_totales'] ?? ''}
                               onChange={(e) => setFormValores({ ...formValores, grasas_totales: e.target.value })}
-                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                              style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                             />
                           </div>
 
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Grasas Saturadas (g)</label>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Grasas Saturadas (g)</label>
                             <input
                               type="number"
                               step="0.1"
                               placeholder="0"
                               value={formValores['grasas_saturadas'] ?? ''}
                               onChange={(e) => setFormValores({ ...formValores, grasas_saturadas: e.target.value })}
-                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                              style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                             />
                           </div>
 
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Grasas Trans (g)</label>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Grasas Trans (g)</label>
                             <input
                               type="number"
                               step="0.1"
                               placeholder="0"
                               value={formValores['grasas_trans'] ?? ''}
                               onChange={(e) => setFormValores({ ...formValores, grasas_trans: e.target.value })}
-                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                              style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                             />
                           </div>
 
                           <div>
-                            <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Fibra Alimentaria (g)</label>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Fibra Alimentaria (g)</label>
                             <input
                               type="number"
                               step="0.1"
                               placeholder="0"
                               value={formValores['fibra_alimentaria'] ?? ''}
                               onChange={(e) => setFormValores({ ...formValores, fibra_alimentaria: e.target.value })}
-                              style={{ backgroundColor: '#0f172a', border: '1px solid #475569', color: '#fff', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
+                              style={{ backgroundColor: 'var(--color-superficie, #ffffff)', border: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto, #0f172a)', padding: '0.35rem 0.5rem', borderRadius: '4px', width: '100%', fontSize: '0.85rem' }}
                             />
                           </div>
                         </>
@@ -1198,11 +1193,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     <button
                       type="button"
                       onClick={() => setIngredienteACompletar(null)}
+                      className="btn-cancelar"
                       style={{
-                        backgroundColor: '#475569',
-                        color: '#f8fafc',
-                        border: 'none',
-                        borderRadius: '6px',
                         padding: '0.45rem 1rem',
                         fontSize: '0.85rem',
                         cursor: 'pointer',
@@ -1214,11 +1206,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                       type="button"
                       onClick={guardarDatosIngrediente}
                       disabled={guardandoIngrediente}
+                      className="btn-guardar"
                       style={{
-                        backgroundColor: '#16a34a',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '6px',
                         padding: '0.45rem 1.25rem',
                         fontSize: '0.85rem',
                         fontWeight: 600,
@@ -1241,8 +1230,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
               {esAdministrador && (
                 <div
                   style={{
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #334155',
+                    backgroundColor: 'var(--color-fondo, #f8fafc)',
+                    border: '1px solid var(--color-borde, #e2e8f0)',
                     borderRadius: '8px',
                     padding: '1rem',
                     display: 'flex',
@@ -1254,7 +1243,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                 >
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-texto-sec, #64748b)', marginBottom: '0.25rem' }}>
                         Tamaño Porción (g) *
                       </label>
                       <input
@@ -1265,9 +1254,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         value={tamanoPorcion}
                         onChange={(e) => setTamanoPorcion(e.target.value)}
                         style={{
-                          backgroundColor: '#0f172a',
-                          border: '1px solid #475569',
-                          color: '#f8fafc',
+                          backgroundColor: 'var(--color-superficie, #ffffff)',
+                          border: '1px solid var(--color-borde, #cbd5e1)',
+                          color: 'var(--color-texto, #0f172a)',
                           padding: '0.4rem 0.6rem',
                           borderRadius: '6px',
                           width: '95px',
@@ -1276,7 +1265,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-texto-sec, #64748b)', marginBottom: '0.25rem' }}>
                         Medida casera declarada *
                       </label>
                       <input
@@ -1285,9 +1274,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         value={medidaCasera}
                         onChange={(e) => setMedidaCasera(e.target.value)}
                         style={{
-                          backgroundColor: '#0f172a',
-                          border: '1px solid #475569',
-                          color: '#f8fafc',
+                          backgroundColor: 'var(--color-superficie, #ffffff)',
+                          border: '1px solid var(--color-borde, #cbd5e1)',
+                          color: 'var(--color-texto, #0f172a)',
                           padding: '0.4rem 0.6rem',
                           borderRadius: '6px',
                           width: '180px',
@@ -1296,7 +1285,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-texto-sec, #64748b)', marginBottom: '0.25rem' }}>
                         Porciones por envase (auto)
                       </label>
                       <input
@@ -1305,9 +1294,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         disabled
                         readOnly
                         style={{
-                          backgroundColor: '#0f172a',
-                          border: '1px solid #475569',
-                          color: '#94a3b8',
+                          backgroundColor: 'var(--color-superficie, #ffffff)',
+                          border: '1px solid var(--color-borde, #cbd5e1)',
+                          color: 'var(--color-texto-sec, #64748b)',
                           padding: '0.4rem 0.6rem',
                           borderRadius: '6px',
                           width: '110px',
@@ -1316,7 +1305,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-texto-sec, #64748b)', marginBottom: '0.25rem' }}>
                         Descripción adicional
                       </label>
                       <input
@@ -1325,9 +1314,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         onChange={(e) => setDescPorcion(e.target.value)}
                         placeholder="Opcional"
                         style={{
-                          backgroundColor: '#0f172a',
-                          border: '1px solid #475569',
-                          color: '#f8fafc',
+                          backgroundColor: 'var(--color-superficie, #ffffff)',
+                          border: '1px solid var(--color-borde, #cbd5e1)',
+                          color: 'var(--color-texto, #0f172a)',
                           padding: '0.4rem 0.6rem',
                           borderRadius: '6px',
                           width: '140px',
@@ -1396,9 +1385,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         if (!mostrarParametros) cargarParametros();
                       }}
                       style={{
-                        backgroundColor: '#334155',
-                        color: '#f8fafc',
-                        border: '1px solid #475569',
+                        backgroundColor: 'var(--color-superficie, #ffffff)',
+                        color: 'var(--color-texto, #0f172a)',
+                        border: '1px solid var(--color-borde, #cbd5e1)',
                         borderRadius: '6px',
                         padding: '0.5rem 0.85rem',
                         fontSize: '0.875rem',
@@ -1422,8 +1411,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
               {mostrarParametros && (
                 <div
                   style={{
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #38bdf8',
+                    backgroundColor: 'var(--color-fondo, #f8fafc)',
+                    border: '1px solid var(--color-primario, #2563eb)',
                     borderRadius: '8px',
                     padding: '1rem',
                     display: 'flex',
@@ -1433,10 +1422,10 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#38bdf8' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--color-primario, #2563eb)' }}>
                         Parámetros Configurables de Redondeo y Expresión (Cap. V CAA)
                       </h4>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-texto-sec, #64748b)' }}>
                         Las cifras, decimales y umbrales no están fijos en código: se aplican dinámicamente desde esta configuración.
                       </p>
                     </div>
@@ -1444,11 +1433,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                       <button
                         type="button"
                         onClick={restablecerParametros}
+                        className="btn-cancelar"
                         style={{
-                          backgroundColor: '#475569',
-                          color: '#f8fafc',
-                          border: 'none',
-                          borderRadius: '4px',
                           padding: '0.35rem 0.75rem',
                           fontSize: '0.8rem',
                           cursor: 'pointer',
@@ -1460,12 +1446,12 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                   </div>
 
                   {cargandoParametros ? (
-                    <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>Cargando parámetros...</div>
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-texto-sec, #64748b)' }}>Cargando parámetros...</div>
                   ) : (
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                         <thead>
-                          <tr style={{ borderBottom: '1px solid #334155', color: '#94a3b8', textAlign: 'left' }}>
+                          <tr style={{ borderBottom: '1px solid var(--color-borde, #cbd5e1)', color: 'var(--color-texto-sec, #64748b)', textAlign: 'left' }}>
                             <th style={{ padding: '0.4rem' }}>Nutriente</th>
                             <th style={{ padding: '0.4rem' }}>Unidad</th>
                             <th style={{ padding: '0.4rem' }}>VDR</th>
@@ -1477,13 +1463,13 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         </thead>
                         <tbody>
                           {parametros.map((p) => (
-                            <tr key={p.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                              <td style={{ padding: '0.4rem', fontWeight: 500 }}>{p.nombre_mostrar}</td>
-                              <td style={{ padding: '0.4rem', color: '#94a3b8' }}>{p.unidad}</td>
-                              <td style={{ padding: '0.4rem' }}>{p.vdr ? `${p.vdr} ${p.unidad}` : '-'}</td>
-                              <td style={{ padding: '0.4rem' }}>&le; {p.umbral_no_significativo} {p.unidad}</td>
-                              <td style={{ padding: '0.4rem' }}>{p.cifras_decimales}</td>
-                              <td style={{ padding: '0.4rem' }}>{p.cifras_decimales_mayores_10}</td>
+                            <tr key={p.id} style={{ borderBottom: '1px solid var(--color-borde, #e2e8f0)' }}>
+                              <td style={{ padding: '0.4rem', fontWeight: 500, color: 'var(--color-texto, #0f172a)' }}>{p.nombre_mostrar}</td>
+                              <td style={{ padding: '0.4rem', color: 'var(--color-texto-sec, #64748b)' }}>{p.unidad}</td>
+                              <td style={{ padding: '0.4rem', color: 'var(--color-texto, #0f172a)' }}>{p.vdr ? `${p.vdr} ${p.unidad}` : '-'}</td>
+                              <td style={{ padding: '0.4rem', color: 'var(--color-texto, #0f172a)' }}>&le; {p.umbral_no_significativo} {p.unidad}</td>
+                              <td style={{ padding: '0.4rem', color: 'var(--color-texto, #0f172a)' }}>{p.cifras_decimales}</td>
+                              <td style={{ padding: '0.4rem', color: 'var(--color-texto, #0f172a)' }}>{p.cifras_decimales_mayores_10}</td>
                               {esAdministrador && (
                                 <td style={{ padding: '0.4rem' }}>
                                   <button
@@ -1491,8 +1477,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                                     onClick={() => setParamEditando(p)}
                                     style={{
                                       backgroundColor: 'transparent',
-                                      border: '1px solid #475569',
-                                      color: '#38bdf8',
+                                      border: '1px solid var(--color-primario, #2563eb)',
+                                      color: 'var(--color-primario, #2563eb)',
                                       borderRadius: '4px',
                                       padding: '0.2rem 0.5rem',
                                       cursor: 'pointer',
@@ -1512,8 +1498,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                   {paramEditando && (
                     <div
                       style={{
-                        backgroundColor: '#1e293b',
-                        border: '1px solid #475569',
+                        backgroundColor: 'var(--color-superficie, #ffffff)',
+                        border: '1px solid var(--color-borde, #cbd5e1)',
                         borderRadius: '6px',
                         padding: '0.75rem',
                         marginTop: '0.5rem',
@@ -1523,11 +1509,11 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         gap: '0.75rem',
                       }}
                     >
-                      <strong style={{ width: '100%', fontSize: '0.85rem', color: '#38bdf8' }}>
+                      <strong style={{ width: '100%', fontSize: '0.85rem', color: 'var(--color-primario, #2563eb)' }}>
                         Editando parámetro: {paramEditando.nombre_mostrar}
                       </strong>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Umbral "0"</label>
+                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Umbral "0"</label>
                         <input
                           type="number"
                           step="0.1"
@@ -1536,9 +1522,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                             setParamEditando({ ...paramEditando, umbral_no_significativo: Number(e.target.value) })
                           }
                           style={{
-                            backgroundColor: '#0f172a',
-                            border: '1px solid #475569',
-                            color: '#fff',
+                            backgroundColor: 'var(--color-fondo, #f8fafc)',
+                            border: '1px solid var(--color-borde, #cbd5e1)',
+                            color: 'var(--color-texto, #0f172a)',
                             padding: '0.25rem 0.5rem',
                             borderRadius: '4px',
                             width: '80px',
@@ -1547,7 +1533,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Decim. (&le;10)</label>
+                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Decim. (&le;10)</label>
                         <input
                           type="number"
                           min="0"
@@ -1557,9 +1543,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                             setParamEditando({ ...paramEditando, cifras_decimales: Number(e.target.value) })
                           }
                           style={{
-                            backgroundColor: '#0f172a',
-                            border: '1px solid #475569',
-                            color: '#fff',
+                            backgroundColor: 'var(--color-fondo, #f8fafc)',
+                            border: '1px solid var(--color-borde, #cbd5e1)',
+                            color: 'var(--color-texto, #0f172a)',
                             padding: '0.25rem 0.5rem',
                             borderRadius: '4px',
                             width: '70px',
@@ -1568,7 +1554,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>Decim. (&gt;10)</label>
+                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-texto-sec, #64748b)' }}>Decim. (&gt;10)</label>
                         <input
                           type="number"
                           min="0"
@@ -1578,9 +1564,9 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                             setParamEditando({ ...paramEditando, cifras_decimales_mayores_10: Number(e.target.value) })
                           }
                           style={{
-                            backgroundColor: '#0f172a',
-                            border: '1px solid #475569',
-                            color: '#fff',
+                            backgroundColor: 'var(--color-fondo, #f8fafc)',
+                            border: '1px solid var(--color-borde, #cbd5e1)',
+                            color: 'var(--color-texto, #0f172a)',
                             padding: '0.25rem 0.5rem',
                             borderRadius: '4px',
                             width: '70px',
@@ -1593,11 +1579,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                           type="button"
                           onClick={guardarParametro}
                           disabled={guardandoParam}
+                          className="btn-guardar"
                           style={{
-                            backgroundColor: '#22c55e',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
                             padding: '0.35rem 0.75rem',
                             fontSize: '0.8rem',
                             cursor: 'pointer',
@@ -1608,11 +1591,8 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                         <button
                           type="button"
                           onClick={() => setParamEditando(null)}
+                          className="btn-cancelar"
                           style={{
-                            backgroundColor: '#475569',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
                             padding: '0.35rem 0.75rem',
                             fontSize: '0.8rem',
                             cursor: 'pointer',
@@ -1629,18 +1609,18 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
               {info && (
                 <div
                   style={{
-                    backgroundColor: '#1e293b',
+                    backgroundColor: 'var(--color-superficie, #ffffff)',
                     borderRadius: '8px',
                     padding: '1.25rem',
-                    border: '2px solid #334155',
+                    border: '1px solid var(--color-borde, #e2e8f0)',
                   }}
                 >
                   {Boolean(info.es_incompleta || ingredientesIncompletos.length > 0) && (
                     <div
                       style={{
-                        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
                         border: '1px solid #ef4444',
-                        color: '#fca5a5',
+                        color: '#b91c1c',
                         padding: '0.6rem 0.85rem',
                         borderRadius: '6px',
                         marginBottom: '0.75rem',
@@ -1661,7 +1641,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
 
                   <div
                     style={{
-                      borderBottom: '3px solid #f8fafc',
+                      borderBottom: '3px solid var(--color-texto, #0f172a)',
                       paddingBottom: '0.75rem',
                       marginBottom: '0.75rem',
                       display: 'flex',
@@ -1672,13 +1652,13 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     }}
                   >
                     <div>
-                      <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-texto, #0f172a)' }}>
                         Información Nutricional
                       </h3>
-                      <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: '0.25rem' }}>
-                        Porción: <strong>{info.tamano_porcion_g} g</strong> ({medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción'})
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-texto-sec, #64748b)', marginTop: '0.25rem' }}>
+                        Porción: <strong style={{ color: 'var(--color-texto, #0f172a)' }}>{info.tamano_porcion_g} g</strong> ({medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción'})
                         {info.porciones_por_envase && (
-                          <span> · Porciones por envase: <strong>aprox. {info.porciones_por_envase}</strong></span>
+                          <span> · Porciones por envase: <strong style={{ color: 'var(--color-texto, #0f172a)' }}>aprox. {info.porciones_por_envase}</strong></span>
                         )}
                       </div>
                     </div>
@@ -1736,7 +1716,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                     }}
                   >
                     <thead>
-                      <tr style={{ borderBottom: '2px solid #f8fafc', textAlign: 'left' }}>
+                      <tr style={{ borderBottom: '2px solid var(--color-borde, #cbd5e1)', textAlign: 'left', color: 'var(--color-texto, #0f172a)' }}>
                         <th style={{ padding: '0.6rem 0.5rem', fontWeight: 700 }}>Nutriente</th>
                         <th style={{ padding: '0.6rem 0.5rem', textAlign: 'right', fontWeight: 700 }}>Por 100 g</th>
                         <th style={{ padding: '0.6rem 0.5rem', textAlign: 'right', fontWeight: 700 }}>
@@ -1757,27 +1737,27 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                           <tr
                             key={f.nutriente}
                             style={{
-                              borderBottom: idx === info.tabla_nutricional.length - 1 ? 'none' : '1px solid #334155',
-                              backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.02)',
+                              borderBottom: idx === info.tabla_nutricional.length - 1 ? 'none' : '1px solid var(--color-borde, #e2e8f0)',
+                              backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgba(0, 0, 0, 0.02)',
                             }}
                           >
                             <td
                               style={{
                                 padding: '0.5rem',
                                 paddingLeft: esSubItem ? '1.75rem' : '0.5rem',
-                                color: esSubItem ? '#94a3b8' : '#f8fafc',
+                                color: esSubItem ? 'var(--color-texto-sec, #64748b)' : 'var(--color-texto, #0f172a)',
                                 fontWeight: esSubItem ? 400 : 600,
                               }}
                             >
                               {f.nombre_mostrar}
                             </td>
-                            <td style={{ padding: '0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-texto, #0f172a)' }}>
                               {f.valor_100g_formateado} {f.unidad}
                             </td>
-                            <td style={{ padding: '0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#38bdf8' }}>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--color-primario, #2563eb)' }}>
                               {f.valor_porcion_formateado} {f.unidad}
                             </td>
-                            <td style={{ padding: '0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-texto, #0f172a)' }}>
                               {f.vd_formateado}
                             </td>
                           </tr>
@@ -1788,36 +1768,35 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
 
                   <div
                     style={{
-                      borderTop: '2px solid #475569',
+                      borderTop: '2px solid var(--color-borde, #cbd5e1)',
                       paddingTop: '0.75rem',
                       marginTop: '0.75rem',
                       fontSize: '0.78rem',
-                      color: '#94a3b8',
+                      color: 'var(--color-texto-sec, #64748b)',
                       lineHeight: 1.4,
                     }}
                   >
                     (*) % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser mayores o menores según sus necesidades energéticas (Resolución GMC 46/03 - Código Alimentario Argentino).
                   </div>
 
-                  {/* LEYENDA VISIBLE OBLIGATORIA */}
                   <div
                     style={{
                       marginTop: '1rem',
                       padding: '0.85rem 1rem',
-                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                      border: '1.5px solid #ef4444',
+                      backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid #ef4444',
                       borderRadius: '8px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.75rem',
-                      color: '#fca5a5',
+                      color: '#991b1b',
                     }}
                   >
                     <span className="material-symbols-outlined" style={{ color: '#ef4444', fontSize: '26px', flexShrink: 0 }}>
                       assignment_late
                     </span>
                     <div style={{ fontSize: '0.86rem', lineHeight: 1.4 }}>
-                      <strong style={{ color: '#f87171', display: 'block', marginBottom: '2px' }}>
+                      <strong style={{ color: '#b91c1c', display: 'block', marginBottom: '2px' }}>
                         Aviso obligatorio de revisión profesional:
                       </strong>
                       {LEYENDA_REVISION_PROFESIONAL}
@@ -1825,110 +1804,6 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                   </div>
                 </div>
               )}
-
-              <div
-                style={{
-                  backgroundColor: '#1e293b',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  border: '1px solid #334155',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.75rem',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span className="material-symbols-outlined" style={{ color: '#fbbf24', fontSize: '20px' }}>
-                      verified
-                    </span>
-                    <strong style={{ fontSize: '0.9rem' }}>Validación contra Producto Patrón de la Cátedra</strong>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={ejecutarVerificacionReferencia}
-                    disabled={verificando}
-                    style={{
-                      backgroundColor: '#334155',
-                      color: '#f8fafc',
-                      border: '1px solid #475569',
-                      borderRadius: '6px',
-                      padding: '0.4rem 0.75rem',
-                      fontSize: '0.8rem',
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      cursor: verificando ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                      rule
-                    </span>
-                    {verificando ? 'Verificando...' : 'Verificar Tolerancia (±5%)'}
-                  </button>
-                </div>
-
-                {verificacion && (
-                  <div
-                    style={{
-                      backgroundColor: verificacion.resultado_global_valido
-                        ? 'rgba(34, 197, 94, 0.1)'
-                        : 'rgba(239, 68, 68, 0.1)',
-                      border: `1px solid ${verificacion.resultado_global_valido ? '#22c55e' : '#ef4444'}`,
-                      borderRadius: '6px',
-                      padding: '0.75rem',
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span
-                        className="material-symbols-outlined"
-                        style={{ color: verificacion.resultado_global_valido ? '#22c55e' : '#ef4444', fontSize: '20px' }}
-                      >
-                        {verificacion.resultado_global_valido ? 'check_circle' : 'warning'}
-                      </span>
-                      <strong style={{ color: verificacion.resultado_global_valido ? '#86efac' : '#fca5a5' }}>
-                        {verificacion.mensaje}
-                      </strong>
-                    </div>
-
-                    <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1px solid #475569', color: '#94a3b8' }}>
-                            <th style={{ textAlign: 'left', padding: '0.25rem' }}>Nutriente</th>
-                            <th style={{ textAlign: 'right', padding: '0.25rem' }}>Calculado (100g)</th>
-                            <th style={{ textAlign: 'right', padding: '0.25rem' }}>Esperado Cátedra</th>
-                            <th style={{ textAlign: 'right', padding: '0.25rem' }}>Desvío %</th>
-                            <th style={{ textAlign: 'center', padding: '0.25rem' }}>Estado</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {verificacion.detalles_100g.map((d) => (
-                            <tr key={d.nutriente} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                              <td style={{ padding: '0.25rem' }}>{d.nutriente}</td>
-                              <td style={{ textAlign: 'right', padding: '0.25rem' }}>{d.valor_calculado}</td>
-                              <td style={{ textAlign: 'right', padding: '0.25rem' }}>{d.valor_esperado}</td>
-                              <td style={{ textAlign: 'right', padding: '0.25rem' }}>{d.diferencia_porcentual}%</td>
-                              <td style={{ textAlign: 'center', padding: '0.25rem' }}>
-                                <span
-                                  style={{
-                                    color: d.cumple_tolerancia ? '#22c55e' : '#ef4444',
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {d.cumple_tolerancia ? 'DENTRO DE TOLERANCIA' : 'FUERA DE RANGO'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
             </>
           )}
         </div>
@@ -1936,20 +1811,17 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
         <div
           style={{
             padding: '1rem 1.5rem',
-            borderTop: '1px solid #1e293b',
+            borderTop: '1px solid var(--color-borde, #e2e8f0)',
             display: 'flex',
             justifyContent: 'flex-end',
-            backgroundColor: '#1e293b',
+            backgroundColor: 'var(--color-superficie, #ffffff)',
           }}
         >
           <button
             type="button"
             onClick={onClose}
+            className="btn-cancelar"
             style={{
-              backgroundColor: '#475569',
-              color: '#f8fafc',
-              border: 'none',
-              borderRadius: '6px',
               padding: '0.5rem 1.25rem',
               fontSize: '0.875rem',
               fontWeight: 500,
@@ -1966,7 +1838,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
           open={exportModalAbierto}
           tituloModal="Exportar Tabla Nutricional"
           tituloGrafico={`Información Nutricional - ${nombreProducto}`}
-          iconoCard=<span className="material-symbols-outlined">assignment</span>
+          iconoCard="assignment"
           filtrosAplicados={`Porción: ${info.tamano_porcion_g} g (${medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción'}) · Incluye leyenda obligatoria de revisión`}
           loading={exportando}
           onConfirm={handleConfirmarExportacion}

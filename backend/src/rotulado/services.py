@@ -1358,14 +1358,33 @@ def calcular_declaracion_alergenos(db: Session, producto_id: int) -> dict:
     }
 
 def mapear_respuesta_borrador(
-    db: Session, borrador: BorradorRotulo, lista: Optional[ListaIngredientesRotulo]
+    db_or_borrador: Any,
+    borrador_or_lista: Any = None,
+    lista_arg: Optional[ListaIngredientesRotulo] = None,
 ) -> schemas.BorradorRotuloResponse:
-    prod_nom = borrador.producto.nombre if borrador.producto else ""
+    if isinstance(db_or_borrador, Session):
+        db = db_or_borrador
+        borrador = borrador_or_lista
+        lista = lista_arg
+    else:
+        from sqlalchemy.orm import object_session
+        borrador = db_or_borrador
+        lista = borrador_or_lista
+        db = object_session(borrador) if borrador is not None else None
+
+    prod_nom = borrador.producto.nombre if borrador and borrador.producto else ""
     texto_ingredientes = (
         lista.texto_rotulo if lista and lista.texto_rotulo else None
     )
 
-    info_alergenos = calcular_declaracion_alergenos(db, borrador.producto_id)
+    if db is not None and borrador and borrador.producto_id:
+        info_alergenos = calcular_declaracion_alergenos(db, borrador.producto_id)
+    else:
+        info_alergenos = {
+            "contiene_gluten": False,
+            "texto_contiene_alergenos": "SIN ALÉRGENOS DECLARADOS.",
+            "texto_puede_contener": None,
+        }
     tiene_ingr = bool(lista and lista.items and len(lista.items) > 0)
 
     octogonos, tiene_oct, msg_oct = calcular_octogonos_e12(borrador, lista)

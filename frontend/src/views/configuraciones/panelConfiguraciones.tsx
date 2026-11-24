@@ -71,8 +71,6 @@ export function PanelConfiguraciones({
       onAbrirConfiguracionPdf();
       return;
     }
-    // Si agregás 'configuracionPdf' al tipo `Modulo`, podés usar directamente:
-    // onAbrirMaestro('configuracionPdf' as Modulo);
     onAbrirMaestro('rotuladoFrontal');
   }
 

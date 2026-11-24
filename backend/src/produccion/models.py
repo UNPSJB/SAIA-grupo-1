@@ -45,7 +45,6 @@ class InsumoLote(ModeloBase):
     """Cuánto se usó de un insumo del maestro en un lote, en la unidad de medida del insumo."""
 
     __tablename__ = "insumos_lote"
-    # el mismo insumo no puede asociarse dos veces al mismo lote
     __table_args__ = (UniqueConstraint("lote_id", "insumo_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -54,4 +53,6 @@ class InsumoLote(ModeloBase):
     cantidad: Mapped[float] = mapped_column()
 
     lote: Mapped[LoteProduccion] = relationship(back_populates="insumos")
-    insumo: Mapped[Insumo] = relationship(back_populates="lotes_asociados", lazy="joined")
+    insumo: Mapped[Insumo] = relationship(lazy="joined")
+
+Insumo.lotes_asociados = relationship("InsumoLote", back_populates="insumo")

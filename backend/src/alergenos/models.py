@@ -32,7 +32,6 @@ class Alergeno(ModeloBase):
     simbolo: Mapped[str] = mapped_column(String(500))
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    # Relación muchos a muchos con TipoInsumo
     tipos_insumos: Mapped[List["TipoInsumo"]] = relationship(
         "TipoInsumo", secondary=tipos_insumos_alergenos, back_populates="alergenos"
     )

@@ -6,8 +6,7 @@ from src.models import ModeloBase
 from src.personal.schemas import Capacidades
 from src.certificado.models import Certificado
 
-if TYPE_CHECKING:
-    import src.tareas.models
+import src.tareas.models
 
 
 class Personal(ModeloBase):
@@ -22,8 +21,8 @@ class Personal(ModeloBase):
     activo : Mapped[bool] = mapped_column(Boolean, default=True)
     usuario: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     contrasenia_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    tareas:Mapped[List["src.tareas.models.Tarea"]] = relationship("src.tareas.models.Tarea", back_populates="personal")
+    tareas: Mapped[List["Tarea"]] = relationship("Tarea", back_populates="personal")
 
-    receta: Mapped[List["src.recetas.models.Receta"]] = relationship("src.recetas.models.Receta", back_populates="operario")
+    receta: Mapped[List["Receta"]] = relationship("Receta", back_populates="operario")
 
-    certificados: Mapped[list["Certificado"]] = relationship(back_populates="persona", cascade="all, delete-orphan") #Si se borra la persona se borran sus certificados
+    certificados: Mapped[list["Certificado"]] = relationship(back_populates="persona", cascade="all, delete-orphan")

@@ -261,8 +261,9 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                             className="btn-icon"
                             title="Previsualizar borrador de rótulo"
                             onClick={() => onBorradorRotuloClick?.(i.id)}
+                            style={{ color: "#000000" }}
                           >
-                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#000000" }}>
                               label
                             </span>
                           </button>
@@ -270,9 +271,9 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                             className="btn-icon"
                             title="Lista de ingredientes y aditivos (Rótulo)"
                             onClick={() => onIngredientesClick?.(i.id)}
-                            style={{ color: "#2563eb" }}
+                            style={{ color: "#000000" }}
                           >
-                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#000000" }}>
                               format_list_numbered
                             </span>
                           </button>
@@ -282,23 +283,26 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                         className="btn-icon btn-ver"
                         title="Ver detalles"
                         onClick={() => onDetalleClick?.(i.id)}
+                        style={{ color: "#000000" }}
                       >
-                        <span className="material-symbols-outlined">visibility</span>
+                        <span className="material-symbols-outlined" style={{ color: "#000000" }}>visibility</span>
                       </button>
                       <button
                         className="btn-icon btn-editar"
                         title="Editar"
                         onClick={() => onEditarClick?.(i.id)}
+                        style={{ color: "#000000" }}
                       >
-                        <span className="material-symbols-outlined">edit</span>
+                        <span className="material-symbols-outlined" style={{ color: "#000000" }}>edit</span>
                       </button>
                       {Boolean(i.id_receta) && i.aplica_rotulado !== false && (
                         <button
                           className="btn-icon btn-nutricion"
                           title="Información nutricional"
                           onClick={() => setProductoNutricion(i)}
+                          style={{ color: "#000000" }}
                         >
-                          <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#000000" }}>
                             monitoring
                           </span>
                         </button>
@@ -307,8 +311,13 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                         className={`btn-icon ${i.activo ? "btn-eliminar" : "btn-reactivar"}`}
                         title={i.activo ? "Dar de baja" : "Restaurar"}
                         onClick={() => abrirConfirmacion(i)}
+                        style={{ color: "#000000" }}
                       >
-                        {i.activo ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
+                        {i.activo ? (
+                          <span className="material-symbols-outlined" style={{ color: "#000000" }}>delete</span>
+                        ) : (
+                          <span className="material-symbols-outlined" style={{ color: "#000000" }}>refresh</span>
+                        )}
                       </button>
                     </div>
                   </td>

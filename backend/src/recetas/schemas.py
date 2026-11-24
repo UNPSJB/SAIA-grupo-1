@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.recetas import exceptions
 from src.recetas.models import CLASE_FUNCIONAL, EstadoEtapaRecetaItem, EstadoGeneralRecetaChecklist
@@ -15,6 +15,23 @@ class ParametroControlReceta(BaseModel):
     umbral_minimo: Optional[float] = None
     umbral_maximo: Optional[float] = None
     requerimientos: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalizar_campos(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            mapping = {
+                "nombre": "nombre_dato",
+                "unidad": "unidad_medida",
+                "min": "umbral_minimo",
+                "max": "umbral_maximo",
+            }
+            d = dict(data)
+            for old_key, new_key in mapping.items():
+                if old_key in d and new_key not in d:
+                    d[new_key] = d[old_key]
+            return d
+        return data
 
 
 class ValorControlRegistrado(BaseModel):

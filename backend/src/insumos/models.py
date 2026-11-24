@@ -71,9 +71,6 @@ class Insumo(ModeloBase):
     proveedor: Mapped[Optional["Proveedor"]] = relationship(
         "Proveedor", back_populates="insumos", lazy="joined"
     )
-    lotes_asociados: Mapped[List["InsumoLote"]] = relationship(
-        "InsumoLote", back_populates="insumo"
-    )
 
     @property
     def medida(self) -> str:

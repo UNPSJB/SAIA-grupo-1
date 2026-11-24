@@ -495,33 +495,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           <button
             type="button"
-            className="btn-cancelar"
-            onClick={onVolver}
-            style={{ fontSize: "0.95rem", padding: "10px 18px" }}
-          >
-            Volver al producto
-          </button>
-          {onPrevisualizarBorrador && (
-            <button
-              type="button"
-              className="btn-secundario"
-              onClick={onPrevisualizarBorrador}
-              style={{
-                fontSize: "0.95rem",
-                padding: "10px 18px",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                label
-              </span>
-              <span>Previsualizar Rótulo</span>
-            </button>
-          )}
-          <button
-            type="button"
             className="btn-guardar"
             disabled={guardando || items.length === 0}
             onClick={guardarListaCompleta}
@@ -595,17 +568,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                 download
               </span>
               <span>Importar de lote</span>
-            </button>
-            <button
-              type="button"
-              className="btn-agregar"
-              style={{ fontSize: "0.88rem", padding: "7px 16px", display: "inline-flex", alignItems: "center", gap: "5px" }}
-              onClick={abrirModalNuevo}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                add
-              </span>
-              <span>Agregar ingrediente / aditivo</span>
             </button>
           </div>
         </CardContent>
@@ -721,14 +683,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               >
                 <button
                   type="button"
-                  className="btn-agregar"
-                  style={{ fontSize: "0.9rem", padding: "8px 18px" }}
-                  onClick={abrirModalNuevo}
-                >
-                  + Agregar primer ingrediente
-                </button>
-                <button
-                  type="button"
                   className="btn-cancelar"
                   style={{ fontSize: "0.9rem", padding: "8px 18px", display: "inline-flex", alignItems: "center", gap: "6px" }}
                   onClick={() => setDialogImportarAbierto(true)}
@@ -762,21 +716,21 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                 }}
               >
                 <colgroup>
-                  <col style={{ width: "55px" }} />
-                  <col style={{ width: "24%" }} />
-                  <col style={{ width: "17%" }} />
-                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "80px" }} />
+                  <col style={{ width: "22%" }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "12%" }} />
                   <col />
-                  <col style={{ width: "70px" }} />
+                  <col style={{ width: "100px" }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th
                       style={{
                         textAlign: "center",
-                        padding: "0.75rem 0.25rem",
+                        padding: "0.75rem 0.5rem",
                         fontSize: "0.76rem",
-                        whiteSpace: "normal",
+                        whiteSpace: "nowrap",
                         boxSizing: "border-box",
                       }}
                     >
@@ -826,7 +780,7 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     <th
                       style={{
                         textAlign: "center",
-                        padding: "0.75rem 0.25rem",
+                        padding: "0.75rem 0.5rem",
                         fontSize: "0.76rem",
                         whiteSpace: "nowrap",
                         boxSizing: "border-box",
@@ -1120,29 +1074,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                   </button>
                 </>
               )}
-
-              {onPrevisualizarBorrador && (
-                <button
-                  type="button"
-                  className="btn-guardar"
-                  onClick={onPrevisualizarBorrador}
-                  style={{
-                    fontSize: "0.85rem",
-                    padding: "7px 16px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                    label
-                  </span>
-                  <span>Ver Rótulo Completo</span>
-                  <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>
-                    arrow_forward
-                  </span>
-                </button>
-              )}
             </div>
           </div>
 
@@ -1222,9 +1153,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
                     Simulación de Etiqueta (Normativa CAA)
                   </span>
                 </div>
-                <span style={{ fontSize: "0.72rem", color: "var(--color-texto-sec)" }}>
-                  Formato: {formato.replace(/_/g, " ")}
-                </span>
               </div>
 
               <div
@@ -1280,30 +1208,6 @@ export const OrdenarIngredientes: React.FC<OrdenarIngredientesProps> = ({
               </p>
             </div>
           )}
-
-          <div
-            style={{
-              marginTop: "18px",
-              padding: "12px 16px",
-              background: "rgba(59, 130, 246, 0.05)",
-              border: "1px solid rgba(59, 130, 246, 0.15)",
-              borderRadius: "8px",
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "10px",
-              fontSize: "0.85rem",
-              color: "var(--color-texto-sec)",
-              lineHeight: 1.5,
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#3b82f6", flexShrink: 0, marginTop: "2px" }}>
-              gavel
-            </span>
-            <div>
-              <strong style={{ color: "var(--color-texto)" }}>Cumplimiento Normativo (CAA Cap. V - Res. GMC 26/03):</strong>{" "}
-              Los ingredientes se listan en orden decreciente de peso inicial. Los aditivos se colocan al final agrupados por su función tecnológica con su nombre completo y/o número INS según el formato seleccionado. Los aromatizantes/saborizantes se declaran obligatoriamente de forma genérica solo por su función.
-            </div>
-          </div>
         </CardContent>
       </Card>
 

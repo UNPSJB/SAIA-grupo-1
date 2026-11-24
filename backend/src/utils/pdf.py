@@ -19,7 +19,6 @@ from . import models, schemas
 
 EXTENSIONES_LOGO_VALIDAS = {".png", ".jpg", ".jpeg"}
 CONTENT_TYPES_LOGO_VALIDOS = {"image/png", "image/jpeg"}
-# Usá el mismo Path / directorio de archivos que manejás en tu módulo (ej. LOGOS_DIR)
 LOGOS_DIR = Path("archivos/logos")
 
 
@@ -28,13 +27,11 @@ def _cargar_imagen_logo(logo: Optional[str]):
         return None
 
     valor = logo.strip()
-    # Si es URL HTTP/HTTPS completa
     if valor.startswith(("http://", "https://")):
         req = urllib.request.Request(valor, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=5) as resp:
             return ImageReader(io.BytesIO(resp.read()))
 
-    # Si es ruta relativa servida por tu backend (ej. /pdfs/logos/logo_empresa.png)
     ruta_relativa = valor.lstrip("/")
     posibles_rutas = [
         Path(valor),
@@ -67,7 +64,6 @@ def guardar_logo_pdf(db: Session, archivo_logo: UploadFile) -> models.PD_EFE:
     finally:
         archivo_logo.file.close()
 
-    # URL/ruta que se guarda en el atributo `logo` (mismo estilo que calibración)
     url_logo = f"/pdfs/logos/{nombre_final}"
 
     config = _obtener_o_crear_config_pdf(db)
@@ -134,7 +130,6 @@ def generar_respuesta_pdf(
 
     buffer = io.BytesIO()
 
-    # Documento A4 apaisado para dar buen margen a las columnas
     doc = SimpleDocTemplate(
         buffer,
         pagesize=landscape(A4),
@@ -147,7 +142,6 @@ def generar_respuesta_pdf(
     elements = []
     styles = getSampleStyleSheet()
 
-    # Estilos del título
     titulo_style = ParagraphStyle(
         "TituloReporte",
         parent=styles["Heading1"],
@@ -160,11 +154,9 @@ def generar_respuesta_pdf(
     elements.append(Paragraph(titulo_reporte, titulo_style))
     elements.append(Spacer(1, 10))
 
-    # Construcción de la tabla
     headers_keys = list(columnas.keys())
     headers_labels = list(columnas.values())
 
-    # Estilos para celdas de texto
     header_style = ParagraphStyle(
         "HeaderStyle",
         fontName=fuente_negrita,
@@ -181,10 +173,8 @@ def generar_respuesta_pdf(
         textColor=colors.HexColor("#1e293b"),
     )
 
-    # 1. Fila de Encabezados
     tabla_datos = [[Paragraph(label, header_style) for label in headers_labels]]
 
-    # 2. Filas de Datos
     for fila in datos:
         row = []
         for key in headers_keys:
@@ -192,7 +182,6 @@ def generar_respuesta_pdf(
             row.append(Paragraph(val, cell_style))
         tabla_datos.append(row)
 
-    # Crear tabla con ancho automático repartido
     t = Table(tabla_datos, repeatRows=1)
     t.setStyle(
         TableStyle(

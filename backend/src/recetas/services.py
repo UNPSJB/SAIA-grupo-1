@@ -94,7 +94,6 @@ def _normalizar_detalle_para_guardar(db: Session, detalle: dict) -> dict:
     unidad_texto = d.pop("unidad_medida", None)
     unidad_id_explicit = d.pop("unidad_medida_id", None)
 
-    # La etapa de receta se asocia a TipoInsumo, no a un lote de Insumo
     tipo_id = d.get("tipo_insumo_id") or None
     adit_id = d.get("aditivo_id") or None
 

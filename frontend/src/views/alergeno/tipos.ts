@@ -19,7 +19,6 @@ export interface SimboloAlergenoOption {
   ruta: string;
 }
 
-// Agregá acá los demás íconos que guardes en frontend/public/alergenos/
 export const SIMBOLOS_ALERGENOS: SimboloAlergenoOption[] = [
   { etiqueta: 'Altramuces', ruta: '/alergenos/IconoAltramucesAlergeno.png' },
   { etiqueta: 'Apio', ruta: '/alergenos/IconoApioAlergeno.png' },
