@@ -6,6 +6,7 @@ export interface DocumentoReceta {
 export interface AlergenoItem {
   id: number;
   nombre: string;
+  simbolo:string;
 }
 
 export interface Producto {

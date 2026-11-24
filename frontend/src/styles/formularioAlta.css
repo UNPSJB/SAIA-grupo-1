@@ -1628,3 +1628,50 @@ dialog .btn-guardar{
   font-weight: 700;
   color: var(--color-primario-texto);
 }
+
+
+.alergenos-seleccion-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.alergeno-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-borde);
+  background-color: var(--color-superficie);
+  color: var(--color-texto);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.alergeno-chip-btn:hover {
+  background-color: var(--color-fondo);
+  border-color: var(--color-texto-sec);
+}
+
+.alergeno-chip-btn.seleccionado {
+  border: 2px solid var(--color-primario, #2563eb);
+  background-color: var(--color-suave);
+  color: var(--color-primario-texto);
+  font-weight: 600;
+}
+
+.alergeno-chip-icono {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.alergeno-chip-texto {
+  line-height: 1.2;
+}

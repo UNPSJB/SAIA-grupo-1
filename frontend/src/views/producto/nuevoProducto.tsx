@@ -279,34 +279,25 @@ function toggleAlergenoPrecaucion(alergenoId: number) {
 
         <div className="form-group">
           <label>Alérgenos por Posible Contaminación Cruzada ("Puede contener")</label>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(min(170px, 100%), 1fr))",
-              gap: "8px",
-              marginTop: "6px",
-            }}
-          >
+          <div className="alergenos-seleccion-lista">
             {alergenos.map((alg) => {
               const checked = (producto.alergenos_precaucion_ids || []).includes(alg.id);
               return (
-                <label
+                <button
                   key={alg.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: "pointer",
-                    fontSize: "0.9rem",
-                  }}
+                  type="button"
+                  onClick={() => toggleAlergenoPrecaucion(alg.id)}
+                  className={`alergeno-chip-btn ${checked ? 'seleccionado' : ''}`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleAlergenoPrecaucion(alg.id)}
-                  />
-                  <span>{alg.nombre}</span>
-                </label>
+                  {alg.simbolo && (
+                    <img
+                      src={alg.simbolo}
+                      alt={alg.nombre}
+                      className="alergeno-chip-icono"
+                    />
+                  )}
+                  <span className="alergeno-chip-texto">{alg.nombre}</span>
+                </button>
               );
             })}
           </div>

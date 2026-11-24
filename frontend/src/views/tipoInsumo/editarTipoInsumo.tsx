@@ -203,12 +203,7 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
         <div className="form-group">
           <label>Alérgenos Asociados</label>
           <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(140px, 100%), 1fr))',
-              gap: '8px',
-              marginTop: '6px',
-            }}
+            className="alergenos-seleccion-lista"
           >
             {alergenosDisponibles.map((alg) => {
               const seleccionado = form.alergeno_ids.includes(alg.id);
@@ -217,24 +212,12 @@ export const EditarTipoInsumo: React.FC<EditarTipoInsumoProps> = ({ id, onSucces
                   key={alg.id}
                   type="button"
                   onClick={() => handleToggleAlergeno(alg.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 10px',
-                    borderRadius: '6px',
-                    border: seleccionado ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                    backgroundColor: seleccionado ? '#eff6ff' : '#ffffff',
-                    color: seleccionado ? '#1d4ed8' : '#334155',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    fontWeight: seleccionado ? 700 : 500,
-                  }}
+                  className={`alergeno-chip-btn ${seleccionado ? 'seleccionado' : ''}`}
                 >
                   {alg.simbolo && (
-                    <img src={alg.simbolo} alt={alg.nombre} style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                    <img src={alg.simbolo} alt={alg.nombre} className="alergeno-chip-icono" />
                   )}
-                  <span>{alg.nombre}</span>
+                  <span className="alergeno-chip-texto">{alg.nombre}</span>
                 </button>
               );
             })}
