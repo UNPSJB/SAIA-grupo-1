@@ -202,7 +202,7 @@ export const RotuladoProducto: React.FC<RotuladoProductoProps> = ({ productoId }
                                 title={abierto ? 'Ocultar detalle' : 'Ver detalle'}
                                 onClick={() => setDetalleAbierto(abierto ? null : c.id)}
                               >
-                                {abierto ? '▴' : '👁'}
+                                {abierto ? '▴' : <span className="material-symbols-outlined">visibility</span>}
                               </button>
                             </td>
                           </tr>

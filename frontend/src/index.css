@@ -94,10 +94,15 @@ code {
   letter-spacing: normal;
   text-transform: none;
   display: inline-block;
+  vertical-align: middle;
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
   font-feature-settings: 'liga';
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
+}
+
+.btn-icon .material-symbols-outlined {
+  font-size: 18px;
 }

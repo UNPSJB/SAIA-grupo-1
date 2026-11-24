@@ -842,22 +842,41 @@ def calcular_octogonos_e12(
         az_anad = borrador.azucares_anadidos or 0.0
         sodio_mg = borrador.sodio or 0.0
 
+        from src.rotulado_frontal.services import obtener_parametros_sellos_vigentes, UNIDADES_LIQUIDAS
+
+        params_s = obtener_parametros_sellos_vigentes(sess) if sess is not None else None
+        f_carb = float(params_s.factor_kcal_carbohidratos) if params_s else 4.0
+        f_grasa = float(params_s.factor_kcal_grasas) if params_s else 9.0
+        u_az = float(params_s.umbral_azucares_pct) / 100.0 if params_s else 0.10
+        u_gt = float(params_s.umbral_grasas_totales_pct) / 100.0 if params_s else 0.30
+        u_gs = float(params_s.umbral_grasas_saturadas_pct) / 100.0 if params_s else 0.10
+        u_sodio_rel = float(params_s.umbral_sodio_mg_por_kcal) if params_s else 1.0
+        u_sodio_abs = float(params_s.umbral_sodio_max_100g) if params_s else 300.0
+        u_cal_sol = float(params_s.umbral_calorias_solido_100g) if params_s else 275.0
+        u_cal_liq = float(params_s.umbral_calorias_liquido_100ml) if params_s else 25.0
+
+        unidad_prod = ""
+        if borrador.producto is not None:
+            unidad_prod = str(getattr(borrador.producto, "unidadMedida", "") or "").strip().lower()
+        es_liquido = unidad_prod in {u.lower() for u in UNIDADES_LIQUIDAS}
+        u_cal = u_cal_liq if es_liquido else u_cal_sol
+
         exceso_az = (
-            (az_anad * 4 >= kcal * 0.10) if (kcal > 0 and az_anad > 0) else False
+            (az_anad * f_carb >= kcal * u_az) if (kcal > 0 and az_anad > 0) else False
         )
         exceso_gt = (
-            (gt * 9 >= kcal * 0.30) if (kcal > 0 and gt > 0) else False
+            (gt * f_grasa >= kcal * u_gt) if (kcal > 0 and gt > 0) else False
         )
         exceso_gs = (
-            (gs * 9 >= kcal * 0.10) if (kcal > 0 and gs > 0) else False
+            (gs * f_grasa >= kcal * u_gs) if (kcal > 0 and gs > 0) else False
         )
         exceso_sodio = (
-            ((sodio_mg >= kcal and kcal > 0) or (sodio_mg >= 300))
+            (((sodio_mg / kcal) >= u_sodio_rel and kcal > 0) or (sodio_mg >= u_sodio_abs))
             if sodio_mg > 0
             else False
         )
         exceso_cal = (
-            (kcal >= 275 and (exceso_az or exceso_gt or exceso_gs))
+            (kcal >= u_cal and (exceso_az or exceso_gt or exceso_gs))
             if kcal > 0
             else False
         )
@@ -1092,19 +1111,74 @@ def generar_filas_tabla_nutricional(
         pct = (val / ref) * 100.0
         return f"{round(pct)} %"
 
+    from sqlalchemy.orm import object_session
+    from src.nutricion.constants import NUTRIENTES_DEFECTO_CAA
+    from src.nutricion.services import listar_parametros as listar_parametros_nutricion
+
+    vdr_map: Dict[str, Optional[float]] = {
+        p["nutriente"]: p.get("vdr") for p in NUTRIENTES_DEFECTO_CAA
+    }
+    sess_vdr = object_session(borrador)
+    if sess_vdr is not None:
+        for p_db in listar_parametros_nutricion(sess_vdr):
+            vdr_map[p_db.nutriente] = p_db.vdr
+
+    def _vdr(clave: str) -> float:
+        val_r = vdr_map.get(clave)
+        return float(val_r) if val_r is not None else 0.0
+
+    import re as _re
+    tamano_porcion_g: Optional[float] = None
+    if borrador.producto is not None and getattr(borrador.producto, "tamano_porcion_g", None):
+        tamano_porcion_g = float(borrador.producto.tamano_porcion_g)
+    elif borrador.porcion:
+        m_porc = _re.search(r"(\d+(?:[.,]\d+)?)", str(borrador.porcion))
+        if m_porc:
+            try:
+                tamano_porcion_g = float(m_porc.group(1).replace(",", "."))
+            except ValueError:
+                tamano_porcion_g = None
+    factor_porcion = (tamano_porcion_g / 100.0) if (tamano_porcion_g and tamano_porcion_g > 0) else 1.0
+
+    from src.nutricion.models import InformacionNutricionalProducto
+
+    info_nut_db = (
+        sess_vdr.scalar(
+            select(InformacionNutricionalProducto).where(
+                InformacionNutricionalProducto.producto_id == borrador.producto_id
+            )
+        )
+        if sess_vdr is not None
+        else None
+    )
+
+    def _v100(val_porc: Optional[float], campo_100g: str, dec: int = 1) -> Optional[float]:
+        if info_nut_db is not None:
+            v_db = getattr(info_nut_db, campo_100g, None)
+            if v_db is not None:
+                return round(float(v_db), dec)
+        if val_porc is None:
+            return None
+        return round(val_porc / factor_porcion, dec)
+
     filas: List[schemas.FilaTablaNutricional] = []
 
     kcal = borrador.valor_energetico_kcal
     kj = borrador.valor_energetico_kj
-    texto_kcal = f"{int(kcal)} kcal" if kcal is not None else None
+    kcal_100 = round(_v100(kcal, "energia_kcal_100g", 0)) if _v100(kcal, "energia_kcal_100g", 0) is not None else None
+    kj_100 = round(_v100(kj, "energia_kj_100g", 0)) if _v100(kj, "energia_kj_100g", 0) is not None else None
+    texto_kcal_100 = f"{kcal_100} kcal" if kcal_100 is not None else None
+    if kcal_100 is not None and kj_100 is not None:
+        texto_kcal_100 = f"{kcal_100} kcal / {kj_100} kJ"
+    texto_kcal_p = f"{round(kcal)} kcal" if kcal is not None else None
     if kcal is not None and kj is not None:
-        texto_kcal = f"{int(kcal)} kcal / {int(kj)} kJ"
-    vd_kcal = _calc_vd(kcal, 2000.0)
+        texto_kcal_p = f"{round(kcal)} kcal / {round(kj)} kJ"
+    vd_kcal = _calc_vd(kcal, _vdr("energia_kcal"))
     filas.append(
         schemas.FilaTablaNutricional(
             nutriente="Valor energético",
-            por_100g=texto_kcal,
-            por_porcion=texto_kcal,
+            por_100g=texto_kcal_100,
+            por_porcion=texto_kcal_p,
             porcentaje_vd=vd_kcal,
             es_subitem=False,
         )
@@ -1114,9 +1188,9 @@ def generar_filas_tabla_nutricional(
     filas.append(
         schemas.FilaTablaNutricional(
             nutriente="Carbohidratos",
-            por_100g=_fmt(carb),
+            por_100g=_fmt(_v100(carb, "carbohidratos_100g")),
             por_porcion=_fmt(carb),
-            porcentaje_vd=_calc_vd(carb, 300.0),
+            porcentaje_vd=_calc_vd(carb, _vdr("carbohidratos")),
             es_subitem=False,
         )
     )
@@ -1126,7 +1200,7 @@ def generar_filas_tabla_nutricional(
         filas.append(
             schemas.FilaTablaNutricional(
                 nutriente="Azúcares totales",
-                por_100g=_fmt(az_tot),
+                por_100g=_fmt(_v100(az_tot, "azucares_totales_100g")),
                 por_porcion=_fmt(az_tot),
                 porcentaje_vd=None,
                 es_subitem=True,
@@ -1138,9 +1212,9 @@ def generar_filas_tabla_nutricional(
         filas.append(
             schemas.FilaTablaNutricional(
                 nutriente="Azúcares añadidos",
-                por_100g=_fmt(az_anad),
+                por_100g=_fmt(_v100(az_anad, "azucares_anadidos_100g")),
                 por_porcion=_fmt(az_anad),
-                porcentaje_vd=_calc_vd(az_anad, 50.0),
+                porcentaje_vd=_calc_vd(az_anad, _vdr("azucares_anadidos")),
                 es_subitem=True,
             )
         )
@@ -1149,9 +1223,9 @@ def generar_filas_tabla_nutricional(
     filas.append(
         schemas.FilaTablaNutricional(
             nutriente="Proteínas",
-            por_100g=_fmt(prot),
+            por_100g=_fmt(_v100(prot, "proteinas_100g")),
             por_porcion=_fmt(prot),
-            porcentaje_vd=_calc_vd(prot, 75.0),
+            porcentaje_vd=_calc_vd(prot, _vdr("proteinas")),
             es_subitem=False,
         )
     )
@@ -1160,9 +1234,9 @@ def generar_filas_tabla_nutricional(
     filas.append(
         schemas.FilaTablaNutricional(
             nutriente="Grasas totales",
-            por_100g=_fmt(gt),
+            por_100g=_fmt(_v100(gt, "grasas_totales_100g")),
             por_porcion=_fmt(gt),
-            porcentaje_vd=_calc_vd(gt, 55.0),
+            porcentaje_vd=_calc_vd(gt, _vdr("grasas_totales")),
             es_subitem=False,
         )
     )
@@ -1172,9 +1246,9 @@ def generar_filas_tabla_nutricional(
         filas.append(
             schemas.FilaTablaNutricional(
                 nutriente="Grasas saturadas",
-                por_100g=_fmt(gs),
+                por_100g=_fmt(_v100(gs, "grasas_saturadas_100g")),
                 por_porcion=_fmt(gs),
-                porcentaje_vd=_calc_vd(gs, 22.0),
+                porcentaje_vd=_calc_vd(gs, _vdr("grasas_saturadas")),
                 es_subitem=True,
             )
         )
@@ -1184,7 +1258,7 @@ def generar_filas_tabla_nutricional(
         filas.append(
             schemas.FilaTablaNutricional(
                 nutriente="Grasas trans",
-                por_100g=_fmt(gtr),
+                por_100g=_fmt(_v100(gtr, "grasas_trans_100g")),
                 por_porcion=_fmt(gtr),
                 porcentaje_vd=None,
                 es_subitem=True,
@@ -1196,9 +1270,9 @@ def generar_filas_tabla_nutricional(
         filas.append(
             schemas.FilaTablaNutricional(
                 nutriente="Fibra alimentaria",
-                por_100g=_fmt(fibra),
+                por_100g=_fmt(_v100(fibra, "fibra_alimentaria_100g")),
                 por_porcion=_fmt(fibra),
-                porcentaje_vd=_calc_vd(fibra, 25.0),
+                porcentaje_vd=_calc_vd(fibra, _vdr("fibra_alimentaria")),
                 es_subitem=False,
             )
         )
@@ -1207,9 +1281,9 @@ def generar_filas_tabla_nutricional(
     filas.append(
         schemas.FilaTablaNutricional(
             nutriente="Sodio",
-            por_100g=_fmt(sodio, "mg"),
+            por_100g=_fmt(_v100(sodio, "sodio_mg_100g", 0), "mg"),
             por_porcion=_fmt(sodio, "mg"),
-            porcentaje_vd=_calc_vd(sodio, 2000.0),
+            porcentaje_vd=_calc_vd(sodio, _vdr("sodio_mg")),
             es_subitem=False,
         )
     )
@@ -1530,7 +1604,7 @@ def generar_pdf_borrador_rotulo(
 
     borrador = obtener_o_crear_borrador(db, producto_id)
     lista = obtener_lista_rotulo(db, producto_id)
-    datos_rotulo = mapear_respuesta_borrador(borrador, lista)
+    datos_rotulo = mapear_respuesta_borrador(db, borrador, lista)
 
     # Validar que no haya menciones de aprobación o certificación
     validar_sin_menciones_aprobacion([
@@ -1625,7 +1699,7 @@ def generar_pdf_borrador_rotulo(
             })
 
         receta_info["peso_total_ingredientes"] = round(peso_total_g / 1000.0, 3) if peso_total_g >= 1000 else round(peso_total_g, 2)
-        factor_r = (rend_final / (peso_total_g / 1000.0)) if peso_total_g > 0 and rend_final > 0 else (rend_final / peso_total_g if peso_total_g > 0 else 1.0)
+        factor_r = round(rend_final / peso_total_g, 4) if (peso_total_g > 0 and rend_final > 0) else 1.0
         receta_info["factor_rendimiento"] = factor_r
 
         for it in items_temp:
@@ -1640,85 +1714,88 @@ def generar_pdf_borrador_rotulo(
 
         composicion_ingredientes.sort(key=lambda x: x["peso_gramos"], reverse=True)
 
-    conjunto_vigente = db.scalar(
-        select(ConjuntoParametrosRotulado)
-        .where(ConjuntoParametrosRotulado.estado == EstadoConjunto.PUBLICADO)
-        .order_by(ConjuntoParametrosRotulado.fecha_vigencia.desc())
-        .limit(1)
+    from src.rotulado_frontal.services import (
+        modulo_activo as modulo_octogonos_activo,
+        ultimo_calculo as obtener_ultimo_calculo_sellos,
+        calcular_desde_nutricion_producto,
     )
-    if conjunto_vigente:
-        version_normativa = f"Versión {conjunto_vigente.version} ({conjunto_vigente.norma_origen or 'Ley 27.642'})"
+
+    octogonos_habilitados = modulo_octogonos_activo(db)
+    producto_aplica = bool(getattr(borrador.producto, "aplica_rotulado", True))
+    detalles_sellos: List[Dict[str, str]] = []
+
+    if not octogonos_habilitados:
+        version_normativa = "Módulo de octógonos desactivado en Configuración"
+        datos_rotulo.octogonos = []
+        datos_rotulo.mostrar_octogonos = False
+    elif not producto_aplica:
+        version_normativa = "Producto exceptuado de rotulado frontal"
+        datos_rotulo.octogonos = []
+        datos_rotulo.mostrar_octogonos = False
     else:
-        version_normativa = "Ley 27.642 - Etapa 2 / Modelo de Perfil de Nutrientes OPS/ANMAT"
+        calculo_guardado = obtener_ultimo_calculo_sellos(db, producto_id)
+        if calculo_guardado is None:
+            try:
+                calculo_guardado = calcular_desde_nutricion_producto(db, producto_id, usuario=usuario)
+            except Exception:
+                calculo_guardado = None
 
-    kcal = borrador.valor_energetico_kcal or 0.0
-    gt = borrador.grasas_totales or 0.0
-    gs = borrador.grasas_saturadas or 0.0
-    az_anad = borrador.azucares_anadidos or 0.0
-    sodio_mg = borrador.sodio or 0.0
+        if calculo_guardado is not None:
+            norma_origen = getattr(calculo_guardado, "norma_origen", None) or "Ley 27.642"
+            version_normativa = f"Versión {calculo_guardado.version_parametros} ({norma_origen})"
+            pasos_calc = calculo_guardado.pasos or []
+            if pasos_calc:
+                for p in pasos_calc:
+                    aplica_p = bool(p.get("aplica"))
+                    supera_p = bool(p.get("supera"))
+                    resultado_txt = (
+                        "SUPERADO (Sello)" if supera_p else ("No supera" if aplica_p else "No aplica")
+                    )
+                    detalles_sellos.append({
+                        "nutriente": str(p.get("criterio") or p.get("leyenda") or "-"),
+                        "criterio": str(p.get("detalle_agregado") or "-"),
+                        "valor": str(p.get("calculo_realizado") or "-"),
+                        "umbral": str(p.get("umbral") or "-"),
+                        "resultado": resultado_txt,
+                    })
+            else:
+                for d in (calculo_guardado.resultado or []):
+                    supera_d = bool(d.get("aplica"))
+                    detalles_sellos.append({
+                        "nutriente": str(d.get("leyenda") or d.get("codigo") or "-"),
+                        "criterio": str(d.get("motivo") or "-"),
+                        "valor": "-",
+                        "umbral": "-",
+                        "resultado": "SUPERADO (Sello)" if supera_d else "No supera",
+                    })
+        else:
+            conjunto_vigente = db.scalar(
+                select(ConjuntoParametrosRotulado)
+                .where(ConjuntoParametrosRotulado.estado == EstadoConjunto.PUBLICADO)
+                .order_by(ConjuntoParametrosRotulado.fecha_vigencia.desc())
+                .limit(1)
+            )
+            if conjunto_vigente:
+                version_normativa = f"Versión {conjunto_vigente.version} ({conjunto_vigente.norma_origen or 'Ley 27.642'})"
+            else:
+                version_normativa = "Sin cálculo de sellos registrado"
 
-    pct_az = (az_anad * 4 / kcal * 100) if kcal > 0 else 0.0
-    pct_gt = (gt * 9 / kcal * 100) if kcal > 0 else 0.0
-    pct_gs = (gs * 9 / kcal * 100) if kcal > 0 else 0.0
-    rel_sodio = (sodio_mg / kcal) if kcal > 0 else 0.0
-
-    exceso_az = pct_az >= 10.0 if (kcal > 0 and az_anad > 0) else False
-    exceso_gt = pct_gt >= 30.0 if (kcal > 0 and gt > 0) else False
-    exceso_gs = pct_gs >= 10.0 if (kcal > 0 and gs > 0) else False
-    exceso_sodio = (rel_sodio >= 1.0 or sodio_mg >= 300.0) if sodio_mg > 0 else False
-    exceso_cal = (kcal >= 275.0 and (exceso_az or exceso_gt or exceso_gs)) if kcal > 0 else False
-
-    detalles_sellos = [
-        {
-            "nutriente": "Azúcares añadidos",
-            "criterio": "Aporte calórico >= 10% energía",
-            "valor": f"{pct_az:.1f} % kcal" if kcal > 0 else "0.0 %",
-            "umbral": ">= 10.0 %",
-            "resultado": "SUPERADO (Sello)" if exceso_az else "No supera",
-        },
-        {
-            "nutriente": "Grasas totales",
-            "criterio": "Aporte calórico >= 30% energía",
-            "valor": f"{pct_gt:.1f} % kcal" if kcal > 0 else "0.0 %",
-            "umbral": ">= 30.0 %",
-            "resultado": "SUPERADO (Sello)" if exceso_gt else "No supera",
-        },
-        {
-            "nutriente": "Grasas saturadas",
-            "criterio": "Aporte calórico >= 10% energía",
-            "valor": f"{pct_gs:.1f} % kcal" if kcal > 0 else "0.0 %",
-            "umbral": ">= 10.0 %",
-            "resultado": "SUPERADO (Sello)" if exceso_gs else "No supera",
-        },
-        {
-            "nutriente": "Sodio",
-            "criterio": ">= 1 mg/kcal o >= 300 mg/100g",
-            "valor": f"{rel_sodio:.2f} mg/kcal ({sodio_mg:.1f} mg/100g)",
-            "umbral": ">= 1.0 ó >= 300",
-            "resultado": "SUPERADO (Sello)" if exceso_sodio else "No supera",
-        },
-        {
-            "nutriente": "Calorías (energía)",
-            "criterio": ">= 275 kcal/100g y exceso de nutriente",
-            "valor": f"{kcal:.1f} kcal/100g",
-            "umbral": ">= 275 kcal/100g",
-            "resultado": "SUPERADO (Sello)" if exceso_cal else "No supera",
-        },
-        {
-            "nutriente": "Edulcorantes",
-            "criterio": "Presencia de edulcorantes añadidos",
-            "valor": "Detectado" if borrador.contiene_edulcorantes else "No detectado",
-            "umbral": "Presencia",
-            "resultado": "APLICA LEYENDA" if borrador.contiene_edulcorantes else "No aplica",
-        },
-        {
-            "nutriente": "Cafeína",
-            "criterio": "Presencia de cafeína añadida",
-            "valor": "Detectado" if borrador.contiene_cafeina else "No detectado",
-            "umbral": "Presencia",
-            "resultado": "APLICA LEYENDA" if borrador.contiene_cafeina else "No aplica",
-        },
-    ]
+        detalles_sellos.extend([
+            {
+                "nutriente": "Edulcorantes",
+                "criterio": "Presencia de edulcorantes añadidos",
+                "valor": "Detectado" if borrador.contiene_edulcorantes else "No detectado",
+                "umbral": "Presencia",
+                "resultado": "APLICA LEYENDA" if borrador.contiene_edulcorantes else "No aplica",
+            },
+            {
+                "nutriente": "Cafeína",
+                "criterio": "Presencia de cafeína añadida",
+                "valor": "Detectado" if borrador.contiene_cafeina else "No detectado",
+                "umbral": "Presencia",
+                "resultado": "APLICA LEYENDA" if borrador.contiene_cafeina else "No aplica",
+            },
+        ])
 
     calculo_sellos = {
         "version_normativa": version_normativa,

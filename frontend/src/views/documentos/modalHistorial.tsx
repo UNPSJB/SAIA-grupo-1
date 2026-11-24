@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from "react";
 import type { VersionItem } from "./tipos";
 import { apiFetch } from "../../api/client";
@@ -40,6 +41,7 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
   documentoId,
   documentoTitulo,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [versiones, setVersiones] = useState<VersionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Error al descargar");
+      mostrarError('Error', err instanceof Error ? err.message : "Error al descargar");
     }
   };
 
@@ -102,7 +104,7 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
       const fileUrl = window.URL.createObjectURL(blob);
       window.open(fileUrl, "_blank");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Error al abrir previsualización");
+      mostrarError('Error', err instanceof Error ? err.message : "Error al abrir previsualización");
     }
   };
 
@@ -222,7 +224,7 @@ export const ModalHistorialVersiones: React.FC<ModalHistorialProps> = ({
                               title={`Previsualizar archivo (${pesoStr})`}
                               onClick={() => handlePrevisualizar(v)}
                             >
-                              👁
+                              <span className="material-symbols-outlined">visibility</span>
                             </button>
                             <button
                               type="button"

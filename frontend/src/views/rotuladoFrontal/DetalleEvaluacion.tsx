@@ -40,15 +40,15 @@ export const DetalleEvaluacion: React.FC<DetalleEvaluacionProps> = ({ detalle, p
                   <td>
                     {p.supera ? (
                       <span className="rot-resultado-supera" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        ✅ Lleva sello
+                        <span className="material-symbols-outlined">check_box</span> Lleva sello
                       </span>
                     ) : !p.aplica ? (
                       <span className="rot-resultado-na" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        ❌ No aplica
+                        <span className="material-symbols-outlined">cancel</span> No aplica
                       </span>
                     ) : (
                       <span className="rot-resultado-ok" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        ❌ No supera
+                        <span className="material-symbols-outlined">cancel</span> No supera
                       </span>
                     )}
                   </td>

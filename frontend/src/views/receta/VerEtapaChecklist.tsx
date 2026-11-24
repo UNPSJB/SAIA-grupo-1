@@ -452,7 +452,7 @@ export const DetalleChecklistReceta: React.FC<DetalleChecklistRecetaProps> = ({
                 >
                   <div className="plan-header-info">
                     <span className="plan-nombre">{recetaNombre}</span>
-                    <span className="plan-equipo-tag">📋 Receta Vigente</span>
+                    <span className="plan-equipo-tag"><span className="material-symbols-outlined">assignment</span> Receta Vigente</span>
                   </div>
 
                   <div className="plan-header-stats">

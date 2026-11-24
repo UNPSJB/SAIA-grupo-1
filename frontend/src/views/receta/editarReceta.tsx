@@ -454,7 +454,7 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
                             setModalEditar(true);
                           }}
                         >
-                          ✎
+                          <span className="material-symbols-outlined">edit</span>
                         </button>
                         <button
                           type="button"
@@ -462,7 +462,7 @@ export default function EditarReceta({ recetaID, onSuccess, onCancel }: EditarRe
                           title="Quitar etapa"
                           onClick={() => abrirConfirmacion(d)}
                         >
-                          🗑
+                          <span className="material-symbols-outlined">delete</span>
                         </button>
                       </div>
                     </td>

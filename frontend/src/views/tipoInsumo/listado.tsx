@@ -228,21 +228,21 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
                         title="Ver detalle"
                         onClick={() => onVerDetalleClick?.(t.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         className="btn-icon btn-editar"
                         title="Editar"
                         onClick={() => onEditarClick?.(t.id)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         className={`btn-icon ${t.activo ? 'btn-eliminar' : 'btn-reactivar'}`}
                         title={t.activo ? 'Dar de baja' : 'Restaurar'}
                         onClick={() => abrirConfirmacion(t)}
                       >
-                        {t.activo ? '🗑' : '🔄'}
+                        {t.activo ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
                       </button>
                     </div>
                   </td>

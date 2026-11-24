@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 from sqlalchemy.orm import Session
 from src.insumos.models import Insumo
-from src.tipoInsumo.models import Aditivo
+from src.tipoInsumo.models import Aditivo, TipoInsumo
 from src.producto.models import Producto
 from src.recetas.models import Receta, VersionReceta, RecetaDetalle
 from src.nutricion import services
@@ -117,14 +117,10 @@ def test_actualizar_datos_insumo(session: Session):
     assert actualizado.carbohidratos == 65.0
 
 def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
-    ahora = datetime.now()
-    h_harina = Insumo(
+    h_harina = TipoInsumo(
         nombre="Harina 000 Ref",
-        lote="REF-01",
-        fechaRecepcion=ahora,
-        cantRecibida=100.0,
-        stock=100.0,
-        medida="kilogramos",
+        descripcion="Harina",
+        unidad_medida_id=1,
         energia_kcal=350.0,
         energia_kj=1464.4,
         carbohidratos=72.0,
@@ -138,13 +134,10 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         sodio_mg=5.0,
         fuente_datos="CAA",
     )
-    h_agua = Insumo(
+    h_agua = TipoInsumo(
         nombre="Agua Potable Ref",
-        lote="REF-02",
-        fechaRecepcion=ahora,
-        cantRecibida=100.0,
-        stock=100.0,
-        medida="litros",
+        descripcion="Agua",
+        unidad_medida_id=3,
         energia_kcal=0.0,
         energia_kj=0.0,
         carbohidratos=0.0,
@@ -158,13 +151,10 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         sodio_mg=0.0,
         fuente_datos="CAA",
     )
-    h_levadura = Insumo(
+    h_levadura = TipoInsumo(
         nombre="Levadura Fresca Ref",
-        lote="REF-03",
-        fechaRecepcion=ahora,
-        cantRecibida=10.0,
-        stock=10.0,
-        medida="kilogramos",
+        descripcion="Levadura",
+        unidad_medida_id=1,
         energia_kcal=105.0,
         energia_kj=439.3,
         carbohidratos=11.0,
@@ -178,13 +168,10 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         sodio_mg=30.0,
         fuente_datos="CAA",
     )
-    h_sal = Insumo(
+    h_sal = TipoInsumo(
         nombre="Sal Fina Ref",
-        lote="REF-04",
-        fechaRecepcion=ahora,
-        cantRecibida=10.0,
-        stock=10.0,
-        medida="kilogramos",
+        descripcion="Sal",
+        unidad_medida_id=1,
         energia_kcal=0.0,
         energia_kj=0.0,
         carbohidratos=0.0,
@@ -198,13 +185,10 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         sodio_mg=38850.0,
         fuente_datos="CAA",
     )
-    h_aceite = Insumo(
+    h_aceite = TipoInsumo(
         nombre="Aceite Girasol Ref",
-        lote="REF-05",
-        fechaRecepcion=ahora,
-        cantRecibida=10.0,
-        stock=10.0,
-        medida="litros",
+        descripcion="Aceite",
+        unidad_medida_id=3,
         energia_kcal=900.0,
         energia_kj=3765.6,
         carbohidratos=0.0,
@@ -256,7 +240,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         RecetaDetalle(
             nombre="Harina",
             version_receta_id=version.id,
-            ingrediente_id=h_harina.id,
+            tipo_insumo_id=h_harina.id,
             cantidad=1000.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
@@ -265,7 +249,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         RecetaDetalle(
             nombre="Agua",
             version_receta_id=version.id,
-            ingrediente_id=h_agua.id,
+            tipo_insumo_id=h_agua.id,
             cantidad=600.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
@@ -274,7 +258,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         RecetaDetalle(
             nombre="Levadura",
             version_receta_id=version.id,
-            ingrediente_id=h_levadura.id,
+            tipo_insumo_id=h_levadura.id,
             cantidad=30.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
@@ -283,7 +267,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         RecetaDetalle(
             nombre="Sal",
             version_receta_id=version.id,
-            ingrediente_id=h_sal.id,
+            tipo_insumo_id=h_sal.id,
             cantidad=20.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
@@ -292,7 +276,7 @@ def test_calculo_nutricional_referencia_catedra_pan_de_campo(session: Session):
         RecetaDetalle(
             nombre="Aceite",
             version_receta_id=version.id,
-            ingrediente_id=h_aceite.id,
+            tipo_insumo_id=h_aceite.id,
             cantidad=20.0,
             unidad_medida="GRAMOS",
             es_aditivo=False,
@@ -374,16 +358,11 @@ def test_receta_sin_ingredientes_falla(session: Session):
         services.calcular_informacion_nutricional(session, prod.id)
 
 def test_listar_ingredientes_incompletos_faltantes_y_fuente(session: Session):
-    ahora = datetime.now()
-    insumo_incompleto = Insumo(
+    insumo_incompleto = TipoInsumo(
         nombre="Harina Incompleta",
-        lote="INC-01",
-        fechaRecepcion=ahora,
-        cantRecibida=10.0,
-        stock=10.0,
-        medida="kilogramos",
+        descripcion="Harina",
+        unidad_medida_id=1,
         energia_kcal=300.0,
-        # faltan otros nutrientes y fuente_datos
     )
     session.add(insumo_incompleto)
     session.flush()
@@ -403,7 +382,7 @@ def test_listar_ingredientes_incompletos_faltantes_y_fuente(session: Session):
     det = RecetaDetalle(
         nombre="Harina",
         version_receta_id=version.id,
-        ingrediente_id=insumo_incompleto.id,
+        tipo_insumo_id=insumo_incompleto.id,
         cantidad=500.0,
         unidad_medida="GRAMOS",
         es_aditivo=False,
@@ -501,14 +480,10 @@ def test_aditivo_con_aporte_es_incompleto_si_falta_energia_o_sodio(session: Sess
     assert "Energía (kcal)" in incompletos[0]["campos_faltantes"]
 
 def test_completar_ingrediente_y_recalculo_automatico(session: Session):
-    ahora = datetime.now()
-    insumo = Insumo(
+    insumo = TipoInsumo(
         nombre="Avena Test Recalculo",
-        lote="AVE-01",
-        fechaRecepcion=ahora,
-        cantRecibida=10.0,
-        stock=10.0,
-        medida="kilogramos",
+        descripcion="Avena",
+        unidad_medida_id=1,
     )
     session.add(insumo)
     session.flush()
@@ -528,7 +503,7 @@ def test_completar_ingrediente_y_recalculo_automatico(session: Session):
     det = RecetaDetalle(
         nombre="Avena",
         version_receta_id=version.id,
-        ingrediente_id=insumo.id,
+        tipo_insumo_id=insumo.id,
         cantidad=500.0,
         unidad_medida="GRAMOS",
         es_aditivo=False,
@@ -537,14 +512,12 @@ def test_completar_ingrediente_y_recalculo_automatico(session: Session):
     session.add(det)
     session.commit()
 
-    # Inicialmente incompleto
     incompletos = services.listar_ingredientes_incompletos(session, prod.id)
     assert len(incompletos) == 1
 
-    # Completar ingrediente
     req = CompletarIngredienteRequest(
         producto_id=prod.id,
-        tipo_entidad="insumo",
+        tipo_entidad="tipo_insumo",
         entidad_id=insumo.id,
         valores={
             "fuente_datos": "CAA",
@@ -572,14 +545,10 @@ def test_completar_ingrediente_y_recalculo_automatico(session: Session):
 
 def test_guardar_porcion_y_medida_casera_declaradas(session: Session):
     services.asegurar_parametros_defecto(session)
-    ahora = datetime.now()
-    insumo = Insumo(
+    insumo = TipoInsumo(
         nombre="Harina Integral Test",
-        lote="L-INT-01",
-        fechaRecepcion=ahora,
-        cantRecibida=10.0,
-        stock=10.0,
-        medida="kilogramos",
+        descripcion="Harina Integral",
+        unidad_medida_id=1,
         energia_kcal=340.0,
         energia_kj=1422.0,
         carbohidratos=62.0,
@@ -622,7 +591,7 @@ def test_guardar_porcion_y_medida_casera_declaradas(session: Session):
     det = RecetaDetalle(
         nombre="Harina Integral",
         version_receta_id=version.id,
-        ingrediente_id=insumo.id,
+        tipo_insumo_id=insumo.id,
         cantidad=1000.0,
         unidad_medida="GRAMOS",
         es_aditivo=False,
@@ -684,14 +653,10 @@ def test_guardar_porcion_declarada_validaciones(session: Session):
 
 def test_generar_pdf_tabla_nutricional(session: Session):
     services.asegurar_parametros_defecto(session)
-    ahora = datetime.now()
-    insumo = Insumo(
+    insumo = TipoInsumo(
         nombre="Harina Centeno PDF Test",
-        lote="L-PDF-01",
-        fechaRecepcion=ahora,
-        cantRecibida=10.0,
-        stock=10.0,
-        medida="kilogramos",
+        descripcion="Harina Centeno",
+        unidad_medida_id=1,
         energia_kcal=330.0,
         energia_kj=1380.0,
         carbohidratos=65.0,
@@ -737,7 +702,7 @@ def test_generar_pdf_tabla_nutricional(session: Session):
     det = RecetaDetalle(
         nombre="Harina Centeno",
         version_receta_id=version.id,
-        ingrediente_id=insumo.id,
+        tipo_insumo_id=insumo.id,
         cantidad=500.0,
         unidad_medida="GRAMOS",
         es_aditivo=False,

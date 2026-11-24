@@ -275,7 +275,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
     if (infoTabla.es_incompleta) {
       ctx.fillStyle = '#b91c1c';
       ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
-      ctx.fillText('⚠️ ADVERTENCIA: Tabla calculada con datos nutricionales incompletos', paddingX, y);
+      ctx.fillText(<><span className="material-symbols-outlined">warning</span> ADVERTENCIA: Tabla calculada con datos nutricionales incompletos</>, paddingX, y);
       y += 18;
     }
 
@@ -371,7 +371,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
 
     ctx.fillStyle = '#991b1b';
     ctx.font = 'bold 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
-    ctx.fillText('⚠️ AVISO OBLIGATORIO DE REVISIÓN:', paddingX + 10, y + 17);
+    ctx.fillText(<><span className="material-symbols-outlined">warning</span> AVISO OBLIGATORIO DE REVISIÓN:</>, paddingX + 10, y + 17);
     ctx.font = 'normal 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
     ctx.fillText(LEYENDA_REVISION_PROFESIONAL, paddingX + 10, y + 33);
 
@@ -489,7 +489,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
               (*) % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser mayores o menores según sus necesidades energéticas.
             </div>
             <div class="cuadro-leyenda">
-              ⚠️ AVISO OBLIGATORIO DE REVISIÓN: ${LEYENDA_REVISION_PROFESIONAL}
+              <span className="material-symbols-outlined">warning</span> AVISO OBLIGATORIO DE REVISIÓN: ${LEYENDA_REVISION_PROFESIONAL}
             </div>
           </div>
           <script>
@@ -1966,7 +1966,7 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
           open={exportModalAbierto}
           tituloModal="Exportar Tabla Nutricional"
           tituloGrafico={`Información Nutricional - ${nombreProducto}`}
-          iconoCard="📋"
+          iconoCard=<span className="material-symbols-outlined">assignment</span>
           filtrosAplicados={`Porción: ${info.tamano_porcion_g} g (${medidaCasera || info.medida_casera || info.descripcion_porcion || '1 porción'}) · Incluye leyenda obligatoria de revisión`}
           loading={exportando}
           onConfirm={handleConfirmarExportacion}

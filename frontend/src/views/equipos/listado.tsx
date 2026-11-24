@@ -265,21 +265,21 @@ export const ListadoEquipos: React.FC<ListadoEquiposProps> = ({
                                                 title="Ver detalles"
                                                 onClick={() => onDetalleClick?.(i.id)}
                                             >
-                                                👁
+                                                <span className="material-symbols-outlined">visibility</span>
                                             </button>
                                             <button
                                                 className="btn-icon btn-editar"
                                                 title="Editar"
                                                 onClick={() => onEditarClick?.(i.id)}
                                             >
-                                                ✎
+                                                <span className="material-symbols-outlined">edit</span>
                                             </button>
                                             <button
                                                 className={`btn-icon ${i.estado.toLowerCase() === 'activo' ? 'btn-eliminar' : 'btn-reactivar'}`}
                                                 title={i.estado.toLowerCase() === 'activo' ? 'Dar de baja' : 'Reactivar'}
                                                 onClick={() => abrirConfirmacion(i)}
                                             >
-                                                {i.estado.toLowerCase() === 'activo' ? '🗑' : '🔄'}
+                                                {i.estado.toLowerCase() === 'activo' ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
                                             </button>
                                         </div>
                                     </td>

@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { apiFetch } from '../../api/client';
@@ -41,6 +42,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
   onVerSoloDocumentos,
   filtroEstadoInicial,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [personalMap, setPersonalMap] = useState<Record<number, PersonalInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -196,7 +198,7 @@ export const ListadoCertificados: React.FC<ListadoCertificadosProps> = ({
 
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(
+      mostrarError('Error', 
         err instanceof Error
           ? err.message
           : `Error al exportar los certificados a ${formato.toUpperCase()}.`

@@ -49,7 +49,7 @@ export const DetalleConjunto: React.FC<DetalleConjuntoProps> = ({ conjuntoId, on
           <div style={{ display: 'flex', gap: 10 }}>
             {conjunto.estado === 'BORRADOR' ? (
               <button className="btn-guardar" onClick={() => onEditar(conjunto.id)}>
-                ✎ Editar borrador
+                <span className="material-symbols-outlined">edit</span> Editar borrador
               </button>
             ) : (
               <button className="btn-guardar" onClick={() => setNuevaVersionAbierta(true)}>

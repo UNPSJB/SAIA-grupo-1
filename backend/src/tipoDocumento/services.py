@@ -53,7 +53,7 @@ def crear_tipo_documento(db: Session, nombre: str) -> TipoDocumento:
     db.refresh(_tipo)
     return _tipo
 
-DEFAULT_TIPOS = ["Manual de BPM", "Ficha Técnica", "Procedimiento", "Receta"]
+DEFAULT_TIPOS = ["Manual de BPM", "Ficha Técnica", "Procedimiento"]
 
 def asegurar_tipos_base(db: Session):
     existentes = db.scalars(select(TipoDocumento)).all()

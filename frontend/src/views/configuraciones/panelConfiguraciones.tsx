@@ -17,6 +17,7 @@ const MAESTROS_BASICOS: MaestroBasico[] = [
   { modulo: 'motivos', titulo: 'Motivos de No Realización', descripcion: 'Causas para marcar una tarea del checklist como no realizada.' },
   { modulo: 'unidadesMedida', titulo: 'Unidades de Medida', descripcion: 'Catálogo de unidades de medida para insumos, recetas y productos.' },
   { modulo: 'proveedores', titulo: 'Proveedores', descripcion: 'Registro y administración de proveedores de insumos.' },
+  { modulo: 'alergenos', titulo: 'Alérgenos', descripcion: 'Catálogo de alérgenos mayores y símbolos para insumos y productos.' },
 ];
 
 const PARAMETROS: { campo: keyof Omit<ParametrosVistaPublica, 'habilitada'>; label: string }[] = [

@@ -163,26 +163,26 @@ export const ListadoParametros: React.FC<ListadoParametrosProps> = ({ onNuevoCli
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       <button className="btn-icon btn-ver" title="Ver detalle" onClick={() => onVerClick(c.id)}>
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       {c.estado === 'BORRADOR' ? (
                         <>
                           <button className="btn-icon btn-editar" title="Editar borrador" onClick={() => onEditarClick(c.id)}>
-                            ✎
+                            <span className="material-symbols-outlined">edit</span>
                           </button>
                           <button
                             className="btn-icon btn-reactivar"
                             title="Publicar"
                             onClick={() => setAccion({ tipo: 'publicar', conjunto: c })}
                           >
-                            ✔
+                            <span className="material-symbols-outlined">publish</span>
                           </button>
                           <button
                             className="btn-icon btn-eliminar"
                             title="Eliminar borrador"
                             onClick={() => setAccion({ tipo: 'eliminar', conjunto: c })}
                           >
-                            🗑
+                            <span className="material-symbols-outlined">delete</span>
                           </button>
                         </>
                       ) : (

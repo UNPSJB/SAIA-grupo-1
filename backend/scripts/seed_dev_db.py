@@ -1,5 +1,6 @@
 import io
 import json
+import random
 import shutil
 import sys
 import uuid
@@ -191,6 +192,9 @@ INSUMOS = [
     ("Semillas de Sesamo", "SES-2408", 20, 240, 20.0, 15.0, "kilogramos"),
     ("Semillas de Lino", "LIN-2408", 20, 240, 20.0, 14.0, "kilogramos"),
     ("Agua Potable", "AGU-2401", 1, 365, 10000.0, 8500.0, "litros"),
+    ("Carne de Pollo", "POL-2411", 2, 45, 80.0, 65.0, "kilogramos"),
+    ("Pan Rallado", "PRL-2411", 5, 120, 60.0, 50.0, "kilogramos"),
+    ("Butter (Rebozador con Sal)", "BUT-2411", 7, 150, 15.0, 12.0, "kilogramos"),
 ]
 
 INSUMOS_QUIMICOS = [
@@ -338,6 +342,10 @@ def main() -> None:
         ("Miel", "Miel pura de abeja", "kilogramos"),
         ("Semillas", "Semillas varias para terminación y panes especiales", "kilogramos"),
         ("Colorantes y Esencias Especiales", "Colorantes alimentarios y saborizantes concentrados", "mililitros"),
+        ("Carne de Pollo", "Pechuga y suprema de pollo fresca deshuesada", "kilogramos"),
+        ("Pan Rallado", "Pan rallado de harina de trigo enriquecida Ley 25630, agua, levadura y sal", "kilogramos"),
+        ("Butter (Rebozador con Sal)", "Premezcla rebozadora con sal, huevo entero en polvo, especias, harina de soja, almidón de trigo y potenciador de sabor INS 621", "kilogramos"),
+        ("Agua Potable", "Agua potable de red filtrada para elaboración alimentaria", "litros"),
     ]
     for nom_t, desc_t, um_t in tipos_insumos_seed:
         crear_tipo_insumo(db, TipoInsumoCreate(nombre=nom_t, descripcion=desc_t, unidad_medida_id=unidades_map[um_t]))
@@ -383,6 +391,8 @@ def main() -> None:
         "Frutos Secos": ["Frutos de cáscara"],
         "Semillas": ["Granos de sésamo"],
         "Frutas Deshidratadas": ["Dióxido de azufre y sulfitos"],
+        "Pan Rallado": ["Gluten"],
+        "Butter (Rebozador con Sal)": ["Huevo", "Gluten", "Soja"],
     }
     for t_obj in db.query(TipoInsumo).all():
         nombres_al = alergenos_por_tipo.get(t_obj.nombre, [])
@@ -484,6 +494,10 @@ def main() -> None:
         "Miel Pura": ("Miel", "Distribuidora Repostería del Sur"),
         "Semillas de Sesamo": ("Semillas", "Distribuidora de Especias del Plata"),
         "Semillas de Lino": ("Semillas", "Distribuidora de Especias del Plata"),
+        "Carne de Pollo": ("Carne de Pollo", "Frigorífico Los Pampeanos"),
+        "Pan Rallado": ("Pan Rallado", "Molinos Río de la Plata"),
+        "Butter (Rebozador con Sal)": ("Butter (Rebozador con Sal)", "Distribuidora de Especias del Plata"),
+        "Agua Potable": ("Agua Potable", None),
     }
 
     for nombre, lote, dias_recepcion, dias_venc, cant, stock, medida in INSUMOS:
@@ -524,6 +538,9 @@ def main() -> None:
         "Semillas de Lino": {"energia_kcal": 534.0, "energia_kj": 2234.3, "carbohidratos": 1.6, "azucares_totales": 1.5, "azucares_anadidos": 0.0, "proteinas": 18.3, "grasas_totales": 42.2, "grasas_saturadas": 3.7, "grasas_trans": 0.0, "fibra_alimentaria": 27.3, "sodio_mg": 30.0},
         "Polvo de Hornear": {"energia_kcal": 53.0, "energia_kj": 221.8, "carbohidratos": 27.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 0.1, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.2, "sodio_mg": 10600.0},
         "Esencia de Vainilla": {"energia_kcal": 288.0, "energia_kj": 1205.0, "carbohidratos": 12.6, "azucares_totales": 12.6, "azucares_anadidos": 0.0, "proteinas": 0.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 9.0},
+        "Carne de Pollo": {"energia_kcal": 106.0, "energia_kj": 443.5, "carbohidratos": 0.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 20.3, "grasas_totales": 2.65, "grasas_saturadas": 0.71, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 75.0},
+        "Pan Rallado": {"energia_kcal": 308.0, "energia_kj": 1299.0, "carbohidratos": 64.9, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 11.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 4.63, "sodio_mg": 480.0},
+        "Butter (Rebozador con Sal)": {"energia_kcal": 132.0, "energia_kj": 552.0, "carbohidratos": 28.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 21.6, "grasas_totales": 0.3, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 5000.0},
     }
     for insumo_obj in db.query(Insumo).all():
         if insumo_obj.nombre in datos_nutricionales:
@@ -766,13 +783,30 @@ def main() -> None:
     db.commit()
 
     responsables = [juan, ana, marcos, lucia, sofia, carlos, diego, valentina, martin]
+    rng_graf = random.Random(2026)
+    prob_por_plan = {
+        plan_horno.id: 0.95,
+        plan_amasadora.id: 0.89,
+        plan_heladera.id: 0.80,
+        plan_camara.id: 0.71,
+        plan_freezer.id: 0.62,
+    }
+    motivos_hist = [
+        "Equipo en funcionamiento continuo o producción activa",
+        "Falta de insumo químico o desinfectante requerido",
+        "Equipo fuera de servicio o en mantenimiento preventivo",
+        "Priorización operativa por urgencia sanitaria o derrame",
+    ]
 
     for offset in range(75, 0, -1):
         fecha = hoy.date() - timedelta(days=offset)
         responsable = responsables[offset % len(responsables)]
         checklist = Checklist(fecha=fecha, responsable_legajo=responsable.legajo, activo=True)
 
-        factor_consumo = 0.92 if offset >= 38 else 1.0
+        base_dia = 1.45 if fecha.weekday() in (4, 5) else (0.65 if fecha.weekday() == 1 else 1.0)
+        onda = 0.78 + 0.44 * ((offset * 13 % 11) / 10.0)
+        factor_consumo = round(base_dia * onda * rng_graf.uniform(0.75, 1.35), 2)
+        factor_dia_cump = rng_graf.uniform(0.65, 1.12) if (offset % 5 != 0) else rng_graf.uniform(0.45, 0.72)
 
         items_del_dia = [
             (
@@ -856,7 +890,18 @@ def main() -> None:
             ))
 
         for j, (plan, tarea, insumos) in enumerate(items_del_dia):
-            realizada = not (offset % 8 == 0 and j == len(items_del_dia) - 1)
+            umbral_ok = min(0.98, prob_por_plan.get(plan.id, 0.82) * factor_dia_cump)
+            tirada = rng_graf.random()
+            if tirada < umbral_ok:
+                estado_it = EstadoTareaItem.REALIZADO
+                motivo_it = None
+            elif tirada < umbral_ok + (1.0 - umbral_ok) * 0.45:
+                estado_it = EstadoTareaItem.NO_REALIZADO
+                motivo_it = rng_graf.choice(motivos_hist)
+            else:
+                estado_it = EstadoTareaItem.PENDIENTE
+                motivo_it = None
+            realizada = estado_it == EstadoTareaItem.REALIZADO
             item = ChecklistItem(
                 plan_id=plan.id,
                 nombre_plan=plan.nombre,
@@ -864,8 +909,9 @@ def main() -> None:
                 nombre_tarea=tarea.nombre,
                 descripcion_tarea=tarea.descripcion,
                 frecuencia=tarea.frecuencia,
-                estado=EstadoTareaItem.REALIZADO if realizada else EstadoTareaItem.PENDIENTE,
-                responsable_legajo=responsable.legajo if realizada else None,
+                estado=estado_it,
+                motivo_no_realizado=motivo_it,
+                responsable_legajo=responsable.legajo if estado_it != EstadoTareaItem.PENDIENTE else None,
                 insumos_utilizados=json.dumps(insumos, ensure_ascii=False) if realizada else None,
                 fecha_hora_fin=datetime.combine(fecha, datetime.min.time()) + timedelta(hours=9, minutes=15 * j) if realizada else None,
             )
@@ -965,7 +1011,6 @@ def main() -> None:
     tipos_doc_seed = [
         "Procedimiento Operativo",
         "Manual de Calidad",
-        "Receta Estandarizada",
         "Registro de Control",
         "Instructivo de Trabajo",
         "Ficha Técnica",
@@ -1023,19 +1068,6 @@ def main() -> None:
         responsable_legajo=ana.legajo,
     )
 
-    pdf_receta = UploadFile(file=io.BytesIO(generar_pdf_valido("Receta Estandar: Medialunas de Manteca", "Version 1.0 (Vigente)")), filename="receta_medialunas.pdf")
-    doc_receta = crear_documento(
-        db,
-        titulo="Receta Estandar: Medialunas de Manteca",
-        tipo="Receta",
-        version="1.0",
-        file=pdf_receta,
-        descripcion="Formulacion oficial para panificados dulces hojaldrados",
-        fecha_vigencia=hoy.date() - timedelta(days=30),
-        fecha_vencimiento=hoy.date() + timedelta(days=335),
-        responsable_legajo=marcos.legajo,
-    )
-
     pdf_recall = UploadFile(file=io.BytesIO(generar_pdf_valido("Procedimiento de Recall y Trazabilidad", "Version 1.0")), filename="procedimiento_recall.pdf")
     crear_documento(
         db,
@@ -1047,19 +1079,6 @@ def main() -> None:
         fecha_vigencia=hoy.date() - timedelta(days=120),
         fecha_vencimiento=hoy.date() + timedelta(days=12),
         responsable_legajo=laura.legajo,
-    )
-
-    pdf_pan_receta = UploadFile(file=io.BytesIO(generar_pdf_valido("Receta Estandar: Pan de Campo", "Version 1.0")), filename="receta_pan_campo.pdf")
-    doc_pan_receta = crear_documento(
-        db,
-        titulo="Receta Estandar: Pan de Campo",
-        tipo="Receta",
-        version="1.0",
-        file=pdf_pan_receta,
-        descripcion="Formulacion de masa madre y horneado tradicional",
-        fecha_vigencia=hoy.date() - timedelta(days=45),
-        fecha_vencimiento=hoy.date() + timedelta(days=320),
-        responsable_legajo=marcos.legajo,
     )
 
     planes_cal = [
@@ -1121,6 +1140,25 @@ def main() -> None:
         ("Envase de desengrasante con rotulo secundario semiborrado.", EstadoIncidente.CERRADO, 25.0, marcos, ana, "Se reimprimio y coloco etiqueta normalizada segun norma SGA.", None, TipoIncidente.LIMPIEZA, cat_hig.id),
         ("Luminaria del sector cuadra con parpadeo constante.", EstadoIncidente.CERRADO, 30.0, carlos, laura, "Se reemplazo el tubo LED estanco por mantenimiento interno.", None, TipoIncidente.EDILICIO, cat_edil.id),
     ]
+
+    plantillas_inc_hist = [
+        ("Desajuste de temperatura en horno convector durante turno mañana.", TipoIncidente.EQUIPAMIENTO, cat_equip.id, "Se recalibro sensor y se verifico curva termica."),
+        ("Acumulacion de harina en canaleta trasera de amasadora.", TipoIncidente.LIMPIEZA, cat_hig.id, "Se realizo limpieza profunda y se refuerza control POES."),
+        ("Sello de puerta de camara frigorifica con desgaste leve.", TipoIncidente.EDILICIO, cat_edil.id, "Se reemplazo burlete perimetral."),
+        ("Bolsa de harina recibida con rotura parcial en paleta.", TipoIncidente.MATERIA_PRIMA, cat_mat.id, "Se rechazo bulto danado y se notifico al proveedor."),
+        ("Trampa adhesiva de monitoreo de plagas desplazada en deposito.", TipoIncidente.PLAGAS, cat_plagas.id, "Se reposiciono cebadera y se registro visita de control."),
+        ("Falta de registro de lavado de manos al cambio de turno.", TipoIncidente.CONDUCTA, cat_bpm.id, "Se realizo recordatorio operativo de BPM al equipo."),
+        ("Goteo en valvula de desague de bacha principal.", TipoIncidente.EDILICIO, cat_edil.id, "Se cambio junta y se probo estanqueidad."),
+        ("Variacion en peso de balanza de precision previo a control.", TipoIncidente.EQUIPAMIENTO, cat_equip.id, "Se ajusto tara y se programo verificacion externa."),
+    ]
+    cantidades_por_mes_atras = [(1, 5), (2, 11), (3, 3), (4, 8), (5, 4)]
+    for meses_atras, cant_m in cantidades_por_mes_atras:
+        for k_inc in range(cant_m):
+            desc_h, tipo_h, cat_h, acc_h = plantillas_inc_hist[(meses_atras * 3 + k_inc) % len(plantillas_inc_hist)]
+            dias_atras = meses_atras * 30 + rng_graf.randint(1, 25)
+            rep_h = responsables[(meses_atras + k_inc) % len(responsables)]
+            est_h = EstadoIncidente.DESCARTADO if (k_inc % 7 == 6) else EstadoIncidente.CERRADO
+            incidentes_data.append((f"{desc_h} (Reg. M-{meses_atras}.{k_inc + 1})", est_h, float(dias_atras), rep_h, ana if k_inc % 2 == 0 else laura, acc_h, None, tipo_h, cat_h))
 
     for desc, estado, dias, reporta, resuelve, accion, motivo, tipo_inc, cat_id in incidentes_data:
         creado = hoy - timedelta(days=dias)
@@ -1248,6 +1286,7 @@ def main() -> None:
     p_budin = Producto(nombre="Budin de Limon y Glaseado", descripcion="Budín esponjoso con glaseado de limón 350g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=350.0, tamano_porcion_g=60.0, descripcion_porcion="1 rebanada (60g)", medida_casera="1 rebanada", conservacion="Conservar en lugar fresco y seco hasta 7 días.", aplica_rotulado=True, activo=True, visible_publico=False)
     p_chipa = Producto(nombre="Chipa Tradicional", descripcion="Chipa de queso y almidón de mandioca", unidad_medida_id=unidades_map["kilogramos"], conservacion="Mantener refrigerado a 4°C o congelado a -18°C.", aplica_rotulado=True, activo=True, visible_publico=True)
     p_ciabatta = Producto(nombre="Ciabatta Rústica", descripcion="Pan italiano de alta hidratación 300g (venta directa sin envase)", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=300.0, tamano_porcion_g=50.0, medida_casera="1 trozo", conservacion="Consumir preferentemente en el día.", aplica_rotulado=False, activo=True, visible_publico=False)
+    p_milanesa = Producto(nombre="Milanesa de Pollo", descripcion="Milanesas de pollo rebozadas acondicionadas en bandejas de 2 kg (lapso de aptitud 72 hs)", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=2000.0, tamano_porcion_g=130.0, porciones_por_envase=15.38, descripcion_porcion="130 g (1/2 unidad)", medida_casera="1/2 unidad", conservacion="Conservar refrigerado, entre 0 y 5°C. Cocinar completamente antes de consumir. Al final de cocción, no se deberán desprender jugos rosados ni vestigios de tal color en la superficie de corte.", aplica_rotulado=True, activo=True, visible_publico=True)
 
     p_pan.alergenos_precaucion = [alergenos_map["Granos de sésamo"], alergenos_map["Soja"]]
     p_medialunas.alergenos_precaucion = [alergenos_map["Frutos de cáscara"], alergenos_map["Soja"]]
@@ -1255,7 +1294,7 @@ def main() -> None:
     p_lactal.alergenos_precaucion = [alergenos_map["Huevo"], alergenos_map["Soja"]]
     p_salvado.alergenos_precaucion = [alergenos_map["Frutos de cáscara"], alergenos_map["Lácteos"]]
 
-    db.add_all([p_pan, p_medialunas, p_baguette, p_torta, p_lactal, p_salvado, p_facturas, p_budin, p_chipa, p_ciabatta])
+    db.add_all([p_pan, p_medialunas, p_baguette, p_torta, p_lactal, p_salvado, p_facturas, p_budin, p_chipa, p_ciabatta, p_milanesa])
     db.commit()
 
     insumos_map = {i.nombre: i for i in db.query(Insumo).all()}
@@ -1340,7 +1379,7 @@ def main() -> None:
             unidad_medida="GRAMOS",
             es_aditivo=False,
             descripcion_pasos="Pesar harina de trigo 000 y tamizar.",
-            parametros_control_json=json.dumps([{"nombre": "Humedad relativa ambiente", "unidad": "%", "min": 45, "max": 65}]),
+            parametros_control_json=json.dumps([{"nombre_dato": "Humedad relativa ambiente", "unidad_medida": "%", "umbral_minimo": 45.0, "umbral_maximo": 65.0}]),
         ),
         RecetaDetalle(
             nombre="Incorporacion de Agua potable",
@@ -1350,7 +1389,7 @@ def main() -> None:
             unidad_medida="GRAMOS",
             es_aditivo=False,
             descripcion_pasos="Incorporar agua a temperatura ambiente.",
-            parametros_control_json=json.dumps([{"nombre": "Temperatura del agua", "unidad": "°C", "min": 18, "max": 24}]),
+            parametros_control_json=json.dumps([{"nombre_dato": "Temperatura del agua", "unidad_medida": "°C", "umbral_minimo": 18.0, "umbral_maximo": 24.0}]),
         ),
         RecetaDetalle(
             nombre="Disolucion de Levadura fresca",
@@ -1360,7 +1399,7 @@ def main() -> None:
             unidad_medida="GRAMOS",
             es_aditivo=False,
             descripcion_pasos="Disolver la levadura fresca en parte del agua.",
-            parametros_control_json=json.dumps([{"nombre": "Tiempo de fermentación", "unidad": "min", "min": 40, "max": 60}]),
+            parametros_control_json=json.dumps([{"nombre_dato": "Tiempo de fermentación", "unidad_medida": "min", "umbral_minimo": 40.0, "umbral_maximo": 60.0}]),
         ),
         RecetaDetalle(
             nombre="Agregado de Sal fina",
@@ -1379,7 +1418,7 @@ def main() -> None:
             unidad_medida="GRAMOS",
             es_aditivo=False,
             descripcion_pasos="Agregar el aceite para mejorar elasticidad y conservacion.",
-            parametros_control_json=json.dumps([{"nombre": "Temperatura de horneado", "unidad": "°C", "min": 200, "max": 220}]),
+            parametros_control_json=json.dumps([{"nombre_dato": "Temperatura de horneado", "unidad_medida": "°C", "umbral_minimo": 200.0, "umbral_maximo": 220.0}]),
         ),
     ]
     db.add_all(detalles_pan)
@@ -1936,56 +1975,113 @@ def main() -> None:
 
     calcular_informacion_nutricional(db, p_torta.id, receta_id=receta_torta.id, usuario_actual="Marcos Diaz")
 
+    op_milanesa = operador_user if operador_user else juan
+    receta_milanesa = Receta(
+        nombre="Milanesa de Pollo",
+        rendimiento_final=2315.0,
+        tiempo_maximo_dias=3,
+        id_producto=p_milanesa.id,
+        operario_legajo=op_milanesa.legajo,
+        activo=True,
+    )
+    db.add(receta_milanesa)
+    db.flush()
+
+    version_milanesa = VersionReceta(
+        receta_id=receta_milanesa.id,
+        version=1,
+        rendimiento_final=2315.0,
+        tiempo_maximo_dias=3,
+        archivado=False,
+        es_vigente=True,
+        creado_por_legajo=op_milanesa.legajo,
+        creado_por_usuario=f"{op_milanesa.nombre} {op_milanesa.apellido}".strip(),
+    )
+    db.add(version_milanesa)
+    db.flush()
+
+    db.add_all([
+        RecetaDetalle(
+            nombre="Fileteado y pesado de Carne de pollo",
+            version_receta_id=version_milanesa.id,
+            tipo_insumo_id=insumos_map["Carne de Pollo"].tipo_insumo_id,
+            cantidad=1000.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            descripcion_pasos="Pesar 1 kg de carne de pollo refrigerada (0 a 5°C) y cortar en filetes parejos.",
+            parametros_control_json=json.dumps([{"nombre_dato": "Temperatura interna carne", "unidad_medida": "°C", "umbral_minimo": 0.0, "umbral_maximo": 5.0}]),
+        ),
+        RecetaDetalle(
+            nombre="Hidratación del rebozador con Agua",
+            version_receta_id=version_milanesa.id,
+            tipo_insumo_id=insumos_map["Agua Potable"].tipo_insumo_id,
+            cantidad=280.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            descripcion_pasos="Medir 0,28 kg de agua potable fría para preparar el ligue del butter.",
+        ),
+        RecetaDetalle(
+            nombre="Preparación del ligue con Butter",
+            version_receta_id=version_milanesa.id,
+            tipo_insumo_id=insumos_map["Butter (Rebozador con Sal)"].tipo_insumo_id,
+            cantidad=35.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            descripcion_pasos="Disolver 0,035 kg de butter (sal, huevo entero en polvo, especias, harina de soja, almidón de trigo, potenciador de sabor INS 621) en el agua y sumergir el pollo.",
+        ),
+        RecetaDetalle(
+            nombre="Empanado con Pan rallado",
+            version_receta_id=version_milanesa.id,
+            tipo_insumo_id=insumos_map["Pan Rallado"].tipo_insumo_id,
+            cantidad=1000.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=False,
+            descripcion_pasos="Empanar con 1 kg de pan rallado (harina de trigo enriquecida Ley 25630, agua, levadura y sal) y acondicionar en bandejas de 2 kg refrigeradas entre 0 y 5°C.",
+            parametros_control_json=json.dumps([{"nombre_dato": "Temperatura de almacenamiento", "unidad_medida": "°C", "umbral_minimo": 0.0, "umbral_maximo": 5.0}]),
+        ),
+    ])
+    db.commit()
+
+    calcular_informacion_nutricional(db, p_milanesa.id, receta_id=receta_milanesa.id, usuario_actual="Marcos Diaz")
+
     lotes_cronograma = []
+    estacionalidad_mes = {1: 0.52, 2: 0.64, 3: 0.88, 4: 1.05, 5: 1.32, 6: 1.18, 7: 1.46, 8: 0.94, 9: 0.82, 10: 1.28, 11: 1.52, 12: 1.65}
 
-    for d in range(7):
-        f_dia = hoy.date() - timedelta(days=6 - d)
-        lotes_cronograma.append((p_pan, f_dia, 60.0 + (d * 5 % 25), juan.legajo, [("Harina 000", 32.0), ("Levadura Fresca", 1.1), ("Sal Fina", 0.7)]))
-        lotes_cronograma.append((p_medialunas, f_dia, 150.0 + (d * 15 % 60), marcos.legajo, [("Harina 0000", 22.0), ("Manteca", 9.0), ("Azucar Comun", 5.5), ("Huevos", 30.0)]))
+    for d in range(30):
+        f_dia = hoy.date() - timedelta(days=29 - d)
+        pico_finde = 1.55 if f_dia.weekday() in (4, 5) else (0.58 if f_dia.weekday() == 0 else 1.0)
+        lotes_cronograma.append((p_pan, f_dia, float(round(rng_graf.uniform(28.0, 95.0) * pico_finde)), juan.legajo, [("Harina 000", 32.0), ("Levadura Fresca", 1.1), ("Sal Fina", 0.7)]))
+        lotes_cronograma.append((p_medialunas, f_dia, float(round(rng_graf.uniform(75.0, 260.0) * pico_finde)), marcos.legajo, [("Harina 0000", 22.0), ("Manteca", 9.0), ("Azucar Comun", 5.5), ("Huevos", 30.0)]))
         if d % 2 == 0:
-            lotes_cronograma.append((p_baguette, f_dia, 80.0 + (d * 4 % 20), carlos.legajo, [("Harina 000", 18.0), ("Levadura Fresca", 0.5), ("Sal Fina", 0.4)]))
+            lotes_cronograma.append((p_baguette, f_dia, float(round(rng_graf.uniform(35.0, 125.0) * pico_finde)), carlos.legajo, [("Harina 000", 18.0), ("Levadura Fresca", 0.5), ("Sal Fina", 0.4)]))
         else:
-            lotes_cronograma.append((p_facturas, f_dia, 110.0 + (d * 8 % 30), sofia.legajo, [("Harina 0000", 16.0), ("Manteca", 6.5), ("Dulce de Leche Repostero", 4.5)]))
+            lotes_cronograma.append((p_facturas, f_dia, float(round(rng_graf.uniform(50.0, 190.0) * pico_finde)), sofia.legajo, [("Harina 0000", 16.0), ("Manteca", 6.5), ("Dulce de Leche Repostero", 4.5)]))
         if d % 3 == 0:
-            lotes_cronograma.append((p_torta, f_dia, 24.0 + (d * 3 % 10), marcos.legajo, [("Harina 0000", 7.5), ("Chocolate Cobertura Semiamargo", 5.5), ("Huevos", 18.0)]))
+            lotes_cronograma.append((p_torta, f_dia, float(round(rng_graf.uniform(8.0, 42.0) * pico_finde)), marcos.legajo, [("Harina 0000", 7.5), ("Chocolate Cobertura Semiamargo", 5.5), ("Huevos", 18.0)]))
         elif d % 3 == 1:
-            lotes_cronograma.append((p_lactal, f_dia, 75.0 + (d * 5 % 15), ana.legajo, [("Harina 0000", 18.0), ("Leche Entera", 5.5), ("Manteca", 2.8)]))
+            lotes_cronograma.append((p_lactal, f_dia, float(round(rng_graf.uniform(30.0, 115.0) * pico_finde)), ana.legajo, [("Harina 0000", 18.0), ("Leche Entera", 5.5), ("Manteca", 2.8)]))
         else:
-            lotes_cronograma.append((p_chipa, f_dia, 35.0 + (d * 4 % 12), diego.legajo, [("Almidon de Maiz", 15.0), ("Queso de Maquina", 6.0), ("Huevos", 20.0)]))
-
-    fechas_oct_semanas = [
-        date(hoy.year, 10, 2),
-        date(hoy.year, 10, 3),
-        date(hoy.year, 10, 5),
-        date(hoy.year, 10, 7),
-        date(hoy.year, 10, 9),
-        date(hoy.year, 10, 12),
-        date(hoy.year, 10, 14),
-        date(hoy.year, 10, 16),
-        date(hoy.year, 10, 19),
-        date(hoy.year, 10, 21),
-        date(hoy.year, 10, 23),
-    ]
-    for idx_f, f_sem in enumerate(fechas_oct_semanas):
-        lotes_cronograma.append((p_pan, f_sem, 70.0 + (idx_f * 3 % 20), juan.legajo, [("Harina 000", 35.0), ("Levadura Fresca", 1.2)]))
-        lotes_cronograma.append((p_medialunas, f_sem, 170.0 + (idx_f * 10 % 50), marcos.legajo, [("Harina 0000", 24.0), ("Manteca", 9.5)]))
-        if idx_f % 2 == 0:
-            lotes_cronograma.append((p_salvado, f_sem, 55.0 + (idx_f * 2 % 15), diego.legajo, [("Harina Integral Fina", 20.0), ("Semillas de Sesamo", 2.0)]))
-        else:
-            lotes_cronograma.append((p_ciabatta, f_sem, 65.0 + (idx_f * 3 % 15), carlos.legajo, [("Harina 000", 20.0), ("Aceite de Girasol", 1.5)]))
+            lotes_cronograma.append((p_chipa, f_dia, float(round(rng_graf.uniform(18.0, 68.0) * pico_finde)), diego.legajo, [("Almidon de Maiz", 15.0), ("Queso de Maquina", 6.0), ("Huevos", 20.0)]))
+        if d % 4 == 0:
+            lotes_cronograma.append((p_salvado, f_dia, float(round(rng_graf.uniform(22.0, 78.0) * pico_finde)), diego.legajo, [("Harina Integral Fina", 20.0), ("Semillas de Sesamo", 2.0)]))
+        elif d % 4 == 2:
+            lotes_cronograma.append((p_ciabatta, f_dia, float(round(rng_graf.uniform(25.0, 88.0) * pico_finde)), carlos.legajo, [("Harina 000", 20.0), ("Aceite de Girasol", 1.5)]))
 
     for m in range(1, hoy.month):
-        dias_mes = [5, 12, 19, 26]
+        mult_m = estacionalidad_mes.get(m, 1.0)
+        dias_mes = [4, 11, 18, 25]
         for idx_d, dia_num in enumerate(dias_mes):
             f_mes = date(hoy.year, m, dia_num)
-            lotes_cronograma.append((p_pan, f_mes, 80.0 + ((m + idx_d) * 4 % 25), juan.legajo, [("Harina 000", 40.0), ("Levadura Fresca", 1.3)]))
-            lotes_cronograma.append((p_medialunas, f_mes, 200.0 + ((m + idx_d) * 12 % 60), marcos.legajo, [("Harina 0000", 28.0), ("Manteca", 11.0)]))
+            if f_mes >= hoy.date() - timedelta(days=29):
+                continue
+            lotes_cronograma.append((p_pan, f_mes, float(round(rng_graf.uniform(45.0, 115.0) * mult_m)), juan.legajo, [("Harina 000", 40.0), ("Levadura Fresca", 1.3)]))
+            lotes_cronograma.append((p_medialunas, f_mes, float(round(rng_graf.uniform(110.0, 290.0) * mult_m)), marcos.legajo, [("Harina 0000", 28.0), ("Manteca", 11.0)]))
             if idx_d % 2 == 0:
-                lotes_cronograma.append((p_baguette, f_mes, 90.0 + (m * 3 % 20), carlos.legajo, [("Harina 000", 22.0), ("Sal Fina", 0.5)]))
-                lotes_cronograma.append((p_torta, f_mes, 30.0 + (m * 2 % 10), sofia.legajo, [("Harina 0000", 9.0), ("Chocolate Cobertura Semiamargo", 7.0)]))
+                lotes_cronograma.append((p_baguette, f_mes, float(round(rng_graf.uniform(40.0, 130.0) * mult_m)), carlos.legajo, [("Harina 000", 22.0), ("Sal Fina", 0.5)]))
+                lotes_cronograma.append((p_torta, f_mes, float(round(rng_graf.uniform(12.0, 48.0) * mult_m)), sofia.legajo, [("Harina 0000", 9.0), ("Chocolate Cobertura Semiamargo", 7.0)]))
             else:
-                lotes_cronograma.append((p_lactal, f_mes, 85.0 + (m * 4 % 20), ana.legajo, [("Harina 0000", 21.0), ("Leche Entera", 6.0)]))
-                lotes_cronograma.append((p_facturas, f_mes, 130.0 + (m * 8 % 30), marcos.legajo, [("Harina 0000", 19.0), ("Manteca", 7.5)]))
+                lotes_cronograma.append((p_lactal, f_mes, float(round(rng_graf.uniform(45.0, 125.0) * mult_m)), ana.legajo, [("Harina 0000", 21.0), ("Leche Entera", 6.0)]))
+                lotes_cronograma.append((p_facturas, f_mes, float(round(rng_graf.uniform(70.0, 210.0) * mult_m)), marcos.legajo, [("Harina 0000", 19.0), ("Manteca", 7.5)]))
 
     for idx, (prod, f_lote, cant, resp, ins_lista) in enumerate(lotes_cronograma, start=1):
         cod = f"L-{f_lote:%Y%m%d}-{idx:02d}"
@@ -2033,7 +2129,17 @@ def main() -> None:
         vals_reg = None
         if det_p.parametros_control_json:
             params_p = json.loads(det_p.parametros_control_json)
-            vals_reg = json.dumps([{"nombre": p["nombre"], "unidad": p["unidad"], "valor": (p["min"] + p["max"]) / 2} for p in params_p])
+            vals_reg = json.dumps([
+                {
+                    "nombre_dato": p["nombre_dato"],
+                    "unidad_medida": p["unidad_medida"],
+                    "valor_registrado": str(round((p["umbral_minimo"] + p["umbral_maximo"]) / 2, 1)),
+                    "umbral_minimo": p["umbral_minimo"],
+                    "umbral_maximo": p["umbral_maximo"],
+                    "cumple_umbral": True,
+                }
+                for p in params_p
+            ])
         ins_usado_p = insumo_por_tipo.get(det_p.tipo_insumo_id)
         db.add(ChecklistRecetaItem(
             checklist_id=chk_receta_completado.id,
@@ -2228,8 +2334,11 @@ def main() -> None:
         usuario=marcos,
     )
 
+    from src.rotulado.services import sincronizar_rotulo_desde_receta
+    sincronizar_rotulo_desde_receta(db, p_milanesa.id, usuario=marcos)
+
     asegurar_rotulado_frontal(db)
-    for prod_rotulo in [p_pan, p_medialunas, p_baguette, p_lactal, p_salvado, p_torta]:
+    for prod_rotulo in [p_pan, p_medialunas, p_baguette, p_lactal, p_salvado, p_torta, p_milanesa]:
         calcular_desde_nutricion_producto(db, prod_rotulo.id, usuario=marcos)
         obtener_o_crear_borrador(db, prod_rotulo.id)
         autocompletar_datos_borrador(db, prod_rotulo.id, usuario=marcos)

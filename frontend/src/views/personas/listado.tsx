@@ -283,28 +283,28 @@ export const ListadoPersonas: React.FC<ListadoPersonasProps> = ({
                           title="Ver certificados"
                           onClick={() => onVerCertificados(identificador, `${p.nombre} ${p.apellido}`)}
                         >
-                          🗎
+                          <span className="material-symbols-outlined">badge</span>
                         </button>
                         <button
                           className="btn-icon btn-ver"
                           title="Ver detalle"
                           onClick={() => onDetalleClick(identificador)}
                         >
-                          👁
+                          <span className="material-symbols-outlined">visibility</span>
                         </button>
                         <button
                           className="btn-icon btn-editar"
                           title="Editar"
                           onClick={() => onEditarClick(identificador)}
                         >
-                          ✎
+                          <span className="material-symbols-outlined">edit</span>
                         </button>
                         <button
                           className={`btn-icon ${p.activo ? "btn-eliminar" : "btn-reactivar"}`}
                           title={p.activo ? "Dar de baja" : "Reactivar"}
                           onClick={() => abrirConfirmacion(p)}
                         >
-                          {p.activo ? "🗑" : "🔄"}
+                          {p.activo ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
                         </button>
                       </div>
                     </td>

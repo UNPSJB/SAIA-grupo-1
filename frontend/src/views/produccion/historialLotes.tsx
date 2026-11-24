@@ -298,7 +298,7 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
                         aria-label={`Ver lote ${l.codigo}`}
                         onClick={() => onVerLote(l.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                     </div>
                   </td>

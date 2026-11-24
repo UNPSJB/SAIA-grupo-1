@@ -353,7 +353,7 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
                         setModalVerEtapa(true);
                       }}
                     >
-                      👁
+                      <span className="material-symbols-outlined">visibility</span>
                     </button>
                   </div>
                 ))}
@@ -414,7 +414,7 @@ export const VerReceta: React.FC<DetalleRecetaProps> = ({
                               title="Ver detalle del lote"
                               onClick={() => onVerLoteClick(l.id)}
                             >
-                              👁
+                              <span className="material-symbols-outlined">visibility</span>
                             </button>
                           </td>
                         )}

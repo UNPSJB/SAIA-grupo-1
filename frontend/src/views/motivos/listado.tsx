@@ -272,7 +272,7 @@ export const ListadoMotivos: React.FC<ListadoMotivosProps> = ({
                         title="Ver detalles"
                         onClick={() => onDetalleClick(item.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         type="button"
@@ -281,7 +281,7 @@ export const ListadoMotivos: React.FC<ListadoMotivosProps> = ({
                         onClick={() => abrirConfirmacionToggle(item)}
                         disabled={togglingId === item.id}
                       >
-                        {item.activo ? '🗑' : '🔄'}
+                        {item.activo ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
                       </button>
                     </div>
                   </td>

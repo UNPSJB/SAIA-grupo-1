@@ -146,7 +146,7 @@ export const VerPLanDeLimpieza: React.FC<DetallePlanLimpiezaProps> = ({
                         setModelVer(true);
                       }}
                     >
-                      👁
+                      <span className="material-symbols-outlined">visibility</span>
                     </button>
                   </div>
                 ))}

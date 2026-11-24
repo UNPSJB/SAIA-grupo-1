@@ -638,7 +638,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                 >
                   <div className="plan-header-info">
                     <span className="plan-nombre">{planNombre}</span>
-                    <span className="plan-equipo-tag">⚙ {equipo}</span>
+                    <span className="plan-equipo-tag"><span className="material-symbols-outlined">settings</span> {equipo}</span>
                   </div>
 
                   <div className="plan-header-stats">
@@ -852,7 +852,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                                   }}
                                   onClick={() => setModalImagenVer(obtenerUrlImagen(tarea.imagen || ''))}
                                 >
-                                  📷 Ver imagen adjunta
+                                  <span className="material-symbols-outlined">photo_camera</span> Ver imagen adjunta
                                 </button>
                               ) : (
                                 <span style={{ color: 'var(--text)', fontWeight: 400 }}>
@@ -893,7 +893,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                                 gap: '6px',
                               }}
                             >
-                              📜 Historial de la Tarea ({tarea.historial?.length || 0})
+                              <span className="material-symbols-outlined">history</span> Historial de la Tarea ({tarea.historial?.length || 0})
                             </span>
                             <span style={{ fontSize: '0.78rem', color: 'var(--color-primario)' }}>
                               {historialExpandido[tarea.id] ? '▲ Ocultar' : '▼ Ver historial'}
@@ -927,7 +927,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                                     }}
                                   >
                                     <span style={{ color: 'var(--color-texto-sec)', fontWeight: 600 }}>
-                                      🕒 {new Date(h.fecha_hora).toLocaleString()}
+                                      <span className="material-symbols-outlined">schedule</span> {new Date(h.fecha_hora).toLocaleString()}
                                     </span>
                                     <span
                                       style={{
@@ -1040,7 +1040,7 @@ export const DetalleChecklist: React.FC<DetalleChecklistProps> = ({
                       }}
                       onClick={() => setModalImagenVer(obtenerUrlImagen(tareaSeleccionada.imagen || ''))}
                     >
-                      📷 Ver imagen
+                      <span className="material-symbols-outlined">photo_camera</span> Ver imagen
                     </button>
                   </div>
                 ) : null}

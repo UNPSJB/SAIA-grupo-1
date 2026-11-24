@@ -241,7 +241,7 @@ export const ModalHistorialVersionesReceta: React.FC<ModalHistorialRecetaProps> 
                                 onClose();
                               }}
                             >
-                              👁
+                              <span className="material-symbols-outlined">visibility</span>
                             </button>
                           </div>
                         </td>

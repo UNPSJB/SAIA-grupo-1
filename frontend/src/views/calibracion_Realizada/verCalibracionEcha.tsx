@@ -175,7 +175,7 @@ return (
             <div style={{ width: '100%', height: '220px', backgroundColor: 'var(--color-fondo)', borderRadius: '8px', border: '1px solid var(--color-borde)', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {calibracion.formato_archivo.toLowerCase().endsWith('.pdf') ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '3rem' }}>📄</span>
+                        <span style={{ fontSize: '3rem' }}><span className="material-symbols-outlined">description</span></span>
                         <span style={{ fontSize: '0.9rem', color: 'var(--text)', fontWeight: '500', wordBreak: 'break-all' }}>
                             {calibracion.formato_archivo.replace(/\\/g, '/').split('/').pop()}
                         </span>
@@ -196,7 +196,7 @@ return (
                 style={{ padding: '0.4rem 1rem', fontSize: '0.9rem' }}
                 onClick={handleDescargar}
             >
-                📥 Descargar Archivo
+                <span className="material-symbols-outlined">download</span> Descargar Archivo
             </button>
         </div>
     ) : (

@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import { useState, useEffect } from 'react';
 import '../../styles/formularioAlta.css';
 import type { PlanDeCalibracionConId } from './tipos';
@@ -40,6 +41,7 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
   onEditarClick,
   filtroEstadoInicial,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [planes, setPlanes] = useState<PlanDeCalibracionConId[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -150,7 +152,7 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
 
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(
+      mostrarError('Error', 
         err instanceof Error
           ? err.message
           : `Error al exportar los planes de calibración a ${formato.toUpperCase()}.`
@@ -299,14 +301,14 @@ export const ListadoPlanesCalibracion: React.FC<ListadoPlanesCProps> = ({
                         title="Ver detalles"
                         onClick={() => onDetalleClick?.(p.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         className="btn-icon btn-editar"
                         title="Editar"
                         onClick={() => onEditarClick?.(p.id)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                     </div>
                   </td>

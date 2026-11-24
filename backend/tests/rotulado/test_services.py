@@ -962,7 +962,7 @@ def test_generar_filas_tabla_nutricional_y_mapeo(session: Session):
     assert "200 kcal" in (fila_energia.por_porcion or "")
     assert fila_energia.porcentaje_vd == "10 %"
 
-    resp = services.mapear_respuesta_borrador(borrador, None)
+    resp = services.mapear_respuesta_borrador(session, borrador, None)
     assert resp.producto_id == prod1.id
     assert resp.leyenda_obligatoria == constants.LEYENDA_BORRADOR_OBLIGATORIA
 

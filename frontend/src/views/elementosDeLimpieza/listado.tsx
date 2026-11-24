@@ -373,7 +373,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                         title="Ver detalles"
                         onClick={() => onDetalleClick(item.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         type="button"
@@ -381,7 +381,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                         title="Editar"
                         onClick={() => onEditarClick(item.id)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         type="button"
@@ -389,7 +389,7 @@ export const ListadoElementosLimpieza: React.FC<ListadoElementosLimpiezaProps> =
                         title={item.activo ? 'Dar de baja' : 'Reactivar'}
                         onClick={() => abrirConfirmacionToggle(item)}
                       >
-                        {item.activo ? '🗑' : '🔄'}
+                        {item.activo ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
                       </button>
                     </div>
                   </td>

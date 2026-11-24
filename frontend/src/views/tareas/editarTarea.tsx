@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import { useEffect, useState } from "react";
 import type { TareaConId} from "./tipos";
 import "../../styles/formularioAlta.css";
@@ -24,6 +25,7 @@ interface EditarTareaProps {
 
 
 export default function EditarTarea({tareaID, planID,onSuccess, onCancel}: EditarTareaProps){
+  const { mostrarError } = useAlertaOperacion();
     const [tarea, setTarea] = useState<TareaConId>(TAREA_INICIAL);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -138,7 +140,7 @@ useEffect(() => {
                         setTarea({ ...data, personal_id: data.personal_id ?? "" });
                     }
                 } catch {
-                    alert('La tarea no existe.');
+                    mostrarError('Error', 'La tarea no existe.');
                 } finally {
                     setLoading(false);
                 }

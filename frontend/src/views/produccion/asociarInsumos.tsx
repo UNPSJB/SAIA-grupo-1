@@ -91,7 +91,7 @@ export const AsociarInsumos: React.FC<AsociarInsumosProps> = ({ lote: loteInicia
                           aria-label={`Quitar ${i.insumo.nombre}`}
                           onClick={() => setAQuitar(i)}
                         >
-                          🗑
+                          <span className="material-symbols-outlined">delete</span>
                         </button>
                       </div>
                     </td>

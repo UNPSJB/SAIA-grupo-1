@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { PlanConId } from "./tipos";
 import '../../styles/formularioAlta.css';
@@ -20,6 +21,7 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
   onDetalleClick,
   onEditarClick,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [planes, setPlanes] = useState<PlanConId[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -89,7 +91,7 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
 
       setDialogExportarAbierto(false);
     } catch (error) {
-      alert(
+      mostrarError('Error', 
         error instanceof Error
           ? error.message
           : `Error al exportar los planes de limpieza a ${formato.toUpperCase()}.`
@@ -214,14 +216,14 @@ export const ListadoPlanesLimp: React.FC<ListadoPlanesProps> = ({
                         title="Ver detalles"
                         onClick={() => onDetalleClick?.(p.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         className="btn-icon btn-editar"
                         title="Editar"
                         onClick={() => onEditarClick?.(p.id)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                     </div>
                   </td>

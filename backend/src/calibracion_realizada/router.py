@@ -1,28 +1,29 @@
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from src.autenticacion.dependencies import requiere_admin
 from src.database import get_db
 from src.calibracion_realizada import schemas, services
 
 router = APIRouter(prefix="/calibracion_realizada", tags=["calibracion_realizada"])
 
 
-@router.post("/", response_model=schemas.CalibracionRealizada)
+@router.post("/", response_model=schemas.CalibracionRealizada, dependencies=[Depends(requiere_admin)])
 async def create_calibracion_realizada(CaliR: schemas.CalibracionRealizadaCreate, db: Session = Depends(get_db)):
     return services.calibracion_realizada(db, CaliR)
 
 
-@router.get("/", response_model=list[schemas.CalibracionRealizada])
+@router.get("/", response_model=list[schemas.CalibracionRealizada], dependencies=[Depends(requiere_admin)])
 async def read_calibraciones_realizadas(db: Session = Depends(get_db)):
     return services.listar_calibraciones_realizadas(db)
 
 
-@router.get("/{calibracion_id}", response_model=schemas.CalibracionRealizada)
+@router.get("/{calibracion_id}", response_model=schemas.CalibracionRealizada, dependencies=[Depends(requiere_admin)])
 async def read_calibracion_realizada(calibracion_id: int, db: Session = Depends(get_db)):
     return services.Obtener_CalibracionRealizada(db, calibracion_id)
 
 
-@router.post("/upload-certificado")
+@router.post("/upload-certificado", dependencies=[Depends(requiere_admin)])
 async def upload_certificado(formato_archivo: UploadFile = File(...)):
     return {"ruta": services.guardar_archivo_calibracion(formato_archivo)}
 

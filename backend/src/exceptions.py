@@ -8,8 +8,9 @@ class DetailedHTTPException(HTTPException):
     DETAIL = "Error del servidor"
 
     def __init__(self, detail: str | None = None, **kwargs: Dict[str, Any]) -> None:
+        codigo = kwargs.pop("status_code", self.STATUS_CODE)
         super().__init__(
-            status_code=self.STATUS_CODE,
+            status_code=codigo,
             detail=detail or self.DETAIL,
             **kwargs,
         )

@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { TipoCertificado } from './tipos';
 import '../../styles/formularioAlta.css';
@@ -12,6 +13,7 @@ export const DetalleTipoCertificado: React.FC<DetalleTipoCertificadoProps> = ({
   onCancel,
   tipoId,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [tipo, setTipo] = useState<TipoCertificado | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,10 +26,10 @@ export const DetalleTipoCertificado: React.FC<DetalleTipoCertificadoProps> = ({
             const data: TipoCertificado = await res.json();
             setTipo(data);
           } else {
-            alert('El tipo de certificado no existe.');
+            mostrarError('Error', 'El tipo de certificado no existe.');
           }
         } catch {
-          alert('Error al conectar con el servidor.');
+          mostrarError('Error', 'Error al conectar con el servidor.');
         } finally {
           setLoading(false);
         }

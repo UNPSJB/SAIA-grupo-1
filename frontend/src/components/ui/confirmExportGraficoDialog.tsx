@@ -139,11 +139,11 @@ export const ConfirmExportGraficoDialog: React.FC<ConfirmExportGraficoDialogProp
             }}
           >
             <div style={{ fontWeight: 600, color: 'var(--color-texto, #2d3748)', fontSize: '0.85rem' }}>
-              {iconoCard || '📈'} {tituloGrafico}
+              {iconoCard || <span className="material-symbols-outlined">show_chart</span>} {tituloGrafico}
             </div>
             {filtrosAplicados && (
               <div style={{ fontSize: '0.8rem', color: 'var(--color-texto-sec, #718096)', marginTop: '3px' }}>
-                ℹ️ {filtrosAplicados}
+                <span className="material-symbols-outlined">info</span> {filtrosAplicados}
               </div>
             )}
           </div>

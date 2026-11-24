@@ -332,7 +332,7 @@ export const NuevoIncidente: React.FC<NuevoIncidenteProps> = ({
             {descripcionLimpia.length} / {DESCRIPCION_MAX} caracteres
           </div>
           <div style={{ fontSize: '12px', color: 'var(--color-texto-sec)', marginTop: '6px' }}>
-            💡 Sugerencia: Especifique la ubicación física, el sector y equipo o lote involucrado si corresponde.
+            <span className="material-symbols-outlined">lightbulb</span> Sugerencia: Especifique la ubicación física, el sector y equipo o lote involucrado si corresponde.
           </div>
         </div>
 

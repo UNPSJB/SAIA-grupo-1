@@ -1485,7 +1485,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                     <div><span style={{ color: 'var(--color-texto-sec)' }}>Límite Inf. (LCL -3σ):</span> <strong style={{ color: '#ef4444' }}>{datosControlEstadistico.lcl}</strong></div>
                     <div><span style={{ color: 'var(--color-texto-sec)' }}>Bajo Control:</span> <strong style={{ color: '#10b981' }}>{datosControlEstadistico.enControl} / {datosControlEstadistico.totalLotes}</strong></div>
                     {datosControlEstadistico.fueraDeControl > 0 && (
-                      <div><strong style={{ color: '#ef4444' }}>⚠ {datosControlEstadistico.fueraDeControl} desvío(s) fuera de límites normativos</strong></div>
+                      <div><strong style={{ color: '#ef4444' }}><span className="material-symbols-outlined">warning</span> {datosControlEstadistico.fueraDeControl} desvío(s) fuera de límites normativos</strong></div>
                     )}
                   </div>
                   <div style={{ width: '100%', height: 360 }}>

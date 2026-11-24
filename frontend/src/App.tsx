@@ -516,6 +516,7 @@ interface RegistroVencimientoRef {
     motivos: 'Motivos de No Realización',
     unidadesMedida: 'Unidades de Medida',
     proveedores: 'Proveedores',
+    alergenos: 'Alérgenos',
     rotuladoFrontal: 'Rotulado Frontal',
     vistaPublica: 'Vista Pública',
   };

@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { Certificado } from './tipos';
 import { ConfirmAlertDialog, ErrorAlertDialog } from '../../components/ui/alert-dialog';
@@ -40,6 +41,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
   onVolver,
   textoVolver,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -201,7 +203,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
 
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(
+      mostrarError('Error', 
         err instanceof Error
           ? err.message
           : `Error al exportar los certificados a ${formato.toUpperCase()}.`
@@ -324,7 +326,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                         title="Ver detalles"
                         onClick={() => onDetalleClick(item.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         type="button"
@@ -332,7 +334,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                         title="Editar"
                         onClick={() => onEditarClick(item.id)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         type="button"
@@ -340,7 +342,7 @@ export const ListadoCertificadosPorPersona: React.FC<ListadoCertificadosPorPerso
                         title="Eliminar"
                         onClick={() => abrirConfirmacionEliminar(item.id, item.tipo)}
                       >
-                        🗑
+                        <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
                   </td>

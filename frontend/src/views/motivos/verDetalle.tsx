@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { MotivoNoRealizado } from './tipos';
 import '../../styles/formularioAlta.css';
@@ -12,6 +13,7 @@ export const DetalleMotivo: React.FC<DetalleMotivoProps> = ({
   onCancel,
   motivoId,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [motivo, setMotivo] = useState<MotivoNoRealizado | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,10 +26,10 @@ export const DetalleMotivo: React.FC<DetalleMotivoProps> = ({
             const data: MotivoNoRealizado = await res.json();
             setMotivo(data);
           } else {
-            alert('El motivo no existe.');
+            mostrarError('Error', 'El motivo no existe.');
           }
         } catch {
-          alert('Error al conectar con el servidor.');
+          mostrarError('Error', 'Error al conectar con el servidor.');
         } finally {
           setLoading(false);
         }

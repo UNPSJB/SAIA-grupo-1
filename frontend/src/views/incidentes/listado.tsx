@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { FiltroEstadoGrupo, Incidente } from './tipos';
 import {
@@ -95,6 +96,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({
   onVerCategorias,
   onRegistrarClick,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [incidentes, setIncidentes] = useState<Incidente[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -198,7 +200,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({
 
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(
+      mostrarError('Error', 
         err instanceof Error
           ? err.message
           : `Error al exportar el historial de incidentes a ${formato.toUpperCase()}.`
@@ -466,7 +468,7 @@ export const ListadoIncidentes: React.FC<ListadoIncidentesProps> = ({
                           setIncidenteSeleccionado(inc);
                         }}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                     </td>
                   </tr>

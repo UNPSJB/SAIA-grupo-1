@@ -503,7 +503,7 @@ export const DetalleIncidenteModal: React.FC<DetalleIncidenteModalProps> = ({
                         onClick={() => setZoomFoto(true)}
                       />
                       <span className="incidente-foto-hint">
-                        🔍 Clic sobre la imagen para ver en tamaño completo
+                        <span className="material-symbols-outlined">search</span> Clic sobre la imagen para ver en tamaño completo
                       </span>
                     </>
                   )}

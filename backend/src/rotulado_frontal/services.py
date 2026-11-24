@@ -191,6 +191,88 @@ def eliminar_borrador(db: Session, conjunto_id: int) -> None:
     db.commit()
 
 
+def _sincronizar_parametros_sellos_desde_conjunto(
+    db: Session, conjunto: ConjuntoParametrosRotulado
+) -> ParametrosSellos:
+    existentes = db.scalar(
+        select(ParametrosSellos).where(ParametrosSellos.version == conjunto.version)
+    )
+    valores = {
+        "umbral_azucares_pct": 10.0,
+        "umbral_grasas_totales_pct": 30.0,
+        "umbral_grasas_saturadas_pct": 10.0,
+        "umbral_sodio_mg_por_kcal": 1.0,
+        "umbral_sodio_max_100g": 300.0,
+        "umbral_sodio_bebida_sin_kcal": 40.0,
+        "umbral_calorias_solido_100g": 275.0,
+        "umbral_calorias_liquido_100ml": 25.0,
+        "factor_kcal_carbohidratos": 4.0,
+        "factor_kcal_grasas": 9.0,
+    }
+    for regla in conjunto.reglas:
+        if not regla.activa:
+            continue
+        conds = regla.condiciones or []
+        if regla.codigo == "EXCESO_AZUCARES":
+            for c in conds:
+                if c.get("umbral") is not None:
+                    valores["umbral_azucares_pct"] = float(c["umbral"])
+                    if c.get("factor_kcal") is not None:
+                        valores["factor_kcal_carbohidratos"] = float(c["factor_kcal"])
+                    break
+        elif regla.codigo == "EXCESO_GRASAS_TOTALES":
+            for c in conds:
+                if c.get("umbral") is not None:
+                    valores["umbral_grasas_totales_pct"] = float(c["umbral"])
+                    if c.get("factor_kcal") is not None:
+                        valores["factor_kcal_grasas"] = float(c["factor_kcal"])
+                    break
+        elif regla.codigo == "EXCESO_GRASAS_SATURADAS":
+            for c in conds:
+                if c.get("umbral") is not None:
+                    valores["umbral_grasas_saturadas_pct"] = float(c["umbral"])
+                    break
+        elif regla.codigo == "EXCESO_SODIO":
+            for c in conds:
+                tipo_c = str(c.get("tipo", ""))
+                umbral_c = c.get("umbral")
+                if umbral_c is None:
+                    continue
+                if "mg_por_kcal" in tipo_c:
+                    valores["umbral_sodio_mg_por_kcal"] = float(umbral_c)
+                elif "sin_energia" in tipo_c or c.get("estado_fisico") == "LIQUIDO":
+                    valores["umbral_sodio_bebida_sin_kcal"] = float(umbral_c)
+                else:
+                    valores["umbral_sodio_max_100g"] = float(umbral_c)
+        elif regla.codigo == "EXCESO_CALORIAS":
+            for c in conds:
+                umbral_c = c.get("umbral")
+                if umbral_c is None:
+                    continue
+                if c.get("estado_fisico") == "LIQUIDO":
+                    valores["umbral_calorias_liquido_100ml"] = float(umbral_c)
+                else:
+                    valores["umbral_calorias_solido_100g"] = float(umbral_c)
+
+    if existentes is not None:
+        existentes.fecha_vigencia = conjunto.fecha_vigencia
+        existentes.norma_origen = conjunto.norma_origen
+        existentes.activa = True
+        for k, v in valores.items():
+            setattr(existentes, k, v)
+        return existentes
+
+    nuevo = ParametrosSellos(
+        version=conjunto.version,
+        fecha_vigencia=conjunto.fecha_vigencia,
+        activa=True,
+        norma_origen=conjunto.norma_origen,
+        **valores,
+    )
+    db.add(nuevo)
+    return nuevo
+
+
 def publicar(db: Session, conjunto_id: int) -> ConjuntoParametrosRotulado:
     conjunto = _obtener(db, conjunto_id)
     _validar_borrador(conjunto)
@@ -198,7 +280,6 @@ def publicar(db: Session, conjunto_id: int) -> ConjuntoParametrosRotulado:
     if not any(r.activa for r in conjunto.reglas):
         raise exceptions.ConjuntoSinReglas()
 
-    # la linea de tiempo solo avanza: lo que estuvo vigente en una fecha pasada no cambia
     ultima_fecha = db.scalar(
         select(func.max(ConjuntoParametrosRotulado.fecha_vigencia))
         .where(ConjuntoParametrosRotulado.estado == EstadoConjunto.PUBLICADO)
@@ -208,6 +289,7 @@ def publicar(db: Session, conjunto_id: int) -> ConjuntoParametrosRotulado:
 
     conjunto.estado = EstadoConjunto.PUBLICADO
     conjunto.publicado_en = datetime.now()
+    _sincronizar_parametros_sellos_desde_conjunto(db, conjunto)
     db.commit()
     return obtener_conjunto(db, conjunto.id)
 

@@ -147,7 +147,7 @@ def actualizar_borrador_rotulo_endpoint(
 ):
     borrador = services.guardar_borrador(db, producto_id, datos, usuario)
     lista = services.obtener_lista_rotulo(db, producto_id)
-    return services.mapear_respuesta_borrador(borrador, lista)
+    return services.mapear_respuesta_borrador(db, borrador, lista)
 
 
 @router.post(
@@ -206,6 +206,6 @@ def autocompletar_borrador_rotulo_endpoint(
         db, producto_id, campos=datos.campos, usuario=usuario
     )
     lista = services.obtener_lista_rotulo(db, producto_id)
-    return services.mapear_respuesta_borrador(borrador, lista)
+    return services.mapear_respuesta_borrador(db, borrador, lista)
 
 

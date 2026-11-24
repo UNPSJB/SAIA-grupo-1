@@ -140,7 +140,7 @@ export const ComposicionPorcentualCard: React.FC<ComposicionPorcentualCardProps>
             <Badge variant={datos.cumple_cien_por_ciento ? 'activo' : 'vencido'}>
               {datos.cumple_cien_por_ciento
                 ? `✓ Suma verificada: ${datos.suma_porcentajes}%`
-                : `⚠ Suma: ${datos.suma_porcentajes}%`}
+                : `<span className="material-symbols-outlined">warning</span> Suma: ${datos.suma_porcentajes}%`}
             </Badge>
             {datos.cumple_cien_por_ciento && datos.diferencia_redondeo !== 0 && (
               <span style={{ fontSize: '0.75rem', color: 'var(--color-texto-sec, #94a3b8)' }}>
@@ -173,7 +173,7 @@ export const ComposicionPorcentualCard: React.FC<ComposicionPorcentualCardProps>
               }}
             >
               <strong style={{ display: 'block', marginBottom: '0.35rem' }}>
-                ⚠ Atención: Faltan equivalencias en gramos en el maestro de tipos de insumo
+                <span className="material-symbols-outlined">warning</span> Atención: Faltan equivalencias en gramos en el maestro de tipos de insumo
               </strong>
               <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
                 {datos.equivalencias_faltantes.map((eq) => (

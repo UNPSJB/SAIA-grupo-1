@@ -283,14 +283,14 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                         title="Ver detalles"
                         onClick={() => onDetalleClick?.(i.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         className="btn-icon btn-editar"
                         title="Editar"
                         onClick={() => onEditarClick?.(i.id)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       {Boolean(i.id_receta) && i.aplica_rotulado !== false && (
                         <button
@@ -308,7 +308,7 @@ export const ListadoProductos: React.FC<ListadoProductosProps> = ({
                         title={i.activo ? "Dar de baja" : "Restaurar"}
                         onClick={() => abrirConfirmacion(i)}
                       >
-                        {i.activo ? "🗑" : "🔄"}
+                        {i.activo ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
                       </button>
                     </div>
                   </td>

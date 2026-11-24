@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from "react";
 import type { DocumentoListItem, TipoDocumento } from "./tipos";
 import { ModalHistorialVersiones } from "./modalHistorial";
@@ -36,6 +37,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
   onNuevaVersionClick,
   onDetalleClick,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const { esAdministrador } = useAuth();
   const [documentos, setDocumentos] = useState<DocumentoListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch {
-      alert("Error al descargar el archivo.");
+      mostrarError('Error', "Error al descargar el archivo.");
     }
   };
 
@@ -128,7 +130,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
 
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(
+      mostrarError('Error', 
         err instanceof Error
           ? err.message
           : `Error al exportar la lista de documentos a ${formato.toUpperCase()}.`
@@ -295,7 +297,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                           }
                         }}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       {doc.version_actual_id && (
                         <button

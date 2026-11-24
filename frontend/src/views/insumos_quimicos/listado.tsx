@@ -303,17 +303,17 @@ export const ListadoInsumosQuimicos: React.FC<Props> = ({
                         </button>
                       )}
                       <button className="btn-icon btn-ver" title="Ver Detalle" onClick={() => onVerDetalle(item)}>
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button className="btn-icon btn-editar" title="Editar" onClick={() => onEditar(item)}>
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         className={`btn-icon ${item.activo ? 'btn-eliminar' : 'btn-reactivar'}`}
                         title={item.activo ? 'Dar de baja' : 'Reactivar'}
                         onClick={() => abrirConfirmacion(item)}
                       >
-                        {item.activo ? '🗑' : '🔄'}
+                        {item.activo ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
                       </button>
                     </div>
                   </td>

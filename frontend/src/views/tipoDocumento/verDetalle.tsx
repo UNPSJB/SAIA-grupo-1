@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { TipoDocumento } from './tipos';
 import '../../styles/formularioAlta.css';
@@ -12,6 +13,7 @@ export const DetalleTipoDocumento: React.FC<DetalleTipoDocumentoProps> = ({
   onCancel,
   tipoId,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [tipo, setTipo] = useState<TipoDocumento | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,10 +26,10 @@ export const DetalleTipoDocumento: React.FC<DetalleTipoDocumentoProps> = ({
             const data: TipoDocumento = await res.json();
             setTipo(data);
           } else {
-            alert('El tipo de documento no existe.');
+            mostrarError('Error', 'El tipo de documento no existe.');
           }
         } catch {
-          alert('Error al conectar con el servidor.');
+          mostrarError('Error', 'Error al conectar con el servidor.');
         } finally {
           setLoading(false);
         }

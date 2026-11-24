@@ -241,7 +241,7 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
                         title="Ver detalles"
                         onClick={() => onDetalleClick(item.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         type="button"
@@ -249,7 +249,7 @@ export const ListadoTiposDocumentos: React.FC<ListadoTiposDocumentosProps> = ({
                         title="Eliminar tipo"
                         onClick={() => abrirConfirmacionEliminar(item)}
                       >
-                        🗑
+                        <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
                   </td>

@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { Auditoria } from "./tipos";
 import { apiFetch } from '../../api/client';
@@ -41,6 +42,7 @@ const getBadgeClass = (accion?: string) => {
 };
 
 export const ListadoAuditoria: React.FC = () => {
+  const { mostrarError } = useAlertaOperacion();
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -121,7 +123,7 @@ export const ListadoAuditoria: React.FC = () => {
 
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(
+      mostrarError('Error', 
         err instanceof Error
           ? err.message
           : `Error al exportar los registros de auditoría a ${formato.toUpperCase()}.`

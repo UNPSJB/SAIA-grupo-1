@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { RecetaConId } from "./tipos";
 import '../../styles/formularioAlta.css';
@@ -19,6 +20,7 @@ export const ListadoRecetas: React.FC<ListadoRecetasProps> = ({
   onDetalleClick,
   onEditarClick,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [recetas, setRecetas] = useState<RecetaConId[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -93,7 +95,7 @@ export const ListadoRecetas: React.FC<ListadoRecetasProps> = ({
       await descargarCSV(url, "recetas.csv");
       setDialogExportarAbierto(false);
     } catch (error) {
-      alert(
+      mostrarError('Error', 
         error instanceof Error ? error.message : "Error al exportar las recetas a CSV."
       );
     } finally {
@@ -224,14 +226,14 @@ export const ListadoRecetas: React.FC<ListadoRecetasProps> = ({
                           title="Ver detalles"
                           onClick={() => onDetalleClick?.(r.id)}
                         >
-                          👁
+                          <span className="material-symbols-outlined">visibility</span>
                         </button>
                         <button
                           className="btn-icon btn-editar"
                           title="Editar"
                           onClick={() => onEditarClick?.(r.id)}
                         >
-                          ✎
+                          <span className="material-symbols-outlined">edit</span>
                         </button>
                       </div>
                     </td>

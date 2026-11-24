@@ -348,7 +348,7 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
                           title="Ver detalles"
                           onClick={() => { setModelVer(true); setTareaSeleccionada(t.id); }}
                         >
-                          👁
+                          <span className="material-symbols-outlined">visibility</span>
                         </button>
                         <button
                           type="button"
@@ -356,7 +356,7 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
                           title="Editar"
                           onClick={() => { setModalEditar(true); setTareaSeleccionada(t.id); }}
                         >
-                          ✎
+                          <span className="material-symbols-outlined">edit</span>
                         </button>
                         <button
                           type="button"
@@ -364,7 +364,7 @@ export default function EditarPlanDeLimpieza({ planlimpiezaID, onSuccess, onCanc
                           title="Dar de baja"
                           onClick={() => abrirConfirmacion(t)}
                         >
-                          🗑
+                          <span className="material-symbols-outlined">delete</span>
                         </button>
                       </div>
                     </td>

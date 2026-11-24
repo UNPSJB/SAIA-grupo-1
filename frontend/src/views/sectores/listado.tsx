@@ -208,14 +208,14 @@ export const ListadoSectores: React.FC<ListadoSectoresProps> = ({
                         title="Editar sector"
                         onClick={() => onEditarClick?.(s.id)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         className="btn-icon btn-eliminar"
                         title="Eliminar sector"
                         onClick={() => abrirConfirmacion(s)}
                       >
-                        🗑
+                        <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
                   </td>

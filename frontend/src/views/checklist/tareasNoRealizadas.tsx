@@ -215,7 +215,7 @@ export const TareasNoRealizadas: React.FC<TareasNoRealizadasProps> = ({
             style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
             title="Actualizar listado"
           >
-            🔄 Actualizar
+            <span className="material-symbols-outlined">refresh</span> Actualizar
           </button>
         </div>
       </div>
@@ -499,7 +499,7 @@ export const TareasNoRealizadas: React.FC<TareasNoRealizadasProps> = ({
                               border: `1px solid ${venceHoy ? 'var(--color-error, #ef4444)' : 'var(--color-exito-borde, #a7f3d0)'}`,
                             }}
                           >
-                            {venceHoy ? '⚠ Vence hoy' : `Quedan ${item.dias_restantes ?? 1} días`}
+                            {venceHoy ? <><span className="material-symbols-outlined">warning</span> Vence hoy</> : `Quedan ${item.dias_restantes ?? 1} días`}
                           </span>
                         </td>
 
@@ -535,7 +535,7 @@ export const TareasNoRealizadas: React.FC<TareasNoRealizadasProps> = ({
                               }}
                               title="Ver historial de cambios de la tarea"
                             >
-                              🕒 Historial
+                              <span className="material-symbols-outlined">schedule</span> Historial
                             </button>
                           </div>
                         </td>

@@ -355,7 +355,7 @@ export const ModalAgregarInsumos: React.FC<ModalAgregarInsumosProps> = ({ lote, 
                       disabled={filas.length === 1}
                       style={{ height: '38px', width: '38px', marginBottom: '2px' }}
                     >
-                      🗑
+                      <span className="material-symbols-outlined">delete</span>
                     </button>
                   </div>
 

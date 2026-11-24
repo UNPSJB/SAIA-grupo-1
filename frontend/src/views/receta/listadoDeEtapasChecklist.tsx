@@ -246,7 +246,7 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
               className="btn-dia-ver"
               title="Abrir tu checklist de recetas de hoy"
             >
-              📅 Ver mi Checklist de Hoy
+              <span className="material-symbols-outlined">today</span> Ver mi Checklist de Hoy
             </button>
           )}
         </div>
@@ -431,7 +431,7 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
                             title="Ver detalle del checklist y ejecutar etapas"
                             onClick={() => onDetalleClick(c.id)}
                           >
-                            👁
+                            <span className="material-symbols-outlined">visibility</span>
                           </button>
 
                           {recetaIdAsociada && (
@@ -441,7 +441,7 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
                               title="Consultar receta vigente e historial de versiones"
                               onClick={() => handleAbrirReceta(recetaIdAsociada)}
                             >
-                              📄
+                              <span className="material-symbols-outlined">description</span>
                             </button>
                           )}
                         </div>
@@ -462,7 +462,7 @@ export const ListadoChecklistsReceta: React.FC<ListadoChecklistsRecetaProps> = (
                                     className="btn-ver-detalle-inline"
                                     onClick={() => handleAbrirReceta(recetaIdAsociada)}
                                   >
-                                    📄 Ver Receta e Historial
+                                    <span className="material-symbols-outlined">description</span> Ver Receta e Historial
                                   </button>
                                 )}
                                 <button

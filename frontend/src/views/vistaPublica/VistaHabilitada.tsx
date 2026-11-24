@@ -377,7 +377,7 @@ return (
                             className="btn-icon btn-editar"
                             title="Editar descripción"
                         >
-                            ✎
+                            <span className="material-symbols-outlined">edit</span>
                         </button>
                     </div>
 
@@ -398,7 +398,7 @@ return (
                             onClick={handleGuardarEdicion}
                             disabled={loading}
                         >
-                            {loading ? "Guardando..." : "Guardar Descripción 💾"}
+                            {loading ? "Guardando..." : <>Guardar Descripción <span className="material-symbols-outlined">save</span></>}
                         </button>
                     )}
                 </div>
@@ -433,7 +433,7 @@ return (
                         className="btn-guardar" 
                         onClick={handleDescargarQR}
                     >
-                        Descargar QR 📥
+                        Descargar QR <span className="material-symbols-outlined">download</span>
                     </button>
                 </div>
 
@@ -456,7 +456,7 @@ return (
                                 onClick={handleCopiarEnlace}
                                 title="Copiar enlace"
                             >
-                                Copiar 📋
+                                Copiar <span className="material-symbols-outlined">assignment</span>
                             </button>
                         </div>
                     </div>

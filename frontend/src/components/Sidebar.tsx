@@ -344,7 +344,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ moduloActivo, onCambiarModulo 
         { id: 'tipoInsumo', label: 'Tipos de Insumo', icono: ICONOS_MODULO.tipoInsumo },
         { id: 'insumos', label: 'Ingredientes', icono: ICONOS_MODULO.insumos },
         { id: 'receta', label: 'Receta', icono: ICONOS_MODULO.receta },
-        { id: 'alergenos', label: 'Alérgenos', icono: ICONOS_MODULO.alergenos },
         { id: 'productos', label: 'Productos Elaborados', icono: ICONOS_MODULO.productos },
       ],
     },

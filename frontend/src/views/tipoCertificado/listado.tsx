@@ -246,7 +246,7 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
                         title="Ver detalles"
                         onClick={() => onDetalleClick(item.id)}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         type="button"
@@ -254,7 +254,7 @@ export const ListadoTiposCertificados: React.FC<ListadoTiposCertificadosProps> =
                         title="Eliminar tipo"
                         onClick={() => abrirConfirmacionEliminar(item)}
                       >
-                        🗑
+                        <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
                   </td>

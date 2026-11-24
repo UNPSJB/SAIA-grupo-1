@@ -250,7 +250,7 @@ export const ListadoUnidadesMedida: React.FC<ListadoUnidadesMedidaProps> = ({
                           title="Editar unidad de medida"
                           onClick={() => onEditarClick(u.id)}
                         >
-                          ✎
+                          <span className="material-symbols-outlined">edit</span>
                         </button>
                       )}
                       {u.activo ? (
@@ -259,7 +259,7 @@ export const ListadoUnidadesMedida: React.FC<ListadoUnidadesMedidaProps> = ({
                           title="Dar de baja unidad de medida"
                           onClick={() => abrirConfirmacion(u)}
                         >
-                          🗑
+                          <span className="material-symbols-outlined">delete</span>
                         </button>
                       ) : (
                         <button
@@ -267,7 +267,7 @@ export const ListadoUnidadesMedida: React.FC<ListadoUnidadesMedidaProps> = ({
                           title="Restaurar unidad de medida"
                           onClick={() => abrirConfirmacion(u)}
                         >
-                          🔄
+                          <span className="material-symbols-outlined">refresh</span>
                         </button>
                       )}
                     </div>

@@ -111,7 +111,7 @@ export const ListadoCalibracionesRealizadas: React.FC<ListadoCalibracionesProps>
                   <td style={{ fontWeight: 500 }}>{formatDate(c.fecha_d_realizacion)}</td>
                   <td>
                     <span className="badge-archivo" style={{ textTransform: 'uppercase', fontWeight: 600 }}>
-                      📄 {obtenerTipoArchivo(c.formato_archivo)}
+                      <span className="material-symbols-outlined">description</span> {obtenerTipoArchivo(c.formato_archivo)}
                     </span>
                   </td>
                   <td className="acciones-col">
@@ -125,7 +125,7 @@ export const ListadoCalibracionesRealizadas: React.FC<ListadoCalibracionesProps>
                           setModalVer(true);
                         }}
                       >
-                        👁
+                        <span className="material-symbols-outlined">visibility</span>
                       </button>
                       <button
                         type="button"
@@ -136,7 +136,7 @@ export const ListadoCalibracionesRealizadas: React.FC<ListadoCalibracionesProps>
                           setModalVer(true);
                         }}
                       >
-                        📥
+                        <span className="material-symbols-outlined">download</span>
                       </button>
                     </div>
                   </td>

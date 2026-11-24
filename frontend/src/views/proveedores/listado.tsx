@@ -230,14 +230,14 @@ export const ListadoProveedores: React.FC<ListadoProveedoresProps> = ({
                         title="Editar"
                         onClick={() => onEditarClick?.(p.id)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         className={`btn-icon ${p.activo ? 'btn-eliminar' : 'btn-reactivar'}`}
                         title={p.activo ? 'Dar de baja' : 'Restaurar'}
                         onClick={() => abrirConfirmacion(p)}
                       >
-                        {p.activo ? '🗑' : '🔄'}
+                        {p.activo ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
                       </button>
                     </div>
                   </td>

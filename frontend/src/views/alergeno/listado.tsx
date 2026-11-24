@@ -173,14 +173,14 @@ export const ListadoAlergenos: React.FC<ListadoAlergenosProps> = ({
                         title="Editar alérgeno"
                         onClick={() => onEditarClick?.(a.id)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         className="btn-icon btn-eliminar"
                         title="Eliminar alérgeno"
                         onClick={() => abrirConfirmacion(a)}
                       >
-                        🗑
+                        <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
                   </td>

@@ -345,7 +345,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                 className="btn-dia-ver"
                 title="Abrir tu checklist de hoy"
               >
-                📅 Ver mi Checklist del Día
+                <span className="material-symbols-outlined">today</span> Ver mi Checklist del Día
               </button>
               {checklists.find((c) => c.id === checklistHoyId)?.tiene_reasignacion_no_leida && (
                 <span
@@ -581,7 +581,7 @@ export const ListadoChecklists: React.FC<ListadoChecklistsProps> = ({
                             title="Ver detalle del checklist"
                             onClick={() => onDetalleClick(c.id)}
                           >
-                            👁
+                            <span className="material-symbols-outlined">visibility</span>
                           </button>
                         </div>
                       </td>

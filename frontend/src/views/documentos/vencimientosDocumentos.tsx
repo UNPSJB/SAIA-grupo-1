@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { DocumentoListItem, TipoDocumento } from './tipos';
 import { apiFetch } from '../../api/client';
@@ -38,6 +39,7 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
   onVerSoloPersonal,
   filtroEstadoInicial,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [documentos, setDocumentos] = useState<DocumentoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
@@ -85,7 +87,7 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch {
-      alert('Error al descargar el archivo.');
+      mostrarError('Error', 'Error al descargar el archivo.');
     }
   };
 
@@ -200,7 +202,7 @@ export const VencimientosDocumentos: React.FC<VencimientosDocumentosProps> = ({
 
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(
+      mostrarError('Error', 
         err instanceof Error
           ? err.message
           : `Error al exportar vencimientos a ${formato.toUpperCase()}.`

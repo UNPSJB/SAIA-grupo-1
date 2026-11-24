@@ -15,6 +15,7 @@ export const MODULOS_DE_CONFIGURACION: readonly Modulo[] = [
   'motivos',
   'unidadesMedida',
   'proveedores',
+  'alergenos',
   'rotuladoFrontal',
   'vistaPublica',
 ];

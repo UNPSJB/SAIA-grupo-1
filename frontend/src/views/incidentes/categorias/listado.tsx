@@ -275,7 +275,7 @@ export const ListadoCategoriasIncidentes: React.FC<ListadoCategoriasIncidentesPr
                         title="Editar categoría"
                         onClick={() => abrirEditar(cat)}
                       >
-                        ✎
+                        <span className="material-symbols-outlined">edit</span>
                       </button>
                       <button
                         type="button"
@@ -288,7 +288,7 @@ export const ListadoCategoriasIncidentes: React.FC<ListadoCategoriasIncidentesPr
                         disabled={(cat.total_incidentes ?? 0) > 0}
                         onClick={() => abrirEliminar(cat)}
                       >
-                        🗑
+                        <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
                   </td>

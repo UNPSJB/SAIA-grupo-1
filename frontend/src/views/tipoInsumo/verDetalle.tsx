@@ -323,7 +323,7 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
                           title="Ver lote y trazabilidad"
                           onClick={() => onVerLote(lote.id)}
                         >
-                          👁
+                          <span className="material-symbols-outlined">visibility</span>
                         </button>
                       )}
                       {lote.activo && onEditarLote && (
@@ -332,7 +332,7 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
                           title="Editar lote"
                           onClick={() => onEditarLote(lote.id)}
                         >
-                          ✎
+                          <span className="material-symbols-outlined">edit</span>
                         </button>
                       )}
                       {lote.activo && (
@@ -341,7 +341,7 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
                           title="Dar de baja lote"
                           onClick={() => abrirConfirmacionEliminarLote(lote)}
                         >
-                          🗑
+                          <span className="material-symbols-outlined">delete</span>
                         </button>
                       )}
                     </div>

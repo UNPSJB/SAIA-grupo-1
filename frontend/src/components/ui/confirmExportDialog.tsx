@@ -146,13 +146,13 @@ export const ConfirmExportDialog: React.FC<ConfirmExportDialogProps> = ({
             }}
           >
             <div style={{ fontWeight: 600, color: 'var(--color-texto, #2d3748)', fontSize: '0.85rem' }}>
-              📊 Total a exportar:{' '}
+              <span className="material-symbols-outlined">bar_chart</span> Total a exportar:{' '}
               <span style={{ color: 'var(--color-primario-texto, #2b6cb0)' }}>
                 {totalRegistros} registro(s)
               </span>
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--color-texto-sec, #718096)', marginTop: '2px' }}>
-              ℹ️ Se incluirán <strong>todas las páginas</strong> resultantes (<em>{filtrosAplicados}</em>).
+              <span className="material-symbols-outlined">info</span> Se incluirán <strong>todas las páginas</strong> resultantes (<em>{filtrosAplicados}</em>).
             </div>
           </div>
         </div>

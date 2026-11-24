@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from "react";
 import type { ControlAmbientalConHistorial, VisitaControl } from "./tipos";
 import { apiFetch } from "../../api/client";
@@ -34,6 +35,7 @@ export const ModalHistorialVisitas: React.FC<ModalHistorialVisitasProps> = ({
   controlId,
   tipoLabel,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [visitas, setVisitas] = useState<VisitaControl[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,12 +89,12 @@ export const ModalHistorialVisitas: React.FC<ModalHistorialVisitasProps> = ({
         setEsPdf(esFormatoPdf);
         setArchivoUrl(urlCreada);
       } else {
-        alert("No se pudo cargar el comprobante adjunto.");
+        mostrarError('Error', "No se pudo cargar el comprobante adjunto.");
         setModalArchivoAbierto(false);
       }
     } catch (err) {
       console.error("Error al cargar archivo:", err);
-      alert("Error al descargar el comprobante.");
+      mostrarError('Error', "Error al descargar el comprobante.");
       setModalArchivoAbierto(false);
     } finally {
       setCargandoArchivo(false);
@@ -184,7 +186,7 @@ export const ModalHistorialVisitas: React.FC<ModalHistorialVisitasProps> = ({
                                 gap: "4px",
                               }}
                             >
-                              <span>📄 Ver Comprobante</span>
+                              <span><span className="material-symbols-outlined">description</span> Ver Comprobante</span>
                               <span>↗</span>
                             </button>
                           ) : (

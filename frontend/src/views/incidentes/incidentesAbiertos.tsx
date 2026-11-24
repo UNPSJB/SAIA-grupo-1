@@ -1,3 +1,4 @@
+import { useAlertaOperacion } from '../../contexto/AlertaOperacionContext';
 import React, { useEffect, useState } from 'react';
 import type { Incidente, IncidenteAbierto, IncidentesMetricas, NivelUrgencia } from './tipos';
 import {
@@ -105,6 +106,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
   onVerCategorias,
   onRegistrarClick,
 }) => {
+  const { mostrarError } = useAlertaOperacion();
   const [incidentes, setIncidentes] = useState<IncidenteAbierto[]>([]);
   const [metricas, setMetricas] = useState<IncidentesMetricas | null>(null);
   const [loading, setLoading] = useState(true);
@@ -191,7 +193,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
 
       setDialogExportarAbierto(false);
     } catch (err) {
-      alert(
+      mostrarError('Error', 
         err instanceof Error
           ? err.message
           : `Error al exportar incidentes abiertos a ${formato.toUpperCase()}.`
@@ -473,7 +475,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                 <td colSpan={7} style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text)' }}>
                   {busqueda || filtroUrgencia !== 'TODOS'
                     ? 'No se encontraron incidentes abiertos que coincidan con los filtros aplicados.'
-                    : '🎉 ¡Excelente! No hay incidentes pendientes ni abiertos en este momento.'}
+                    : <><span className="material-symbols-outlined">check_circle</span> ¡Excelente! No hay incidentes pendientes ni abiertos en este momento.</>}
                 </td>
               </tr>
             ) : (
@@ -502,7 +504,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                         title={`Abierto hace ${formatearAntiguedad(inc.horas_abierto)}`}
                       >
                         <span className="status-dot" />
-                        {inc.nivel_urgencia === 'CRITICO' ? '⚠️ ' : ''}
+                        {inc.nivel_urgencia === 'CRITICO' ? <><span className="material-symbols-outlined">warning</span> </> : ''}
                         {formatearAntiguedad(inc.horas_abierto)}
                       </span>
                     </td>
@@ -586,7 +588,7 @@ export const IncidentesAbiertos: React.FC<IncidentesAbiertosProps> = ({
                           title="Ver detalles completos del incidente"
                           onClick={(e) => abrirDetalle(inc, e)}
                         >
-                          👁
+                          <span className="material-symbols-outlined">visibility</span>
                         </button>
                       </div>
                     </td>

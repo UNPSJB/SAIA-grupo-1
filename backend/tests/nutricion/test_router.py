@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from src.main import app
-from src.insumos.models import Insumo
+from src.tipoInsumo.models import TipoInsumo
 from src.producto.models import Producto
 from src.recetas.models import Receta, VersionReceta, RecetaDetalle
 from tests.database import session
@@ -31,13 +31,10 @@ def test_listar_y_modificar_parametros(session: Session):
     assert carbs["vdr"] == 300.0
 
 def test_endpoints_nutricion_producto(session: Session):
-    insumo = Insumo(
+    tipo_insumo = TipoInsumo(
         nombre="Harina Router Test",
-        lote="ROT-01",
-        fechaRecepcion=datetime.now(),
-        cantRecibida=10.0,
-        stock=10.0,
-        medida="kilogramos",
+        descripcion="Harina para test",
+        unidad_medida_id=1,
         energia_kcal=350.0,
         energia_kj=1464.4,
         carbohidratos=72.0,
@@ -51,7 +48,7 @@ def test_endpoints_nutricion_producto(session: Session):
         sodio_mg=5.0,
         fuente_datos="CAA",
     )
-    session.add(insumo)
+    session.add(tipo_insumo)
     session.flush()
 
     prod = Producto(
@@ -86,7 +83,7 @@ def test_endpoints_nutricion_producto(session: Session):
     detalle = RecetaDetalle(
         nombre="Harina Detalle",
         version_receta_id=version.id,
-        ingrediente_id=insumo.id,
+        tipo_insumo_id=tipo_insumo.id,
         cantidad=1000.0,
         unidad_medida="GRAMOS",
         es_aditivo=False,

@@ -410,7 +410,7 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
                           </button>
                         )}
 
-                        {/* 2. VER DETALLES (ojo 👁) */}
+                        {/* 2. VER DETALLES (ojo <span className="material-symbols-outlined">visibility</span>) */}
                         <button
                           type="button"
                           className="btn-icon btn-ver"
@@ -420,10 +420,10 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
                             else setDetalleIdInterno(item.id);
                           }}
                         >
-                          👁
+                          <span className="material-symbols-outlined">visibility</span>
                         </button>
 
-                        {/* 3. EDITAR (lápiz limpio ✎) */}
+                        {/* 3. EDITAR (lápiz limpio <span className="material-symbols-outlined">edit</span>) */}
                         {esAdministrador && (
                           <button
                             type="button"
@@ -434,11 +434,11 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
                               else setEditarIdInterno(item.id);
                             }}
                           >
-                            ✎
+                            <span className="material-symbols-outlined">edit</span>
                           </button>
                         )}
 
-                        {/* 4. DAR DE BAJA / REACTIVAR (tacho 🗑 o reciclaje 🔄) */}
+                        {/* 4. DAR DE BAJA / REACTIVAR (tacho <span className="material-symbols-outlined">delete</span> o reciclaje <span className="material-symbols-outlined">refresh</span>) */}
                         {esAdministrador && (
                           <button
                             type="button"
@@ -446,7 +446,7 @@ export const ListadoControlesAmbientales: React.FC<ListadoControlesProps> = ({
                             title={item.activo ? "Dar de baja" : "Reactivar"}
                             onClick={() => abrirConfirmacionToggle(item)}
                           >
-                            {item.activo ? "🗑" : "🔄"}
+                            {item.activo ? <span className="material-symbols-outlined">delete</span> : <span className="material-symbols-outlined">refresh</span>}
                           </button>
                         )}
 
