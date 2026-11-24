@@ -1579,3 +1579,52 @@ dialog .btn-guardar{
     max-height: calc(100dvh - 1rem);
   }
 }
+/*SIMBOLOS*/
+
+.simbolos-alergeno-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(105px, 100%), 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.simbolo-alergeno-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--color-borde);
+  background-color: var(--color-superficie);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.simbolo-alergeno-btn:hover {
+  background-color: var(--color-fondo);
+}
+
+.simbolo-alergeno-btn.seleccionado {
+  border: 2px solid var(--color-primario, #2563eb);
+  background-color: var(--color-suave);
+}
+
+.simbolo-alergeno-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-bottom: 6px;
+}
+
+.simbolo-alergeno-texto {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-texto);
+  text-align: center;
+}
+
+.simbolo-alergeno-btn.seleccionado .simbolo-alergeno-texto {
+  font-weight: 700;
+  color: var(--color-primario-texto);
+}

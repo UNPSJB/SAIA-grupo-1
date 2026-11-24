@@ -1,6 +1,7 @@
 import re
-from typing import Optional, Self
+from typing import List, Optional, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from src.alergenos.schemas import Alergeno
 from src.recetas.schemas import RecetaBase
 from src.producto import exceptions
 
@@ -89,6 +90,7 @@ class ProductoResponse(ProductoBase):
     aplica_rotulado: bool = True
     activo: bool
     visible_publico: bool = False
+    alergenos_precaucion:Optional[List[Alergeno]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
