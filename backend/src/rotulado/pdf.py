@@ -52,10 +52,30 @@ FRASES_PROHIBIDAS = [
 ]
 
 
+reemplazos = {
+    "≥": ">= ",
+    "≤": "<= ",
+    "×": "x",
+    "÷": "/",
+    "≠": "!=",
+    "—": "-",
+    "–": "-",
+    "•": "*",
+    "…": "...",
+    "“": '"',
+    "”": '"',
+    "‘": "'",
+    "’": "'",
+}
+
+
 def _texto(valor: Any) -> str:
     if valor is None or valor == "":
         return "-"
-    return str(valor).encode("windows-1252", "replace").decode("windows-1252")
+    s = str(valor)
+    for orig, rep in reemplazos.items():
+        s = s.replace(orig, rep)
+    return s.encode("windows-1252", "replace").decode("windows-1252")
 
 
 def validar_sin_menciones_aprobacion(textos: List[str]) -> None:
@@ -81,67 +101,56 @@ class BorradorRotuloPDF(FPDF):
         self.version_receta = version_receta
         self.fecha_emision = fecha_emision
         self.usuario_nombre = usuario_nombre
-        self.set_margins(14, 26, 14)
-        self.set_auto_page_break(auto=True, margin=20)
+        self.set_margins(14, 20, 14)
+        self.set_auto_page_break(auto=True, margin=16)
         self.set_title(f"Borrador de Rótulo - {producto_nombre}")
         self.set_author(usuario_nombre)
         self.set_creator("SAIA")
 
-    def color_texto(self, color=TEXTO):
+    def color_texto(self, color=NEGRO):
         self.set_text_color(*color)
 
     def header(self):
-        # Banda roja de advertencia de borrador
+        # Banda roja superior de advertencia de borrador (mismo ancho exacto de la tabla)
         self.set_fill_color(*ROJO_FONDO)
         self.set_draw_color(*ROJO_BORDE)
         self.set_line_width(0.4)
-        self.rect(14, 8, self.epw, 12, style="DF", round_corners=True, corner_radius=2)
+        self.rect(14, 8, self.epw, 7.5, style="DF", round_corners=True, corner_radius=1.5)
 
-        self.set_xy(16, 9.5)
-        self.set_font(FUENTE, "B", 8)
+        self.set_xy(14, 9.8)
+        self.set_font(FUENTE, "B", 6.8)
         self.set_text_color(*ROJO_TEXTO)
-        self.cell(self.epw - 4, 4, _texto("[!] BORRADOR DE RÓTULO - DOCUMENTO DE TRABAJO PARA REVISIÓN PROFESIONAL"), align="C")
+        self.cell(self.epw, 4, _texto("[!] BORRADOR: DEBE SER REVISADO POR UN/A PROFESIONAL Y POR LA AUTORIDAD SANITARIA COMPETENTE ANTES DE SU USO"), align="C")
 
-        self.set_xy(16, 14)
-        self.set_font(FUENTE, "", 6.8)
-        self.cell(self.epw - 4, 3.5, _texto("NO VÁLIDO COMO RÓTULO DEFINITIVO - SUJETO A REVISIÓN PROFESIONAL Y SANITARIA"), align="C")
-
-        self.set_y(24)
+        self.set_y(19.5)
         self.color_texto()
 
     def footer(self):
+        # Pie de página limpio y discreto sin aviso de borrador (solo numeración)
         self.set_draw_color(*BORDE)
         self.set_line_width(0.3)
-        self.line(14, self.h - 17, self.w - 14, self.h - 17)
+        self.line(14, self.h - 12, self.w - 14, self.h - 12)
 
-        self.set_xy(14, self.h - 16)
-        self.set_font(FUENTE, "B", 6.8)
-        self.set_text_color(*ROJO_TEXTO)
-        self.cell(0, 3.5, LEYENDA_BORRADOR_OBLIGATORIA, align="C")
-
-        self.set_xy(14, self.h - 12)
-        self.set_font(FUENTE, "", 6.5)
-        self.color_texto(TEXTO_SEC)
-        fecha_str = self.fecha_emision.strftime("%d/%m/%Y %H:%M")
-        meta = _texto(f"SAIA - Receta V{self.version_receta} - Emitido: {fecha_str} por {self.usuario_nombre} - Sin valor de certificación oficial")
-        self.cell(self.epw * 0.75, 3.5, meta, align="L")
-        self.cell(self.epw * 0.25, 3.5, f"Página {self.page_no()} de {{nb}}", align="R")
+        self.set_xy(14, self.h - 10)
+        self.set_font(FUENTE, "", 7)
+        self.set_text_color(100, 116, 139)
+        self.cell(0, 4, f"Página {self.page_no()} de {{nb}}", align="R")
 
     def titulo_seccion(self, titulo: str, subtitulo: Optional[str] = None):
         if self.get_y() > self.page_break_trigger - 35:
             self.add_page()
-        self.ln(4)
-        self.set_font(FUENTE, "B", 11)
-        self.color_texto(PRIMARIO)
-        self.cell(0, 6, titulo, new_x="LMARGIN", new_y="NEXT")
-        if subtitulo:
-            self.set_font(FUENTE, "I", 7.5)
-            self.color_texto(TEXTO_SEC)
-            self.cell(0, 4, subtitulo, new_x="LMARGIN", new_y="NEXT")
-        self.set_draw_color(*PRIMARIO)
-        self.set_line_width(0.6)
-        self.line(14, self.get_y() + 0.5, 35, self.get_y() + 0.5)
         self.ln(3)
+        self.set_font(FUENTE, "B", 10)
+        self.set_text_color(*NEGRO)
+        self.cell(0, 5, _texto(titulo), new_x="LMARGIN", new_y="NEXT")
+        if subtitulo:
+            self.set_font(FUENTE, "I", 7)
+            self.set_text_color(100, 116, 139)
+            self.cell(0, 3.5, _texto(subtitulo), new_x="LMARGIN", new_y="NEXT")
+        self.set_draw_color(203, 213, 225)
+        self.set_line_width(0.4)
+        self.line(14, self.get_y() + 0.5, 45, self.get_y() + 0.5)
+        self.ln(2.5)
 
     def tabla_simple(
         self,
@@ -152,31 +161,34 @@ class BorradorRotuloPDF(FPDF):
         resaltar_filas: Optional[Sequence[bool]] = None,
     ):
         self.set_font(FUENTE, size=7.5)
-        self.set_draw_color(*BORDE)
+        self.set_draw_color(226, 232, 240)
         self.set_line_width(0.2)
 
         with self.table(
             col_widths=anchos,
-            headings_style=FontFace(emphasis="BOLD", color=TEXTO, fill_color=SUAVE),
-            cell_fill_color=FONDO,
-            cell_fill_mode="ROWS",
+            headings_style=FontFace(family=FUENTE, emphasis="BOLD", color=(255, 255, 255), fill_color=(30, 41, 59)),
             line_height=4.6,
             padding=(1.4, 1.8),
             text_align=alineaciones[0] if alineaciones else "LEFT",
-            borders_layout="HORIZONTAL_LINES",
+            borders_layout="ALL",
         ) as tabla:
             fila_enc = tabla.row()
             for idx, h in enumerate(encabezados):
                 align = alineaciones[idx] if alineaciones and idx < len(alineaciones) else "LEFT"
-                fila_enc.cell(h, align=align)
+                fila_enc.cell(_texto(h), align=align)
 
             for i, f in enumerate(filas):
-                fila = tabla.row()
+                fill = (248, 250, 252) if i % 2 == 1 else (255, 255, 255)
                 es_resaltada = resaltar_filas[i] if resaltar_filas and i < len(resaltar_filas) else False
-                estilo = FontFace(emphasis="BOLD", color=NEGRO) if es_resaltada else None
+                estilo = (
+                    FontFace(family=FUENTE, emphasis="BOLD", color=(30, 41, 59), fill_color=fill)
+                    if es_resaltada
+                    else FontFace(family=FUENTE, color=(30, 41, 59), fill_color=fill)
+                )
+                fila = tabla.row(style=estilo)
                 for idx, val in enumerate(f):
                     align = alineaciones[idx] if alineaciones and idx < len(alineaciones) else "LEFT"
-                    fila.cell(_texto(val), style=estilo, align=align)
+                    fila.cell(_texto(val), align=align)
         self.color_texto()
 
 
@@ -210,322 +222,297 @@ def armar_pdf_borrador(
     pdf.add_page()
 
     # =========================================================================
-    # SECCIÓN 1: BORRADOR DEL RÓTULO (CARA PRINCIPAL Y CARA POSTERIOR)
+    # PÁGINA 1: BORRADOR DEL RÓTULO
     # =========================================================================
-    pdf.titulo_seccion(
-        "1. BORRADOR DEL RÓTULO",
-        "Diseño preliminar de elementos obligatorios de rotulado (CAA y Ley 27.642)",
-    )
-
     ancho_rot = pdf.epw
     x_rot = pdf.l_margin
-    y_rot = pdf.get_y()
 
-    # --- 1.1 CARA FRONTAL (Nombre, Denominación, Neto y Sellos) ---
+    # Título principal sin numeración
+    pdf.set_xy(x_rot, 19.5)
+    pdf.set_font(FUENTE, "B", 12)
+    pdf.set_text_color(*NEGRO)
+    pdf.cell(ancho_rot, 5.5, "Borrador de Rótulo", new_x="LMARGIN", new_y="NEXT")
+
+    y_card = pdf.get_y() + 1.0
+
+    # Determinar sellos y dimensiones (tamaño más amplio y visible)
     tiene_sellos = bool(datos_rotulo.tiene_octogonos and datos_rotulo.octogonos)
     total_sellos = len(datos_rotulo.octogonos) if tiene_sellos else 0
-    S_octogono = (21.0 if total_sellos >= 4 else 22.5) if tiene_sellos else 0.0
-    alto_cara_frontal = (18.0 + S_octogono + 4.5) if tiene_sellos else 26.0
+    S_oct = 23.0 if total_sellos >= 4 else 26.0
 
-    pdf.set_fill_color(255, 255, 255)
-    pdf.set_draw_color(30, 41, 59)
-    pdf.set_line_width(0.6)
-    pdf.rect(x_rot, y_rot, ancho_rot, alto_cara_frontal, style="D", round_corners=True, corner_radius=2)
+    # Cabecera de la tarjeta
+    pdf.set_xy(x_rot + 3, y_card + 5)
+    pdf.set_font(FUENTE, "B", 15)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(ancho_rot - 6, 5.8, _texto(datos_rotulo.producto_nombre), align="C")
 
-    pdf.set_xy(x_rot + 3, y_rot + 2.5)
-    pdf.set_font(FUENTE, "B", 11)
-    pdf.set_text_color(*NEGRO)
-    pdf.cell(ancho_rot - 6, 4.5, _texto(datos_rotulo.producto_nombre.upper()), align="C")
-
-    pdf.set_xy(x_rot + 3, y_rot + 7.2)
-    pdf.set_font(FUENTE, "B", 8)
+    pdf.set_xy(x_rot + 3, y_card + 11.5)
+    pdf.set_font(FUENTE, "B", 9)
+    pdf.set_text_color(30, 41, 59)
     denom = datos_rotulo.denominacion_venta or datos_rotulo.producto_nombre
-    pdf.cell(ancho_rot - 6, 3.8, _texto(denom.upper()), align="C")
+    pdf.cell(ancho_rot - 6, 4.2, _texto(denom.upper()), align="C")
 
-    pdf.set_xy(x_rot + 3, y_rot + 11.2)
-    pdf.set_font(FUENTE, "", 7)
+    pdf.set_xy(x_rot + 3, y_card + 16.2)
+    pdf.set_font(FUENTE, "", 8)
+    pdf.set_text_color(71, 85, 105)
     neto_txt = f"CONTENIDO NETO: {datos_rotulo.contenido_neto or 'No especificado'}"
-    pdf.cell(ancho_rot - 6, 3.5, _texto(neto_txt), align="C")
+    pdf.cell(ancho_rot - 6, 3.8, _texto(neto_txt), align="C")
 
-    # Sellos frontales en la cara frontal (Octógonos regulares Ley 27.642)
+    # Sellos frontales (Octógonos regulares oficiales Ley 27.642)
     if tiene_sellos:
-        y_sellos = y_rot + 16.0
-        gap = 4.0
-        anchos_sellos = []
-        for o in datos_rotulo.octogonos:
-            if getattr(o, "tipo", "octogono") == "micro_sello":
-                anchos_sellos.append(44.0)
-            else:
-                anchos_sellos.append(S_octogono)
+        y_sellos = y_card + 21.0
+        gap = 5.0
+        anchos_s = [46.0 if getattr(o, "tipo", "octogono") == "micro_sello" else S_oct for o in datos_rotulo.octogonos]
+        tot_w = sum(anchos_s) + (total_sellos - 1) * gap
+        if tot_w > ancho_rot - 12:
+            f_scale = (ancho_rot - 12) / tot_w
+            anchos_s = [w * f_scale for w in anchos_s]
+            gap *= f_scale
+            S_oct *= f_scale
+            tot_w = ancho_rot - 12
+        x_start_s = x_rot + (ancho_rot - tot_w) / 2
+        x_act = x_start_s
 
-        ancho_total_sellos = sum(anchos_sellos) + (total_sellos - 1) * gap
-        max_disp = ancho_rot - 12.0
-        if ancho_total_sellos > max_disp:
-            factor = max_disp / ancho_total_sellos
-            anchos_sellos = [w * factor for w in anchos_sellos]
-            gap = gap * factor
-            S_octogono = S_octogono * factor
-            ancho_total_sellos = max_disp
-
-        x_inicio_sellos = x_rot + (ancho_rot - ancho_total_sellos) / 2
-        x_actual = x_inicio_sellos
-
-        for idx, o in enumerate(datos_rotulo.octogonos):
-            w_item = anchos_sellos[idx]
+        for idx_s, o in enumerate(datos_rotulo.octogonos):
+            w_i = anchos_s[idx_s]
             tipo_item = getattr(o, "tipo", "octogono")
             texto_item = getattr(o, "texto", str(o))
 
             if tipo_item == "micro_sello":
-                # Micro-sello rectangular reglamentario (edulcorantes / cafeína)
-                h_micro = 14.0
-                y_micro = y_sellos + (S_octogono - h_micro) / 2
+                # Micro-sello rectangular (edulcorantes / cafeína)
+                h_micro = 15.0
+                y_micro = y_sellos + (S_oct - h_micro) / 2
                 pdf.set_fill_color(0, 0, 0)
-                pdf.rect(x_actual, y_micro, w_item, h_micro, style="F", round_corners=True, corner_radius=1.2)
+                pdf.rect(x_act, y_micro, w_i, h_micro, style="F", round_corners=True, corner_radius=1.2)
 
-                b = 0.6
+                b_m = 0.6
                 pdf.set_draw_color(255, 255, 255)
                 pdf.set_line_width(0.3)
-                pdf.rect(x_actual + b, y_micro + b, w_item - 2 * b, h_micro - 2 * b, style="D", round_corners=True, corner_radius=0.8)
+                pdf.rect(x_act + b_m, y_micro + b_m, w_i - 2 * b_m, h_micro - 2 * b_m, style="D", round_corners=True, corner_radius=0.8)
 
                 partes = texto_item.upper().split(" - ")
                 l1 = partes[0] if len(partes) > 0 else texto_item
                 l2 = partes[1] if len(partes) > 1 else ""
 
                 pdf.set_text_color(255, 255, 255)
-                pdf.set_font(FUENTE, "B", 4.8)
-                pdf.set_xy(x_actual + 1, y_micro + 1.8)
-                pdf.cell(w_item - 2, 2.4, _texto(l1), align="C")
+                pdf.set_font(FUENTE, "B", 5.0)
+                pdf.set_xy(x_act + 1, y_micro + 2.0)
+                pdf.cell(w_i - 2, 2.5, _texto(l1), align="C")
                 if l2:
-                    pdf.set_xy(x_actual + 1, y_micro + 4.4)
-                    pdf.cell(w_item - 2, 2.2, _texto(l2), align="C")
+                    pdf.set_xy(x_act + 1, y_micro + 4.8)
+                    pdf.cell(w_i - 2, 2.3, _texto(l2), align="C")
 
-                pdf.set_font(FUENTE, "", 3.4)
-                pdf.set_xy(x_actual + 1, y_micro + (7.8 if l2 else 5.5))
-                pdf.cell(w_item - 2, 1.8, "Ministerio de Salud", align="C")
+                pdf.set_font(FUENTE, "", 3.6)
+                pdf.set_xy(x_act + 1, y_micro + (8.2 if l2 else 5.8))
+                pdf.cell(w_i - 2, 2.0, "Ministerio de Salud", align="C")
             else:
                 # Octógono regular de 8 lados (Ley 27.642)
-                S = w_item
-                c = S * 0.2929
-                pts_outer = [
-                    (x_actual + c, y_sellos),
-                    (x_actual + S - c, y_sellos),
-                    (x_actual + S, y_sellos + c),
-                    (x_actual + S, y_sellos + S - c),
-                    (x_actual + S - c, y_sellos + S),
-                    (x_actual + c, y_sellos + S),
-                    (x_actual, y_sellos + S - c),
-                    (x_actual, y_sellos + c),
+                c = w_i * 0.2929
+                pts = [
+                    (x_act + c, y_sellos), (x_act + w_i - c, y_sellos),
+                    (x_act + w_i, y_sellos + c), (x_act + w_i, y_sellos + w_i - c),
+                    (x_act + w_i - c, y_sellos + w_i), (x_act + c, y_sellos + w_i),
+                    (x_act, y_sellos + w_i - c), (x_act, y_sellos + c),
                 ]
                 pdf.set_fill_color(0, 0, 0)
-                pdf.polygon(pts_outer, style="F")
+                pdf.polygon(pts, style="F")
 
-                # Borde interior blanco reglamentario
-                b = 0.7
-                S2 = S - 2 * b
-                c2 = S2 * 0.2929
-                pts_inner = [
-                    (x_actual + b + c2, y_sellos + b),
-                    (x_actual + b + S2 - c2, y_sellos + b),
-                    (x_actual + b + S2, y_sellos + b + c2),
-                    (x_actual + b + S2, y_sellos + b + S2 - c2),
-                    (x_actual + b + S2 - c2, y_sellos + b + S2),
-                    (x_actual + b + c2, y_sellos + b + S2),
-                    (x_actual + b, y_sellos + b + S2 - c2),
-                    (x_actual + b, y_sellos + b + c2),
+                b_in = 0.75
+                w_i2 = w_i - 2 * b_in
+                c2 = w_i2 * 0.2929
+                pts_in = [
+                    (x_act + b_in + c2, y_sellos + b_in), (x_act + b_in + w_i2 - c2, y_sellos + b_in),
+                    (x_act + b_in + w_i2, y_sellos + b_in + c2), (x_act + b_in + w_i2, y_sellos + b_in + w_i2 - c2),
+                    (x_act + b_in + w_i2 - c2, y_sellos + b_in + w_i2), (x_act + b_in + c2, y_sellos + b_in + w_i2),
+                    (x_act + b_in, y_sellos + b_in + w_i2 - c2), (x_act + b_in, y_sellos + b_in + c2),
                 ]
                 pdf.set_draw_color(255, 255, 255)
-                pdf.set_line_width(0.35)
-                pdf.polygon(pts_inner, style="D")
+                pdf.set_line_width(0.38)
+                pdf.polygon(pts_in, style="D")
 
-                # División reglamentaria de las líneas de texto
-                texto_upper = texto_item.upper().strip()
-                if texto_upper.startswith("EXCESO EN "):
-                    resto = texto_upper[len("EXCESO EN "):].strip()
-                    palabras_resto = resto.split()
-                    if len(palabras_resto) == 1:
-                        lineas = ["EXCESO EN", palabras_resto[0]]
-                    elif len(palabras_resto) == 2:
-                        lineas = ["EXCESO EN", palabras_resto[0], palabras_resto[1]]
-                    else:
-                        lineas = ["EXCESO EN", " ".join(palabras_resto[:2]), " ".join(palabras_resto[2:])]
+                txt_u = texto_item.upper().strip()
+                if txt_u.startswith("EXCESO EN "):
+                    resto = txt_u[len("EXCESO EN "):].strip()
+                    pw = resto.split()
+                    lineas = ["EXCESO EN", pw[0]] if len(pw) == 1 else (["EXCESO EN", pw[0], pw[1]] if len(pw) == 2 else ["EXCESO EN", " ".join(pw[:2]), " ".join(pw[2:])])
                 else:
-                    palabras = texto_upper.split()
-                    if len(palabras) <= 2:
-                        lineas = [texto_upper]
-                    else:
-                        lineas = [" ".join(palabras[:2]), " ".join(palabras[2:])]
+                    pw = txt_u.split()
+                    lineas = [txt_u] if len(pw) <= 2 else [" ".join(pw[:2]), " ".join(pw[2:])]
 
                 pdf.set_text_color(255, 255, 255)
-                font_size = 5.0 if len(lineas) >= 3 else 5.8
-                line_h = 2.3 if len(lineas) >= 3 else 2.7
-                gap_pie = 0.7
-                alto_pie = 1.8
-                total_h = len(lineas) * line_h + gap_pie + alto_pie
-                y_start = y_sellos + (S - total_h) / 2
+                f_size = 5.4 if len(lineas) >= 3 else 6.2
+                lh = 2.5 if len(lineas) >= 3 else 2.9
+                tot_th = len(lineas) * lh + 0.8 + 2.0
+                y_st = y_sellos + (w_i - tot_th) / 2
+                pdf.set_font(FUENTE, "B", f_size)
+                for il, l in enumerate(lineas):
+                    pdf.set_xy(x_act + 1.2, y_st + il * lh)
+                    pdf.cell(w_i - 2.4, lh, _texto(l), align="C")
 
-                pdf.set_font(FUENTE, "B", font_size)
-                for idx_l, l in enumerate(lineas):
-                    pdf.set_xy(x_actual + 1.2, y_start + idx_l * line_h)
-                    pdf.cell(S - 2.4, line_h, _texto(l), align="C")
+                pdf.set_xy(x_act + 1.2, y_st + len(lineas) * lh + 0.8)
+                pdf.set_font(FUENTE, "", 3.6)
+                pdf.cell(w_i - 2.4, 1.9, "Ministerio de Salud", align="C")
 
-                pdf.set_xy(x_actual + 1.2, y_start + len(lineas) * line_h + gap_pie)
-                pdf.set_font(FUENTE, "", 3.4)
-                pdf.cell(S - 2.4, alto_pie, "Ministerio de Salud", align="C")
+            x_act += w_i + gap
 
-            x_actual += w_item + gap
+        y_sep = y_sellos + S_oct + 4.5
     else:
-        pdf.set_xy(x_rot + 6, y_rot + 16)
-        pdf.set_font(FUENTE, "I", 7.2)
-        pdf.color_texto(EXITO)
-        pdf.cell(ancho_rot - 12, 4.5, _texto(MENSAJE_SIN_OCTOGONOS), align="C")
+        pdf.set_xy(x_rot + 6, y_card + 20.0)
+        pdf.set_font(FUENTE, "I", 7.5)
+        pdf.set_text_color(22, 101, 52)
+        pdf.cell(ancho_rot - 12, 4.0, _texto(MENSAJE_SIN_OCTOGONOS), align="C")
+        y_sep = y_card + 26.5
 
-    pdf.set_y(y_rot + alto_cara_frontal + 3)
-    pdf.color_texto()
+    # Línea separadora horizontal interior
+    pdf.set_draw_color(203, 213, 225)
+    pdf.set_line_width(0.3)
+    pdf.line(x_rot + 4, y_sep, x_rot + ancho_rot - 4, y_sep)
 
-    # --- 1.2 INFORMACIÓN DEL PRODUCTO Y ELABORADOR ---
-    pdf.set_font(FUENTE, "B", 7.8)
-    pdf.color_texto(PRIMARIO)
-    pdf.cell(ancho_rot, 4.5, "DECLARACIÓN DE INGREDIENTES Y DATOS GENERALES", new_x="LMARGIN", new_y="NEXT")
+    # Distribución en dos columnas (Información del Producto / Información Nutricional)
+    y_cols = y_sep + 3.5
+    w_col = (ancho_rot - 10) / 2
+    x_col_izq = x_rot + 3
+    x_col_der = x_col_izq + w_col + 4
 
-    y_info = pdf.get_y()
-    pdf.set_fill_color(*FONDO)
-    pdf.set_draw_color(*BORDE)
+    # --- Columna Izquierda: Información del Producto ---
+    pdf.set_xy(x_col_izq, y_cols)
+    pdf.set_font(FUENTE, "B", 8)
+    pdf.set_text_color(*NEGRO)
+    pdf.cell(w_col, 4.2, "INFORMACIÓN DEL PRODUCTO", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(203, 213, 225)
     pdf.set_line_width(0.2)
+    pdf.line(x_col_izq, y_cols + 4.8, x_col_izq + w_col, y_cols + 4.8)
 
+    y_izq = y_cols + 6.5
+    pdf.set_xy(x_col_izq, y_izq)
+    pdf.set_font(FUENTE, "", 6.8)
+    pdf.set_text_color(*NEGRO)
     ing_txt = datos_rotulo.lista_ingredientes_texto or "Lista de ingredientes no declarada."
-    detalles_gral = [
-        f"Elaborado por: {datos_rotulo.razon_social or 'No especificada'} | Dirección: {datos_rotulo.direccion_origen or 'No especificada'} | Origen: {datos_rotulo.pais_origen}",
-        f"RNE: {datos_rotulo.rne or 'En trámite'} | RNPA: {datos_rotulo.rnpa_rppa or 'En trámite'} | Lote: {datos_rotulo.lote or 'Sin lote asignado'} | Vencimiento: {datos_rotulo.fecha_duracion or 'Ver envase'}",
-        f"Conservación: {datos_rotulo.instrucciones_conservacion or 'Conservar en lugar fresco y seco'}" + (f" | Modo de empleo: {datos_rotulo.modo_empleo}" if datos_rotulo.modo_empleo else ""),
+    pdf.multi_cell(w_col, 3.2, _texto(f"Ingredientes: {ing_txt}"))
+
+    if datos_rotulo.texto_alergenos:
+        pdf.set_x(x_col_izq)
+        pdf.set_font(FUENTE, "B", 6.8)
+        pdf.multi_cell(w_col, 3.2, _texto(datos_rotulo.texto_alergenos))
+
+    if datos_rotulo.texto_puede_contener:
+        pdf.set_x(x_col_izq)
+        pdf.set_font(FUENTE, "B", 6.8)
+        pdf.multi_cell(w_col, 3.2, _texto(datos_rotulo.texto_puede_contener))
+
+    pdf.set_font(FUENTE, "", 6.8)
+    detalles_g = [
+        f"Elaborado por: {datos_rotulo.razon_social or 'SAIA Alimentos S.A.'}",
+        f"Dirección: {datos_rotulo.direccion_origen or 'Parque Industrial Trelew, Chubut'}",
+        f"Origen: {datos_rotulo.pais_origen}",
+        f"RNE: {datos_rotulo.rne or 'Trámite pendiente'}",
+        f"RNPA/RPPA: {datos_rotulo.rnpa_rppa or 'Trámite pendiente'}",
+        f"Lote: {datos_rotulo.lote or 'Sin lote asignado'}",
+        f"Duración: {datos_rotulo.fecha_duracion or 'Ver envase'}",
+        f"Conservación: {datos_rotulo.instrucciones_conservacion or 'Conservar en lugar fresco y seco'}",
     ]
     if datos_rotulo.es_importado:
-        detalles_gral.append(f"Importador: {datos_rotulo.razon_social_importador or 'No declarado'} | Domicilio: {datos_rotulo.domicilio_importador or 'No declarado'}")
+        detalles_g.append(f"Importador: {datos_rotulo.razon_social_importador or 'No declarado'}")
+    if datos_rotulo.modo_empleo:
+        detalles_g.append(f"Modo de empleo: {datos_rotulo.modo_empleo}")
 
+    for d in detalles_g:
+        pdf.set_x(x_col_izq)
+        pdf.cell(w_col, 3.2, _texto(d), new_x="LMARGIN", new_y="NEXT")
+
+    y_fin_izq = pdf.get_y()
+
+    # --- Columna Derecha: Información Nutricional ---
+    pdf.set_xy(x_col_der, y_cols)
+    pdf.set_font(FUENTE, "B", 8)
+    pdf.set_text_color(*NEGRO)
+    pdf.cell(w_col, 4.2, "INFORMACIÓN NUTRICIONAL", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(203, 213, 225)
+    pdf.set_line_width(0.2)
+    pdf.line(x_col_der, y_cols + 4.8, x_col_der + w_col, y_cols + 4.8)
+
+    y_der = y_cols + 6.5
+    pdf.set_xy(x_col_der, y_der)
     pdf.set_font(FUENTE, "", 6.8)
-    pdf.color_texto(TEXTO)
-    # Medir altura para dibujar caja contenedora
-    y_inicio_txt = pdf.get_y()
-    pdf.set_x(x_rot + 2)
-    pdf.multi_cell(ancho_rot - 4, 3.2, _texto(f"Ingredientes: {ing_txt}"), new_x="LMARGIN", new_y="NEXT")
-    for d in detalles_gral:
-        pdf.set_x(x_rot + 2)
-        pdf.cell(ancho_rot - 4, 3.2, _texto(d), new_x="LMARGIN", new_y="NEXT")
-
-    alto_caja_info = pdf.get_y() - y_inicio_txt + 3
-    # Dibujar fondo y marco por detrás
-    pdf.rect(x_rot, y_inicio_txt - 1, ancho_rot, alto_caja_info, style="D", round_corners=True, corner_radius=1.5)
-    pdf.set_y(y_inicio_txt + alto_caja_info + 2)
-
-    # --- 1.3 TABLA OFICIAL DE INFORMACIÓN NUTRICIONAL ---
-    pdf.set_font(FUENTE, "B", 7.8)
-    pdf.color_texto(PRIMARIO)
-    pdf.cell(ancho_rot * 0.6, 4.5, "INFORMACIÓN NUTRICIONAL (CAA)", align="L")
-    pdf.set_font(FUENTE, "", 6.8)
-    pdf.color_texto(TEXTO_SEC)
-    porcion_txt = f"Porción: {datos_rotulo.porcion or 'No indicada'}"
+    pdf.set_text_color(*NEGRO)
+    porc_str = f"Porción: {datos_rotulo.porcion or 'No indicada'}"
     if datos_rotulo.porciones_por_envase:
-        porcion_txt += f" | Envase: {datos_rotulo.porciones_por_envase} porciones"
-    pdf.cell(ancho_rot * 0.4, 4.5, _texto(porcion_txt), align="R", new_x="LMARGIN", new_y="NEXT")
+        porc_str += f" | Porciones por envase: {datos_rotulo.porciones_por_envase}"
+    pdf.cell(w_col, 3.2, _texto(porc_str))
 
-    anchos_nutri = (ancho_rot * 0.42, ancho_rot * 0.20, ancho_rot * 0.20, ancho_rot * 0.18)
-    encabezados_nutri = ["Nutriente", "Por 100 g", "Por porción", "% VD*"]
-    filas_nutri = []
-    resaltados = []
+    y_tab = y_der + 4.5
+    w_n, w_p, w_vd = 44.0, 23.0, 19.0
+    pdf.set_xy(x_col_der, y_tab)
+    pdf.set_fill_color(30, 41, 59)
+    pdf.set_font(FUENTE, "B", 6.8)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(w_n, 4.2, "Nutriente", border=0, fill=True)
+    pdf.cell(w_p, 4.2, "Por porción", border=0, fill=True, align="R")
+    pdf.cell(w_vd, 4.2, "% VD*", border=0, fill=True, align="R")
 
-    for fn in datos_rotulo.filas_tabla_nutricional:
-        nombre_nutri = f"   {fn.nutriente}" if fn.es_subitem else fn.nutriente
-        filas_nutri.append([
-            nombre_nutri,
-            fn.por_100g or "-",
-            fn.por_porcion or "-",
-            f"{fn.porcentaje_vd}%" if fn.porcentaje_vd is not None and str(fn.porcentaje_vd).strip() not in ("", "-") else "-",
-        ])
-        resaltados.append(not fn.es_subitem)
+    cur_y_r = y_tab + 4.2
+    for idx_fn, fn in enumerate(datos_rotulo.filas_tabla_nutricional):
+        pdf.set_xy(x_col_der, cur_y_r)
+        fill_bg = (248, 250, 252) if idx_fn % 2 == 1 else (255, 255, 255)
+        pdf.set_fill_color(*fill_bg)
+        es_sub = fn.es_subitem
+        pdf.set_font(FUENTE, "I" if es_sub else "B" if "Valor energ" in fn.nutriente else "", 6.4)
+        pdf.set_text_color(30, 41, 59)
+        nom_n = f"  {fn.nutriente}" if es_sub else fn.nutriente
 
-    pdf.tabla_simple(
-        encabezados_nutri,
-        filas_nutri,
-        anchos_nutri,
-        alineaciones=["LEFT", "RIGHT", "RIGHT", "RIGHT"],
-        resaltar_filas=resaltados,
-    )
+        vd_raw = str(fn.porcentaje_vd or "").strip()
+        if not vd_raw or vd_raw == "-":
+            vd_s = "-"
+        elif vd_raw.endswith("%"):
+            vd_s = vd_raw
+        else:
+            vd_s = f"{vd_raw} %"
 
-    pdf.set_font(FUENTE, "I", 5.8)
-    pdf.color_texto(TEXTO_SEC)
-    pdf.cell(
-        ancho_rot,
-        3.0,
-        _texto("* % Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ. Sus valores diarios pueden ser mayores o menores según sus necesidades energéticas."),
-        new_x="LMARGIN",
-        new_y="NEXT",
-    )
-    pdf.ln(1.5)
+        pdf.set_draw_color(226, 232, 240)
+        pdf.set_line_width(0.2)
+        pdf.cell(w_n, 3.8, _texto(nom_n), border="B", fill=True)
+        pdf.cell(w_p, 3.8, _texto(fn.por_porcion or "-"), border="B", fill=True, align="R")
+        pdf.cell(w_vd, 3.8, _texto(vd_s), border="B", fill=True, align="R")
+        cur_y_r += 3.8
 
-    # --- 1.4 LEYENDA OBLIGATORIA DE REVISIÓN Y BORRADOR ---
-    pdf.set_fill_color(*FONDO)
-    pdf.set_draw_color(*BORDE)
-    pdf.rect(x_rot, pdf.get_y(), ancho_rot, 8.5, style="DF", round_corners=True, corner_radius=1.5)
-    pdf.set_xy(x_rot + 2, pdf.get_y() + 1.2)
-    pdf.set_font(FUENTE, "I", 6.2)
-    pdf.color_texto(ALERTA)
-    pdf.multi_cell(
-        ancho_rot - 4,
-        3.0,
-        _texto("Los valores expresados son calculados a partir de recetas y datos de referencia técnica. Deben ser auditados y confirmados por un/a profesional competente previo al envasado comercial."),
-        align="C",
-    )
+    pdf.set_xy(x_col_der, cur_y_r + 1.2)
+    pdf.set_font(FUENTE, "I", 5.5)
+    pdf.set_text_color(100, 116, 139)
+    pdf.multi_cell(w_col, 2.5, _texto("* Valores Diarios con base a una dieta de 2.000 kcal u 8.400 kJ."))
+    y_fin_der = pdf.get_y()
+
+    y_bottom_cols = max(y_fin_izq, y_fin_der) + 3.0
+
+    # Pie interno de la tarjeta
+    pdf.set_draw_color(226, 232, 240)
+    pdf.set_line_width(0.2)
+    pdf.line(x_rot + 4, y_bottom_cols, x_rot + ancho_rot - 4, y_bottom_cols)
+
+    pdf.set_xy(x_rot + 3, y_bottom_cols + 5.2)
+    pdf.set_font(FUENTE, "B", 6.0)
+    pdf.set_text_color(*ROJO_TEXTO)
+    pdf.cell(ancho_rot - 6, 2.8, _texto(LEYENDA_BORRADOR_OBLIGATORIA), align="C")
+
+    alto_card = (y_bottom_cols + 9.0) - y_card
+
+    # Marco exterior de la tarjeta
+    pdf.set_draw_color(0, 0, 0)
+    pdf.set_line_width(0.7)
+    pdf.rect(x_rot, y_card, ancho_rot, alto_card, style="D", round_corners=True, corner_radius=2.5)
+    pdf.set_y(y_card + alto_card + 5.0)
 
     # =========================================================================
-    # SECCIÓN 2: ANEXO TÉCNICO DE CÁLCULOS Y RESPALDO
+    # ANEXO TÉCNICO DE CÁLCULOS (CONTINÚA DIRECTO SIN CORTE ARTIFICIAL)
     # =========================================================================
-    pdf.add_page()
-    pdf.titulo_seccion(
-        "2. ANEXO TÉCNICO DE CÁLCULOS Y RESPALDO REGULATORIO",
-        "Detalle de fórmula, composición porcentual, fuentes de datos y justificación de rotulado frontal",
-    )
 
-    # Ficha técnica de receta y trazabilidad
-    pdf.set_font(FUENTE, "B", 8)
-    pdf.color_texto(PRIMARIO)
-    pdf.cell(0, 5, "DATOS DE LA RECETA EMPLEADA Y TRAZABILIDAD", new_x="LMARGIN", new_y="NEXT")
-
-    anchos_ficha = (pdf.epw * 0.33, pdf.epw * 0.33, pdf.epw * 0.34)
-    filas_ficha = [
-        [
-            f"Receta: {receta_info.get('nombre', 'Sin receta')}",
-            f"Versión de Receta: V{receta_info.get('version', 1)} (ID: {receta_info.get('id', '-')})",
-            f"Fecha versión: {receta_info.get('fecha_creacion', '-')}",
-        ],
-        [
-            f"Rendimiento final: {receta_info.get('rendimiento_final', '-')} kg/l",
-            f"Peso total insumos: {receta_info.get('peso_total_ingredientes', '-')} kg/l",
-            f"Factor rendimiento: {receta_info.get('factor_rendimiento', 1.0):.4f}",
-        ],
-        [
-            f"Generado por: {usuario_nombre}",
-            f"Fecha de generación: {fecha_emision.strftime('%d/%m/%Y %H:%M')}",
-            "Estado: BORRADOR PARA REVISIÓN",
-        ],
-    ]
-    pdf.tabla_simple(
-        ["Trazabilidad de Receta", "Parámetros de Proceso", "Metadatos de Emisión"],
-        filas_ficha,
-        anchos_ficha,
-    )
-    pdf.ln(3)
-
-    # -------------------------------------------------------------------------
-    # 2.1 Composición Porcentual de Ingredientes
-    # -------------------------------------------------------------------------
-    pdf.set_font(FUENTE, "B", 8)
-    pdf.color_texto(PRIMARIO)
-    pdf.cell(0, 5, "2.1 COMPOSICIÓN DE LA RECETA Y PORCENTAJES DE INGREDIENTES", new_x="LMARGIN", new_y="NEXT")
+    # 1. Composición de la Receta
+    pdf.titulo_seccion("Composición de la Receta", "Porcentajes y aportes de insumos sobre fórmula")
 
     encabezados_comp = [
         "Ingrediente / Insumo",
         "Cant. declarada",
         "Peso (g)",
-        "% s/Fórmula",
+        "% Fórmula",
         "Función / Tipo",
     ]
     anchos_comp = (
@@ -555,15 +542,11 @@ def armar_pdf_borrador(
     )
     pdf.ln(3)
 
-    # -------------------------------------------------------------------------
-    # 2.2 Fuentes de Datos Nutricionales Registradas
-    # -------------------------------------------------------------------------
+    # 2. Fuentes de Información Nutricional
     if pdf.get_y() > pdf.page_break_trigger - 40:
         pdf.add_page()
 
-    pdf.set_font(FUENTE, "B", 8)
-    pdf.color_texto(PRIMARIO)
-    pdf.cell(0, 5, "2.2 FUENTES DE INFORMACIÓN NUTRICIONAL REGISTRADAS", new_x="LMARGIN", new_y="NEXT")
+    pdf.titulo_seccion("Fuentes de Información Nutricional", "Referencias técnicas y tablas de composición empleadas")
 
     encabezados_fuentes = [
         "Insumo / Ingrediente",
@@ -586,22 +569,12 @@ def armar_pdf_borrador(
     )
     pdf.ln(3)
 
-    # -------------------------------------------------------------------------
-    # 2.3 Justificación y Cálculo de Sellos Frontales
-    # -------------------------------------------------------------------------
+    # 3. Evaluación de Sellos de Advertencia (Ley 27.642)
     if pdf.get_y() > pdf.page_break_trigger - 45:
         pdf.add_page()
 
-    pdf.set_font(FUENTE, "B", 8)
-    pdf.color_texto(PRIMARIO)
-    pdf.cell(0, 5, "2.3 EVALUACIÓN TÉCNICA DE SELLOS DE ADVERTENCIA Y MICRO-SELLOS", new_x="LMARGIN", new_y="NEXT")
-
-    # Especificar versión de parámetros
     version_norma = calculo_sellos.get("version_normativa", "Ley 27.642 - Etapa 2 / Modelo OPS")
-    pdf.set_font(FUENTE, "I", 7.2)
-    pdf.color_texto(TEXTO_SEC)
-    pdf.cell(0, 4, f"Marco regulatorio aplicado: {version_norma}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(1)
+    pdf.titulo_seccion("Evaluación de Sellos de Advertencia (Ley 27.642)", f"Marco regulatorio aplicado: {version_norma}")
 
     encabezados_sellos = [
         "Nutriente / Componente",
@@ -635,22 +608,53 @@ def armar_pdf_borrador(
         anchos_sellos,
         alineaciones=alineaciones_sellos,
     )
+    pdf.ln(3)
+
+    # 4. Trazabilidad de Receta y Emisión (al final de los cálculos técnicos)
+    if pdf.get_y() > pdf.page_break_trigger - 35:
+        pdf.add_page()
+
+    pdf.titulo_seccion("Trazabilidad y Emisión de Documento", "Constancia de receta empleada, parámetros de proceso y responsable")
+
+    anchos_ficha = (pdf.epw * 0.33, pdf.epw * 0.33, pdf.epw * 0.34)
+    filas_ficha = [
+        [
+            f"Receta: {receta_info.get('nombre', 'Sin receta')}",
+            f"Versión de Receta: V{receta_info.get('version', 1)} (ID: {receta_info.get('id', '-')})",
+            f"Fecha versión: {receta_info.get('fecha_creacion', '-')}",
+        ],
+        [
+            f"Rendimiento final: {receta_info.get('rendimiento_final', '-')} kg/l",
+            f"Peso total insumos: {receta_info.get('peso_total_ingredientes', '-')} kg/l",
+            f"Factor rendimiento: {receta_info.get('factor_rendimiento', 1.0):.4f}",
+        ],
+        [
+            f"Generado por: {usuario_nombre}",
+            f"Fecha de generación: {fecha_emision.strftime('%d/%m/%Y %H:%M')}",
+            "Estado: BORRADOR PARA REVISIÓN",
+        ],
+    ]
+    pdf.tabla_simple(
+        ["Trazabilidad de Receta", "Parámetros de Proceso", "Metadatos de Emisión"],
+        filas_ficha,
+        anchos_ficha,
+    )
     pdf.ln(4)
 
     # Recuadro final de advertencia legal y deslinde de responsabilidad
     if pdf.get_y() > pdf.page_break_trigger - 25:
         pdf.add_page()
 
-    pdf.set_fill_color(*FONDO)
-    pdf.set_draw_color(*BORDE)
+    pdf.set_fill_color(248, 250, 252)
+    pdf.set_draw_color(203, 213, 225)
     pdf.rect(14, pdf.get_y(), pdf.epw, 14, style="DF", round_corners=True, corner_radius=2)
     pdf.set_xy(16, pdf.get_y() + 2)
     pdf.set_font(FUENTE, "B", 6.8)
-    pdf.color_texto(TEXTO)
+    pdf.set_text_color(*NEGRO)
     pdf.cell(pdf.epw - 4, 3.5, "DECLARACIÓN TÉCNICA FINAL Y ALCANCE REGULATORIO:", new_x="LMARGIN", new_y="NEXT")
     pdf.set_x(16)
     pdf.set_font(FUENTE, "", 6.4)
-    pdf.color_texto(TEXTO_SEC)
+    pdf.set_text_color(100, 116, 139)
     pdf.multi_cell(
         pdf.epw - 4,
         3.0,

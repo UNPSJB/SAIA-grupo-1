@@ -1469,34 +1469,36 @@ def exportar_borrador(
                 )
             else:
                 bloques.append(
-                    f'<div style="background:#000;color:#fff;border:3px solid #fff;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:900;letter-spacing:0.5px;text-align:center;width:110px;height:110px;display:flex;align-items:center;justify-content:center;margin:4px;box-shadow:0 2px 6px rgba(0,0,0,0.4);">{o.texto}</div>'
+                    f'<div style="background:#000;color:#fff;clip-path:polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);width:116px;height:116px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:6px;box-sizing:border-box;border:3px solid #fff;outline:2px solid #000;text-align:center;padding:14px 10px;box-shadow:0 3px 8px rgba(0,0,0,0.3);"><span style="font-size:11px;font-weight:900;line-height:1.2;text-transform:uppercase;letter-spacing:0.5px;">{o.texto}</span><span style="font-size:7.5px;font-weight:700;color:#d1d5db;margin-top:5px;letter-spacing:0.5px;">Ministerio de Salud</span></div>'
                 )
         octogonos_html = f'<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:16px 0;">{"".join(bloques)}</div>'
     else:
         octogonos_html = f'<div style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;padding:8px 14px;border-radius:6px;font-size:12px;margin:12px 0;text-align:center;">{MENSAJE_SIN_OCTOGONOS}</div>'
 
     filas_nutri_html = ""
-    for f in datos_rotulo.filas_tabla_nutricional:
+    for idx_f, f in enumerate(datos_rotulo.filas_tabla_nutricional):
         sub = (
-            "padding-left:20px;font-style:italic;"
+            "padding-left:18px;font-style:italic;"
             if f.es_subitem
             else "font-weight:600;"
         )
+        bg = "#f8fafc" if idx_f % 2 == 1 else "#ffffff"
+        vd_val = str(f.porcentaje_vd or "-").strip()
         filas_nutri_html += f"""
-        <tr>
-            <td style="border:1px solid #cbd5e1;padding:6px 10px;{sub}">{f.nutriente}</td>
-            <td style="border:1px solid #cbd5e1;padding:6px 10px;text-align:right;">{f.por_porcion or '-'}</td>
-            <td style="border:1px solid #cbd5e1;padding:6px 10px;text-align:right;">{f.porcentaje_vd or '-'}</td>
+        <tr style="background:{bg};">
+            <td style="border:1px solid #e2e8f0;padding:5px 8px;color:#1e293b;{sub}">{f.nutriente}</td>
+            <td style="border:1px solid #e2e8f0;padding:5px 8px;text-align:right;color:#1e293b;">{f.por_porcion or '-'}</td>
+            <td style="border:1px solid #e2e8f0;padding:5px 8px;text-align:right;color:#1e293b;">{vd_val}</td>
         </tr>
         """
 
     tabla_nutri_html = f"""
     <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;">
         <thead>
-            <tr style="background:#f1f5f9;">
-                <th style="border:1px solid #cbd5e1;padding:6px 10px;text-align:left;">Nutriente</th>
-                <th style="border:1px solid #cbd5e1;padding:6px 10px;text-align:right;">Por porción</th>
-                <th style="border:1px solid #cbd5e1;padding:6px 10px;text-align:right;">% VD*</th>
+            <tr style="background:#1e293b;color:#ffffff;">
+                <th style="border:1px solid #1e293b;padding:6px 8px;text-align:left;color:#ffffff;font-weight:700;">Nutriente</th>
+                <th style="border:1px solid #1e293b;padding:6px 8px;text-align:right;color:#ffffff;font-weight:700;">Por porción</th>
+                <th style="border:1px solid #1e293b;padding:6px 8px;text-align:right;color:#ffffff;font-weight:700;">% VD*</th>
             </tr>
         </thead>
         <tbody>{filas_nutri_html}</tbody>
@@ -1517,17 +1519,16 @@ def exportar_borrador(
 <style>
 * {{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
 body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 20px; color: #1e293b; background: #fff; }}
-.watermark {{ position: fixed; top: 45%; left: 10%; transform: rotate(-30deg); font-size: 42px; font-weight: 900; color: rgba(220, 38, 38, 0.12); pointer-events: none; z-index: 1000; border: 4px dashed rgba(220, 38, 38, 0.2); padding: 10px 30px; }}
-.banner-borrador {{ background: #fef2f2; border: 2px solid #ef4444; color: #b91c1c; padding: 12px 18px; border-radius: 8px; font-weight: 800; font-size: 13px; text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px; }}
-.rotulo-card {{ border: 2px solid #000; border-radius: 10px; padding: 24px; max-width: 780px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }}
+.banner-borrador {{ background: #fef2f2; border: 2px solid #ef4444; color: #b91c1c; padding: 10px 18px; border-radius: 8px; font-weight: 800; font-size: 12px; text-align: center; margin: 0 auto 16px auto; max-width: 780px; box-sizing: border-box; text-transform: uppercase; letter-spacing: 0.5px; }}
+.rotulo-card {{ border: 2px solid #000; border-radius: 10px; padding: 24px; max-width: 780px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08); background: #fff; box-sizing: border-box; }}
 .rotulo-header {{ text-align: center; border-bottom: 2px solid #000; padding-bottom: 14px; margin-bottom: 16px; }}
-.denominacion {{ font-size: 18px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; }}
-.nombre-fantasia {{ font-size: 26px; font-weight: 900; color: #0f172a; margin-bottom: 8px; }}
-.neto {{ font-size: 15px; font-weight: 700; }}
-.grid-rotulo {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px; }}
+.denominacion {{ font-size: 16px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; color: #334155; }}
+.nombre-fantasia {{ font-size: 24px; font-weight: 800; color: #000000; margin-bottom: 6px; }}
+.neto {{ font-size: 14px; font-weight: 700; color: #475569; }}
+.grid-rotulo {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px; position: relative; z-index: 1; }}
 .seccion-titulo {{ font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px; }}
 .texto-regular {{ font-size: 12px; line-height: 1.5; color: #334155; }}
-.footer-borrador {{ margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 11px; color: #64748b; }}
+.footer-borrador {{ margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 11px; color: #64748b; position: relative; z-index: 1; }}
 @media print {{
   body {{ margin: 10mm; background: #fff; }}
   .rotulo-card {{ box-shadow: none; border: 2px solid #000; }}
@@ -1536,7 +1537,6 @@ body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Aria
 </style>
 </head>
 <body>
-<div class="watermark">BORRADOR NO COMERCIAL</div>
 <div class="banner-borrador">
     ⚠️ {LEYENDA_BORRADOR_OBLIGATORIA}
 </div>
@@ -1751,11 +1751,13 @@ def generar_pdf_borrador_rotulo(
                     resultado_txt = (
                         "SUPERADO (Sello)" if supera_p else ("No supera" if aplica_p else "No aplica")
                     )
+                    val_umbral = str(p.get("umbral") or "-").replace("≥", ">= ").replace("≤", "<= ")
+                    val_calc = str(p.get("calculo_realizado") or "-").replace("×", "x").replace("÷", "/").replace("≥", ">= ")
                     detalles_sellos.append({
                         "nutriente": str(p.get("criterio") or p.get("leyenda") or "-"),
                         "criterio": str(p.get("detalle_agregado") or "-"),
-                        "valor": str(p.get("calculo_realizado") or "-"),
-                        "umbral": str(p.get("umbral") or "-"),
+                        "valor": val_calc,
+                        "umbral": val_umbral,
                         "resultado": resultado_txt,
                     })
             else:

@@ -256,16 +256,35 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
     }
   };
 
-  const imprimirBorrador = () => {
-    if (!resultadoExportacion?.contenido_html) return;
-    const ventana = window.open("", "_blank");
-    if (ventana) {
-      ventana.document.write(resultadoExportacion.contenido_html);
-      ventana.document.close();
-      ventana.focus();
-      setTimeout(() => {
-        ventana.print();
-      }, 350);
+  const imprimirBorrador = async () => {
+    try {
+      const res = await apiFetch(
+        `/productos/${productoId}/borrador-rotulo/exportar-pdf`
+      );
+      if (!res.ok) {
+        throw new Error("Error al obtener el documento PDF para imprimir");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const ventana = window.open(url, "_blank");
+      if (!ventana) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.click();
+      }
+    } catch {
+      if (resultadoExportacion?.contenido_html) {
+        const ventana = window.open("", "_blank");
+        if (ventana) {
+          ventana.document.write(resultadoExportacion.contenido_html);
+          ventana.document.close();
+          ventana.focus();
+          setTimeout(() => {
+            ventana.print();
+          }, 350);
+        }
+      }
     }
   };
 
