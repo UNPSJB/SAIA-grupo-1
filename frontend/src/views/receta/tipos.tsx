@@ -1,8 +1,23 @@
 export type ClaseFuncional =
+  | 'Conservante'
+  | 'Antioxidante'
+  | 'Colorante'
+  | 'Edulcorante'
+  | 'Aromatizante'
+  | 'Leudante químico'
+  | 'Emulsionante'
+  | 'Acidulante'
+  | 'Estabilizante'
+  | 'Espesante'
+  | 'Humectante'
+  | 'Regulador de acidez'
+  | 'Potenciador de sabor'
+  | 'Estimulante'
   | 'conservante'
   | 'antioxidante'
   | 'colorante'
-  | 'edulcorantes';
+  | 'edulcorantes'
+  | string;
 
 export type EstadoEtapaRecetaItem =
   | 'pendiente'

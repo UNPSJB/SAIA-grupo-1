@@ -36,10 +36,20 @@ const DETALLE_INICIAL: RecetaDetalleForm = {
 };
 
 const CLASES_FUNCIONALES: ClaseFuncional[] = [
-  "conservante",
-  "antioxidante",
-  "colorante",
-  "edulcorantes",
+  "Conservante",
+  "Antioxidante",
+  "Colorante",
+  "Edulcorante",
+  "Aromatizante",
+  "Leudante químico",
+  "Emulsionante",
+  "Acidulante",
+  "Estabilizante",
+  "Espesante",
+  "Humectante",
+  "Regulador de acidez",
+  "Potenciador de sabor",
+  "Estimulante",
 ];
 
 interface NuevoDetalleRecetaProps {
@@ -75,33 +85,33 @@ export default function NuevoDetalleReceta({
     };
   }, []);
 
+  function handleCambiarCategoria(esAditivoNuevo: boolean) {
+    setDetalle((prev) => ({
+      ...prev,
+      es_aditivo: esAditivoNuevo,
+      tipo_insumo_id: "",
+      unidad_medida: "",
+      clase_funcional: "",
+      numero_ins: "",
+    }));
+  }
+
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
-    const { name, value, type } = e.target;
-
-    if (type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked;
-      setDetalle((prev) => ({
-        ...prev,
-        es_aditivo: checked,
-        clase_funcional: checked ? prev.clase_funcional : "",
-        numero_ins: checked ? prev.numero_ins : "",
-      }));
-      return;
-    }
+    const { name, value } = e.target;
 
     if (name === "tipo_insumo_id") {
       const tipoElegido = tiposInsumos.find((i) => i.id === Number(value));
       const unidadAutocompletada = obtenerUnidadDeTipo(tipoElegido);
-      
+
       setDetalle((prev) => ({
         ...prev,
         tipo_insumo_id: value ? Number(value) : "",
         unidad_medida: unidadAutocompletada || prev.unidad_medida,
         es_aditivo: tipoElegido ? Boolean(tipoElegido.es_aditivo) : prev.es_aditivo,
-        clase_funcional: (tipoElegido?.clase_funcional as ClaseFuncional) || prev.clase_funcional,
-        numero_ins: tipoElegido?.numero_ins || prev.numero_ins,
+        clase_funcional: tipoElegido?.clase_funcional || "",
+        numero_ins: tipoElegido?.numero_ins || "",
       }));
       return;
     }
@@ -191,6 +201,11 @@ export default function NuevoDetalleReceta({
     onCancel?.();
   }
 
+  const tiposFiltrados = tiposInsumos.filter((t) =>
+    detalle.es_aditivo ? Boolean(t.es_aditivo) : !t.es_aditivo
+  );
+  const esAromatizante = (detalle.clase_funcional || "").toLowerCase().includes("aromatizante");
+
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
@@ -200,6 +215,30 @@ export default function NuevoDetalleReceta({
       {errorMsg && <div className="alerta-error">{errorMsg}</div>}
 
       <form onSubmit={handleGuardar}>
+        <div className="form-group">
+          <label>¿Qué vas a cargar en esta etapa? *</label>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className={!detalle.es_aditivo ? "btn-guardar" : "btn-cancelar"}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+              onClick={() => handleCambiarCategoria(false)}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>nutrition</span>
+              Ingrediente
+            </button>
+            <button
+              type="button"
+              className={detalle.es_aditivo ? "btn-guardar" : "btn-cancelar"}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+              onClick={() => handleCambiarCategoria(true)}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>science</span>
+              Aditivo
+            </button>
+          </div>
+        </div>
+
         <div className="form-group">
           <label htmlFor="nombre">Nombre de la Etapa</label>
           <input
@@ -214,7 +253,9 @@ export default function NuevoDetalleReceta({
         </div>
 
         <div className="form-group">
-          <label htmlFor="tipo_insumo_id">Tipo de Insumo</label>
+          <label htmlFor="tipo_insumo_id">
+            {detalle.es_aditivo ? "Aditivo *" : "Ingrediente *"}
+          </label>
           <select
             id="tipo_insumo_id"
             name="tipo_insumo_id"
@@ -223,13 +264,15 @@ export default function NuevoDetalleReceta({
             required
           >
             <option value="" disabled>
-              Seleccione un tipo de insumo
+              {detalle.es_aditivo ? "Seleccione un aditivo" : "Seleccione un ingrediente"}
             </option>
-            {tiposInsumos.map((tipo) => {
+            {tiposFiltrados.map((tipo) => {
               const unidad = obtenerUnidadDeTipo(tipo);
               return (
                 <option key={tipo.id} value={tipo.id}>
-                  {tipo.nombre} {unidad ? `(${unidad})` : ""}
+                  {detalle.es_aditivo
+                    ? `${tipo.nombre}${tipo.clase_funcional ? ` — ${tipo.clase_funcional}` : ""}${tipo.numero_ins ? ` (${tipo.numero_ins})` : ""}${unidad ? ` [${unidad}]` : ""}`
+                    : `${tipo.nombre} ${unidad ? `(${unidad})` : ""}`}
                 </option>
               );
             })}
@@ -257,25 +300,11 @@ export default function NuevoDetalleReceta({
             id="unidad_medida"
             name="unidad_medida"
             type="text"
-            placeholder="Se autocompleta al elegir el tipo de insumo"
+            placeholder="Se autocompleta al elegir el insumo"
             value={detalle.unidad_medida}
             onChange={handleChange}
             disabled
           />
-        </div>
-
-        <div className="form-group" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <input
-            id="es_aditivo"
-            name="es_aditivo"
-            type="checkbox"
-            checked={detalle.es_aditivo}
-            onChange={handleChange}
-            style={{ width: "auto", margin: 0 }}
-          />
-          <label htmlFor="es_aditivo" style={{ margin: 0 }}>
-            ¿Es Aditivo?
-          </label>
         </div>
 
         {detalle.es_aditivo && (
@@ -297,11 +326,17 @@ export default function NuevoDetalleReceta({
                     {cf}
                   </option>
                 ))}
+                {detalle.clase_funcional &&
+                  !CLASES_FUNCIONALES.includes(detalle.clase_funcional) && (
+                    <option value={detalle.clase_funcional}>{detalle.clase_funcional}</option>
+                  )}
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="numero_ins">Número INS</label>
+              <label htmlFor="numero_ins">
+                Número INS {esAromatizante ? "(Opcional para aromatizantes)" : "*"}
+              </label>
               <input
                 id="numero_ins"
                 name="numero_ins"
@@ -309,7 +344,7 @@ export default function NuevoDetalleReceta({
                 placeholder="Ej: INS 282"
                 value={detalle.numero_ins}
                 onChange={handleChange}
-                required
+                required={!esAromatizante}
               />
             </div>
           </>

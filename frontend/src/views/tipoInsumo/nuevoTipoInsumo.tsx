@@ -11,12 +11,34 @@ interface AlergenoItem {
   simbolo?: string;
 }
 
+const CLASES_FUNCIONALES = [
+  'Conservante',
+  'Antioxidante',
+  'Colorante',
+  'Edulcorante',
+  'Aromatizante',
+  'Leudante químico',
+  'Emulsionante',
+  'Acidulante',
+  'Estabilizante',
+  'Espesante',
+  'Humectante',
+  'Regulador de acidez',
+  'Potenciador de sabor',
+  'Estimulante',
+];
+
 interface NuevoTipoInsumoProps {
+  esAditivoInicial?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onCancel }) => {
+export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({
+  esAditivoInicial = false,
+  onSuccess,
+  onCancel,
+}) => {
   const { mostrarExito, mostrarError } = useAlertaOperacion();
   const [form, setForm] = useState<TipoInsumoForm & { alergeno_ids: number[] }>({
     nombre: '',
@@ -24,7 +46,7 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
     unidad_medida_id: '',
     cantidad_referencia: 1,
     equivalencia_gramos: '',
-    es_aditivo: false,
+    es_aditivo: esAditivoInicial,
     clase_funcional: '',
     numero_ins: '',
     alergeno_ids: [],
@@ -105,17 +127,41 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
       return;
     }
 
+    const esAditivo = Boolean(form.es_aditivo);
+    const claseFuncionalLimpia = (form.clase_funcional || '').trim();
+    const numeroInsLimpio = (form.numero_ins || '').trim();
+    const esAromatizante = claseFuncionalLimpia.toLowerCase().includes('aromatizante');
+
+    if (esAditivo) {
+      if (!claseFuncionalLimpia) {
+        mostrarError('Clase funcional requerida', 'Debe seleccionar la clase funcional del aditivo.');
+        return;
+      }
+      if (!esAromatizante && !numeroInsLimpio) {
+        mostrarError('Número INS requerido', 'Debe ingresar el número INS del aditivo (ej: INS 202).');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
+      const esEdulcorante = claseFuncionalLimpia.toLowerCase().includes('edulcorante');
+      const esCafeina =
+        nombreLimpio.toLowerCase().includes('cafeína') ||
+        nombreLimpio.toLowerCase().includes('cafeina');
+
       const payload = {
         nombre: nombreLimpio,
         descripcion: form.descripcion.trim() || null,
         unidad_medida_id: Number(form.unidad_medida_id),
         cantidad_referencia: form.cantidad_referencia ? Number(form.cantidad_referencia) : 1.0,
         equivalencia_gramos: form.equivalencia_gramos !== '' && form.equivalencia_gramos !== undefined ? Number(form.equivalencia_gramos) : null,
-        es_aditivo: Boolean(form.es_aditivo),
-        clase_funcional: form.es_aditivo ? (form.clase_funcional?.trim() || null) : null,
-        numero_ins: form.es_aditivo ? (form.numero_ins?.trim() || null) : null,
+        es_aditivo: esAditivo,
+        clase_funcional: esAditivo ? claseFuncionalLimpia : null,
+        numero_ins: esAditivo ? (numeroInsLimpio || null) : null,
+        es_aromatizante: esAditivo && esAromatizante,
+        es_edulcorante: esAditivo && esEdulcorante,
+        es_cafeina: esAditivo && esCafeina,
         alergeno_ids: form.alergeno_ids,
       };
 
@@ -127,23 +173,34 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        let msg = 'Error al registrar el tipo de insumo.';
+        let msg = esAditivo ? 'Error al registrar el aditivo.' : 'Error al registrar el tipo de insumo.';
         if (typeof data.detail === 'string') msg = data.detail;
         throw new Error(msg);
       }
 
-      mostrarExito('Tipo de insumo creado', 'El tipo de insumo se registró correctamente.', 3000, onSuccess);
+      mostrarExito(
+        esAditivo ? 'Aditivo creado' : 'Tipo de insumo creado',
+        esAditivo ? 'El aditivo se registró correctamente.' : 'El tipo de insumo se registró correctamente.',
+        3000,
+        onSuccess
+      );
     } catch (err: unknown) {
-      mostrarError('No se pudo crear el tipo de insumo', err instanceof Error ? err.message : 'Error al registrar el tipo de insumo.');
+      mostrarError(
+        esAditivo ? 'No se pudo crear el aditivo' : 'No se pudo crear el tipo de insumo',
+        err instanceof Error ? err.message : 'Error al registrar.'
+      );
     } finally {
       setLoading(false);
     }
   }
 
+  const esAditivoActivo = Boolean(form.es_aditivo);
+  const esAromatizanteActivo = (form.clase_funcional || '').toLowerCase().includes('aromatizante');
+
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Nuevo Tipo de Insumo</h1>
+        <h1>{esAditivoActivo ? 'Nuevo Tipo de Aditivo' : 'Nuevo Tipo de Insumo'}</h1>
         <div className="subtitulo">02 · Formulario</div>
       </div>
 
@@ -152,17 +209,90 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="nombre">Nombre Genérico *</label>
+          <label>Clasificación *</label>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={!esAditivoActivo ? 'btn-guardar' : 'btn-cancelar'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              onClick={() =>
+                setForm((prev) => ({
+                  ...prev,
+                  es_aditivo: false,
+                  clase_funcional: '',
+                  numero_ins: '',
+                }))
+              }
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>nutrition</span>
+              Ingrediente
+            </button>
+            <button
+              type="button"
+              className={esAditivoActivo ? 'btn-guardar' : 'btn-cancelar'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              onClick={() =>
+                setForm((prev) => ({
+                  ...prev,
+                  es_aditivo: true,
+                }))
+              }
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>science</span>
+              Aditivo
+            </button>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="nombre">{esAditivoActivo ? 'Nombre Completo del Aditivo *' : 'Nombre Genérico *'}</label>
           <input
             id="nombre"
             name="nombre"
             type="text"
-            placeholder="Ej: Harina, Leche, Sal..."
+            placeholder={esAditivoActivo ? 'Ej: Sorbato de potasio, Propionato de calcio...' : 'Ej: Harina, Leche, Sal...'}
             value={form.nombre}
             onChange={handleChange}
             required
           />
         </div>
+
+        {esAditivoActivo && (
+          <>
+            <div className="form-group">
+              <label htmlFor="clase_funcional">Clase Funcional *</label>
+              <select
+                id="clase_funcional"
+                name="clase_funcional"
+                value={form.clase_funcional || ''}
+                onChange={handleChange}
+                required
+              >
+                <option value="" disabled>Seleccione una clase funcional...</option>
+                {CLASES_FUNCIONALES.map((cf) => (
+                  <option key={cf} value={cf}>
+                    {cf}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="numero_ins">
+                Número INS {esAromatizanteActivo ? '(Opcional para aromatizantes)' : '*'}
+              </label>
+              <input
+                id="numero_ins"
+                name="numero_ins"
+                type="text"
+                placeholder="Ej: INS 202, INS 282..."
+                value={form.numero_ins || ''}
+                onChange={handleChange}
+                required={!esAromatizanteActivo}
+              />
+            </div>
+          </>
+        )}
 
         <div className="form-group">
           <label htmlFor="unidad_medida_id">Unidad de Medida *</label>
@@ -182,7 +312,6 @@ export const NuevoTipoInsumo: React.FC<NuevoTipoInsumoProps> = ({ onSuccess, onC
           </select>
         </div>
 
-        {/* Sección de Selección de Alérgenos */}
         <div className="form-group">
           <label>Alérgenos Asociados (Declaración Obligatoria)</label>
           <div

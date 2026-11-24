@@ -10,7 +10,7 @@ import { apiFetch } from '../../api/client';
 import { descargarCSV } from '../../utils/exportarCsv';
 
 interface ListadoTiposInsumosProps {
-  onNuevoClick?: () => void;
+  onNuevoClick?: (esAditivo?: boolean) => void;
   onEditarClick?: (id: number) => void;
   onVerDetalleClick?: (id: number) => void;
 }
@@ -24,6 +24,7 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
+  const [vistaActual, setVistaActual] = useState<'ingredientes' | 'aditivos'>('ingredientes');
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('TODOS');
@@ -86,12 +87,21 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
     }
   };
 
+  const totalIngredientes = tipos.filter((t) => !t.es_aditivo).length;
+  const totalAditivos = tipos.filter((t) => Boolean(t.es_aditivo)).length;
+
   const tiposFiltrados = tipos.filter((t) => {
+    const esAditivo = Boolean(t.es_aditivo);
+    if (vistaActual === 'aditivos' && !esAditivo) return false;
+    if (vistaActual === 'ingredientes' && esAditivo) return false;
+
     const term = busqueda.toLowerCase().trim();
     const matchBusqueda =
       !term ||
       t.nombre.toLowerCase().includes(term) ||
-      (t.descripcion && t.descripcion.toLowerCase().includes(term));
+      (t.descripcion && t.descripcion.toLowerCase().includes(term)) ||
+      (t.clase_funcional && t.clase_funcional.toLowerCase().includes(term)) ||
+      (t.numero_ins && t.numero_ins.toLowerCase().includes(term));
 
     const matchEstado =
       filtroEstado === 'TODOS' ||
@@ -134,15 +144,21 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
     indiceFin,
   } = usePaginacion(tiposFiltrados);
 
+  const esVistaAditivos = vistaActual === 'aditivos';
+
   return (
     <div className="modulo-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Tipos de Insumo</h1>
-          <div className="subtitulo">01 · Categorización Genérica de Ingredientes</div>
+          <h1>{esVistaAditivos ? 'Tipos de Aditivo' : 'Tipos de Insumo'}</h1>
+          <div className="subtitulo">
+            {esVistaAditivos
+              ? '01 · Catálogo de Aditivos Alimentarios (Clase Funcional e INS)'
+              : '01 · Categorización Genérica de Ingredientes'}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setDialogExportarAbierto(true)}
@@ -153,17 +169,48 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
           </button>
 
           {onNuevoClick && (
-            <button onClick={onNuevoClick} className="btn-guardar">
-              + Nuevo Tipo de Insumo
+            <button onClick={() => onNuevoClick(esVistaAditivos)} className="btn-guardar">
+              {esVistaAditivos ? '+ Nuevo Aditivo' : '+ Nuevo Tipo de Insumo'}
             </button>
           )}
         </div>
       </div>
 
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => {
+            setVistaActual('ingredientes');
+            setPaginaActual(1);
+          }}
+          className={!esVistaAditivos ? 'btn-guardar' : 'btn-cancelar'}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>nutrition</span>
+          Ingredientes ({totalIngredientes})
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setVistaActual('aditivos');
+            setPaginaActual(1);
+          }}
+          className={esVistaAditivos ? 'btn-guardar' : 'btn-cancelar'}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>science</span>
+          Aditivos ({totalAditivos})
+        </button>
+      </div>
+
       <div className="filtros-top-bar" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
         <input
           type="text"
-          placeholder="Buscar tipo de insumo por nombre o descripción..."
+          placeholder={
+            esVistaAditivos
+              ? 'Buscar aditivo por nombre completo, clase funcional o número INS...'
+              : 'Buscar tipo de insumo por nombre o descripción...'
+          }
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           className="input-busqueda"
@@ -185,9 +232,11 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
           <thead>
             <tr>
               <th style={{ width: '60px' }}>ID</th>
-              <th>Nombre</th>
+              <th>{esVistaAditivos ? 'Nombre Completo' : 'Nombre'}</th>
+              {esVistaAditivos && <th>Clase Funcional</th>}
+              {esVistaAditivos && <th>Número INS</th>}
               <th>Unidad de Medida</th>
-              <th>Descripción</th>
+              {!esVistaAditivos && <th>Descripción</th>}
               <th>Lotes Registrados</th>
               <th>Estado</th>
               <th className="acciones-col">Acciones</th>
@@ -196,16 +245,16 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
-                  Cargando tipos de insumo...
+                <td colSpan={esVistaAditivos ? 8 : 7} style={{ textAlign: 'center', padding: '2rem' }}>
+                  {esVistaAditivos ? 'Cargando aditivos...' : 'Cargando tipos de insumo...'}
                 </td>
               </tr>
             ) : tiposFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={esVistaAditivos ? 8 : 7} style={{ textAlign: 'center', padding: '2rem' }}>
                   {busqueda || filtroEstado !== 'TODOS'
-                    ? 'No se encontraron tipos de insumo que coincidan con los filtros.'
-                    : 'No hay tipos de insumo registrados.'}
+                    ? `No se encontraron ${esVistaAditivos ? 'aditivos' : 'tipos de insumo'} que coincidan con los filtros.`
+                    : `No hay ${esVistaAditivos ? 'aditivos' : 'tipos de insumo'} registrados.`}
                 </td>
               </tr>
             ) : (
@@ -213,8 +262,10 @@ export const ListadoTiposInsumos: React.FC<ListadoTiposInsumosProps> = ({
                 <tr key={t.id}>
                   <td>{t.id}</td>
                   <td style={{ fontWeight: 600 }}>{t.nombre}</td>
+                  {esVistaAditivos && <td>{t.clase_funcional || '-'}</td>}
+                  {esVistaAditivos && <td style={{ fontWeight: 600 }}>{t.numero_ins || '-'}</td>}
                   <td style={{ textTransform: 'capitalize' }}>{t.unidadMedida}</td>
-                  <td>{t.descripcion || '-'}</td>
+                  {!esVistaAditivos && <td>{t.descripcion || '-'}</td>}
                   <td>{t.cantidad_lotes ?? t.total_lotes ?? 0}</td>
                   <td>
                     <span className={`badge-status ${t.activo ? 'activo' : 'inactivo'}`}>

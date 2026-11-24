@@ -218,7 +218,11 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
           <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Clasificación</span>
           <p style={{ fontWeight: 600, margin: '4px 0 0' }}>
             {detalle.es_aditivo
-              ? `Aditivo (${detalle.clase_funcional || 'General'}${detalle.numero_ins ? ` · INS ${detalle.numero_ins}` : ''})`
+              ? `Aditivo (${detalle.clase_funcional || 'General'}${
+                  detalle.numero_ins
+                    ? ` · ${detalle.numero_ins.toUpperCase().startsWith('INS') ? detalle.numero_ins : `INS ${detalle.numero_ins}`}`
+                    : ''
+                })`
               : 'Ingrediente'}
           </p>
         </div>
@@ -276,19 +280,19 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
           </div>
         </div>
 
-      <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Historial de Lotes Recibidos</h2>
+      <h2 style={{ fontSize: '1.15rem', marginTop: '20px', marginBottom: '12px' }}>Historial de Lotes Recibidos</h2>
 
-      <div className="tabla-wrapper">
-        <table className="tabla-custom">
+      <div className="tabla-wrapper" style={{ overflowX: 'auto' }}>
+        <table className="tabla-custom tabla-insumos">
           <thead>
             <tr>
               <th>Lote</th>
-              <th>Nombre Específico</th>
+              <th>Nombre</th>
               <th>Proveedor</th>
-              <th>Fecha Recepción</th>
-              <th>Fecha Vencimiento</th>
-              <th>Cant. Recibida</th>
-              <th>Stock Actual</th>
+              <th>Recepción</th>
+              <th>Vencimiento</th>
+              <th>Recibido</th>
+              <th>Stock</th>
               <th>Estado</th>
               <th className="acciones-col">Acciones</th>
             </tr>
@@ -303,18 +307,18 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
             ) : (
               lotes.map((lote) => (
                 <tr key={lote.id} style={{ opacity: lote.activo ? 1 : 0.6 }}>
-                  <td style={{ fontWeight: 600 }}>{lote.lote}</td>
+                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{lote.lote}</td>
                   <td>{lote.nombre}</td>
                   <td>{lote.proveedor_nombre || '-'}</td>
-                  <td>{formatDate(lote.fechaRecepcion)}</td>
-                  <td>{formatDate(lote.fechaVencimiento)}</td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{formatDate(lote.fechaRecepcion)}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{formatDate(lote.fechaVencimiento)}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     {lote.cantRecibida} {lote.medida}
                   </td>
-                  <td style={{ fontWeight: 600 }}>
+                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                     {lote.stock} {lote.medida}
                   </td>
-                  <td>{renderBadgeEstado(lote.estadoVencimiento)}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{renderBadgeEstado(lote.estadoVencimiento)}</td>
                   <td className="acciones-col">
                     <div className="acciones-btns">
                       {onVerLote && (
@@ -323,7 +327,7 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
                           title="Ver lote y trazabilidad"
                           onClick={() => onVerLote(lote.id)}
                         >
-                          <span className="material-symbols-outlined">visibility</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>visibility</span>
                         </button>
                       )}
                       {lote.activo && onEditarLote && (
@@ -332,7 +336,7 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
                           title="Editar lote"
                           onClick={() => onEditarLote(lote.id)}
                         >
-                          <span className="material-symbols-outlined">edit</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
                         </button>
                       )}
                       {lote.activo && (
@@ -341,7 +345,7 @@ export const VerDetalleTipoInsumo: React.FC<VerDetalleTipoInsumoProps> = ({
                           title="Dar de baja lote"
                           onClick={() => abrirConfirmacionEliminarLote(lote)}
                         >
-                          <span className="material-symbols-outlined">delete</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
                         </button>
                       )}
                     </div>

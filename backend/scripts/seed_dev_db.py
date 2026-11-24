@@ -317,8 +317,6 @@ def main() -> None:
 
     tipos_insumos_seed = [
         ("Harina", "Harinas de trigo y cereales varios", "kilogramos"),
-        ("Esencia de Vainilla", "Aromatizante y saborizante para pastelería y repostería", "mililitros"),
-        ("Polvo para Hornear", "Leudante químico para masas dulces y batidos", "gramos"),
         ("Sal", "Sal fina y entrefina de uso alimenticio", "kilogramos"),
         ("Levadura", "Levadura biológica fresca y seca para panificación", "kilogramos"),
         ("Manteca", "Materia grasa vacuna para hojaldres y masas", "kilogramos"),
@@ -341,7 +339,6 @@ def main() -> None:
         ("Mermelada", "Mermeladas de fruta", "kilogramos"),
         ("Miel", "Miel pura de abeja", "kilogramos"),
         ("Semillas", "Semillas varias para terminación y panes especiales", "kilogramos"),
-        ("Colorantes y Esencias Especiales", "Colorantes alimentarios y saborizantes concentrados", "mililitros"),
         ("Carne de Pollo", "Pechuga y suprema de pollo fresca deshuesada", "kilogramos"),
         ("Pan Rallado", "Pan rallado de harina de trigo enriquecida Ley 25630, agua, levadura y sal", "kilogramos"),
         ("Butter (Rebozador con Sal)", "Premezcla rebozadora con sal, huevo entero en polvo, especias, harina de soja, almidón de trigo y potenciador de sabor INS 621", "kilogramos"),
@@ -350,7 +347,17 @@ def main() -> None:
     for nom_t, desc_t, um_t in tipos_insumos_seed:
         crear_tipo_insumo(db, TipoInsumoCreate(nombre=nom_t, descripcion=desc_t, unidad_medida_id=unidades_map[um_t]))
 
-    tipo_inactivo = crear_tipo_insumo(db, TipoInsumoCreate(nombre="Aditivos Discontinuados", descripcion="Línea de aditivos y mejoradores discontinuada", unidad_medida_id=unidades_map["kilogramos"]))
+    tipo_inactivo = crear_tipo_insumo(
+        db,
+        TipoInsumoCreate(
+            nombre="Aditivos Discontinuados",
+            descripcion="Línea de aditivos y mejoradores discontinuada",
+            unidad_medida_id=unidades_map["kilogramos"],
+            es_aditivo=True,
+            clase_funcional="Conservante",
+            numero_ins="INS 200",
+        ),
+    )
     tipo_inactivo.activo = False
     db.commit()
 
@@ -413,6 +420,42 @@ def main() -> None:
     db.add_all(aditivos_seed)
     db.commit()
 
+    tipos_aditivos_seed = [
+        ("Sorbato de potasio", "Conservante alimentario contra mohos y levaduras", "gramos", "Conservante", "INS 202", False, False, False, None),
+        ("Propionato de calcio", "Conservante antifúngico para panificados", "gramos", "Conservante", "INS 282", False, False, False, None),
+        ("Lecitina de soja", "Emulsionante natural para masas y chocolates", "gramos", "Emulsionante", "INS 322", False, False, False, None),
+        ("Bicarbonato de sodio", "Leudante químico alcalino para repostería", "gramos", "Leudante químico", "INS 500ii", False, False, False, 27360.0),
+        ("Polvo para Hornear", "Leudante químico para masas dulces y batidos", "gramos", "Leudante químico", "INS 500ii", False, False, False, 10600.0),
+        ("Ácido cítrico", "Acidulante y regulador de acidez", "gramos", "Acidulante", "INS 330", False, False, False, None),
+        ("Esencia de vainilla natural", "Aromatizante líquido natural de vainilla", "mililitros", "Aromatizante", None, True, False, False, None),
+        ("Colorantes y Esencias Especiales", "Colorantes alimentarios y saborizantes concentrados", "mililitros", "Colorante", "INS 100i", False, False, False, None),
+        ("Sucralosa", "Edulcorante no nutritivo de alta intensidad", "gramos", "Edulcorante", "INS 955", False, True, False, None),
+        ("Cafeína anhidra", "Aditivo estimulante para formulaciones específicas", "gramos", "Estimulante", None, False, False, True, None),
+    ]
+    for nom_a, desc_a, um_a, clase_a, ins_a, es_aroma_a, es_edulc_a, es_caf_a, sodio_a in tipos_aditivos_seed:
+        t_adit = crear_tipo_insumo(
+            db,
+            TipoInsumoCreate(
+                nombre=nom_a,
+                descripcion=desc_a,
+                unidad_medida_id=unidades_map[um_a],
+                es_aditivo=True,
+                clase_funcional=clase_a,
+                numero_ins=ins_a,
+                es_aromatizante=es_aroma_a,
+                es_edulcorante=es_edulc_a,
+                es_cafeina=es_caf_a,
+            ),
+        )
+        if sodio_a is not None:
+            t_adit.energia_kcal = 0.0
+            t_adit.energia_kj = 0.0
+            t_adit.sodio_mg = sodio_a
+            t_adit.fuente_datos = "PROVEEDOR"
+        if nom_a == "Lecitina de soja" and "Soja" in alergenos_map:
+            t_adit.alergenos = [alergenos_map["Soja"]]
+    db.commit()
+
     provs_dict = {p.nombre: p.id for p in db.query(Proveedor).all()}
     tipos_dict = {t.nombre: t.id for t in db.query(TipoInsumo).all()}
 
@@ -472,8 +515,8 @@ def main() -> None:
         "Chocolate Cobertura Cero": ("Chocolate", "Chocolates y Coberturas Fénix"),
         "Aceite de Girasol": ("Aceite", "Molinos Río de la Plata"),
         "Aceite de Girasol Alto Oleico": ("Aceite", "Molinos Río de la Plata"),
-        "Esencia de Vainilla": ("Esencia de Vainilla", "Distribuidora Repostería del Sur"),
-        "Esencia de Vainilla Repostera": ("Esencia de Vainilla", "Distribuidora Repostería del Sur"),
+        "Esencia de Vainilla": ("Esencia de vainilla natural", "Distribuidora Repostería del Sur"),
+        "Esencia de Vainilla Repostera": ("Esencia de vainilla natural", "Distribuidora Repostería del Sur"),
         "Polvo de Hornear": ("Polvo para Hornear", "Distribuidora Repostería del Sur"),
         "Polvo Leudante Especial": ("Polvo para Hornear", "Distribuidora Repostería del Sur"),
         "Canela Molida": ("Canela", "Distribuidora de Especias del Plata"),
@@ -500,6 +543,8 @@ def main() -> None:
         "Agua Potable": ("Agua Potable", None),
     }
 
+    tipos_aditivo_flag = {t.id: bool(t.es_aditivo) for t in db.query(TipoInsumo).all()}
+
     for nombre, lote, dias_recepcion, dias_venc, cant, stock, medida in INSUMOS:
         t_nombre, p_nombre = insumo_mapping.get(nombre, (None, None))
         t_id = tipos_dict.get(t_nombre) if t_nombre else None
@@ -514,6 +559,34 @@ def main() -> None:
             unidad_medida_id=unidades_map[medida],
             tipo_insumo_id=t_id,
             proveedor_id=p_id,
+            es_aditivo=tipos_aditivo_flag.get(t_id, False) if t_id else False,
+        ))
+    db.commit()
+
+    lotes_aditivos_seed = [
+        ("Sorbato de potasio", "AD-SOR-2411", 10, 240, 2000.0, 1450.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Propionato de calcio", "AD-PRO-2410", 20, 180, 2500.0, 1800.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Lecitina de soja", "AD-LEC-2411", 6, 210, 1500.0, 1200.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Bicarbonato de sodio", "AD-BIC-2409", 15, 300, 5000.0, 3900.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Ácido cítrico", "AD-ACI-2411", 8, 270, 1000.0, 820.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Esencia de vainilla natural", "AD-VAI-2411", 4, 150, 2000.0, 1650.0, "mililitros", "Distribuidora Repostería del Sur"),
+        ("Sucralosa", "AD-SUC-2410", 12, 320, 500.0, 420.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Cafeína anhidra", "AD-CAF-2410", 14, 290, 250.0, 210.0, "gramos", "Distribuidora Repostería del Sur"),
+    ]
+    for nom_la, lote_la, d_rec, d_ven, cant_la, stk_la, um_la, prov_la in lotes_aditivos_seed:
+        t_id_la = tipos_dict.get(nom_la)
+        p_id_la = provs_dict.get(prov_la)
+        db.add(Insumo(
+            nombre=nom_la,
+            lote=lote_la,
+            fechaRecepcion=hoy - timedelta(days=d_rec),
+            fechaVencimiento=hoy + timedelta(days=d_ven),
+            cantRecibida=cant_la,
+            stock=stk_la,
+            unidad_medida_id=unidades_map[um_la],
+            tipo_insumo_id=t_id_la,
+            proveedor_id=p_id_la,
+            es_aditivo=True,
         ))
     db.commit()
 
@@ -1794,6 +1867,17 @@ def main() -> None:
             es_aditivo=False,
             descripcion_pasos="Agregar sal al final del amasado.",
         ),
+        RecetaDetalle(
+            nombre="Conservante Propionato de calcio",
+            version_receta_id=version_salvado.id,
+            tipo_insumo_id=tipos_dict["Propionato de calcio"],
+            cantidad=2.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=True,
+            clase_funcional="Conservante",
+            numero_ins="INS 282",
+            descripcion_pasos="Incorporar propionato de calcio junto a los ingredientes secos para extender vida útil.",
+        ),
     ]
     db.add_all(detalles_salvado)
     db.commit()
@@ -1898,8 +1982,21 @@ def main() -> None:
             tipo_insumo_id=insumos_map["Polvo de Hornear"].tipo_insumo_id,
             cantidad=15.0,
             unidad_medida="GRAMOS",
-            es_aditivo=False,
+            es_aditivo=True,
+            clase_funcional="Leudante químico",
+            numero_ins="INS 500ii",
             descripcion_pasos="Tamizar con la harina para esponjosidad.",
+        ),
+        RecetaDetalle(
+            nombre="Aromatizado con Esencia de vainilla natural",
+            version_receta_id=version_torta.id,
+            tipo_insumo_id=tipos_dict["Esencia de vainilla natural"],
+            cantidad=10.0,
+            unidad_medida="MILILITROS",
+            es_aditivo=True,
+            clase_funcional="Aromatizante",
+            numero_ins=None,
+            descripcion_pasos="Incorporar esencia de vainilla al batido húmedo antes de integrar los secos.",
         ),
     ]
     db.add_all(detalles_torta)
@@ -1963,6 +2060,39 @@ def main() -> None:
             unidad_medida="GRAMOS",
             es_aditivo=False,
             descripcion_pasos="Espolvorear canela molida para perfumar la miga.",
+        ),
+        RecetaDetalle(
+            nombre="Leudante Bicarbonato de sodio",
+            version_receta_id=version_budin.id,
+            tipo_insumo_id=tipos_dict["Bicarbonato de sodio"],
+            cantidad=8.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=True,
+            clase_funcional="Leudante químico",
+            numero_ins="INS 500ii",
+            descripcion_pasos="Tamizar bicarbonato de sodio junto a la harina 0000.",
+        ),
+        RecetaDetalle(
+            nombre="Acidulante Ácido cítrico",
+            version_receta_id=version_budin.id,
+            tipo_insumo_id=tipos_dict["Ácido cítrico"],
+            cantidad=3.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=True,
+            clase_funcional="Acidulante",
+            numero_ins="INS 330",
+            descripcion_pasos="Disolver ácido cítrico en el glaseado de limón para ajustar acidez.",
+        ),
+        RecetaDetalle(
+            nombre="Conservante Sorbato de potasio",
+            version_receta_id=version_budin.id,
+            tipo_insumo_id=tipos_dict["Sorbato de potasio"],
+            cantidad=1.5,
+            unidad_medida="GRAMOS",
+            es_aditivo=True,
+            clase_funcional="Conservante",
+            numero_ins="INS 202",
+            descripcion_pasos="Integrar sorbato de potasio al batido final para conservación.",
         ),
     ])
     db.commit()

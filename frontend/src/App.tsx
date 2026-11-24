@@ -167,9 +167,11 @@ function Aplicacion() {
   const [vistaInsumos, setVistaInsumos] = useState<VistaInsumos>('listado');
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<InsumoConId | null>(null);
   const [origenDetalleInsumo, setOrigenDetalleInsumo] = useState<OrigenDetalleInsumo>('listado');
+  const [nuevoInsumoEsAditivo, setNuevoInsumoEsAditivo] = useState<boolean>(false);
 
   const [vistaTipoInsumo, setVistaTipoInsumo] = useState<VistaTipoInsumo>('listado');
   const [tipoInsumoSeleccionado, setTipoInsumoSeleccionado] = useState<number | null>(null);
+  const [nuevoTipoEsAditivo, setNuevoTipoEsAditivo] = useState<boolean>(false);
 
   const [vistaProveedores, setVistaProveedores] = useState<VistaProveedores>('listado');
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState<number | null>(null);
@@ -996,7 +998,8 @@ const irANotificacion = async (notif: NotificacionItem) => {
         ) : modulo === 'insumos' ? (
           vistaInsumos === 'listado' ? (
             <ListadoInsumos
-              onNuevoClick={() => {
+              onNuevoClick={(esAditivo) => {
+                setNuevoInsumoEsAditivo(Boolean(esAditivo));
                 setOrigenDetalleInsumo('listado');
                 setVistaInsumos('alta');
               }}
@@ -1015,6 +1018,7 @@ const irANotificacion = async (notif: NotificacionItem) => {
             />
           ) : vistaInsumos === 'alta' ? (
             <NuevoInsumo
+              esAditivoInicial={nuevoInsumoEsAditivo}
               onSuccess={volverAListadoInsumos}
               onCancel={volverAListadoInsumos}
             />
@@ -1045,7 +1049,10 @@ const irANotificacion = async (notif: NotificacionItem) => {
         ) : modulo === 'tipoInsumo' ? (
           vistaTipoInsumo === 'listado' ? (
             <ListadoTiposInsumos
-              onNuevoClick={() => setVistaTipoInsumo('alta')}
+              onNuevoClick={(esAditivo) => {
+                setNuevoTipoEsAditivo(Boolean(esAditivo));
+                setVistaTipoInsumo('alta');
+              }}
               onEditarClick={(id) => {
                 setTipoInsumoSeleccionado(id);
                 setVistaTipoInsumo('editar');
@@ -1057,6 +1064,7 @@ const irANotificacion = async (notif: NotificacionItem) => {
             />
           ) : vistaTipoInsumo === 'alta' ? (
             <NuevoTipoInsumo
+              esAditivoInicial={nuevoTipoEsAditivo}
               onSuccess={() => setVistaTipoInsumo('listado')}
               onCancel={() => setVistaTipoInsumo('listado')}
             />
