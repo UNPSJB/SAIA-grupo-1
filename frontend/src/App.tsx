@@ -874,8 +874,6 @@ const irANotificacion = async (notif: NotificacionItem) => {
         {renderBreadcrumbConfiguracion()}
         {modulo === 'dashboard' ? (
           <PanelDashboard
-            vistaHabilitada={vistaPublicaHabilitada}
-            onIrAVistaPublica={() => setModulo('vistaPublica')}
             onIrAlRegistro={irAlRegistroDeVencimiento}
             onNavegar={(mod, subvista, filtroEstado) => {
               if (mod === 'vencimientos') {

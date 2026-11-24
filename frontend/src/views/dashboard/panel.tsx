@@ -52,7 +52,7 @@ const UNIDADES_ESTANDAR = [
   { id: 'UN', label: 'UN' },
 ];
 
-export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro, onIrAVistaPublica, vistaHabilitada }) => {
+export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro }) => {
   const colores = useColoresTema();
   const [vistaDetalle, setVistaDetalle] = useState<TipoDetalleEstadisticas | null>(null);
 
@@ -444,24 +444,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
           >
             <ExportIcon size={17} /> Exportar Gráficos
           </button>
-          {vistaHabilitada ? (
-            <button
-              type="button"
-              onClick={() => onIrAVistaPublica?.(true)}
-              className="btn-activar"
-              style={{ backgroundColor: '#0284c7' }}
-            >
-              Ver QR / Gestionar Vista
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onIrAVistaPublica?.(false)}
-              className="btn-activar"
-            >
-              Activar Vista Pública
-            </button>
-          )}
         </div>
       </div>
 
