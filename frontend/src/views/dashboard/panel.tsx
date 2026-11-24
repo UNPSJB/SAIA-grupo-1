@@ -394,7 +394,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
           title="0 Vencidos"
           onClick={onAlDiaClick}
         >
-          0
+          0 vencidos
         </button>
       );
     }
@@ -407,7 +407,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
             title={`${vencidos} ${vencidos === 1 ? 'Vencido' : 'Vencidos'}`}
             onClick={onVencidosClick}
           >
-            {vencidos}
+            {vencidos} {vencidos === 1 ? 'vencido' : 'vencidos'}
           </button>
         )}
         {proximos > 0 && (
@@ -417,7 +417,7 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
             title={`${proximos} ${proximos === 1 ? 'Próximo a vencer' : 'Próximos a vencer'}`}
             onClick={onProximosClick}
           >
-            {proximos}
+            {proximos} {proximos === 1 ? 'próximo' : 'próximos'}
           </button>
         )}
       </div>
