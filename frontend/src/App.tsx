@@ -80,10 +80,8 @@ import { AcercaDeNosotros } from './views/vistaPublica/AcercaDeNosotros';
 import { ProductosPublicos } from './views/vistaPublica/ProductosPublicos';
 import { useVistaPublica } from './views/vistaPublica/contextDeVistaPublica';
 import { NuevoLote } from './views/produccion/nuevoLote';
-import { AsociarInsumos } from './views/produccion/asociarInsumos';
 import { HistorialLotes } from './views/produccion/historialLotes';
 import { DetalleLote } from './views/produccion/detalleLote';
-import type { LoteProduccion } from './views/produccion/tipos';
 import { ListadoProductos } from './views/producto/listado';
 import NuevoProducto  from './views/producto/nuevoProducto';
 import EditarProducto from './views/producto/editarDetalle';
@@ -144,7 +142,7 @@ type VistaDocumentos = 'listado' | 'alta' | 'detalle' | 'nuevaVersion';
 type VistaTipoCertificado = 'listado' | 'alta' | 'detalle';
 type VistaTipoDocumento = 'listado' | 'alta' | 'detalle';
 type VistaMotivos = 'listado' | 'alta' | 'detalle';
-type VistaProduccion = 'historial' | 'nuevo' | 'detalle' | 'insumos';
+type VistaProduccion = 'historial' | 'nuevo' | 'detalle';
 type VistaProductos = 'listado' | 'alta' | 'detalle' | 'editar' | 'ingredientes' | 'borradorRotulo';
 type VistaControlesAmbientales = 'listado' | 'alta' | 'detalle' | 'editar';
 type VistaRecetas = 'listado' | 'alta' | 'detalle' | 'editar';
@@ -167,9 +165,11 @@ function Aplicacion() {
   const [vistaInsumos, setVistaInsumos] = useState<VistaInsumos>('listado');
   const [insumoSeleccionado, setInsumoSeleccionado] = useState<InsumoConId | null>(null);
   const [origenDetalleInsumo, setOrigenDetalleInsumo] = useState<OrigenDetalleInsumo>('listado');
+  const [nuevoInsumoEsAditivo, setNuevoInsumoEsAditivo] = useState<boolean>(false);
 
   const [vistaTipoInsumo, setVistaTipoInsumo] = useState<VistaTipoInsumo>('listado');
   const [tipoInsumoSeleccionado, setTipoInsumoSeleccionado] = useState<number | null>(null);
+  const [nuevoTipoEsAditivo, setNuevoTipoEsAditivo] = useState<boolean>(false);
 
   const [vistaProveedores, setVistaProveedores] = useState<VistaProveedores>('listado');
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState<number | null>(null);
@@ -229,7 +229,6 @@ function Aplicacion() {
 
   const [vistaProduccion, setVistaProduccion] = useState<VistaProduccion>('historial');
   const [loteSeleccionado, setLoteSeleccionado] = useState<number | null>(null);
-  const [loteParaAsociar, setLoteParaAsociar] = useState<LoteProduccion | null>(null);
 
   const [vistaRecetas, setVistaRecetas] = useState<VistaRecetas>('listado');
   const [recetaSeleccionada, setRecetaSeleccionada] = useState<number | null>(null);
@@ -244,12 +243,6 @@ function Aplicacion() {
   const verLote = (loteId: number) => {
     setLoteSeleccionado(loteId);
     setVistaProduccion('detalle');
-  };
-
-  const gestionarInsumos = (lote: LoteProduccion) => {
-    setLoteParaAsociar(lote);
-    setLoteSeleccionado(lote.id); // al volver se ve el detalle del lote con sus insumos
-    setVistaProduccion('insumos');
   };
 
   const [vistaProductos, setVistaProductos] = useState<VistaProductos>('listado');
@@ -302,7 +295,6 @@ function Aplicacion() {
     setModulo(nuevoModulo);
     setVistaProduccion('historial');
     setLoteSeleccionado(null);
-    setLoteParaAsociar(null);
     setOrigenVencimientos(null);
     setDesdeDashboard(esDesdeDashboard);
     setVistaEquipos('listado');
@@ -996,7 +988,8 @@ const irANotificacion = async (notif: NotificacionItem) => {
         ) : modulo === 'insumos' ? (
           vistaInsumos === 'listado' ? (
             <ListadoInsumos
-              onNuevoClick={() => {
+              onNuevoClick={(esAditivo) => {
+                setNuevoInsumoEsAditivo(Boolean(esAditivo));
                 setOrigenDetalleInsumo('listado');
                 setVistaInsumos('alta');
               }}
@@ -1015,6 +1008,7 @@ const irANotificacion = async (notif: NotificacionItem) => {
             />
           ) : vistaInsumos === 'alta' ? (
             <NuevoInsumo
+              esAditivoInicial={nuevoInsumoEsAditivo}
               onSuccess={volverAListadoInsumos}
               onCancel={volverAListadoInsumos}
             />
@@ -1045,7 +1039,10 @@ const irANotificacion = async (notif: NotificacionItem) => {
         ) : modulo === 'tipoInsumo' ? (
           vistaTipoInsumo === 'listado' ? (
             <ListadoTiposInsumos
-              onNuevoClick={() => setVistaTipoInsumo('alta')}
+              onNuevoClick={(esAditivo) => {
+                setNuevoTipoEsAditivo(Boolean(esAditivo));
+                setVistaTipoInsumo('alta');
+              }}
               onEditarClick={(id) => {
                 setTipoInsumoSeleccionado(id);
                 setVistaTipoInsumo('editar');
@@ -1057,6 +1054,7 @@ const irANotificacion = async (notif: NotificacionItem) => {
             />
           ) : vistaTipoInsumo === 'alta' ? (
             <NuevoTipoInsumo
+              esAditivoInicial={nuevoTipoEsAditivo}
               onSuccess={() => setVistaTipoInsumo('listado')}
               onCancel={() => setVistaTipoInsumo('listado')}
             />
@@ -1394,15 +1392,20 @@ const irANotificacion = async (notif: NotificacionItem) => {
           )
         ) : modulo === 'produccion' ? (
           vistaProduccion === 'nuevo' && esOperador ? (
-            <NuevoLote onAsociarInsumos={gestionarInsumos} onVolver={() => setVistaProduccion('historial')} />
-          ) : vistaProduccion === 'insumos' && esOperador && loteParaAsociar ? (
-            <AsociarInsumos lote={loteParaAsociar} onVolver={() => verLote(loteParaAsociar.id)} />
+            <NuevoLote
+              onVerLote={verLote}
+              onChecklistGenerado={(chkId) => {
+                setModulo('checklistReceta');
+                setChecklistRecetaSeleccionado(chkId);
+                setVistaChecklistReceta('detalle');
+              }}
+              onVolver={() => setVistaProduccion('historial')}
+            />
           ) : vistaProduccion === 'detalle' && loteSeleccionado !== null ? (
             <DetalleLote
               key={loteSeleccionado}
               loteId={loteSeleccionado}
               onVolver={() => setVistaProduccion('historial')}
-              onGestionarInsumos={esOperador ? gestionarInsumos : undefined}
             />
           ) : (
             <HistorialLotes

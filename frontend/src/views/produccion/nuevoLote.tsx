@@ -10,8 +10,7 @@ import '../../styles/produccion.css';
 import type { RecetaConId, ChecklistReceta, RecetaDetalleConId } from '../receta/tipos';
 
 interface NuevoLoteProps {
-  /** Acceso directo para asociar insumos al lote recién guardado */
-  onAsociarInsumos: (lote: LoteProduccion) => void;
+  onVerLote?: (loteId: number) => void;
   onVolver: () => void;
   onChecklistGenerado?: (checklistId: number) => void;
 }
@@ -27,7 +26,7 @@ const redondearCantidad = (valor: number): number => {
 };
 
 export const NuevoLote: React.FC<NuevoLoteProps> = ({
-  onAsociarInsumos,
+  onVerLote,
   onVolver,
   onChecklistGenerado,
 }) => {
@@ -278,7 +277,10 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
             <dd>{formatearFecha(loteCreado.fecha)}</dd>
             <dt>Cantidad producida</dt>
             <dd>
-              {loteCreado.cantidad} {loteCreado.producto.unidadMedida}
+              {loteCreado.cantidad} unidades/envases
+              {loteCreado.producto.cantidad_por_envase
+                ? ` (${Math.round(loteCreado.cantidad * loteCreado.producto.cantidad_por_envase * 100) / 100} ${loteCreado.producto.unidadMedida})`
+                : ''}
             </dd>
             {checklistCreado && (
               <>
@@ -293,13 +295,23 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
         </div>
 
         <div className="form-acciones">
-          <button
-            type="button"
-            className="btn-guardar"
-            onClick={() => onAsociarInsumos(loteCreado)}
-          >
-            Asociar insumos
-          </button>
+          {checklistCreado && onChecklistGenerado ? (
+            <button
+              type="button"
+              className="btn-guardar"
+              onClick={() => onChecklistGenerado(checklistCreado.id)}
+            >
+              Completar Checklist de Receta
+            </button>
+          ) : onVerLote ? (
+            <button
+              type="button"
+              className="btn-guardar"
+              onClick={() => onVerLote(loteCreado.id)}
+            >
+              Ver detalle del lote
+            </button>
+          ) : null}
           <button type="button" className="btn-cancelar" onClick={registrarOtro}>
             Registrar otro lote
           </button>
@@ -378,7 +390,10 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
           >
             <strong>Receta Vigente Base:</strong> {recetaAsociada.nombre} (v
             {versionVigente?.version ?? 1}) ·{' '}
-            <strong>Rendimiento Base:</strong> {rendimientoBase} {unidad}
+            <strong>Rendimiento Base:</strong> {rendimientoBase} unidades/envases
+            {productoSeleccionado?.cantidad_por_envase
+              ? ` (${redondearCantidad(rendimientoBase * productoSeleccionado.cantidad_por_envase)} ${unidad})`
+              : ''}
           </div>
         )}
 
@@ -391,7 +406,7 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
         >
           <div className="form-group">
             <label htmlFor="cantidad">
-              Cantidad objetivo a producir
+              Cantidad a producir (unidades / envases del producto)
             </label>
             <input
               id="cantidad"
@@ -399,10 +414,17 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
               type="number"
               min="0.01"
               step="any"
-              placeholder="Ej: 36"
+              placeholder="Ej: 20 unidades / envases"
               value={form.cantidad}
               onChange={handleCantidadChange}
             />
+            {productoSeleccionado?.cantidad_por_envase && Number(form.cantidad) > 0 && (
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-texto-sec)', marginTop: '4px' }}>
+                Equivale a{' '}
+                {redondearCantidad(Number(form.cantidad) * productoSeleccionado.cantidad_por_envase)}{' '}
+                {unidad}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
@@ -445,47 +467,55 @@ export const NuevoLote: React.FC<NuevoLoteProps> = ({
               </span>
             </div>
 
-            <div className="tabla-wrapper">
-              <table className="tabla-custom">
+            <div className="tabla-wrapper" style={{ overflowX: 'auto' }}>
+              <table className="tabla-custom tabla-insumos">
                 <thead>
                   <tr>
-                    <th>Etapa</th>
-                    <th>Ingrediente / Insumo</th>
-                    <th>Cant. Receta Base ({rendimientoBase} {unidad})</th>
+                    <th>Paso</th>
+                    <th>Ingrediente / Aditivo</th>
+                    <th>Cant. Base ({rendimientoBase} u.)</th>
                     <th>
-                      Cant. Escalada a Utilizar (
+                      Cant. Escalada (
                       {form.cantidad !== '' && Number(form.cantidad) > 0
-                        ? `${form.cantidad} ${unidad}`
+                        ? `${form.cantidad} u.`
                         : '—'}
                       )
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {etapasBase.map((etapa) => {
-                    const cantEscalada =
-                      factorActual > 0
-                        ? redondearCantidad(Number(etapa.cantidad) * factorActual)
-                        : null;
+                  {etapasBase
+                    .filter((etapa) => Boolean(etapa.tipo_insumo_id))
+                    .map((etapa) => {
+                      const cantEscalada =
+                        factorActual > 0
+                          ? redondearCantidad(Number(etapa.cantidad) * factorActual)
+                          : null;
 
-                    return (
-                      <tr key={etapa.id}>
-                        <td style={{ fontWeight: 500 }}>{etapa.nombre}</td>
-                        <td>
-                          {etapa.nombre_ingrediente ?? `Tipo de insumo #${etapa.tipo_insumo_id}`}
-                          {etapa.es_aditivo ? ' (Aditivo)' : ''}
-                        </td>
-                        <td style={{ color: 'var(--color-texto-sec)' }}>
-                          {etapa.cantidad} {etapa.unidad_medida}
-                        </td>
-                        <td style={{ fontWeight: 700, color: 'var(--color-exito-texto, #10b981)' }}>
-                          {cantEscalada !== null
-                            ? `${cantEscalada} ${etapa.unidad_medida}`
-                            : 'Ingrese cantidad > 0'}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      return (
+                        <tr key={etapa.id}>
+                          <td style={{ fontWeight: 500 }}>{etapa.nombre}</td>
+                          <td>
+                            {etapa.nombre_ingrediente ?? `Tipo de insumo #${etapa.tipo_insumo_id}`}
+                            {etapa.es_aditivo ? ' (Aditivo)' : ''}
+                          </td>
+                          <td style={{ color: 'var(--color-texto-sec)', whiteSpace: 'nowrap' }}>
+                            {etapa.cantidad} {etapa.unidad_medida}
+                          </td>
+                          <td
+                            style={{
+                              fontWeight: 700,
+                              color: 'var(--color-exito-texto, #10b981)',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {cantEscalada !== null
+                              ? `${cantEscalada} ${etapa.unidad_medida}`
+                              : 'Ingrese cantidad > 0'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>

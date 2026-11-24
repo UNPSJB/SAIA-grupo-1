@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { RecetaForm, RecetaDetalleConId } from "./tipos";
+import { formatearReglaUmbral, type RecetaForm, type RecetaDetalleConId } from "./tipos";
 import "../../styles/formularioAlta.css";
 import NuevoDetalleReceta from "./crearEtapaReceta";
 import { apiFetch } from "../../api/client";
@@ -9,6 +9,10 @@ import { usePersonalActivo } from "../tareas/usePersonalActivo";
 interface ProductoOption {
   id: number;
   nombre: string;
+  unidadMedida?: string;
+  unidad_medida_abreviatura?: string | null;
+  cantidad_por_envase?: number | null;
+  peso_unidad_g?: number | null;
   activo?: boolean;
 }
 
@@ -38,6 +42,7 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [detalles, setDetalles] = useState<RecetaDetalleConId[]>([]);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [etapaParaModal, setEtapaParaModal] = useState<string>("");
   const personas = usePersonalActivo();
 
   useEffect(() => {
@@ -144,7 +149,7 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
       return;
     }
 
-    const tieneIngredienteBase = detalles.some((d) => !d.es_aditivo);
+    const tieneIngredienteBase = detalles.some((d) => Boolean(d.tipo_insumo_id) && !d.es_aditivo);
     if (!tieneIngredienteBase) {
       setErrorMsg("La receta debe tener al menos un ingrediente que no sea aditivo.");
       return;
@@ -167,14 +172,16 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
       fecha_vigencia: receta.fecha_vigencia ? formatearFechaISO(receta.fecha_vigencia) : null,
       fecha_vencimiento: receta.fecha_vencimiento ? formatearFechaISO(receta.fecha_vencimiento) : null,
       detalles: detalles.map((d) => ({
-        tipo_insumo_id: Number(d.tipo_insumo_id),
+        etapa: d.etapa?.trim() || "General",
+        tipo_insumo_id: d.tipo_insumo_id ? Number(d.tipo_insumo_id) : null,
         nombre: d.nombre.trim(),
-        cantidad: Number(d.cantidad),
-        unidad_medida: d.unidad_medida.trim(),
-        es_aditivo: d.es_aditivo,
+        cantidad: d.tipo_insumo_id ? Number(d.cantidad) : 0,
+        unidad_medida: d.unidad_medida?.trim() || "unidades",
+        es_aditivo: d.tipo_insumo_id ? Boolean(d.es_aditivo) : false,
         clase_funcional: d.es_aditivo ? d.clase_funcional : null,
         numero_ins: d.es_aditivo ? d.numero_ins : null,
         descripcion_pasos: d.descripcion_pasos.trim(),
+        parametros_control: d.parametros_control ?? [],
       })),
     };
 
@@ -259,7 +266,7 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
             </option>
             {productos.map((prod) => (
               <option key={prod.id} value={prod.id}>
-                {prod.nombre}
+                {prod.nombre} {prod.unidadMedida ? `(${prod.unidadMedida})` : ""}
               </option>
             ))}
           </select>
@@ -298,20 +305,42 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
           </select>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="rendimiento_final">Rendimiento Final</label>
-          <input
-            id="rendimiento_final"
-            name="rendimiento_final"
-            type="number"
-            step="any"
-            min="0.01"
-            placeholder="Introduce el rendimiento final"
-            value={receta.rendimiento_final}
-            onChange={handleChange}
-            required
-          />
-        </div>
+        {(() => {
+          const prodSel = productos.find((p) => p.id === Number(receta.id_producto));
+          const uProd = prodSel?.unidadMedida || "";
+          const cantEnv = prodSel?.cantidad_por_envase || null;
+          const pesoEnv = prodSel?.peso_unidad_g || null;
+          const rendNum = Number(receta.rendimiento_final) || 0;
+          return (
+            <div className="form-group">
+              <label htmlFor="rendimiento_final">
+                Rendimiento Final (cantidad de unidades / envases del producto)
+              </label>
+              <input
+                id="rendimiento_final"
+                name="rendimiento_final"
+                type="number"
+                step="any"
+                min="0.01"
+                placeholder="Ej: 5 unidades / envases que produce esta receta"
+                value={receta.rendimiento_final}
+                onChange={handleChange}
+                required
+              />
+              {prodSel && (cantEnv || pesoEnv) && (
+                <div style={{ fontSize: "0.8rem", color: "var(--color-texto-sec)", marginTop: "4px" }}>
+                  1 unidad/envase = {cantEnv ? `${cantEnv} ${uProd}` : ""}
+                  {cantEnv && pesoEnv ? ` (${pesoEnv} g)` : pesoEnv ? `${pesoEnv} g` : ""}
+                  {rendNum > 0 && cantEnv
+                    ? ` · Esta receta produce ${Math.round(rendNum * cantEnv * 1000) / 1000} ${uProd}${
+                        pesoEnv ? ` (${Math.round(rendNum * pesoEnv * 100) / 100} g)` : ""
+                      }`
+                    : ""}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="form-group">
           <label htmlFor="fecha_vigencia">Fecha de Vigencia (Versión 1)</label>
@@ -340,57 +369,146 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
         <div className="listado-top-bar" style={{ marginTop: "1.75rem", marginBottom: "0.75rem" }}>
           <div className="modulo-header">
             <h2 style={{ margin: 0, fontSize: "1.25rem", color: "var(--color-texto)" }}>
-              Etapas e Ingredientes
+              Etapas y Pasos de la Receta
             </h2>
           </div>
-          <button type="button" className="btn-guardar" onClick={() => setModalAbierto(true)}>
-            + Agregar Etapa
+          <button
+            type="button"
+            className="btn-guardar"
+            onClick={() => {
+              setEtapaParaModal("");
+              setModalAbierto(true);
+            }}
+          >
+            + Agregar Paso
           </button>
         </div>
 
-        <div className="tabla-wrapper">
-          <table className="tabla-custom">
-            <thead>
-              <tr>
-                <th>Etapa</th>
-                <th>Ingrediente / Aditivo</th>
-                <th>Cantidad</th>
-                <th>Procedimiento</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={4} style={{ textAlign: "center", padding: "2rem" }}>
-                    Cargando Etapas...
-                  </td>
-                </tr>
-              ) : detalles?.length === 0 ? (
-                <tr>
-                  <td colSpan={4} style={{ textAlign: "center", padding: "2rem" }}>
-                    No hay etapas registradas.
-                  </td>
-                </tr>
-              ) : (
-                detalles?.map((d: RecetaDetalleConId, index: number) => (
-                  <tr key={d.id ?? index}>
-                    <td style={{ fontWeight: 500 }}>{d.nombre}</td>
-                    <td>
-                      {d.nombre_ingrediente ?? `Insumo #${d.tipo_insumo_id}`}
-                      {d.es_aditivo && d.clase_funcional
-                        ? ` (${d.clase_funcional}${d.numero_ins ? ` - ${d.numero_ins}` : ""})`
-                        : ""}
-                    </td>
-                    <td>
-                      {d.cantidad} {d.unidad_medida}
-                    </td>
-                    <td>{d.descripcion_pasos}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {detalles.length === 0 ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "2rem",
+              border: "1px dashed var(--color-borde, #334155)",
+              borderRadius: "8px",
+              marginBottom: "1rem",
+              color: "var(--color-texto-sec)",
+            }}
+          >
+            No hay etapas ni pasos registrados. Haga clic en &quot;+ Agregar Paso&quot; para comenzar.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1rem" }}>
+            {Array.from(new Set(detalles.map((d) => d.etapa || "General"))).map((nombreEtapa) => {
+              const pasosEtapa = detalles.filter((d) => (d.etapa || "General") === nombreEtapa);
+              return (
+                <div
+                  key={nombreEtapa}
+                  style={{
+                    border: "1px solid var(--color-borde, #334155)",
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "10px 14px",
+                      background: "rgba(37, 99, 235, 0.08)",
+                      borderBottom: "1px solid var(--color-borde, #334155)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: "0.98rem" }}>
+                      Etapa: {nombreEtapa} ({pasosEtapa.length})
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-cancelar"
+                      style={{ padding: "4px 10px", fontSize: "0.8rem" }}
+                      onClick={() => {
+                        setEtapaParaModal(nombreEtapa);
+                        setModalAbierto(true);
+                      }}
+                    >
+                      + Paso en {nombreEtapa}
+                    </button>
+                  </div>
+                  <div className="tabla-wrapper" style={{ margin: 0, border: "none", borderRadius: 0 }}>
+                    <table className="tabla-custom tabla-insumos">
+                      <thead>
+                        <tr>
+                          <th>Paso</th>
+                          <th>Ingrediente / Aditivo</th>
+                          <th>Cantidad</th>
+                          <th>Umbrales / Controles</th>
+                          <th>Procedimiento</th>
+                          <th className="acciones-col">Quitar</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pasosEtapa.map((d, index) => (
+                          <tr key={d.id ?? index}>
+                            <td style={{ fontWeight: 600 }}>{d.nombre}</td>
+                            <td>
+                              {d.tipo_insumo_id ? (
+                                <>
+                                  {d.nombre_ingrediente ?? `Insumo #${d.tipo_insumo_id}`}
+                                  {d.es_aditivo && d.clase_funcional
+                                    ? ` (${d.clase_funcional}${d.numero_ins ? ` - ${d.numero_ins}` : ""})`
+                                    : ""}
+                                </>
+                              ) : (
+                                <span style={{ opacity: 0.7 }}>Solo procedimiento / control</span>
+                              )}
+                            </td>
+                            <td>{d.tipo_insumo_id ? `${d.cantidad} ${d.unidad_medida}` : "-"}</td>
+                            <td>
+                              {d.parametros_control && d.parametros_control.length > 0 ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                  {d.parametros_control.map((p, pIdx) => (
+                                    <span
+                                      key={pIdx}
+                                      style={{
+                                        fontSize: "0.75rem",
+                                        padding: "2px 6px",
+                                        borderRadius: "4px",
+                                        backgroundColor: "rgba(37, 99, 235, 0.12)",
+                                        color: "#38bdf8",
+                                      }}
+                                    >
+                                      {p.nombre_dato}: {formatearReglaUmbral(p)}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
+                            <td>{d.descripcion_pasos}</td>
+                            <td className="acciones-col">
+                              <button
+                                type="button"
+                                className="btn-icon btn-eliminar"
+                                title="Quitar paso"
+                                onClick={() =>
+                                  setDetalles((prev) => prev.filter((item) => item.id !== d.id))
+                                }
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>delete</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="form-acciones">
           <button type="submit" className="btn-guardar" disabled={loading}>
@@ -403,12 +521,14 @@ export default function NuevaReceta({ onSuccess, onCancel }: NuevaRecetaProps) {
       </form>
 
       <Dialog open={modalAbierto} onOpenChange={setModalAbierto}>
-        <DialogContent>
+        <DialogContent style={{ maxWidth: "700px" }}>
           <NuevoDetalleReceta
+            etapaInicial={etapaParaModal}
+            etapasExistentes={Array.from(new Set(detalles.map((d) => d.etapa || "General")))}
             onSuccess={() => setModalAbierto(false)}
             onCancel={() => setModalAbierto(false)}
-            onAgregarLocal={(nuevoDetalle: RecetaDetalleConId) => {
-              setDetalles((prev) => [...prev, nuevoDetalle]);
+            onAgregarMultiples={(nuevos: RecetaDetalleConId[]) => {
+              setDetalles((prev) => [...prev, ...nuevos]);
             }}
           />
         </DialogContent>

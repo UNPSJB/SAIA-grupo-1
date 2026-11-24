@@ -390,6 +390,33 @@ def listar_ingredientes_incompletos(
 
     return ingredientes_incompletos
 
+def _rendimiento_a_gramos(
+    rendimiento_final: float,
+    producto: Producto,
+    peso_total_ingredientes: float,
+) -> float:
+    peso_u = getattr(producto, "peso_unidad_g", None)
+    if not peso_u:
+        eq_u = getattr(producto, "equivalencia_gramos_unidad", None)
+        cant_env = getattr(producto, "cantidad_por_envase", None)
+        if eq_u and cant_env and float(eq_u) > 0 and float(cant_env) > 0:
+            peso_u = float(eq_u) * float(cant_env)
+
+    if peso_u and float(peso_u) > 0:
+        candidato = rendimiento_final * float(peso_u)
+        if peso_total_ingredientes <= 0:
+            return candidato
+        if abs(candidato - peso_total_ingredientes) < abs(rendimiento_final - peso_total_ingredientes):
+            return candidato
+
+    u = (getattr(producto, "unidadMedida", "") or "").strip().lower()
+    if u in ("kilogramos", "kilogramo", "kg", "litros", "litro", "l"):
+        candidato = rendimiento_final * 1000.0
+        if peso_total_ingredientes <= 0 or abs(candidato - peso_total_ingredientes) < abs(rendimiento_final - peso_total_ingredientes):
+            return candidato
+    return rendimiento_final
+
+
 def calcular_informacion_nutricional(
     db: Session,
     producto_id: int,
@@ -551,8 +578,12 @@ def calcular_informacion_nutricional(
     elif totales_aportes_lote["energia_kcal"] == 0.0 and totales_aportes_lote["energia_kj"] > 0:
         totales_aportes_lote["energia_kcal"] = totales_aportes_lote["energia_kj"] / 4.184
 
+    rendimiento_gramos = _rendimiento_a_gramos(
+        float(rendimiento_final), producto, peso_total_ingredientes
+    )
+
     factor_rendimiento = (
-        rendimiento_final / peso_total_ingredientes
+        rendimiento_gramos / peso_total_ingredientes
         if peso_total_ingredientes > 0
         else 1.0
     )
@@ -564,7 +595,7 @@ def calcular_informacion_nutricional(
         k = param.nutriente
         aporte_total = totales_aportes_lote.get(k, 0.0)
 
-        valor_100g_raw = (aporte_total / rendimiento_final) * 100.0
+        valor_100g_raw = (aporte_total / rendimiento_gramos) * 100.0
         valor_100g_red, txt_100g, no_sig_100 = redondear_y_formatear(
             valor_100g_raw, param
         )

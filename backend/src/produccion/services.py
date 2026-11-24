@@ -188,6 +188,11 @@ def asociar_insumos(db: Session, lote_id: int, datos: schemas.AsociarInsumos) ->
         db.rollback()
         raise
     db.refresh(lote)
+    try:
+        from src.rotulado.services import sincronizar_lista_desde_lote
+        sincronizar_lista_desde_lote(db, lote.producto_id, lote_id=lote.id)
+    except Exception:
+        pass
     return lote
 
 
@@ -201,4 +206,9 @@ def quitar_insumo(db: Session, lote_id: int, insumo_id: int) -> LoteProduccion:
     lote.insumos.remove(asociacion)
     db.commit()
     db.refresh(lote)
+    try:
+        from src.rotulado.services import sincronizar_lista_desde_lote
+        sincronizar_lista_desde_lote(db, lote.producto_id, lote_id=lote.id)
+    except Exception:
+        pass
     return lote

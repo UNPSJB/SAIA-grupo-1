@@ -59,6 +59,9 @@ export interface InsumoAgrupadoPorTipo {
   tipo_id: number;
   nombre: string;
   descripcion?: string | null;
+  es_aditivo?: boolean;
+  clase_funcional?: string | null;
+  numero_ins?: string | null;
   unidad_medida_id?: number | null;
   unidadMedida: string;
   unidad_medida_abreviatura?: string | null;
@@ -90,19 +93,7 @@ export interface TrazabilidadLoteProduccion {
 }
 
 export interface InsumoDetalleTrazabilidad {
-  id: number;
-  nombre: string;
-  lote: string;
-  stock: number;
-  cantRecibida: number;
-  medida: string;
-  fechaRecepcion: string;
-  fechaVencimiento: string | null;
-  tipo_insumo_id?: number | null;
-  tipo_insumo_nombre?: string | null;
-  proveedor_id?: number | null;
-  proveedor_nombre?: string | null;
-  estadoVencimiento: string;
+  insumo: InsumoConId;
   lotes_produccion: TrazabilidadLoteProduccion[];
 }
 

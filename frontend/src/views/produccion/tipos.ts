@@ -4,9 +4,10 @@ import type { Receta } from "../receta/tipos";
 export interface Producto {
   id: number;
   nombre: string;
-  /** todos los lotes del producto se miden en esta unidad */
   unidadMedida: string;
-  /** a un producto dado de baja no se le registran lotes, pero sus lotes viejos se siguen consultando */
+  equivalencia_gramos_unidad?: number | null;
+  cantidad_por_envase?: number | null;
+  peso_unidad_g?: number | null;
   activo: boolean;
 }
 

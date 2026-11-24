@@ -47,7 +47,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
   const [modalEditarAbierto, setModalEditarAbierto] = useState<boolean>(false);
   const [guardando, setGuardando] = useState<boolean>(false);
   const [pestanaModal, setPestanaModal] = useState<
-    "general" | "establecimiento" | "nutricion" | "sellos" | "uso"
+    "general" | "establecimiento" | "sellos" | "uso"
   >("general");
 
   const [formData, setFormData] = useState<BorradorRotuloUpdate>({});
@@ -94,20 +94,6 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
       fecha_duracion: data.fecha_duracion || "",
       instrucciones_conservacion: data.instrucciones_conservacion || "",
       modo_empleo: data.modo_empleo || "",
-      porcion: data.porcion || "30 g (1 porción)",
-      porciones_por_envase: data.porciones_por_envase || "",
-      valor_energetico_kcal: data.valor_energetico_kcal ?? 0,
-      valor_energetico_kj: data.valor_energetico_kj ?? 0,
-      carbohidratos: data.carbohidratos ?? 0,
-      azucares_totales: data.azucares_totales ?? 0,
-      azucares_anadidos: data.azucares_anadidos ?? 0,
-      proteinas: data.proteinas ?? 0,
-      grasas_totales: data.grasas_totales ?? 0,
-      grasas_saturadas: data.grasas_saturadas ?? 0,
-      grasas_trans: data.grasas_trans ?? 0,
-      fibra_alimentaria: data.fibra_alimentaria ?? 0,
-      sodio: data.sodio ?? 0,
-      tabla_marcada_incompleta: Boolean(data.tabla_marcada_incompleta),
       tiene_exceso_azucares: Boolean(data.tiene_exceso_azucares),
       tiene_exceso_sodio: Boolean(data.tiene_exceso_sodio),
       tiene_exceso_grasas_saturadas: Boolean(data.tiene_exceso_grasas_saturadas),
@@ -1235,7 +1221,7 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     gap: "4px",
                   }}
                 >
-                  <span>Editar orden / aditivos</span>
+                  <span>Ver / actualizar lista</span>
                   <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
                     arrow_forward
                   </span>
@@ -1577,26 +1563,6 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setPestanaModal("nutricion")}
-              style={{
-                padding: "6px 14px",
-                borderRadius: "6px",
-                fontWeight: pestanaModal === "nutricion" ? 700 : 500,
-                backgroundColor:
-                  pestanaModal === "nutricion"
-                    ? "var(--color-primario, #2563eb)"
-                    : "transparent",
-                color:
-                  pestanaModal === "nutricion" ? "#ffffff" : "var(--color-texto)",
-                border: "none",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-              }}
-            >
-              Tabla Nutricional
-            </button>
-            <button
-              type="button"
               onClick={() => setPestanaModal("sellos")}
               style={{
                 padding: "6px 14px",
@@ -1916,229 +1882,6 @@ export const BorradorRotulo: React.FC<BorradorRotuloProps> = ({
                     }
                     placeholder="Ej: Industria Argentina / Brasil / Italia"
                   />
-                </div>
-              </>
-            )}
-
-            {pestanaModal === "nutricion" && (
-              <>
-                <div
-                  style={{
-                    backgroundColor: "#fef3c7",
-                    border: "1px solid #f59e0b",
-                    padding: "10px 14px",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    id="chk-incompleta"
-                    checked={formData.tabla_marcada_incompleta || false}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        tabla_marcada_incompleta: e.target.checked,
-                      })
-                    }
-                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
-                  />
-                  <label
-                    htmlFor="chk-incompleta"
-                    style={{
-                      cursor: "pointer",
-                      fontSize: "0.92rem",
-                      fontWeight: 600,
-                      color: "#92400e",
-                    }}
-                  >
-                    Marcar Tabla Nutricional como INCOMPLETA (en desarrollo/análisis)
-                  </label>
-                </div>
-
-                <div className="resp-columna-movil"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "12px",
-                  }}
-                >
-                  <div className="campo">
-                    <label>Porción Declarada</label>
-                    <input
-                      type="text"
-                      value={formData.porcion || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          porcion: e.target.value,
-                        })
-                      }
-                      placeholder="Ej: 30 g (1 porción)"
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Porciones por Envase</label>
-                    <input
-                      type="text"
-                      value={formData.porciones_por_envase || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, porciones_por_envase: e.target.value })
-                      }
-                      placeholder="Ej: Aprox. 16 porciones"
-                    />
-                  </div>
-                </div>
-
-                <div className="resp-columna-movil"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: "10px",
-                  }}
-                >
-                  <div className="campo">
-                    <label>Valor Energético (kcal)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.valor_energetico_kcal ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          valor_energetico_kcal: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Carbohidratos (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.carbohidratos ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          carbohidratos: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Azúcares Totales (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.azucares_totales ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          azucares_totales: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Azúcares Añadidos (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.azucares_anadidos ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          azucares_anadidos: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Proteínas (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.proteinas ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          proteinas: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Grasas Totales (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.grasas_totales ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          grasas_totales: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Grasas Saturadas (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.grasas_saturadas ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          grasas_saturadas: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Grasas Trans (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.grasas_trans ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          grasas_trans: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Fibra Alimentaria (g)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.fibra_alimentaria ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          fibra_alimentaria: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Sodio (mg)</label>
-                    <input
-                      type="number"
-                      step="1"
-                      value={formData.sodio ?? 0}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          sodio: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
                 </div>
               </>
             )}

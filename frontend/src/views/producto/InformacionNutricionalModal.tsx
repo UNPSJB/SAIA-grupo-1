@@ -5,7 +5,7 @@ import { descargarPDF } from '../../utils/exportarPdf';
 import { ExportIcon } from '../../components/icons/ExportIcon';
 import { ConfirmExportGraficoDialog } from '../../components/ui/confirmExportGraficoDialog';
 import type { FormatoGrafico } from '../../utils/exportarGraficos';
-import type { InformacionNutricional, ParametroRedondeo, VerificacionReferencia, IngredienteIncompleto } from './tipos';
+import type { InformacionNutricional, ParametroRedondeo, IngredienteIncompleto } from './tipos';
 
 const LEYENDA_REVISION_PROFESIONAL =
   'Valores calculados a partir de datos de referencia y recetas estructuradas. Deben ser revisados por un/a profesional revisor.';
@@ -27,8 +27,6 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
   const [calculando, setCalculando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
-  const [verificacion, setVerificacion] = useState<VerificacionReferencia | null>(null);
-  const [verificando, setVerificando] = useState(false);
   const [mostrarParametros, setMostrarParametros] = useState(false);
   const [parametros, setParametros] = useState<ParametroRedondeo[]>([]);
   const [cargandoParametros, setCargandoParametros] = useState(false);
@@ -149,7 +147,6 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
         setInfo(data);
         setIngredientesIncompletos([]);
         setMensajeExito('Información nutricional calculada con éxito desde la receta estructurada.');
-        setVerificacion(null);
       } else {
         const err = await res.json().catch(() => ({}));
         const msg = typeof err.detail === 'object' ? err.detail?.mensaje : (err.detail || 'No se pudo calcular la información nutricional.');
@@ -574,25 +571,6 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
       setError('Error de comunicación al guardar los datos del ingrediente.');
     } finally {
       setGuardandoIngrediente(false);
-    }
-  };
-
-  const ejecutarVerificacionReferencia = async () => {
-    setVerificando(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`/nutricion/productos/${productoId}/verificar-referencia`);
-      if (res.ok) {
-        const data = await res.json();
-        setVerificacion(data);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setError(err.detail || 'No se pudo verificar el patrón de referencia.');
-      }
-    } catch {
-      setError('Error al consultar la verificación del producto de referencia.');
-    } finally {
-      setVerificando(false);
     }
   };
 
@@ -1826,109 +1804,6 @@ export const InformacionNutricionalModal: React.FC<InformacionNutricionalModalPr
                 </div>
               )}
 
-              <div
-                style={{
-                  backgroundColor: '#1e293b',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  border: '1px solid #334155',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.75rem',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span className="material-symbols-outlined" style={{ color: '#fbbf24', fontSize: '20px' }}>
-                      verified
-                    </span>
-                    <strong style={{ fontSize: '0.9rem' }}>Validación contra Producto Patrón de la Cátedra</strong>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={ejecutarVerificacionReferencia}
-                    disabled={verificando}
-                    style={{
-                      backgroundColor: '#334155',
-                      color: '#f8fafc',
-                      border: '1px solid #475569',
-                      borderRadius: '6px',
-                      padding: '0.4rem 0.75rem',
-                      fontSize: '0.8rem',
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      cursor: verificando ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                      rule
-                    </span>
-                    {verificando ? 'Verificando...' : 'Verificar Tolerancia (±5%)'}
-                  </button>
-                </div>
-
-                {verificacion && (
-                  <div
-                    style={{
-                      backgroundColor: verificacion.resultado_global_valido
-                        ? 'rgba(34, 197, 94, 0.1)'
-                        : 'rgba(239, 68, 68, 0.1)',
-                      border: `1px solid ${verificacion.resultado_global_valido ? '#22c55e' : '#ef4444'}`,
-                      borderRadius: '6px',
-                      padding: '0.75rem',
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span
-                        className="material-symbols-outlined"
-                        style={{ color: verificacion.resultado_global_valido ? '#22c55e' : '#ef4444', fontSize: '20px' }}
-                      >
-                        {verificacion.resultado_global_valido ? 'check_circle' : 'warning'}
-                      </span>
-                      <strong style={{ color: verificacion.resultado_global_valido ? '#86efac' : '#fca5a5' }}>
-                        {verificacion.mensaje}
-                      </strong>
-                    </div>
-
-                    <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1px solid #475569', color: '#94a3b8' }}>
-                            <th style={{ textAlign: 'left', padding: '0.25rem' }}>Nutriente</th>
-                            <th style={{ textAlign: 'right', padding: '0.25rem' }}>Calculado (100g)</th>
-                            <th style={{ textAlign: 'right', padding: '0.25rem' }}>Esperado Cátedra</th>
-                            <th style={{ textAlign: 'right', padding: '0.25rem' }}>Desvío %</th>
-                            <th style={{ textAlign: 'center', padding: '0.25rem' }}>Estado</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {verificacion.detalles_100g.map((d) => (
-                            <tr key={d.nutriente} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                              <td style={{ padding: '0.25rem' }}>{d.nutriente}</td>
-                              <td style={{ textAlign: 'right', padding: '0.25rem' }}>{d.valor_calculado}</td>
-                              <td style={{ textAlign: 'right', padding: '0.25rem' }}>{d.valor_esperado}</td>
-                              <td style={{ textAlign: 'right', padding: '0.25rem' }}>{d.diferencia_porcentual}%</td>
-                              <td style={{ textAlign: 'center', padding: '0.25rem' }}>
-                                <span
-                                  style={{
-                                    color: d.cumple_tolerancia ? '#22c55e' : '#ef4444',
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {d.cumple_tolerancia ? 'DENTRO DE TOLERANCIA' : 'FUERA DE RANGO'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
             </>
           )}
         </div>

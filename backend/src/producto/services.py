@@ -93,11 +93,35 @@ def validar_nombre_unico(db: Session, nombre: str, producto_id_actual: Optional[
     if existente is not None:
         raise exceptions.NombreProductoDuplicado()
 
+def _calcular_equivalencias_producto(
+    unidad_nombre: str,
+    equivalencia_gramos_unidad: Optional[float],
+    cantidad_por_envase: Optional[float],
+    peso_unidad_g: Optional[float],
+) -> tuple[Optional[float], Optional[float], Optional[float]]:
+    u = (unidad_nombre or "").strip().lower()
+    eq_g = equivalencia_gramos_unidad if equivalencia_gramos_unidad and equivalencia_gramos_unidad > 0 else None
+    cant_env = cantidad_por_envase if cantidad_por_envase and cantidad_por_envase > 0 else None
+    peso_g = peso_unidad_g if peso_unidad_g and peso_unidad_g > 0 else None
+
+    if u in ("gramos", "gramo", "g"):
+        eq_g = 1.0
+    elif u in ("kilogramos", "kilogramo", "kg") and eq_g is None:
+        eq_g = 1000.0
+    elif u in ("toneladas", "tonelada", "tn") and eq_g is None:
+        eq_g = 1000000.0
+
+    if cant_env and eq_g:
+        peso_g = round(float(cant_env) * float(eq_g), 2)
+    elif peso_g and eq_g and cant_env is None:
+        cant_env = round(float(peso_g) / float(eq_g), 4)
+
+    return eq_g, cant_env, peso_g
+
+
 def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
     validar_nombre_unico(db, producto.nombre)
     receta_obj = _validar_id_receta(db, producto.id_receta)
-
-    
 
     unidad = resolver_unidad_medida(
         db,
@@ -105,27 +129,28 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
         valor_texto=producto.unidadMedida,
     )
 
-    
-
-    peso_val = producto.peso_unidad_g if producto.peso_unidad_g and producto.peso_unidad_g > 0 else None
+    eq_val, cant_env_val, peso_val = _calcular_equivalencias_producto(
+        unidad.nombre,
+        producto.equivalencia_gramos_unidad,
+        producto.cantidad_por_envase,
+        producto.peso_unidad_g,
+    )
     porcion_val = producto.tamano_porcion_g if producto.tamano_porcion_g and producto.tamano_porcion_g > 0 else None
     alergenos: list[Alergeno] = []
     if producto.alergenos_precaucion_ids is not None:
-     ids_unicos = list(set(producto.alergenos_precaucion_ids))
-     if ids_unicos:
+        ids_unicos = list(set(producto.alergenos_precaucion_ids))
+        if ids_unicos:
             alergenos = list(
                 db.scalars(select(Alergeno).where(Alergeno.id.in_(ids_unicos))).all()
             )
             if len(alergenos) != len(ids_unicos):
                 raise exceptions.Alergenos_invalidos()
-    
+
     porciones_calc = (
         round(float(peso_val) / float(porcion_val), 2)
         if peso_val and porcion_val
         else producto.porciones_por_envase
     )
-
-    
 
     _producto = Producto(
         nombre=producto.nombre,
@@ -134,6 +159,8 @@ def crear_producto(db: Session, producto: schemas.ProductoCreate) -> Producto:
         tamano_porcion_g=porcion_val,
         porciones_por_envase=porciones_calc,
         descripcion_porcion=producto.descripcion_porcion,
+        equivalencia_gramos_unidad=eq_val,
+        cantidad_por_envase=cant_env_val,
         peso_unidad_g=peso_val,
         aplica_rotulado=producto.aplica_rotulado if producto.aplica_rotulado is not None else True,
         documento_receta_id=None,
@@ -217,7 +244,26 @@ def editar_producto(
                 raise exceptions.Alergenos_invalidos()
 
     datos_actualizar.pop("porciones_por_envase", None)
-    nuevo_peso = datos_actualizar.get("peso_unidad_g", db_producto.peso_unidad_g)
+    unidad_final_nombre = unidad.nombre if (unidad_id_val is not None or unidad_texto is not None) else db_producto.unidadMedida
+    eq_in = datos_actualizar.get("equivalencia_gramos_unidad", db_producto.equivalencia_gramos_unidad)
+    cant_in = datos_actualizar.get("cantidad_por_envase", db_producto.cantidad_por_envase)
+    peso_in = datos_actualizar.get("peso_unidad_g", db_producto.peso_unidad_g)
+    if (
+        "equivalencia_gramos_unidad" in datos_actualizar
+        or "cantidad_por_envase" in datos_actualizar
+        or "peso_unidad_g" in datos_actualizar
+        or "unidad_medida_id" in datos_actualizar
+    ):
+        eq_calc, cant_calc, peso_calc = _calcular_equivalencias_producto(
+            unidad_final_nombre, eq_in, cant_in, peso_in
+        )
+        datos_actualizar["equivalencia_gramos_unidad"] = eq_calc
+        datos_actualizar["cantidad_por_envase"] = cant_calc
+        datos_actualizar["peso_unidad_g"] = peso_calc
+        nuevo_peso = peso_calc
+    else:
+        nuevo_peso = db_producto.peso_unidad_g
+
     nueva_porcion = datos_actualizar.get("tamano_porcion_g", db_producto.tamano_porcion_g)
     if nuevo_peso and nuevo_peso > 0 and nueva_porcion and nueva_porcion > 0:
         datos_actualizar["_porciones_por_envase"] = round(float(nuevo_peso) / float(nueva_porcion), 2)
@@ -237,7 +283,6 @@ def editar_producto(
     if datos_actualizar or (vino_alergenos and alergenos_ids_val is not None):
         db.commit()
         db.refresh(db_producto)
-        regenerar_snapshot_seguro(db)
 
     db_producto.nombre_receta = _resolver_nombre_receta_producto(db, db_producto)
 
@@ -249,7 +294,6 @@ def eliminar_producto(db: Session, producto_id: int) -> Producto:
     db_producto.visible_publico = False
     db.commit()
     db.refresh(db_producto)
-    regenerar_snapshot_seguro(db)
     return db_producto
 
 def restaurar_producto(db: Session, producto_id: int) -> Producto:

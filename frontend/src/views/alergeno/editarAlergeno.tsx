@@ -142,14 +142,7 @@ export const EditarAlergeno: React.FC<EditarAlergenoProps> = ({
 
         <div className="form-group">
           <label>Símbolo del Alérgeno</label>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(105px, 100%), 1fr))',
-              gap: '10px',
-              marginTop: '8px',
-            }}
-          >
+          <div className="simbolos-alergeno-grid">
             {SIMBOLOS_ALERGENOS.map((opcion) => {
               const seleccionado = simbolo === opcion.ruta;
               return (
@@ -157,32 +150,14 @@ export const EditarAlergeno: React.FC<EditarAlergenoProps> = ({
                   key={opcion.ruta}
                   type="button"
                   onClick={() => setSimbolo(opcion.ruta)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '10px 6px',
-                    borderRadius: '8px',
-                    border: seleccionado ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                    backgroundColor: seleccionado ? '#eff6ff' : '#ffffff',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`simbolo-alergeno-btn ${seleccionado ? 'seleccionado' : ''}`}
                 >
                   <img
                     src={opcion.ruta}
                     alt={opcion.etiqueta}
-                    style={{ width: '48px', height: '48px', objectFit: 'contain', marginBottom: '6px' }}
+                    className="simbolo-alergeno-img"
                   />
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: seleccionado ? 700 : 500,
-                      color: seleccionado ? '#1d4ed8' : '#334155',
-                      textAlign: 'center',
-                    }}
-                  >
+                  <span className="simbolo-alergeno-texto">
                     {opcion.etiqueta}
                   </span>
                 </button>

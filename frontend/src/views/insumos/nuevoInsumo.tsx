@@ -5,6 +5,7 @@ import type { TipoInsumo } from '../tipoInsumo/tipos';
 import type { Proveedor } from '../proveedores/tipos';
 
 interface NuevoInsumoProps {
+  esAditivoInicial?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -22,9 +23,10 @@ const getMinVencimiento = () => {
   return obtenerFechaLocal(d);
 };
 
-export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
+export default function NuevoInsumo({ esAditivoInicial = false, onSuccess, onCancel }: NuevoInsumoProps) {
   const [tipos, setTipos] = useState<TipoInsumo[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [esAditivo, setEsAditivo] = useState<boolean>(esAditivoInicial);
   const [tipoSeleccionadoId, setTipoSeleccionadoId] = useState<number | "">("");
   const [proveedorSeleccionadoId, setProveedorSeleccionadoId] = useState<number | "">("");
   const [nombre, setNombre] = useState("");
@@ -67,14 +69,19 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
     };
   }, []);
 
+  function handleCambiarCategoria(esAditivoNuevo: boolean) {
+    setEsAditivo(esAditivoNuevo);
+    setTipoSeleccionadoId("");
+    setUnidadMedida("");
+    setNombre("");
+  }
+
   function handleTipoChange(tipoIdNum: number) {
     setTipoSeleccionadoId(tipoIdNum);
     const encontrado = tipos.find((t) => t.id === tipoIdNum);
     if (encontrado) {
       setUnidadMedida(encontrado.unidadMedida);
-      if (!nombre) {
-        setNombre(encontrado.nombre);
-      }
+      setNombre(encontrado.nombre);
     } else {
       setUnidadMedida("");
     }
@@ -176,10 +183,14 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
     );
   }
 
+  const tiposFiltrados = tipos.filter((t) =>
+    esAditivo ? Boolean(t.es_aditivo) : !t.es_aditivo
+  );
+
   return (
     <div className="modulo-container formulario-box">
       <div className="modulo-header">
-        <h1>Recepción de Insumo</h1>
+        <h1>{esAditivo ? 'Recepción de Aditivo' : 'Recepción de Ingrediente'}</h1>
         <div className="subtitulo">Registro de lote recibido y control de vencimiento</div>
       </div>
 
@@ -188,7 +199,33 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
 
       <form onSubmit={handleGuardar}>
         <div className="form-group">
-          <label htmlFor="tipo_insumo_id">Tipo de Insumo *</label>
+          <label>¿Qué tipo de insumo vas a recibir? *</label>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={!esAditivo ? 'btn-guardar' : 'btn-cancelar'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => handleCambiarCategoria(false)}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>nutrition</span>
+              Ingrediente
+            </button>
+            <button
+              type="button"
+              className={esAditivo ? 'btn-guardar' : 'btn-cancelar'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => handleCambiarCategoria(true)}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>science</span>
+              Aditivo
+            </button>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="tipo_insumo_id">
+            {esAditivo ? 'Tipo de Aditivo *' : 'Tipo de Ingrediente *'}
+          </label>
           <select
             id="tipo_insumo_id"
             name="tipo_insumo_id"
@@ -196,10 +233,14 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
             onChange={(e) => handleTipoChange(Number(e.target.value))}
             required
           >
-            <option value="" disabled>Seleccione un tipo genérico...</option>
-            {tipos.map((t) => (
+            <option value="" disabled>
+              {esAditivo ? 'Seleccione un aditivo...' : 'Seleccione un ingrediente genérico...'}
+            </option>
+            {tiposFiltrados.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.nombre} ({t.unidadMedida})
+                {esAditivo
+                  ? `${t.nombre}${t.clase_funcional ? ` — ${t.clase_funcional}` : ''}${t.numero_ins ? ` (${t.numero_ins})` : ''} [${t.unidadMedida}]`
+                  : `${t.nombre} (${t.unidadMedida})`}
               </option>
             ))}
           </select>
@@ -229,7 +270,11 @@ export default function NuevoInsumo({ onSuccess, onCancel }: NuevoInsumoProps) {
             id="nombre"
             name="nombre"
             type="text"
-            placeholder="Ej: Harina 000 Pureza, Manteca La Serenísima..."
+            placeholder={
+              esAditivo
+                ? 'Ej: Sorbato de potasio Granular, Propionato de calcio...'
+                : 'Ej: Harina 000 Pureza, Manteca La Serenísima...'
+            }
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
           />

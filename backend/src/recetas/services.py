@@ -119,14 +119,16 @@ def _normalizar_detalle_para_guardar(db: Session, detalle: dict) -> dict:
         except Exception:
             d["unidad_medida_id"] = 2
 
-    if adit_id:
+    if tipo_obj and tipo_obj.es_aditivo:
+        d["es_aditivo"] = True
+        d["clase_funcional"] = tipo_obj.clase_funcional
+        d["numero_ins"] = tipo_obj.numero_ins
+    elif adit_id:
         adit_obj = db.get(Aditivo, adit_id)
         if adit_obj:
             d["es_aditivo"] = True
-            if not d.get("clase_funcional"):
-                d["clase_funcional"] = adit_obj.clase_funcional
-            if not d.get("numero_ins"):
-                d["numero_ins"] = adit_obj.numero_ins
+            d["clase_funcional"] = adit_obj.clase_funcional
+            d["numero_ins"] = adit_obj.numero_ins
 
     return d
 
@@ -146,7 +148,10 @@ def crear_receta(db: Session, receta_data: schemas.RecetaCreate, usuario: Person
     if not detalles_data:
         raise exceptions.AgregueIngredientes()
 
-    tiene_ingrediente = any(not d["es_aditivo"] for d in detalles_data)
+    tiene_ingrediente = any(
+        (d.get("tipo_insumo_id") or d.get("aditivo_id")) and not d["es_aditivo"]
+        for d in detalles_data
+    )
     if not tiene_ingrediente:
         raise exceptions.AgregueIngredientes()
 
@@ -203,7 +208,10 @@ def editar_receta(db: Session, receta_id: int, receta_data: schemas.RecetaUpdate
     if detalles_data is not None:
         if not detalles_data:
             raise exceptions.AgregueIngredientes()
-        tiene_ingrediente = any(not d["es_aditivo"] for d in detalles_data)
+        tiene_ingrediente = any(
+        (d.get("tipo_insumo_id") or d.get("aditivo_id")) and not d["es_aditivo"]
+        for d in detalles_data
+    )
         if not tiene_ingrediente:
             raise exceptions.AgregueIngredientes()
 
@@ -320,6 +328,8 @@ def escalar_receta(
 
     ingredientes_escalados: List[schemas.IngredienteEscaladoItem] = []
     for det in version_vig.detalles:
+        if not det.tipo_insumo_id and not det.aditivo_id:
+            continue
         cant_escalada = round(float(det.cantidad) * factor, 3)
         ingredientes_escalados.append(
             schemas.IngredienteEscaladoItem(
@@ -347,6 +357,46 @@ def escalar_receta(
         factor=round(factor, 4),
         ingredientes=ingredientes_escalados,
     )
+
+
+_FACTORES_MASA_G = {
+    "mg": 0.001,
+    "miligramo": 0.001,
+    "miligramos": 0.001,
+    "g": 1.0,
+    "gr": 1.0,
+    "gramo": 1.0,
+    "gramos": 1.0,
+    "kg": 1000.0,
+    "kilogramo": 1000.0,
+    "kilogramos": 1000.0,
+    "tn": 1000000.0,
+    "tonelada": 1000000.0,
+    "toneladas": 1000000.0,
+}
+
+_FACTORES_VOLUMEN_ML = {
+    "ml": 1.0,
+    "cc": 1.0,
+    "mililitro": 1.0,
+    "mililitros": 1.0,
+    "l": 1000.0,
+    "lt": 1000.0,
+    "litro": 1000.0,
+    "litros": 1000.0,
+}
+
+
+def _convertir_entre_unidades(cantidad: float, u_origen: Optional[str], u_destino: Optional[str]) -> float:
+    orig = (u_origen or "").strip().lower()
+    dest = (u_destino or "").strip().lower()
+    if not orig or not dest or orig == dest:
+        return float(cantidad)
+    if orig in _FACTORES_MASA_G and dest in _FACTORES_MASA_G:
+        return float(cantidad) * (_FACTORES_MASA_G[orig] / _FACTORES_MASA_G[dest])
+    if orig in _FACTORES_VOLUMEN_ML and dest in _FACTORES_VOLUMEN_ML:
+        return float(cantidad) * (_FACTORES_VOLUMEN_ML[orig] / _FACTORES_VOLUMEN_ML[dest])
+    return float(cantidad)
 
 
 def convertir_detalle_a_gramos(
@@ -417,6 +467,8 @@ def calcular_composicion_porcentual(
     peso_total_gramos = 0.0
 
     for det in version_obj.detalles:
+        if not det.tipo_insumo_id and not det.aditivo_id:
+            continue
         gramos, msg_faltante = convertir_detalle_a_gramos(db, det)
         if msg_faltante is not None:
             equivalencias_faltantes.append(
@@ -549,21 +601,24 @@ def generar_checklist_receta(
             factor = float(datos.factor)
 
         if datos.id_producto is not None:
-            requerido_por_tipo: Dict[int, Tuple[str, float]] = {}
-            requerido_por_insumo: Dict[int, Tuple[str, float]] = {}
+            requerido_por_tipo: Dict[int, Tuple[str, float, str]] = {}
+            requerido_por_insumo: Dict[int, Tuple[str, float, str]] = {}
             for det in version_vig.detalles:
                 cant_req = round(float(det.cantidad) * factor, 3)
+                u_det = det.unidad_medida or "gramos"
                 det_ing = getattr(det, "ingrediente", None)
                 det_ing_id = getattr(det, "ingrediente_id", None)
                 t_id = det.tipo_insumo_id or (det_ing.tipo_insumo_id if det_ing else None)
                 if t_id:
-                    nom_prev, acum_prev = requerido_por_tipo.get(t_id, (det.nombre_ingrediente, 0.0))
-                    requerido_por_tipo[t_id] = (nom_prev, acum_prev + cant_req)
+                    nom_prev, acum_prev, u_prev = requerido_por_tipo.get(t_id, (det.nombre_ingrediente, 0.0, u_det))
+                    cant_conv = _convertir_entre_unidades(cant_req, u_det, u_prev)
+                    requerido_por_tipo[t_id] = (nom_prev, acum_prev + cant_conv, u_prev)
                 elif det_ing_id:
-                    nom_prev, acum_prev = requerido_por_insumo.get(det_ing_id, (det.nombre_ingrediente, 0.0))
-                    requerido_por_insumo[det_ing_id] = (nom_prev, acum_prev + cant_req)
+                    nom_prev, acum_prev, u_prev = requerido_por_insumo.get(det_ing_id, (det.nombre_ingrediente, 0.0, u_det))
+                    cant_conv = _convertir_entre_unidades(cant_req, u_det, u_prev)
+                    requerido_por_insumo[det_ing_id] = (nom_prev, acum_prev + cant_conv, u_prev)
 
-            for t_id, (nom_t, total_req) in requerido_por_tipo.items():
+            for t_id, (nom_t, total_req, u_req) in requerido_por_tipo.items():
                 lotes_activos = list(
                     db.scalars(
                         select(Insumo).where(
@@ -573,14 +628,14 @@ def generar_checklist_receta(
                         )
                     ).all()
                 )
-                stock_vigente = 0.0
+                stock_vigente_en_u_req = 0.0
                 for l_ins in lotes_activos:
                     f_v = l_ins.fechaVencimiento.date() if isinstance(l_ins.fechaVencimiento, datetime) else l_ins.fechaVencimiento
                     if f_v is None or f_v >= hoy:
-                        stock_vigente += float(l_ins.stock)
-                if stock_vigente + 1e-6 < total_req:
+                        stock_vigente_en_u_req += _convertir_entre_unidades(float(l_ins.stock), l_ins.medida, u_req)
+                if stock_vigente_en_u_req + 1e-6 < total_req:
                     raise exceptions.StockInsumoInsuficienteReceta(
-                        f"Stock insuficiente de '{nom_t}': se requieren {round(total_req, 3)} y hay {round(stock_vigente, 3)} disponibles."
+                        f"Stock insuficiente de '{nom_t}': se requieren {round(total_req, 3)} {u_req} y hay {round(stock_vigente_en_u_req, 3)} {u_req} disponibles."
                     )
 
             for i_id, (nom_i, total_req) in requerido_por_insumo.items():
@@ -602,6 +657,7 @@ def generar_checklist_receta(
                 version_receta_id=version_vig.id,
                 nombre_receta=receta.nombre,
                 detalle_id=detalle.id,
+                etapa=detalle.etapa,
                 nombre_etapa=detalle.nombre,
                 descripcion_pasos=detalle.descripcion_pasos,
                 ingrediente_id=getattr(detalle, "ingrediente_id", None),
@@ -689,7 +745,6 @@ def _crear_lote_desde_checklist_completado(
         return
     from src.produccion.models import LoteProduccion, InsumoLote
     from src.produccion.services import _siguiente_codigo
-    from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
 
     producto = db.get(Producto, checklist.id_producto)
     if not producto:
@@ -717,11 +772,27 @@ def _crear_lote_desde_checklist_completado(
     acumulado_por_lote_insumo: Dict[int, float] = {}
     for it in checklist.items:
         if it.estado == EstadoEtapaRecetaItem.REALIZADO:
-            lote_ins_id = it.lote_insumo_usado_id
-            if lote_ins_id and it.cantidad > 0:
-                acumulado_por_lote_insumo[lote_ins_id] = (
-                    acumulado_por_lote_insumo.get(lote_ins_id, 0.0) + float(it.cantidad)
-                )
+            usados_multi = it.lotes_insumo_usados
+            if usados_multi:
+                for entry in usados_multi:
+                    l_id = entry.get("lote_insumo_id")
+                    cant_e = float(entry.get("cantidad_descontada_lote") or entry.get("cantidad") or 0.0)
+                    if l_id and cant_e > 0:
+                        acumulado_por_lote_insumo[int(l_id)] = (
+                            acumulado_por_lote_insumo.get(int(l_id), 0.0) + cant_e
+                        )
+            else:
+                lote_ins_id = it.lote_insumo_usado_id
+                if lote_ins_id and it.cantidad > 0:
+                    lote_ref = db.get(Insumo, lote_ins_id)
+                    cant_conv = (
+                        _convertir_entre_unidades(float(it.cantidad), it.unidad_medida, lote_ref.medida)
+                        if lote_ref
+                        else float(it.cantidad)
+                    )
+                    acumulado_por_lote_insumo[lote_ins_id] = (
+                        acumulado_por_lote_insumo.get(lote_ins_id, 0.0) + cant_conv
+                    )
 
     for ins_id, cant_usada in acumulado_por_lote_insumo.items():
         ins_obj = db.get(Insumo, ins_id)
@@ -730,10 +801,6 @@ def _crear_lote_desde_checklist_completado(
 
     checklist.lote_produccion_id = nuevo_lote.id
     db.flush()
-    try:
-        regenerar_snapshot_seguro(db)
-    except Exception:
-        pass
 
 
 def completar_etapa_checklist(
@@ -763,8 +830,48 @@ def completar_etapa_checklist(
 
     validar_operario_etapa(db, operario_legajo)
 
+    lotes_multi = datos.lotes_insumo if datos and datos.lotes_insumo else []
     lote_elegido_id = datos.lote_insumo_id if datos and datos.lote_insumo_id else None
-    if lote_elegido_id is not None:
+
+    if lotes_multi:
+        agrupado: Dict[int, float] = {}
+        for entry in lotes_multi:
+            agrupado[entry.lote_insumo_id] = round(
+                agrupado.get(entry.lote_insumo_id, 0.0) + float(entry.cantidad), 4
+            )
+        total_asignado = round(sum(agrupado.values()), 4)
+        if total_asignado + 1e-3 < float(item.cantidad):
+            raise exceptions.StockInsumoInsuficienteReceta(
+                f"La cantidad total asignada entre los lotes ({total_asignado}) es menor a la requerida ({item.cantidad})."
+            )
+        registros_usados = []
+        for l_id, cant_usar in agrupado.items():
+            lote_ins = db.get(Insumo, l_id)
+            if not lote_ins or not lote_ins.activo:
+                raise exceptions.StockInsumoInsuficienteReceta(
+                    "Uno de los lotes de insumo seleccionados no existe o está inactivo."
+                )
+            if item.tipo_insumo_id and lote_ins.tipo_insumo_id != item.tipo_insumo_id:
+                raise exceptions.StockInsumoInsuficienteReceta(
+                    f"El lote {lote_ins.lote} no corresponde al tipo de insumo requerido por el paso."
+                )
+            cant_en_unidad_lote = _convertir_entre_unidades(cant_usar, item.unidad_medida, lote_ins.medida)
+            if float(lote_ins.stock) + 1e-6 < cant_en_unidad_lote:
+                stock_en_u_item = round(_convertir_entre_unidades(float(lote_ins.stock), lote_ins.medida, item.unidad_medida), 3)
+                raise exceptions.StockInsumoInsuficienteReceta(
+                    f"Stock insuficiente en el lote {lote_ins.lote}: disponible {lote_ins.stock} {lote_ins.medida} ({stock_en_u_item} {item.unidad_medida}), solicitado {cant_usar} {item.unidad_medida}."
+                )
+            lote_ins.stock = round(max(0.0, float(lote_ins.stock) - cant_en_unidad_lote), 4)
+            registros_usados.append({
+                "lote_insumo_id": lote_ins.id,
+                "lote_codigo": lote_ins.lote,
+                "nombre": lote_ins.nombre,
+                "cantidad": round(cant_usar, 3),
+                "cantidad_descontada_lote": round(cant_en_unidad_lote, 4),
+            })
+        item.lote_insumo_usado_id = registros_usados[0]["lote_insumo_id"]
+        item.lotes_insumo_usados_json = json.dumps(registros_usados, ensure_ascii=False)
+    elif lote_elegido_id is not None:
         lote_ins = db.get(Insumo, lote_elegido_id)
         if not lote_ins or not lote_ins.activo:
             raise exceptions.StockInsumoInsuficienteReceta("El lote de insumo seleccionado no existe o está inactivo.")
@@ -772,26 +879,52 @@ def completar_etapa_checklist(
             raise exceptions.StockInsumoInsuficienteReceta(
                 "El lote seleccionado no corresponde al tipo de insumo requerido por la etapa."
             )
-        if float(lote_ins.stock) + 1e-6 < float(item.cantidad):
+        cant_en_unidad_lote = _convertir_entre_unidades(float(item.cantidad), item.unidad_medida, lote_ins.medida)
+        if float(lote_ins.stock) + 1e-6 < cant_en_unidad_lote:
+            stock_en_u_item = round(_convertir_entre_unidades(float(lote_ins.stock), lote_ins.medida, item.unidad_medida), 3)
             raise exceptions.StockInsumoInsuficienteReceta(
-                f"Stock insuficiente en el lote {lote_ins.lote}: disponible {lote_ins.stock}, requerido {item.cantidad}."
+                f"Stock insuficiente en el lote {lote_ins.lote}: disponible {lote_ins.stock} {lote_ins.medida} ({stock_en_u_item} {item.unidad_medida}), requerido {item.cantidad} {item.unidad_medida}."
             )
-        lote_ins.stock = round(max(0.0, float(lote_ins.stock) - float(item.cantidad)), 3)
+        lote_ins.stock = round(max(0.0, float(lote_ins.stock) - cant_en_unidad_lote), 4)
         item.lote_insumo_usado_id = lote_ins.id
-    elif checklist.id_producto and item.tipo_insumo_id:
+        item.lotes_insumo_usados_json = json.dumps([{
+            "lote_insumo_id": lote_ins.id,
+            "lote_codigo": lote_ins.lote,
+            "nombre": lote_ins.nombre,
+            "cantidad": round(float(item.cantidad), 3),
+            "cantidad_descontada_lote": round(cant_en_unidad_lote, 4),
+        }], ensure_ascii=False)
+    elif checklist.id_producto and item.tipo_insumo_id and float(item.cantidad) > 0:
         lotes = list(
             db.scalars(
                 select(Insumo).where(
                     Insumo.tipo_insumo_id == item.tipo_insumo_id,
                     Insumo.activo == True,
-                    Insumo.stock >= float(item.cantidad),
+                    Insumo.stock > 0,
                 ).order_by(Insumo.fechaVencimiento.asc())
             ).all()
         )
-        if lotes:
-            lote_ins = lotes[0]
-            lote_ins.stock = round(max(0.0, float(lote_ins.stock) - float(item.cantidad)), 3)
-            item.lote_insumo_usado_id = lote_ins.id
+        restante = float(item.cantidad)
+        registros_usados = []
+        for lote_ins in lotes:
+            if restante <= 1e-6:
+                break
+            disp_en_u_item = _convertir_entre_unidades(float(lote_ins.stock), lote_ins.medida, item.unidad_medida)
+            tomar_u_item = min(disp_en_u_item, restante)
+            if tomar_u_item > 0:
+                tomar_u_lote = _convertir_entre_unidades(tomar_u_item, item.unidad_medida, lote_ins.medida)
+                lote_ins.stock = round(max(0.0, float(lote_ins.stock) - tomar_u_lote), 4)
+                registros_usados.append({
+                    "lote_insumo_id": lote_ins.id,
+                    "lote_codigo": lote_ins.lote,
+                    "nombre": lote_ins.nombre,
+                    "cantidad": round(tomar_u_item, 3),
+                    "cantidad_descontada_lote": round(tomar_u_lote, 4),
+                })
+                restante = round(restante - tomar_u_item, 4)
+        if registros_usados:
+            item.lote_insumo_usado_id = registros_usados[0]["lote_insumo_id"]
+            item.lotes_insumo_usados_json = json.dumps(registros_usados, ensure_ascii=False)
 
     if datos and datos.valores_control:
         item.valores_registrados_json = json.dumps(
@@ -814,6 +947,14 @@ def completar_etapa_checklist(
         _crear_lote_desde_checklist_completado(db, checklist, operario_legajo)
 
     db.commit()
+    if todos_completos and checklist.id_producto and checklist.lote_produccion_id:
+        try:
+            from src.rotulado.services import sincronizar_lista_desde_lote
+            sincronizar_lista_desde_lote(
+                db, checklist.id_producto, lote_id=checklist.lote_produccion_id
+            )
+        except Exception:
+            pass
     db.refresh(item)
     return item
 

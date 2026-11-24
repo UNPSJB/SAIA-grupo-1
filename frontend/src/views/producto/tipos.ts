@@ -6,6 +6,7 @@ export interface DocumentoReceta {
 export interface AlergenoItem {
   id: number;
   nombre: string;
+  simbolo:string;
 }
 
 export interface Producto {
@@ -25,6 +26,8 @@ export interface Producto {
   porciones_por_envase?: number | null;
   descripcion_porcion?: string | null;
   medida_casera?: string | null;
+  equivalencia_gramos_unidad?: number | null;
+  cantidad_por_envase?: number | null;
   peso_unidad_g?: number | null;
   aplica_rotulado?: boolean;
   activo: boolean;

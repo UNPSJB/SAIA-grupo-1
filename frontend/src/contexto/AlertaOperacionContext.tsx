@@ -33,7 +33,7 @@ export function AlertaOperacionProvider({ children }: { children: React.ReactNod
   const mostrarExito = useCallback((
     titulo: string,
     descripcion = 'La operación se completó correctamente.',
-    duracionMs = 3000,
+    duracionMs = 5000,
     alCerrar: (() => void) | undefined = undefined,
   ) => {
     alCerrarRef.current = alCerrar ?? null;
@@ -43,7 +43,7 @@ export function AlertaOperacionProvider({ children }: { children: React.ReactNod
   const mostrarError = useCallback((
     titulo: string,
     descripcion: string,
-    duracionMs = 0,
+    duracionMs = 5000,
   ) => {
     setAlerta({ tipo: 'error', titulo, descripcion, duracionMs });
   }, []);

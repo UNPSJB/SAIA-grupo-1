@@ -11,7 +11,7 @@ import { Badge } from '../../components/ui/badge';
 import { DatosNutricionalesModal } from './DatosNutricionalesModal';
 
 interface ListadoInsumosProps {
-  onNuevoClick?: () => void;
+  onNuevoClick?: (esAditivo?: boolean) => void;
   onVerClick?: (insumo: InsumoConId) => void;
   onEditarClick?: (insumo: InsumoConId) => void;
   onVerTipoClick?: (tipoId: number) => void;
@@ -49,6 +49,7 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('TODOS');
+  const [vistaActual, setVistaActual] = useState<'ingredientes' | 'aditivos'>('ingredientes');
   const [tiposAbiertos, setTiposAbiertos] = useState<Record<number, boolean>>({});
 
   const [loteADesechar, setLoteADesechar] = useState<LoteInsumoItem | null>(null);
@@ -269,15 +270,26 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     fuente_datos: lote.fuente_datos,
   });
 
+  const totalGruposIngredientes = grupos.filter((g) => !g.es_aditivo).length;
+  const totalGruposAditivos = grupos.filter((g) => Boolean(g.es_aditivo)).length;
+  const esVistaAditivos = vistaActual === 'aditivos';
+
   const gruposFiltrados = grupos.filter((g) => {
+    const esAditivoGrupo = Boolean(g.es_aditivo);
+    if (esVistaAditivos && !esAditivoGrupo) return false;
+    if (!esVistaAditivos && esAditivoGrupo) return false;
+
+    const term = busqueda.toLowerCase().trim();
     const matchBusqueda =
-      !busqueda.trim() ||
-      g.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      !term ||
+      g.nombre.toLowerCase().includes(term) ||
+      (g.clase_funcional && g.clase_funcional.toLowerCase().includes(term)) ||
+      (g.numero_ins && g.numero_ins.toLowerCase().includes(term)) ||
       g.lotes.some(
         (l) =>
-          l.lote.toLowerCase().includes(busqueda.toLowerCase()) ||
-          l.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-          (l.proveedor_nombre && l.proveedor_nombre.toLowerCase().includes(busqueda.toLowerCase()))
+          l.lote.toLowerCase().includes(term) ||
+          l.nombre.toLowerCase().includes(term) ||
+          (l.proveedor_nombre && l.proveedor_nombre.toLowerCase().includes(term))
       );
 
     if (!matchBusqueda) return false;
@@ -291,8 +303,12 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
     <div className="modulo-container modulo-insumos-container">
       <div className="listado-top-bar">
         <div className="modulo-header">
-          <h1>Inventario de Insumos</h1>
-          <div className="subtitulo">Listado agrupado por tipo de insumo</div>
+          <h1>{esVistaAditivos ? 'Inventario de Aditivos' : 'Inventario de Ingredientes'}</h1>
+          <div className="subtitulo">
+            {esVistaAditivos
+              ? 'Lotes agrupados por tipo de aditivo alimentario'
+              : 'Lotes agrupados por tipo de ingrediente'}
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -306,17 +322,42 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
           </button>
 
           {onNuevoClick && (
-            <button onClick={onNuevoClick} className="btn-guardar">
-              + Recepción de Insumos
+            <button onClick={() => onNuevoClick(esVistaAditivos)} className="btn-guardar">
+              {esVistaAditivos ? '+ Recepción de Aditivos' : '+ Recepción de Ingredientes'}
             </button>
           )}
         </div>
       </div>
 
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setVistaActual('ingredientes')}
+          className={!esVistaAditivos ? 'btn-guardar' : 'btn-cancelar'}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>nutrition</span>
+          Ingredientes ({totalGruposIngredientes})
+        </button>
+        <button
+          type="button"
+          onClick={() => setVistaActual('aditivos')}
+          className={esVistaAditivos ? 'btn-guardar' : 'btn-cancelar'}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>science</span>
+          Aditivos ({totalGruposAditivos})
+        </button>
+      </div>
+
       <div className="filtros-top-bar">
         <input
           type="text"
-          placeholder="Buscar por tipo, nombre, lote o proveedor..."
+          placeholder={
+            esVistaAditivos
+              ? 'Buscar aditivo por nombre, clase funcional, INS, lote o proveedor...'
+              : 'Buscar por tipo, nombre, lote o proveedor...'
+          }
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           className="input-busqueda"
@@ -335,10 +376,14 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>Cargando inventario de insumos...</div>
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          {esVistaAditivos ? 'Cargando inventario de aditivos...' : 'Cargando inventario de ingredientes...'}
+        </div>
       ) : gruposFiltrados.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>
-          No se encontraron insumos que coincidan con los filtros aplicados.
+          {esVistaAditivos
+            ? 'No se encontraron aditivos que coincidan con los filtros aplicados.'
+            : 'No se encontraron ingredientes que coincidan con los filtros aplicados.'}
         </div>
       ) : (
         <div className="insumos-grupos-lista">
@@ -357,10 +402,20 @@ export const ListadoInsumos: React.FC<ListadoInsumosProps> = ({
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #94a3b8)' }}>
                       {abierto ? '▼' : '▶'}
                     </span>
-                    <div style={{ minWidth: 0 }}>
+                    <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{grupo.nombre}</span>
-                      {grupo.descripcion && (
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)', marginLeft: '0.5rem' }}>
+                      {grupo.es_aditivo && grupo.clase_funcional && (
+                        <Badge variant="secondary" style={{ fontSize: '0.72rem' }}>
+                          {grupo.clase_funcional}
+                        </Badge>
+                      )}
+                      {grupo.es_aditivo && grupo.numero_ins && (
+                        <Badge variant="outline" style={{ fontSize: '0.72rem' }}>
+                          {grupo.numero_ins}
+                        </Badge>
+                      )}
+                      {!grupo.es_aditivo && grupo.descripcion && (
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)' }}>
                           — {grupo.descripcion}
                         </span>
                       )}

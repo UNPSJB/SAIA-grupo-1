@@ -156,7 +156,9 @@ def obtener_estadisticas_publicas(db: Session, identificador_id: str) -> Dict[st
                     "lotes": 0,
                     "unidad": unidad_str,
                 }
-            agrupados_prod[p.id]["cantidad"] = round(agrupados_prod[p.id]["cantidad"] + float(l.cantidad), 2)
+            cant_env = getattr(p, "cantidad_por_envase", None)
+            vol_lote = float(l.cantidad) * float(cant_env) if cant_env and float(cant_env) > 0 else float(l.cantidad)
+            agrupados_prod[p.id]["cantidad"] = round(agrupados_prod[p.id]["cantidad"] + vol_lote, 2)
             agrupados_prod[p.id]["lotes"] += 1
 
     totales_productos = sorted(agrupados_prod.values(), key=lambda x: x["cantidad"], reverse=True)

@@ -280,7 +280,10 @@ export const HistorialLotes: React.FC<HistorialLotesProps> = ({ onVerLote, onReg
                   <td>{formatearFecha(l.fecha)}</td>
                   <td>{l.producto.nombre}</td>
                   <td>
-                    {l.cantidad} {l.producto.unidadMedida}
+                    {l.cantidad} u.
+                    {l.producto.cantidad_por_envase
+                      ? ` (${Math.round(l.cantidad * l.producto.cantidad_por_envase * 100) / 100} ${l.producto.unidadMedida})`
+                      : ''}
                   </td>
                   <td>{l.nombre_responsable}</td>
                   <td>{l.insumos.length}</td>

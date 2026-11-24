@@ -317,8 +317,6 @@ def main() -> None:
 
     tipos_insumos_seed = [
         ("Harina", "Harinas de trigo y cereales varios", "kilogramos"),
-        ("Esencia de Vainilla", "Aromatizante y saborizante para pastelería y repostería", "mililitros"),
-        ("Polvo para Hornear", "Leudante químico para masas dulces y batidos", "gramos"),
         ("Sal", "Sal fina y entrefina de uso alimenticio", "kilogramos"),
         ("Levadura", "Levadura biológica fresca y seca para panificación", "kilogramos"),
         ("Manteca", "Materia grasa vacuna para hojaldres y masas", "kilogramos"),
@@ -341,16 +339,40 @@ def main() -> None:
         ("Mermelada", "Mermeladas de fruta", "kilogramos"),
         ("Miel", "Miel pura de abeja", "kilogramos"),
         ("Semillas", "Semillas varias para terminación y panes especiales", "kilogramos"),
-        ("Colorantes y Esencias Especiales", "Colorantes alimentarios y saborizantes concentrados", "mililitros"),
         ("Carne de Pollo", "Pechuga y suprema de pollo fresca deshuesada", "kilogramos"),
         ("Pan Rallado", "Pan rallado de harina de trigo enriquecida Ley 25630, agua, levadura y sal", "kilogramos"),
         ("Butter (Rebozador con Sal)", "Premezcla rebozadora con sal, huevo entero en polvo, especias, harina de soja, almidón de trigo y potenciador de sabor INS 621", "kilogramos"),
         ("Agua Potable", "Agua potable de red filtrada para elaboración alimentaria", "litros"),
     ]
+    equivalencias_g_por_tipo = {
+        "Huevos": 60.0,
+        "Leche": 1030.0,
+        "Crema de Leche": 1010.0,
+        "Aceite": 920.0,
+        "Agua Potable": 1000.0,
+    }
     for nom_t, desc_t, um_t in tipos_insumos_seed:
-        crear_tipo_insumo(db, TipoInsumoCreate(nombre=nom_t, descripcion=desc_t, unidad_medida_id=unidades_map[um_t]))
+        crear_tipo_insumo(
+            db,
+            TipoInsumoCreate(
+                nombre=nom_t,
+                descripcion=desc_t,
+                unidad_medida_id=unidades_map[um_t],
+                equivalencia_gramos=equivalencias_g_por_tipo.get(nom_t),
+            ),
+        )
 
-    tipo_inactivo = crear_tipo_insumo(db, TipoInsumoCreate(nombre="Aditivos Discontinuados", descripcion="Línea de aditivos y mejoradores discontinuada", unidad_medida_id=unidades_map["kilogramos"]))
+    tipo_inactivo = crear_tipo_insumo(
+        db,
+        TipoInsumoCreate(
+            nombre="Aditivos Discontinuados",
+            descripcion="Línea de aditivos y mejoradores discontinuada",
+            unidad_medida_id=unidades_map["kilogramos"],
+            es_aditivo=True,
+            clase_funcional="Conservante",
+            numero_ins="INS 200",
+        ),
+    )
     tipo_inactivo.activo = False
     db.commit()
 
@@ -413,6 +435,42 @@ def main() -> None:
     db.add_all(aditivos_seed)
     db.commit()
 
+    tipos_aditivos_seed = [
+        ("Sorbato de potasio", "Conservante alimentario contra mohos y levaduras", "gramos", "Conservante", "INS 202", False, False, False, None),
+        ("Propionato de calcio", "Conservante antifúngico para panificados", "gramos", "Conservante", "INS 282", False, False, False, None),
+        ("Lecitina de soja", "Emulsionante natural para masas y chocolates", "gramos", "Emulsionante", "INS 322", False, False, False, None),
+        ("Bicarbonato de sodio", "Leudante químico alcalino para repostería", "gramos", "Leudante químico", "INS 500ii", False, False, False, 27360.0),
+        ("Polvo para Hornear", "Leudante químico para masas dulces y batidos", "gramos", "Leudante químico", "INS 500ii", False, False, False, 10600.0),
+        ("Ácido cítrico", "Acidulante y regulador de acidez", "gramos", "Acidulante", "INS 330", False, False, False, None),
+        ("Esencia de vainilla natural", "Aromatizante líquido natural de vainilla", "mililitros", "Aromatizante", None, True, False, False, None),
+        ("Colorantes y Esencias Especiales", "Colorantes alimentarios y saborizantes concentrados", "mililitros", "Colorante", "INS 100i", False, False, False, None),
+        ("Sucralosa", "Edulcorante no nutritivo de alta intensidad", "gramos", "Edulcorante", "INS 955", False, True, False, None),
+        ("Cafeína anhidra", "Aditivo estimulante para formulaciones específicas", "gramos", "Estimulante", None, False, False, True, None),
+    ]
+    for nom_a, desc_a, um_a, clase_a, ins_a, es_aroma_a, es_edulc_a, es_caf_a, sodio_a in tipos_aditivos_seed:
+        t_adit = crear_tipo_insumo(
+            db,
+            TipoInsumoCreate(
+                nombre=nom_a,
+                descripcion=desc_a,
+                unidad_medida_id=unidades_map[um_a],
+                es_aditivo=True,
+                clase_funcional=clase_a,
+                numero_ins=ins_a,
+                es_aromatizante=es_aroma_a,
+                es_edulcorante=es_edulc_a,
+                es_cafeina=es_caf_a,
+            ),
+        )
+        if sodio_a is not None:
+            t_adit.energia_kcal = 0.0
+            t_adit.energia_kj = 0.0
+            t_adit.sodio_mg = sodio_a
+            t_adit.fuente_datos = "PROVEEDOR"
+        if nom_a == "Lecitina de soja" and "Soja" in alergenos_map:
+            t_adit.alergenos = [alergenos_map["Soja"]]
+    db.commit()
+
     provs_dict = {p.nombre: p.id for p in db.query(Proveedor).all()}
     tipos_dict = {t.nombre: t.id for t in db.query(TipoInsumo).all()}
 
@@ -472,8 +530,8 @@ def main() -> None:
         "Chocolate Cobertura Cero": ("Chocolate", "Chocolates y Coberturas Fénix"),
         "Aceite de Girasol": ("Aceite", "Molinos Río de la Plata"),
         "Aceite de Girasol Alto Oleico": ("Aceite", "Molinos Río de la Plata"),
-        "Esencia de Vainilla": ("Esencia de Vainilla", "Distribuidora Repostería del Sur"),
-        "Esencia de Vainilla Repostera": ("Esencia de Vainilla", "Distribuidora Repostería del Sur"),
+        "Esencia de Vainilla": ("Esencia de vainilla natural", "Distribuidora Repostería del Sur"),
+        "Esencia de Vainilla Repostera": ("Esencia de vainilla natural", "Distribuidora Repostería del Sur"),
         "Polvo de Hornear": ("Polvo para Hornear", "Distribuidora Repostería del Sur"),
         "Polvo Leudante Especial": ("Polvo para Hornear", "Distribuidora Repostería del Sur"),
         "Canela Molida": ("Canela", "Distribuidora de Especias del Plata"),
@@ -500,6 +558,8 @@ def main() -> None:
         "Agua Potable": ("Agua Potable", None),
     }
 
+    tipos_aditivo_flag = {t.id: bool(t.es_aditivo) for t in db.query(TipoInsumo).all()}
+
     for nombre, lote, dias_recepcion, dias_venc, cant, stock, medida in INSUMOS:
         t_nombre, p_nombre = insumo_mapping.get(nombre, (None, None))
         t_id = tipos_dict.get(t_nombre) if t_nombre else None
@@ -514,6 +574,34 @@ def main() -> None:
             unidad_medida_id=unidades_map[medida],
             tipo_insumo_id=t_id,
             proveedor_id=p_id,
+            es_aditivo=tipos_aditivo_flag.get(t_id, False) if t_id else False,
+        ))
+    db.commit()
+
+    lotes_aditivos_seed = [
+        ("Sorbato de potasio", "AD-SOR-2411", 10, 240, 2000.0, 1450.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Propionato de calcio", "AD-PRO-2410", 20, 180, 2500.0, 1800.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Lecitina de soja", "AD-LEC-2411", 6, 210, 1500.0, 1200.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Bicarbonato de sodio", "AD-BIC-2409", 15, 300, 5000.0, 3900.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Ácido cítrico", "AD-ACI-2411", 8, 270, 1000.0, 820.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Esencia de vainilla natural", "AD-VAI-2411", 4, 150, 2000.0, 1650.0, "mililitros", "Distribuidora Repostería del Sur"),
+        ("Sucralosa", "AD-SUC-2410", 12, 320, 500.0, 420.0, "gramos", "Distribuidora Repostería del Sur"),
+        ("Cafeína anhidra", "AD-CAF-2410", 14, 290, 250.0, 210.0, "gramos", "Distribuidora Repostería del Sur"),
+    ]
+    for nom_la, lote_la, d_rec, d_ven, cant_la, stk_la, um_la, prov_la in lotes_aditivos_seed:
+        t_id_la = tipos_dict.get(nom_la)
+        p_id_la = provs_dict.get(prov_la)
+        db.add(Insumo(
+            nombre=nom_la,
+            lote=lote_la,
+            fechaRecepcion=hoy - timedelta(days=d_rec),
+            fechaVencimiento=hoy + timedelta(days=d_ven),
+            cantRecibida=cant_la,
+            stock=stk_la,
+            unidad_medida_id=unidades_map[um_la],
+            tipo_insumo_id=t_id_la,
+            proveedor_id=p_id_la,
+            es_aditivo=True,
         ))
     db.commit()
 
@@ -541,6 +629,18 @@ def main() -> None:
         "Carne de Pollo": {"energia_kcal": 106.0, "energia_kj": 443.5, "carbohidratos": 0.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 20.3, "grasas_totales": 2.65, "grasas_saturadas": 0.71, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 75.0},
         "Pan Rallado": {"energia_kcal": 308.0, "energia_kj": 1299.0, "carbohidratos": 64.9, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 11.0, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 4.63, "sodio_mg": 480.0},
         "Butter (Rebozador con Sal)": {"energia_kcal": 132.0, "energia_kj": 552.0, "carbohidratos": 28.0, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 21.6, "grasas_totales": 0.3, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 5000.0},
+        "Canela Molida": {"energia_kcal": 247.0, "energia_kj": 1033.0, "carbohidratos": 80.6, "azucares_totales": 2.2, "azucares_anadidos": 0.0, "proteinas": 4.0, "grasas_totales": 1.2, "grasas_saturadas": 0.3, "grasas_trans": 0.0, "fibra_alimentaria": 53.1, "sodio_mg": 10.0},
+        "Crema de Leche": {"energia_kcal": 340.0, "energia_kj": 1422.0, "carbohidratos": 2.8, "azucares_totales": 2.8, "azucares_anadidos": 0.0, "proteinas": 2.1, "grasas_totales": 36.0, "grasas_saturadas": 23.0, "grasas_trans": 1.0, "fibra_alimentaria": 0.0, "sodio_mg": 38.0},
+        "Queso de Maquina": {"energia_kcal": 320.0, "energia_kj": 1339.0, "carbohidratos": 1.5, "azucares_totales": 0.5, "azucares_anadidos": 0.0, "proteinas": 24.0, "grasas_totales": 24.0, "grasas_saturadas": 15.0, "grasas_trans": 0.5, "fibra_alimentaria": 0.0, "sodio_mg": 680.0},
+        "Membrillo": {"energia_kcal": 270.0, "energia_kj": 1130.0, "carbohidratos": 67.0, "azucares_totales": 62.0, "azucares_anadidos": 55.0, "proteinas": 0.4, "grasas_totales": 0.1, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 1.5, "sodio_mg": 12.0},
+        "Jamon Cocido": {"energia_kcal": 120.0, "energia_kj": 502.0, "carbohidratos": 1.2, "azucares_totales": 0.8, "azucares_anadidos": 0.5, "proteinas": 18.0, "grasas_totales": 4.5, "grasas_saturadas": 1.6, "grasas_trans": 0.0, "fibra_alimentaria": 0.0, "sodio_mg": 980.0},
+        "Nueces Mariposa": {"energia_kcal": 654.0, "energia_kj": 2736.0, "carbohidratos": 13.7, "azucares_totales": 2.6, "azucares_anadidos": 0.0, "proteinas": 15.2, "grasas_totales": 65.2, "grasas_saturadas": 6.1, "grasas_trans": 0.0, "fibra_alimentaria": 6.7, "sodio_mg": 2.0},
+        "Pasas de Uva": {"energia_kcal": 299.0, "energia_kj": 1251.0, "carbohidratos": 79.2, "azucares_totales": 59.2, "azucares_anadidos": 0.0, "proteinas": 3.1, "grasas_totales": 0.5, "grasas_saturadas": 0.1, "grasas_trans": 0.0, "fibra_alimentaria": 3.7, "sodio_mg": 11.0},
+        "Coco Rallado": {"energia_kcal": 660.0, "energia_kj": 2761.0, "carbohidratos": 23.6, "azucares_totales": 7.4, "azucares_anadidos": 0.0, "proteinas": 6.9, "grasas_totales": 64.5, "grasas_saturadas": 57.2, "grasas_trans": 0.0, "fibra_alimentaria": 16.3, "sodio_mg": 37.0},
+        "Almidon de Maiz": {"energia_kcal": 381.0, "energia_kj": 1594.0, "carbohidratos": 91.3, "azucares_totales": 0.0, "azucares_anadidos": 0.0, "proteinas": 0.3, "grasas_totales": 0.1, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.9, "sodio_mg": 9.0},
+        "Avena Arrollada Fina": {"energia_kcal": 389.0, "energia_kj": 1628.0, "carbohidratos": 66.3, "azucares_totales": 1.0, "azucares_anadidos": 0.0, "proteinas": 16.9, "grasas_totales": 6.9, "grasas_saturadas": 1.2, "grasas_trans": 0.0, "fibra_alimentaria": 10.6, "sodio_mg": 2.0},
+        "Mermelada de Frutilla": {"energia_kcal": 250.0, "energia_kj": 1046.0, "carbohidratos": 62.0, "azucares_totales": 58.0, "azucares_anadidos": 52.0, "proteinas": 0.4, "grasas_totales": 0.1, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 1.1, "sodio_mg": 15.0},
+        "Miel Pura": {"energia_kcal": 304.0, "energia_kj": 1272.0, "carbohidratos": 82.4, "azucares_totales": 82.1, "azucares_anadidos": 82.1, "proteinas": 0.3, "grasas_totales": 0.0, "grasas_saturadas": 0.0, "grasas_trans": 0.0, "fibra_alimentaria": 0.2, "sodio_mg": 4.0},
     }
     for insumo_obj in db.query(Insumo).all():
         if insumo_obj.nombre in datos_nutricionales:
@@ -1276,17 +1376,17 @@ def main() -> None:
         ))
     db.commit()
 
-    p_pan = Producto(nombre="Pan de Campo", descripcion="Pan rústico de masa madre 500g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=500.0, tamano_porcion_g=50.0, descripcion_porcion="1 rebanada (50g)", medida_casera="1 rebanada", conservacion="Conservar en lugar fresco y seco. Una vez abierto consumir dentro de las 72 horas.", aplica_rotulado=True, activo=True, visible_publico=True)
-    p_medialunas = Producto(nombre="Medialunas de Manteca", descripcion="Docena de medialunas dulces hojaldradas (600g)", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=600.0, tamano_porcion_g=50.0, descripcion_porcion="1 medialuna (50g)", medida_casera="1 unidad", conservacion="Conservar en lugar fresco y seco hasta 48 horas o refrigerar entre 2°C y 6°C.", aplica_rotulado=True, activo=True, visible_publico=True)
-    p_baguette = Producto(nombre="Baguette Tradicional", descripcion="Baguette artesanal crujiente 250g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=250.0, tamano_porcion_g=50.0, descripcion_porcion="1 trozo (50g)", medida_casera="1 trozo", conservacion="Mantener en bolsa de papel en ambiente fresco y seco.", aplica_rotulado=True, activo=True, visible_publico=True)
-    p_torta = Producto(nombre="Torta de Chocolate", descripcion="Torta artesanal húmeda con cobertura semiamarga 1200g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=1200.0, tamano_porcion_g=60.0, descripcion_porcion="1 porción (60g)", medida_casera="1 porción", conservacion="Mantener refrigerado entre 2°C y 6°C. Consumir preferentemente dentro de los 5 días.", aplica_rotulado=True, activo=True, visible_publico=True)
-    p_lactal = Producto(nombre="Pan Lactal Blanco", descripcion="Pan de molde enriquecido con leche 450g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=450.0, tamano_porcion_g=50.0, descripcion_porcion="2 rebanadas (50g)", medida_casera="2 rebanadas", conservacion="Conservar en envase bien cerrado en lugar fresco y seco.", aplica_rotulado=True, activo=True, visible_publico=True)
-    p_salvado = Producto(nombre="Pan de Salvado y Semillas", descripcion="Pan integral con mix de semillas 450g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=450.0, tamano_porcion_g=50.0, descripcion_porcion="2 rebanadas (50g)", medida_casera="2 rebanadas", conservacion="Conservar en lugar fresco y seco protegido de la luz solar.", aplica_rotulado=True, activo=True, visible_publico=True)
-    p_facturas = Producto(nombre="Facturas Surtidas", descripcion="Variedad de medialunas, vigilantes y cañoncitos", unidad_medida_id=unidades_map["unidades"], conservacion="Conservar a temperatura ambiente y consumir en el día.", aplica_rotulado=True, activo=True, visible_publico=True)
-    p_budin = Producto(nombre="Budin de Limon y Glaseado", descripcion="Budín esponjoso con glaseado de limón 350g", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=350.0, tamano_porcion_g=60.0, descripcion_porcion="1 rebanada (60g)", medida_casera="1 rebanada", conservacion="Conservar en lugar fresco y seco hasta 7 días.", aplica_rotulado=True, activo=True, visible_publico=False)
-    p_chipa = Producto(nombre="Chipa Tradicional", descripcion="Chipa de queso y almidón de mandioca", unidad_medida_id=unidades_map["kilogramos"], conservacion="Mantener refrigerado a 4°C o congelado a -18°C.", aplica_rotulado=True, activo=True, visible_publico=True)
-    p_ciabatta = Producto(nombre="Ciabatta Rústica", descripcion="Pan italiano de alta hidratación 300g (venta directa sin envase)", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=300.0, tamano_porcion_g=50.0, medida_casera="1 trozo", conservacion="Consumir preferentemente en el día.", aplica_rotulado=False, activo=True, visible_publico=False)
-    p_milanesa = Producto(nombre="Milanesa de Pollo", descripcion="Milanesas de pollo rebozadas acondicionadas en bandejas de 2 kg (lapso de aptitud 72 hs)", unidad_medida_id=unidades_map["unidades"], peso_unidad_g=2000.0, tamano_porcion_g=130.0, porciones_por_envase=15.38, descripcion_porcion="130 g (1/2 unidad)", medida_casera="1/2 unidad", conservacion="Conservar refrigerado, entre 0 y 5°C. Cocinar completamente antes de consumir. Al final de cocción, no se deberán desprender jugos rosados ni vestigios de tal color en la superficie de corte.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_pan = Producto(nombre="Pan de Campo", descripcion="Pan rústico de masa madre 500g", unidad_medida_id=unidades_map["kilogramos"], equivalencia_gramos_unidad=1000.0, cantidad_por_envase=0.5, peso_unidad_g=500.0, tamano_porcion_g=50.0, descripcion_porcion="1 rebanada (50g)", medida_casera="1 rebanada", conservacion="Conservar en lugar fresco y seco. Una vez abierto consumir dentro de las 72 horas.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_medialunas = Producto(nombre="Medialunas de Manteca", descripcion="Medialunas dulces hojaldradas (50g por unidad)", unidad_medida_id=unidades_map["gramos"], equivalencia_gramos_unidad=1.0, cantidad_por_envase=50.0, peso_unidad_g=50.0, tamano_porcion_g=50.0, descripcion_porcion="1 medialuna (50g)", medida_casera="1 unidad", conservacion="Conservar en lugar fresco y seco hasta 48 horas o refrigerar entre 2°C y 6°C.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_baguette = Producto(nombre="Baguette Tradicional", descripcion="Baguette artesanal crujiente 250g", unidad_medida_id=unidades_map["gramos"], equivalencia_gramos_unidad=1.0, cantidad_por_envase=250.0, peso_unidad_g=250.0, tamano_porcion_g=50.0, descripcion_porcion="1 trozo (50g)", medida_casera="1 trozo", conservacion="Mantener en bolsa de papel en ambiente fresco y seco.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_torta = Producto(nombre="Torta de Chocolate", descripcion="Torta artesanal húmeda con cobertura semiamarga 1,2 kg", unidad_medida_id=unidades_map["kilogramos"], equivalencia_gramos_unidad=1000.0, cantidad_por_envase=1.2, peso_unidad_g=1200.0, tamano_porcion_g=60.0, descripcion_porcion="1 porción (60g)", medida_casera="1 porción", conservacion="Mantener refrigerado entre 2°C y 6°C. Consumir preferentemente dentro de los 5 días.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_lactal = Producto(nombre="Pan Lactal Blanco", descripcion="Pan de molde enriquecido con leche 450g", unidad_medida_id=unidades_map["gramos"], equivalencia_gramos_unidad=1.0, cantidad_por_envase=450.0, peso_unidad_g=450.0, tamano_porcion_g=50.0, descripcion_porcion="2 rebanadas (50g)", medida_casera="2 rebanadas", conservacion="Conservar en envase bien cerrado en lugar fresco y seco.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_salvado = Producto(nombre="Pan de Salvado y Semillas", descripcion="Pan integral con mix de semillas 450g", unidad_medida_id=unidades_map["gramos"], equivalencia_gramos_unidad=1.0, cantidad_por_envase=450.0, peso_unidad_g=450.0, tamano_porcion_g=50.0, descripcion_porcion="2 rebanadas (50g)", medida_casera="2 rebanadas", conservacion="Conservar en lugar fresco y seco protegido de la luz solar.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_facturas = Producto(nombre="Facturas Surtidas", descripcion="Docena de facturas surtidas (0,6 kg)", unidad_medida_id=unidades_map["kilogramos"], equivalencia_gramos_unidad=1000.0, cantidad_por_envase=0.6, peso_unidad_g=600.0, conservacion="Conservar a temperatura ambiente y consumir en el día.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_budin = Producto(nombre="Budin de Limon y Glaseado", descripcion="Budín esponjoso con glaseado de limón 350g", unidad_medida_id=unidades_map["gramos"], equivalencia_gramos_unidad=1.0, cantidad_por_envase=350.0, peso_unidad_g=350.0, tamano_porcion_g=60.0, descripcion_porcion="1 rebanada (60g)", medida_casera="1 rebanada", conservacion="Conservar en lugar fresco y seco hasta 7 días.", aplica_rotulado=True, activo=True, visible_publico=False)
+    p_chipa = Producto(nombre="Chipa Tradicional", descripcion="Bolsa de chipá de queso y almidón de mandioca 0,5 kg", unidad_medida_id=unidades_map["kilogramos"], equivalencia_gramos_unidad=1000.0, cantidad_por_envase=0.5, peso_unidad_g=500.0, conservacion="Mantener refrigerado a 4°C o congelado a -18°C.", aplica_rotulado=True, activo=True, visible_publico=True)
+    p_ciabatta = Producto(nombre="Ciabatta Rústica", descripcion="Pan italiano de alta hidratación 300g (venta directa sin envase)", unidad_medida_id=unidades_map["gramos"], equivalencia_gramos_unidad=1.0, cantidad_por_envase=300.0, peso_unidad_g=300.0, tamano_porcion_g=50.0, medida_casera="1 trozo", conservacion="Consumir preferentemente en el día.", aplica_rotulado=False, activo=True, visible_publico=False)
+    p_milanesa = Producto(nombre="Milanesa de Pollo", descripcion="Milanesas de pollo rebozadas acondicionadas en bandejas de 2 kg (lapso de aptitud 72 hs)", unidad_medida_id=unidades_map["kilogramos"], equivalencia_gramos_unidad=1000.0, cantidad_por_envase=2.0, peso_unidad_g=2000.0, tamano_porcion_g=130.0, porciones_por_envase=15.38, descripcion_porcion="130 g (1/2 unidad)", medida_casera="1/2 unidad", conservacion="Conservar refrigerado, entre 0 y 5°C. Cocinar completamente antes de consumir. Al final de cocción, no se deberán desprender jugos rosados ni vestigios de tal color en la superficie de corte.", aplica_rotulado=True, activo=True, visible_publico=True)
 
     p_pan.alergenos_precaucion = [alergenos_map["Granos de sésamo"], alergenos_map["Soja"]]
     p_medialunas.alergenos_precaucion = [alergenos_map["Frutos de cáscara"], alergenos_map["Soja"]]
@@ -1303,7 +1403,7 @@ def main() -> None:
 
     receta_pan = Receta(
         nombre="Pan de Campo",
-        rendimiento_final=1400.0,
+        rendimiento_final=2.8,
         id_producto=p_pan.id,
         operario_legajo=juan.legajo,
         activo=True,
@@ -1314,7 +1414,7 @@ def main() -> None:
     version_pan_v1 = VersionReceta(
         receta_id=receta_pan.id,
         version=1,
-        rendimiento_final=1380.0,
+        rendimiento_final=2.76,
         archivado=True,
         es_vigente=False,
         fecha_vigencia=hoy - timedelta(days=90),
@@ -1359,7 +1459,7 @@ def main() -> None:
     version_pan = VersionReceta(
         receta_id=receta_pan.id,
         version=2,
-        rendimiento_final=1400.0,
+        rendimiento_final=2.8,
         archivado=False,
         es_vigente=True,
         fecha_vigencia=hoy - timedelta(days=14),
@@ -1434,7 +1534,7 @@ def main() -> None:
 
     receta_medialunas = Receta(
         nombre="Medialunas de Manteca",
-        rendimiento_final=1100.0,
+        rendimiento_final=22.0,
         id_producto=p_medialunas.id,
         operario_legajo=marcos.legajo,
         activo=True,
@@ -1445,7 +1545,7 @@ def main() -> None:
     version_medialunas = VersionReceta(
         receta_id=receta_medialunas.id,
         version=1,
-        rendimiento_final=1100.0,
+        rendimiento_final=22.0,
         archivado=False,
         es_vigente=True,
         creado_por_legajo=marcos.legajo,
@@ -1531,9 +1631,9 @@ def main() -> None:
     db.add_all(detalles_medialunas)
     db.commit()
 
-    p_medialunas.peso_unidad_g = 600.0
+    p_medialunas.peso_unidad_g = 50.0
     p_medialunas.tamano_porcion_g = 50.0
-    p_medialunas.porciones_por_envase = 12.0
+    p_medialunas.porciones_por_envase = 1.0
     p_medialunas.descripcion_porcion = "1 medialuna (50g)"
     db.commit()
 
@@ -1541,7 +1641,7 @@ def main() -> None:
 
     receta_baguette = Receta(
         nombre="Baguette Tradicional",
-        rendimiento_final=750.0,
+        rendimiento_final=3.0,
         id_producto=p_baguette.id,
         operario_legajo=carlos.legajo,
         activo=True,
@@ -1552,7 +1652,7 @@ def main() -> None:
     version_baguette = VersionReceta(
         receta_id=receta_baguette.id,
         version=1,
-        rendimiento_final=750.0,
+        rendimiento_final=3.0,
         archivado=False,
         es_vigente=True,
         creado_por_legajo=carlos.legajo,
@@ -1612,7 +1712,7 @@ def main() -> None:
 
     receta_lactal = Receta(
         nombre="Pan Lactal Blanco",
-        rendimiento_final=900.0,
+        rendimiento_final=2.0,
         id_producto=p_lactal.id,
         operario_legajo=juan.legajo,
         activo=True,
@@ -1623,7 +1723,7 @@ def main() -> None:
     version_lactal = VersionReceta(
         receta_id=receta_lactal.id,
         version=1,
-        rendimiento_final=900.0,
+        rendimiento_final=2.0,
         archivado=False,
         es_vigente=True,
         creado_por_legajo=juan.legajo,
@@ -1701,7 +1801,7 @@ def main() -> None:
 
     receta_salvado = Receta(
         nombre="Pan de Salvado y Semillas",
-        rendimiento_final=950.0,
+        rendimiento_final=2.0,
         id_producto=p_salvado.id,
         operario_legajo=juan.legajo,
         activo=True,
@@ -1712,7 +1812,7 @@ def main() -> None:
     version_salvado = VersionReceta(
         receta_id=receta_salvado.id,
         version=1,
-        rendimiento_final=950.0,
+        rendimiento_final=2.0,
         archivado=False,
         es_vigente=True,
         creado_por_legajo=juan.legajo,
@@ -1794,6 +1894,17 @@ def main() -> None:
             es_aditivo=False,
             descripcion_pasos="Agregar sal al final del amasado.",
         ),
+        RecetaDetalle(
+            nombre="Conservante Propionato de calcio",
+            version_receta_id=version_salvado.id,
+            tipo_insumo_id=tipos_dict["Propionato de calcio"],
+            cantidad=2.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=True,
+            clase_funcional="Conservante",
+            numero_ins="INS 282",
+            descripcion_pasos="Incorporar propionato de calcio junto a los ingredientes secos para extender vida útil.",
+        ),
     ]
     db.add_all(detalles_salvado)
     db.commit()
@@ -1808,7 +1919,7 @@ def main() -> None:
 
     receta_torta = Receta(
         nombre="Torta de Chocolate",
-        rendimiento_final=1400.0,
+        rendimiento_final=1.0,
         id_producto=p_torta.id,
         operario_legajo=marcos.legajo,
         activo=True,
@@ -1819,7 +1930,7 @@ def main() -> None:
     version_torta = VersionReceta(
         receta_id=receta_torta.id,
         version=1,
-        rendimiento_final=1400.0,
+        rendimiento_final=1.0,
         archivado=False,
         es_vigente=True,
         creado_por_legajo=marcos.legajo,
@@ -1898,8 +2009,21 @@ def main() -> None:
             tipo_insumo_id=insumos_map["Polvo de Hornear"].tipo_insumo_id,
             cantidad=15.0,
             unidad_medida="GRAMOS",
-            es_aditivo=False,
+            es_aditivo=True,
+            clase_funcional="Leudante químico",
+            numero_ins="INS 500ii",
             descripcion_pasos="Tamizar con la harina para esponjosidad.",
+        ),
+        RecetaDetalle(
+            nombre="Aromatizado con Esencia de vainilla natural",
+            version_receta_id=version_torta.id,
+            tipo_insumo_id=tipos_dict["Esencia de vainilla natural"],
+            cantidad=10.0,
+            unidad_medida="MILILITROS",
+            es_aditivo=True,
+            clase_funcional="Aromatizante",
+            numero_ins=None,
+            descripcion_pasos="Incorporar esencia de vainilla al batido húmedo antes de integrar los secos.",
         ),
     ]
     db.add_all(detalles_torta)
@@ -1907,7 +2031,7 @@ def main() -> None:
 
     receta_budin = Receta(
         nombre="Budin de Limon y Glaseado",
-        rendimiento_final=700.0,
+        rendimiento_final=2.0,
         id_producto=p_budin.id,
         operario_legajo=sofia.legajo,
         activo=True,
@@ -1918,7 +2042,7 @@ def main() -> None:
     version_budin = VersionReceta(
         receta_id=receta_budin.id,
         version=1,
-        rendimiento_final=700.0,
+        rendimiento_final=2.0,
         archivado=False,
         es_vigente=True,
         creado_por_legajo=sofia.legajo,
@@ -1964,8 +2088,71 @@ def main() -> None:
             es_aditivo=False,
             descripcion_pasos="Espolvorear canela molida para perfumar la miga.",
         ),
+        RecetaDetalle(
+            nombre="Leudante Bicarbonato de sodio",
+            version_receta_id=version_budin.id,
+            tipo_insumo_id=tipos_dict["Bicarbonato de sodio"],
+            cantidad=8.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=True,
+            clase_funcional="Leudante químico",
+            numero_ins="INS 500ii",
+            descripcion_pasos="Tamizar bicarbonato de sodio junto a la harina 0000.",
+        ),
+        RecetaDetalle(
+            nombre="Acidulante Ácido cítrico",
+            version_receta_id=version_budin.id,
+            tipo_insumo_id=tipos_dict["Ácido cítrico"],
+            cantidad=3.0,
+            unidad_medida="GRAMOS",
+            es_aditivo=True,
+            clase_funcional="Acidulante",
+            numero_ins="INS 330",
+            descripcion_pasos="Disolver ácido cítrico en el glaseado de limón para ajustar acidez.",
+        ),
+        RecetaDetalle(
+            etapa="Preparación",
+            nombre="Conservante Sorbato de potasio",
+            version_receta_id=version_budin.id,
+            tipo_insumo_id=tipos_dict["Sorbato de potasio"],
+            cantidad=1.5,
+            unidad_medida="GRAMOS",
+            es_aditivo=True,
+            clase_funcional="Conservante",
+            numero_ins="INS 202",
+            descripcion_pasos="Integrar sorbato de potasio al batido final para conservación.",
+        ),
+        RecetaDetalle(
+            etapa="Cocción",
+            nombre="Horneado controlado",
+            version_receta_id=version_budin.id,
+            tipo_insumo_id=None,
+            cantidad=0.0,
+            unidad_medida="UNIDADES",
+            es_aditivo=False,
+            descripcion_pasos="Hornear los budines hasta dorar y verificar temperatura interna y tiempo exacto.",
+            parametros_control_json=json.dumps([
+                {"nombre_dato": "Temperatura de horno", "unidad_medida": "°C", "condicion": "RANGO", "umbral_minimo": 175.0, "umbral_maximo": 185.0},
+                {"nombre_dato": "Tiempo de cocción", "unidad_medida": "min", "condicion": "EXACTO", "umbral_minimo": 45.0, "umbral_maximo": 45.0},
+            ]),
+        ),
+        RecetaDetalle(
+            etapa="Guardado",
+            nombre="Enfriado y conservación",
+            version_receta_id=version_budin.id,
+            tipo_insumo_id=None,
+            cantidad=0.0,
+            unidad_medida="UNIDADES",
+            es_aditivo=False,
+            descripcion_pasos="Enfriar sobre rejilla antes de envasar y verificar temperatura del producto.",
+            parametros_control_json=json.dumps([
+                {"nombre_dato": "Temperatura al envasar", "unidad_medida": "°C", "condicion": "MENOR_QUE", "umbral_minimo": None, "umbral_maximo": 25.0},
+            ]),
+        ),
     ])
     db.commit()
+
+    calcular_informacion_nutricional(db, p_budin.id, receta_id=receta_budin.id, usuario_actual="Sofia Martinez")
 
     p_torta.peso_unidad_g = 1200.0
     p_torta.tamano_porcion_g = 60.0
@@ -1978,7 +2165,7 @@ def main() -> None:
     op_milanesa = operador_user if operador_user else juan
     receta_milanesa = Receta(
         nombre="Milanesa de Pollo",
-        rendimiento_final=2315.0,
+        rendimiento_final=1.1575,
         tiempo_maximo_dias=3,
         id_producto=p_milanesa.id,
         operario_legajo=op_milanesa.legajo,
@@ -1990,7 +2177,7 @@ def main() -> None:
     version_milanesa = VersionReceta(
         receta_id=receta_milanesa.id,
         version=1,
-        rendimiento_final=2315.0,
+        rendimiento_final=1.1575,
         tiempo_maximo_dias=3,
         archivado=False,
         es_vigente=True,
@@ -2002,6 +2189,7 @@ def main() -> None:
 
     db.add_all([
         RecetaDetalle(
+            etapa="Preparación",
             nombre="Fileteado y pesado de Carne de pollo",
             version_receta_id=version_milanesa.id,
             tipo_insumo_id=insumos_map["Carne de Pollo"].tipo_insumo_id,
@@ -2009,9 +2197,10 @@ def main() -> None:
             unidad_medida="GRAMOS",
             es_aditivo=False,
             descripcion_pasos="Pesar 1 kg de carne de pollo refrigerada (0 a 5°C) y cortar en filetes parejos.",
-            parametros_control_json=json.dumps([{"nombre_dato": "Temperatura interna carne", "unidad_medida": "°C", "umbral_minimo": 0.0, "umbral_maximo": 5.0}]),
+            parametros_control_json=json.dumps([{"nombre_dato": "Temperatura interna carne", "unidad_medida": "°C", "condicion": "RANGO", "umbral_minimo": 0.0, "umbral_maximo": 5.0}]),
         ),
         RecetaDetalle(
+            etapa="Preparación",
             nombre="Hidratación del rebozador con Agua",
             version_receta_id=version_milanesa.id,
             tipo_insumo_id=insumos_map["Agua Potable"].tipo_insumo_id,
@@ -2021,6 +2210,7 @@ def main() -> None:
             descripcion_pasos="Medir 0,28 kg de agua potable fría para preparar el ligue del butter.",
         ),
         RecetaDetalle(
+            etapa="Preparación",
             nombre="Preparación del ligue con Butter",
             version_receta_id=version_milanesa.id,
             tipo_insumo_id=insumos_map["Butter (Rebozador con Sal)"].tipo_insumo_id,
@@ -2030,6 +2220,7 @@ def main() -> None:
             descripcion_pasos="Disolver 0,035 kg de butter (sal, huevo entero en polvo, especias, harina de soja, almidón de trigo, potenciador de sabor INS 621) en el agua y sumergir el pollo.",
         ),
         RecetaDetalle(
+            etapa="Empanado y Guardado",
             nombre="Empanado con Pan rallado",
             version_receta_id=version_milanesa.id,
             tipo_insumo_id=insumos_map["Pan Rallado"].tipo_insumo_id,
@@ -2037,7 +2228,7 @@ def main() -> None:
             unidad_medida="GRAMOS",
             es_aditivo=False,
             descripcion_pasos="Empanar con 1 kg de pan rallado (harina de trigo enriquecida Ley 25630, agua, levadura y sal) y acondicionar en bandejas de 2 kg refrigeradas entre 0 y 5°C.",
-            parametros_control_json=json.dumps([{"nombre_dato": "Temperatura de almacenamiento", "unidad_medida": "°C", "umbral_minimo": 0.0, "umbral_maximo": 5.0}]),
+            parametros_control_json=json.dumps([{"nombre_dato": "Temperatura de almacenamiento", "unidad_medida": "°C", "condicion": "RANGO", "umbral_minimo": 0.0, "umbral_maximo": 5.0}]),
         ),
     ])
     db.commit()
@@ -2148,6 +2339,7 @@ def main() -> None:
             version_receta_id=version_pan.id,
             nombre_receta=receta_pan.nombre,
             detalle_id=det_p.id,
+            etapa=det_p.etapa or "Preparación",
             nombre_etapa=det_p.nombre,
             descripcion_pasos=det_p.descripcion_pasos,
             ingrediente_id=ins_usado_p,
@@ -2186,6 +2378,7 @@ def main() -> None:
             version_receta_id=version_medialunas.id,
             nombre_receta=receta_medialunas.nombre,
             detalle_id=det_m.id,
+            etapa=det_m.etapa or "Preparación",
             nombre_etapa=det_m.nombre,
             descripcion_pasos=det_m.descripcion_pasos,
             ingrediente_id=ins_usado_m,
@@ -2193,6 +2386,7 @@ def main() -> None:
             lote_insumo_usado_id=ins_usado_m if es_hecho else None,
             cantidad=det_m.cantidad,
             unidad_medida_id=det_m.unidad_medida_id,
+            parametros_control_json=det_m.parametros_control_json,
             estado=EstadoEtapaRecetaItem.REALIZADO if es_hecho else EstadoEtapaRecetaItem.PENDIENTE,
             responsable_legajo=marcos.legajo if es_hecho else None,
             observaciones="Completado en turno mañana." if es_hecho else None,
@@ -2335,10 +2529,11 @@ def main() -> None:
     )
 
     from src.rotulado.services import sincronizar_rotulo_desde_receta
+    sincronizar_rotulo_desde_receta(db, p_budin.id, usuario=marcos)
     sincronizar_rotulo_desde_receta(db, p_milanesa.id, usuario=marcos)
 
     asegurar_rotulado_frontal(db)
-    for prod_rotulo in [p_pan, p_medialunas, p_baguette, p_lactal, p_salvado, p_torta, p_milanesa]:
+    for prod_rotulo in [p_pan, p_medialunas, p_baguette, p_lactal, p_salvado, p_torta, p_budin, p_milanesa]:
         calcular_desde_nutricion_producto(db, prod_rotulo.id, usuario=marcos)
         obtener_o_crear_borrador(db, prod_rotulo.id)
         autocompletar_datos_borrador(db, prod_rotulo.id, usuario=marcos)

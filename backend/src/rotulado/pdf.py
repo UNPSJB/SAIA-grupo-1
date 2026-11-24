@@ -507,6 +507,48 @@ def armar_pdf_borrador(
 
     # 1. Composición de la Receta
     pdf.titulo_seccion("Composición de la Receta", "Porcentajes y aportes de insumos sobre fórmula")
+    pdf.add_page()
+    pdf.titulo_seccion(
+        "2. ANEXO TÉCNICO DE CÁLCULOS Y RESPALDO REGULATORIO",
+        "Detalle de fórmula, composición porcentual, fuentes de datos y justificación de rotulado frontal",
+    )
+
+    # Ficha técnica de receta y trazabilidad
+    pdf.set_font(FUENTE, "B", 8)
+    pdf.color_texto(PRIMARIO)
+    pdf.cell(0, 5, "DATOS DE LA RECETA EMPLEADA Y TRAZABILIDAD", new_x="LMARGIN", new_y="NEXT")
+
+    anchos_ficha = (pdf.epw * 0.33, pdf.epw * 0.33, pdf.epw * 0.34)
+    filas_ficha = [
+        [
+            f"Receta: {receta_info.get('nombre', 'Sin receta')}",
+            f"Versión de Receta: V{receta_info.get('version', 1)} (ID: {receta_info.get('id', '-')})",
+            f"Fecha versión: {receta_info.get('fecha_creacion', '-')}",
+        ],
+        [
+            f"Rendimiento final: {receta_info.get('rendimiento_final', '-')} u.",
+            f"Peso total insumos: {receta_info.get('peso_total_ingredientes', '-')} g",
+            f"Factor rendimiento: {receta_info.get('factor_rendimiento', 1.0):.4f}",
+        ],
+        [
+            f"Generado por: {usuario_nombre}",
+            f"Fecha de generación: {fecha_emision.strftime('%d/%m/%Y %H:%M')}",
+            "Estado: BORRADOR PARA REVISIÓN",
+        ],
+    ]
+    pdf.tabla_simple(
+        ["Trazabilidad de Receta", "Parámetros de Proceso", "Metadatos de Emisión"],
+        filas_ficha,
+        anchos_ficha,
+    )
+    pdf.ln(3)
+
+    # -------------------------------------------------------------------------
+    # 2.1 Composición Porcentual de Ingredientes
+    # -------------------------------------------------------------------------
+    pdf.set_font(FUENTE, "B", 8)
+    pdf.color_texto(PRIMARIO)
+    pdf.cell(0, 5, "2.1 COMPOSICIÓN DE LA RECETA Y PORCENTAJES DE INGREDIENTES", new_x="LMARGIN", new_y="NEXT")
 
     encabezados_comp = [
         "Ingrediente / Insumo",

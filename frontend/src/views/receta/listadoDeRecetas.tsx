@@ -214,7 +214,7 @@ export const ListadoRecetas: React.FC<ListadoRecetasProps> = ({
                 return (
                   <tr key={r.id}>
                     <td style={{ fontWeight: 500 }}>{r.nombre}</td>
-                    <td>{r.rendimiento_final}</td>
+                    <td>{r.rendimiento_final} u.</td>
                     <td>
                       v{verNum} {esVigente ? '(Vigente)' : '(No vigente)'}
                     </td>

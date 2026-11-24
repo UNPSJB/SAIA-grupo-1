@@ -144,12 +144,22 @@ export const DetalleProducto: React.FC<DetalleProductoProps> = ({
             </div>
 
             <div className="form-group">
-              <label htmlFor="peso_unidad_g">Equivalencia en Gramos (Peso por Unidad)</label>
+              <label htmlFor="peso_unidad_g">Unidad Discreta / Envase y Equivalencia</label>
               <input
                 id="peso_unidad_g"
                 name="peso_unidad_g"
                 type="text"
-                value={producto.peso_unidad_g != null && producto.peso_unidad_g > 0 ? `${producto.peso_unidad_g} g` : "Sin datos"}
+                value={
+                  producto.cantidad_por_envase != null && producto.cantidad_por_envase > 0
+                    ? `${producto.cantidad_por_envase} ${producto.unidadMedida}${
+                        producto.peso_unidad_g != null && producto.peso_unidad_g > 0
+                          ? ` (${producto.peso_unidad_g} g)`
+                          : ""
+                      }`
+                    : producto.peso_unidad_g != null && producto.peso_unidad_g > 0
+                    ? `${producto.peso_unidad_g} g`
+                    : "Sin datos"
+                }
                 disabled
               />
             </div>

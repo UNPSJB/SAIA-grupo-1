@@ -123,19 +123,25 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver
     }
   };
 
-  const detalle = trazabilidad || {
-    id: insumo.id,
-    nombre: insumo.nombre,
-    lote: insumo.lote,
-    stock: insumo.stock,
-    cantRecibida: insumo.cantRecibida,
-    medida: insumo.medida,
-    fechaRecepcion: insumo.fechaRecepcion,
-    fechaVencimiento: insumo.fechaVencimiento || null,
-    tipo_insumo_nombre: insumo.tipo_insumo_nombre || null,
-    proveedor_nombre: insumo.proveedor_nombre || null,
-    estadoVencimiento: insumo.estadoVencimiento || 'VIGENTE',
-    lotes_produccion: [],
+  const insumoDetalle: InsumoConId = trazabilidad?.insumo
+    ? { ...insumo, ...trazabilidad.insumo }
+    : insumo;
+
+  const lotesProduccion = trazabilidad?.lotes_produccion ?? [];
+
+  const detalle = {
+    id: insumoDetalle.id,
+    nombre: insumoDetalle.nombre,
+    lote: insumoDetalle.lote,
+    stock: insumoDetalle.stock,
+    cantRecibida: insumoDetalle.cantRecibida,
+    medida: insumoDetalle.medida,
+    fechaRecepcion: insumoDetalle.fechaRecepcion,
+    fechaVencimiento: insumoDetalle.fechaVencimiento || null,
+    tipo_insumo_nombre: insumoDetalle.tipo_insumo_nombre || null,
+    proveedor_nombre: insumoDetalle.proveedor_nombre || null,
+    estadoVencimiento: insumoDetalle.estadoVencimiento || 'VIGENTE',
+    lotes_produccion: lotesProduccion,
   };
 
   if (loteProduccionSeleccionadoId !== null) {
@@ -176,7 +182,7 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver
             <button
               type="button"
               className="btn-guardar"
-              onClick={() => onEditarClick(insumo)}
+              onClick={() => onEditarClick(insumoDetalle)}
             >
               Editar Insumo
             </button>
@@ -299,7 +305,7 @@ export default function VerInsumo({ insumo, onEditarClick, onVolver, textoVolver
       </div>
 
       <DatosNutricionalesModal
-        insumo={insumo}
+        insumo={insumoDetalle}
         abierto={modalNutricionAbierto}
         onCerrar={() => setModalNutricionAbierto(false)}
       />

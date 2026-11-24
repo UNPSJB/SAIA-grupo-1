@@ -202,6 +202,24 @@ def regenerar_snapshot_seguro(
         logger.exception("Error al regenerar el snapshot estático de la vista pública")
 
 
+def asegurar_snapshot_diario(
+    db: Session,
+    snapshot_path: Optional[Path] = None,
+) -> None:
+    destino = snapshot_path or SNAPSHOT_FILE
+    if destino.is_file():
+        try:
+            datos = json.loads(destino.read_text(encoding="utf-8"))
+            generado_el = datos.get("generado_el")
+            if generado_el:
+                fecha_snap = datetime.fromisoformat(generado_el).date()
+                if fecha_snap >= datetime.now(timezone.utc).date():
+                    return
+        except Exception:
+            pass
+    regenerar_snapshot_seguro(db, snapshot_path=snapshot_path)
+
+
 def leer_snapshot_vista_publica(snapshot_path: Optional[Path] = None) -> Optional[str]:
     origen = snapshot_path or SNAPSHOT_FILE
     if not origen.is_file():

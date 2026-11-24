@@ -33,6 +33,8 @@ class Producto(ModeloBase):
     _porciones_por_envase: Mapped[Optional[float]] = mapped_column("porciones_por_envase", Float, nullable=True, default=None)
     descripcion_porcion: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default=None)
     medida_casera: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default=None)
+    equivalencia_gramos_unidad: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    cantidad_por_envase: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
     peso_unidad_g: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
     aplica_rotulado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     documento_receta_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)

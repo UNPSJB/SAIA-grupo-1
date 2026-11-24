@@ -255,6 +255,9 @@ class InsumoAgrupadoPorTipo(BaseModel):
     unidad_medida_id: Optional[int] = None
     unidadMedida: str
     unidad_medida_abreviatura: Optional[str] = None
+    es_aditivo: bool = False
+    clase_funcional: Optional[str] = None
+    numero_ins: Optional[str] = None
     stock_total: float
     tiene_vencidos: bool = False
     tiene_proximos: bool = False

@@ -97,7 +97,7 @@ export interface ResultadoRegla {
 export interface PasoCalculoSello {
   criterio: string;
   codigo: string;
-  tiene_agregado: string;
+  tiene_agregado: boolean | string;
   calculo_realizado: string;
   umbral: string;
   estado: string;

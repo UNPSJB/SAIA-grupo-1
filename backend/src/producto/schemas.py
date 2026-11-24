@@ -1,6 +1,7 @@
 import re
-from typing import Optional, Self
+from typing import List, Optional, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from src.alergenos.schemas import Alergeno
 from src.recetas.schemas import RecetaBase
 from src.producto import exceptions
 
@@ -12,6 +13,8 @@ class ProductoBase(BaseModel):
     tamano_porcion_g: Optional[float] = None
     porciones_por_envase: Optional[float] = None
     descripcion_porcion: Optional[str] = None
+    equivalencia_gramos_unidad: Optional[float] = None
+    cantidad_por_envase: Optional[float] = None
     peso_unidad_g: Optional[float] = None
     aplica_rotulado: Optional[bool] = True
     conservacion:Optional[str] = None
@@ -54,6 +57,11 @@ class ProductoUpdate(ProductoBase):
     tamano_porcion_g: Optional[float] = None
     porciones_por_envase: Optional[float] = None
     descripcion_porcion: Optional[str] = None
+    equivalencia_gramos_unidad: Optional[float] = None
+    cantidad_por_envase: Optional[float] = None
+    tamano_porcion_g: Optional[float] = None
+    equivalencia_gramos_unidad: Optional[float] = None
+    cantidad_por_envase: Optional[float] = None
     peso_unidad_g: Optional[float] = None
     aplica_rotulado: Optional[bool] = None
     alergenos_precaucion_ids:Optional[list[int]]=None
@@ -85,10 +93,13 @@ class ProductoResponse(ProductoBase):
     unidad_medida_abreviatura: Optional[str] = None
     id_receta: Optional[int] = None
     nombre_receta: Optional[str] = None
+    equivalencia_gramos_unidad: Optional[float] = None
+    cantidad_por_envase: Optional[float] = None
     peso_unidad_g: Optional[float] = None
     aplica_rotulado: bool = True
     activo: bool
     visible_publico: bool = False
+    alergenos_precaucion:Optional[List[Alergeno]] = None
 
     model_config = ConfigDict(from_attributes=True)
 

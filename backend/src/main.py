@@ -5,7 +5,7 @@ from sqlalchemy import text
 from src.autenticacion.dependencies import get_usuario_actual, requiere_admin
 from src.autenticacion.services import asegurar_usuarios_dev
 from src.database import engine, SessionLocal
-from src.indentificadorDeQR.snapshot import regenerar_snapshot_seguro
+from src.indentificadorDeQR.snapshot import asegurar_snapshot_diario, regenerar_snapshot_seguro
 from src.models import ModeloBase
 
 from src.config import settings
@@ -87,7 +87,7 @@ async def db_creation_lifespan(app: FastAPI):
             asegurar_parametros_defecto(db)
             asegurar_tipos_base(db)
     with SessionLocal() as db:
-        regenerar_snapshot_seguro(db)
+        asegurar_snapshot_diario(db)
     tarea_snapshot = asyncio.create_task(_tarea_diaria_snapshot_vista_publica())
     try:
         yield
