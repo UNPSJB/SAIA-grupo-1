@@ -102,6 +102,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
   const [filtro, setFiltro] = useState<'' | OrigenVencimiento>(filtroOrigenInicial || '');
   const [filtroEstado, setFiltroEstado] = useState<'' | EstadoVencimiento>(filtroEstadoInicial || '');
   const [busqueda, setBusqueda] = useState('');
+  const [modoGrafico, setModoGrafico] = useState<'origen' | 'plazo'>('origen');
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [dialogExportarAbierto, setDialogExportarAbierto] = useState(false);
@@ -183,6 +184,38 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
     );
   }, [filas, filtro, filtroEstado, busqueda, rangoAgingSeleccionado]);
 
+  const datosPorOrigen = useMemo(() => {
+    const base = filas.filter(
+      (f) =>
+        (!filtroEstado || f.estado === filtroEstado) &&
+        (!busqueda.trim() || `${f.concepto} ${f.responsable}`.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    );
+
+    const origenes: { clave: OrigenVencimiento; label: string; color: string }[] = [
+      { clave: 'personal', label: 'Personal', color: '#3b82f6' },
+      { clave: 'equipo', label: 'Calibraciones', color: '#8b5cf6' },
+      { clave: 'documento', label: 'Documentos', color: '#06b6d4' },
+      { clave: 'insumo', label: 'Insumos', color: '#f59e0b' },
+      { clave: 'ambiental', label: 'Limpieza / Ambiente', color: '#10b981' },
+    ];
+
+    return origenes.map((orig) => {
+      const items = base.filter((f) => f.origen === orig.clave);
+      const vencidos = items.filter((f) => f.estado === 'vencido').length;
+      const proximos = items.filter((f) => f.estado === 'proximo').length;
+      const vigentes = items.filter((f) => f.estado === 'vigente').length;
+      return {
+        clave: orig.clave,
+        label: orig.label,
+        cantidad: items.length,
+        vencidos,
+        proximos,
+        vigentes,
+        color: orig.color,
+      };
+    });
+  }, [filas, filtroEstado, busqueda]);
+
   const datosAging = useMemo(() => {
     const base = filas.filter(
       (f) =>
@@ -208,10 +241,10 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
 
     return [
       { clave: 'vencidos', rango: 'Vencidos', cantidad: vencidos, color: '#ef4444' },
-      { clave: 'menos7', rango: '< 7 días', cantidad: menos7, color: '#f97316' },
+      { clave: 'menos7', rango: 'Menos de 7 días', cantidad: menos7, color: '#f97316' },
       { clave: 'de8a15', rango: '8 a 15 días', cantidad: de8a15, color: '#f59e0b' },
       { clave: 'de16a30', rango: '16 a 30 días', cantidad: de16a30, color: '#3b82f6' },
-      { clave: 'mas30', rango: '> 30 días', cantidad: mas30, color: '#10b981' },
+      { clave: 'mas30', rango: 'Más de 30 días', cantidad: mas30, color: '#10b981' },
     ];
   }, [filas, filtro, filtroEstado, busqueda]);
 
@@ -259,7 +292,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
     if (filtro) partes.push(`Origen: ${ETIQUETA_ORIGEN[filtro]}`);
     if (filtroEstado) partes.push(`Estado: ${ETIQUETA_ESTADO[filtroEstado]}`);
     if (incluirRangoAging && rangoAgingSeleccionado) {
-      partes.push(`Rango Aging: ${ETIQUETA_RANGO_AGING[rangoAgingSeleccionado] || rangoAgingSeleccionado}`);
+      partes.push(`Rango Plazo: ${ETIQUETA_RANGO_AGING[rangoAgingSeleccionado] || rangoAgingSeleccionado}`);
     }
     if (busqueda.trim()) partes.push(`Búsqueda: "${busqueda}"`);
     return partes.length > 0 ? partes.join(' | ') : 'Sin filtros aplicados';
@@ -267,20 +300,34 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
 
   const abrirExportacionGraficoAging = () => {
     if (!graficoAgingRef.current) return;
+    const esOrigen = modoGrafico === 'origen';
+    const titulo = esOrigen
+      ? 'Vencimientos por Tipo de Registro'
+      : 'Distribución por Plazo de Vencimientos';
+    const subtitulo = esOrigen
+      ? 'Cantidad de registros agrupados por área y tipo de entidad'
+      : 'Distribución de criticidad temporal por rangos de vida útil restante';
+    const leyenda = esOrigen
+      ? datosPorOrigen.map((item) => ({
+          etiqueta: `${item.label} (${item.cantidad})`,
+          color: item.color,
+        }))
+      : datosAging.map((item) => ({
+          etiqueta: `${item.rango} (${item.cantidad})`,
+          color: item.color,
+        }));
+
     setExportGraficoModal({
-      titulo: 'Aging de Vencimientos (Criterio FEFO/FIFO)',
-      nombreArchivo: `aging_vencimientos_${filtro || 'consolidado'}`,
+      titulo,
+      nombreArchivo: `vencimientos_${modoGrafico}_${filtro || 'consolidado'}`,
       graficos: [
         {
-          id: 'vencimientos-aging',
-          titulo: 'Aging de Vencimientos (Criterio FEFO/FIFO)',
-          subtitulo: 'Distribución de criticidad temporal por rangos de vida útil restante',
+          id: `vencimientos-${modoGrafico}`,
+          titulo,
+          subtitulo,
           filtros: obtenerResumenFiltros(true),
           contenedor: graficoAgingRef.current,
-          leyenda: datosAging.map((item) => ({
-            etiqueta: `${item.rango} (${item.cantidad})`,
-            color: item.color,
-          })),
+          leyenda,
         },
       ],
     });
@@ -307,8 +354,8 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
   };
 
   const hayDatosEnGrafico = useMemo(
-    () => datosAging.some((d) => d.cantidad > 0),
-    [datosAging]
+    () => (modoGrafico === 'origen' ? datosPorOrigen.some((d) => d.cantidad > 0) : datosAging.some((d) => d.cantidad > 0)),
+    [modoGrafico, datosPorOrigen, datosAging]
   );
 
   const {
@@ -385,29 +432,78 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--color-primario, #3b82f6)' }}>
-              timer
+              {modoGrafico === 'origen' ? 'category' : 'timer'}
             </span>
             <div>
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-h)' }}>
-                Aging de Vencimientos (Criterio FEFO/FIFO)
+                {modoGrafico === 'origen' ? 'Vencimientos por Tipo de Registro' : 'Distribución por Plazo Restante'}
               </h3>
               <span style={{ fontSize: '0.74rem', color: 'var(--color-texto-sec)' }}>
-                Distribución de criticidad temporal por rangos de vida útil restante. Clic en una barra para filtrar.
+                {modoGrafico === 'origen'
+                  ? 'Cantidad de registros agrupados por área. Clic en una barra para filtrar la tabla.'
+                  : 'Distribución cronológica por rangos de vida útil restante. Clic en una barra para filtrar.'}
               </span>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {rangoAgingSeleccionado && (
+            <div style={{ display: 'inline-flex', borderRadius: '8px', padding: '2px', backgroundColor: 'var(--color-fondo)', border: '1px solid var(--color-borde)' }}>
+              <button
+                type="button"
+                onClick={() => setModoGrafico('origen')}
+                style={{
+                  padding: '3px 9px',
+                  fontSize: '11.5px',
+                  fontWeight: modoGrafico === 'origen' ? 600 : 500,
+                  backgroundColor: modoGrafico === 'origen' ? 'var(--color-superficie)' : 'transparent',
+                  color: modoGrafico === 'origen' ? 'var(--text-h)' : 'var(--color-texto-sec)',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Por Tipo
+              </button>
+              <button
+                type="button"
+                onClick={() => setModoGrafico('plazo')}
+                style={{
+                  padding: '3px 9px',
+                  fontSize: '11.5px',
+                  fontWeight: modoGrafico === 'plazo' ? 600 : 500,
+                  backgroundColor: modoGrafico === 'plazo' ? 'var(--color-superficie)' : 'transparent',
+                  color: modoGrafico === 'plazo' ? 'var(--text-h)' : 'var(--color-texto-sec)',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Por Plazo
+              </button>
+            </div>
+
+            {filtro && modoGrafico === 'origen' && (
+              <button
+                type="button"
+                className="btn-secundario"
+                style={{ padding: '4px 10px', fontSize: '12px' }}
+                onClick={() => setFiltro('')}
+              >
+                Restablecer tipo
+              </button>
+            )}
+
+            {rangoAgingSeleccionado && modoGrafico === 'plazo' && (
               <button
                 type="button"
                 className="btn-secundario"
                 style={{ padding: '4px 10px', fontSize: '12px' }}
                 onClick={() => setRangoAgingSeleccionado(null)}
               >
-                Restablecer filtro de rango
+                Restablecer plazo
               </button>
             )}
+
             {!cargando && hayDatosEnGrafico && (
               <button
                 type="button"
@@ -420,7 +516,7 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
                   alignItems: 'center',
                   gap: '5px',
                 }}
-                title="Exportar gráfico de aging en PNG, JPEG o PDF"
+                title="Exportar gráfico en PNG, JPEG o PDF"
               >
                 <ExportIcon size={14} /> Exportar gráfico
               </button>
@@ -430,40 +526,80 @@ export const VistaConsolidadaVencimiento: React.FC<Props> = ({
 
         <div ref={graficoAgingRef} style={{ width: '100%', height: 200 }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-            <BarChart data={datosAging} margin={{ top: 10, right: 16, left: -10, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-borde, #334155)" vertical={false} />
-              <XAxis dataKey="rango" stroke="var(--color-texto-sec, #94a3b8)" fontSize={12} tickLine={false} />
-              <YAxis allowDecimals={false} stroke="var(--color-texto-sec, #94a3b8)" fontSize={12} tickLine={false} width={36} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
-                  borderColor: 'var(--color-borde, #334155)',
-                  borderRadius: '8px',
-                  color: 'var(--color-texto, #f8fafc)',
-                }}
-                formatter={(val: any) => [`${val} registros`, 'Cantidad']}
-              />
-              <Bar
-                dataKey="cantidad"
-                radius={[4, 4, 0, 0]}
-                cursor="pointer"
-                onClick={(entry: any) => {
-                  if (entry && entry.clave) {
-                    setRangoAgingSeleccionado((prev) => (prev === entry.clave ? null : entry.clave));
-                  }
-                }}
-              >
-                {datosAging.map((entry) => (
-                  <Cell
-                    key={`cell-aging-${entry.clave}`}
-                    fill={entry.color}
-                    opacity={rangoAgingSeleccionado && rangoAgingSeleccionado !== entry.clave ? 0.35 : 1}
-                    stroke={rangoAgingSeleccionado === entry.clave ? '#ffffff' : 'none'}
-                    strokeWidth={2}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
+            {modoGrafico === 'origen' ? (
+              <BarChart data={datosPorOrigen} margin={{ top: 10, right: 16, left: -10, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-borde, #334155)" vertical={false} />
+                <XAxis dataKey="label" stroke="var(--color-texto-sec, #94a3b8)" fontSize={12} tickLine={false} />
+                <YAxis allowDecimals={false} stroke="var(--color-texto-sec, #94a3b8)" fontSize={12} tickLine={false} width={36} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                    borderColor: 'var(--color-borde, #334155)',
+                    borderRadius: '8px',
+                    color: 'var(--color-texto, #f8fafc)',
+                  }}
+                  formatter={(val: any, _, item: any) => [
+                    `${val} registros (${item?.payload?.vencidos ?? 0} vencidos, ${item?.payload?.proximos ?? 0} próximos)`,
+                    'Total',
+                  ]}
+                />
+                <Bar
+                  dataKey="cantidad"
+                  radius={[4, 4, 0, 0]}
+                  cursor="pointer"
+                  onClick={(entry: any) => {
+                    if (entry && entry.clave) {
+                      setFiltro((prev) => (prev === entry.clave ? '' : (entry.clave as OrigenVencimiento)));
+                    }
+                  }}
+                >
+                  {datosPorOrigen.map((entry) => (
+                    <Cell
+                      key={`cell-origen-${entry.clave}`}
+                      fill={entry.color}
+                      opacity={filtro && filtro !== entry.clave ? 0.35 : 1}
+                      stroke={filtro === entry.clave ? '#ffffff' : 'none'}
+                      strokeWidth={2}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            ) : (
+              <BarChart data={datosAging} margin={{ top: 10, right: 16, left: -10, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-borde, #334155)" vertical={false} />
+                <XAxis dataKey="rango" stroke="var(--color-texto-sec, #94a3b8)" fontSize={12} tickLine={false} />
+                <YAxis allowDecimals={false} stroke="var(--color-texto-sec, #94a3b8)" fontSize={12} tickLine={false} width={36} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
+                    borderColor: 'var(--color-borde, #334155)',
+                    borderRadius: '8px',
+                    color: 'var(--color-texto, #f8fafc)',
+                  }}
+                  formatter={(val: any) => [`${val} registros`, 'Cantidad']}
+                />
+                <Bar
+                  dataKey="cantidad"
+                  radius={[4, 4, 0, 0]}
+                  cursor="pointer"
+                  onClick={(entry: any) => {
+                    if (entry && entry.clave) {
+                      setRangoAgingSeleccionado((prev) => (prev === entry.clave ? null : entry.clave));
+                    }
+                  }}
+                >
+                  {datosAging.map((entry) => (
+                    <Cell
+                      key={`cell-aging-${entry.clave}`}
+                      fill={entry.color}
+                      opacity={rangoAgingSeleccionado && rangoAgingSeleccionado !== entry.clave ? 0.35 : 1}
+                      stroke={rangoAgingSeleccionado === entry.clave ? '#ffffff' : 'none'}
+                      strokeWidth={2}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            )}
           </ResponsiveContainer>
         </div>
       </div>

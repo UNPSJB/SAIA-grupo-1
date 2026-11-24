@@ -9,11 +9,6 @@ import {
   ComposedChart,
   Legend,
   Line,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -176,7 +171,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
   const [busquedaIncidente, setBusquedaIncidente] = useState<string>('');
   const [agrupacionTemporal, setAgrupacionTemporal] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [tipoGraficoEvolucion, setTipoGraficoEvolucion] = useState<'lineas' | 'barras'>('lineas');
-  const [tipoVisualizacionCategoria, setTipoVisualizacionCategoria] = useState<'barras' | 'radar' | 'pareto'>('barras');
+  const [tipoVisualizacionCategoria, setTipoVisualizacionCategoria] = useState<'barras' | 'pareto'>('barras');
 
   const [estadisticas, setEstadisticas] = useState<EstadisticaIncidentesPorTipo | null>(null);
   const [cargandoStats, setCargandoStats] = useState(true);
@@ -655,9 +650,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
       return null;
     }
     const tituloVista =
-      tipoVisualizacionCategoria === 'radar'
-        ? 'Distribución de Incidentes - Red de Araña'
-        : tipoVisualizacionCategoria === 'pareto'
+      tipoVisualizacionCategoria === 'pareto'
         ? 'Distribución de Incidentes - Diagrama de Pareto (80/20)'
         : 'Distribución de Incidentes por Categoría';
 
@@ -668,8 +661,6 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
             { etiqueta: '% Acumulado', color: '#f59e0b' },
             { etiqueta: 'Corte 80% (Pareto)', color: '#10b981' },
           ]
-        : tipoVisualizacionCategoria === 'radar'
-        ? [{ etiqueta: 'Incidentes por categoría', color: '#ef4444' }]
         : datosGrafico
             .filter((d) => d.cantidad > 0)
             .map((d) => ({
@@ -1312,23 +1303,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                   }}
                   onClick={() => setTipoVisualizacionCategoria('barras')}
                 >
-                  Barras
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    padding: '3px 10px',
-                    fontSize: '0.75rem',
-                    borderRadius: '4px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: tipoVisualizacionCategoria === 'radar' ? 'var(--color-primario, #3b82f6)' : 'transparent',
-                    color: tipoVisualizacionCategoria === 'radar' ? '#ffffff' : 'var(--text-sec)',
-                    fontWeight: tipoVisualizacionCategoria === 'radar' ? 600 : 400,
-                  }}
-                  onClick={() => setTipoVisualizacionCategoria('radar')}
-                >
-                  Red de Araña
+                  Frecuencia (Barras)
                 </button>
                 <button
                   type="button"
@@ -1344,7 +1319,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
                   }}
                   onClick={() => setTipoVisualizacionCategoria('pareto')}
                 >
-                  Pareto (80/20)
+                  Diagrama de Pareto (80/20)
                 </button>
               </div>
               {categoriaSeleccionada && (
@@ -1390,50 +1365,7 @@ export const EstadisticasIncidentes: React.FC<EstadisticasIncidentesProps> = ({
           ) : (
             <>
               <div ref={graficoCategoriaRef} style={{ width: '100%', height: 380 }}>
-                {tipoVisualizacionCategoria === 'radar' ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datosGrafico}>
-                      <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
-                      <PolarAngleAxis
-                        dataKey="nombreCorto"
-                        tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
-                      />
-                      <PolarRadiusAxis
-                        angle={90}
-                        allowDecimals={false}
-                        stroke="var(--color-texto-sec, #64748b)"
-                        tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
-                          borderColor: 'var(--color-borde, #334155)',
-                          borderRadius: '8px',
-                          color: 'var(--color-texto, #f8fafc)',
-                        }}
-                        formatter={(val: TooltipValueType | undefined, _, item: { payload?: { porcentaje?: number; nombre?: string } }) => [
-                          `${val ?? 0} ${Number(val) === 1 ? 'incidente' : 'incidentes'} (${item?.payload?.porcentaje ?? 0}%)`,
-                          item?.payload?.nombre ?? '',
-                        ]}
-                      />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={28}
-                        iconType="circle"
-                        wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
-                      />
-                      <Radar
-                        name="Incidentes"
-                        dataKey="cantidad"
-                        stroke="#ef4444"
-                        fill="#ef4444"
-                        fillOpacity={0.4}
-                        strokeWidth={2}
-                        dot={{ r: 4, fill: '#dc2626' }}
-                      />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                ) : tipoVisualizacionCategoria === 'pareto' ? (
+                {tipoVisualizacionCategoria === 'pareto' ? (
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <ComposedChart data={datosPareto} margin={{ top: 12, right: 36, left: 10, bottom: 65 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />

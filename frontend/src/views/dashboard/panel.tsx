@@ -80,6 +80,8 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
   const [loadingVencimientos, setLoadingVencimientos] = useState(true);
 
   const [metricasIncidentes, setMetricasIncidentes] = useState<IncidentesMetricasDashboard | null>(null);
+  const [incidentesAbiertos, setIncidentesAbiertos] = useState<any[]>([]);
+  const [tabIncidentes, setTabIncidentes] = useState<'urgentes' | 'area'>('urgentes');
   const [loadingIncidentes, setLoadingIncidentes] = useState(true);
 
   const graficoInsumosRef = useRef<HTMLDivElement | null>(null);
@@ -257,10 +259,17 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
     const cargarIncidentes = async () => {
       setLoadingIncidentes(true);
       try {
-        const res = await apiFetch('/incidentes/abiertos/metricas');
-        if (!cancelado && res.ok) {
-          const data = await res.json();
+        const [resMetricas, resAbiertos] = await Promise.all([
+          apiFetch('/incidentes/abiertos/metricas'),
+          apiFetch('/incidentes/abiertos'),
+        ]);
+        if (!cancelado && resMetricas.ok) {
+          const data = await resMetricas.json();
           setMetricasIncidentes(data);
+        }
+        if (!cancelado && resAbiertos.ok) {
+          const dataAbiertos = await resAbiertos.json();
+          setIncidentesAbiertos(Array.isArray(dataAbiertos) ? dataAbiertos : []);
         }
       } catch (e) {
         console.error('Error al cargar métricas de incidentes:', e);
@@ -678,11 +687,88 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
         <div className="dashboard-card">
           <div className="dashboard-card-header">
             <h2>Incidentes</h2>
+            <div className="dashboard-toggle-mini">
+              <button
+                type="button"
+                className={`dashboard-toggle-btn ${tabIncidentes === 'urgentes' ? 'activo' : ''}`}
+                onClick={() => setTabIncidentes('urgentes')}
+              >
+                Más urgentes
+              </button>
+              <button
+                type="button"
+                className={`dashboard-toggle-btn ${tabIncidentes === 'area' ? 'activo' : ''}`}
+                onClick={() => setTabIncidentes('area')}
+              >
+                Por criticidad
+              </button>
+            </div>
           </div>
 
           <div className="dashboard-card-cuerpo">
             {loadingIncidentes ? (
               <p className="dashboard-sin-datos">Cargando incidentes...</p>
+            ) : tabIncidentes === 'urgentes' ? (
+              <div className="dashboard-lista-urgentes">
+                {incidentesAbiertos.length === 0 ? (
+                  <div className="dashboard-urgentes-vacio">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                    <span>Todos los incidentes están resueltos</span>
+                  </div>
+                ) : (
+                  incidentesAbiertos.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className="dashboard-item-urgente"
+                      onClick={() => {
+                        if (onNavegar) onNavegar('incidentes');
+                        else setVistaDetalle('incidentes');
+                      }}
+                      title="Hacer clic para ver detalle del incidente"
+                    >
+                      <div className="dashboard-item-urgente-icono">
+                        <span
+                          className={`badge-icono-origen ${item.nivel_urgencia === 'critico' ? 'personal' : item.nivel_urgencia === 'medio' ? 'equipo' : 'documento'}`}
+                          title={item.nombre_tipo || 'Incidente'}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div className="dashboard-item-urgente-info">
+                        <div className="dashboard-item-urgente-titulo" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {item.descripcion}
+                        </div>
+                        <div className="dashboard-item-urgente-sub">
+                          {item.nombre_tipo || item.categoria_nombre || 'General'} · Reportado por {item.nombre_reportante}
+                        </div>
+                      </div>
+                      <div className="dashboard-item-urgente-estado">
+                        {item.horas_abierto >= 72 ? (
+                          <span className="dashboard-badge dashboard-badge-vencido">
+                            {item.dias_abierto > 0 ? `Abierto hace ${item.dias_abierto}d` : 'Crítico (+72h)'}
+                          </span>
+                        ) : item.horas_abierto >= 24 ? (
+                          <span className="dashboard-badge dashboard-badge-proximo">
+                            {item.dias_abierto > 0 ? `Abierto hace ${item.dias_abierto}d` : '24h - 72h'}
+                          </span>
+                        ) : (
+                          <span className="dashboard-badge dashboard-badge-info">
+                            &lt; 24h
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
             ) : (
               <div className="dashboard-lista-resumen">
                 <div className="dashboard-item-resumen">
@@ -826,7 +912,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
               {!loadingInsumos && consumoInsumos.length > 0 && (
                 <button
                   type="button"
-                  className="dashboard-badge dashboard-badge-btn dashboard-badge-al-dia"
                   onClick={() =>
                     abrirExportacionIndividual(
                       obtenerConfigInsumos(),
@@ -834,9 +919,25 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                     )
                   }
                   title="Exportar gráfico de consumo de insumos (PNG, JPEG o PDF)"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                    height: '28px',
+                    padding: '0 8px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border)',
+                    backgroundColor: 'var(--code-bg)',
+                    color: 'var(--text-h)',
+                    fontSize: '0.78rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
                 >
-                  <ExportIcon size={13} />
+                  <ExportIcon size={14} />
+                  <span>Exportar</span>
                 </button>
               )}
             </div>
@@ -968,7 +1069,6 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
               {hayProduccionVisible && (
                 <button
                   type="button"
-                  className="dashboard-badge dashboard-badge-btn dashboard-badge-al-dia"
                   onClick={() =>
                     abrirExportacionIndividual(
                       obtenerConfigProduccion(),
@@ -976,9 +1076,25 @@ export const Panel: React.FC<PanelDashboardProps> = ({ onNavegar, onIrAlRegistro
                     )
                   }
                   title="Exportar gráfico de producción (PNG, JPEG o PDF)"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                    height: '28px',
+                    padding: '0 8px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border)',
+                    backgroundColor: 'var(--code-bg)',
+                    color: 'var(--text-h)',
+                    fontSize: '0.78rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
                 >
-                  <ExportIcon size={13} />
+                  <ExportIcon size={14} />
+                  <span>Exportar</span>
                 </button>
               )}
             </div>

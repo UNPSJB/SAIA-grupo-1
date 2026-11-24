@@ -1,19 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
   ComposedChart,
+  LabelList,
   Legend,
   Line,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -294,7 +288,7 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
   const [agrupacionTemporal, setAgrupacionTemporal] = useState<'dia' | 'semana' | 'mes'>('dia');
-  const [tipoGraficoEvolucion, setTipoGraficoEvolucion] = useState<'lineas' | 'barras' | 'combinado' | 'control_spc' | 'radar'>('combinado');
+  const [tipoGraficoEvolucion, setTipoGraficoEvolucion] = useState<'combinado' | 'ranking' | 'rendimiento' | 'control_spc'>('combinado');
   const [unidadSeleccionada, setUnidadSeleccionada] = useState<string>('kilogramos');
 
   const [loteParaModal, setLoteParaModal] = useState<LoteProduccion | null>(null);
@@ -319,23 +313,26 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     if (tipoGraficoEvolucion === 'control_spc') {
       return 'Control Estadístico de Procesos (CEP / SPC)';
     }
-    if (tipoGraficoEvolucion === 'radar') {
-      return 'Red de Araña: Perfil Multicriterio de Producción';
+    if (tipoGraficoEvolucion === 'ranking') {
+      return 'Ranking y Participación por Producto';
     }
-    if (tipoGraficoEvolucion === 'combinado') {
-      return 'Gráfico Combinado: Lotes y Volumen Fabricado';
+    if (tipoGraficoEvolucion === 'rendimiento') {
+      return 'Rendimiento y Volumen Promedio por Lote';
     }
-    return 'Producción de Lotes por Fecha y Producto';
+    return 'Evolución Temporal de Lotes y Volumen Fabricado';
   }, [tipoGraficoEvolucion]);
 
   const subtituloGraficoEvolucion = useMemo(() => {
     if (tipoGraficoEvolucion === 'control_spc') {
       return `Monitoreo estadístico en ${formatearUnidad(unidadSeleccionada)} (UCL/LCL a ±3σ)`;
     }
-    if (tipoGraficoEvolucion === 'radar') {
-      return 'Comparativa radial multicriterio entre productos';
+    if (tipoGraficoEvolucion === 'ranking') {
+      return `Volumen total elaborado en ${formatearUnidad(unidadSeleccionada)} y porcentaje de contribución de cada producto`;
     }
-    return `Agrupado por ${agrupacionTemporal}`;
+    if (tipoGraficoEvolucion === 'rendimiento') {
+      return `Cantidad promedio obtenida por lote en ${formatearUnidad(unidadSeleccionada)}`;
+    }
+    return `Agrupado por ${agrupacionTemporal} (Lotes elaborados y volumen total)`;
   }, [tipoGraficoEvolucion, unidadSeleccionada, agrupacionTemporal]);
 
   const errorRango = useMemo(() => {
@@ -746,77 +743,47 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
     };
   }, [lotes, unidadSeleccionada]);
 
-  const datosRadarProduccion = useMemo(() => {
-    if (lotes.length === 0) return { dimensiones: [], productos: [] };
-    const mapa = new Map<string, {
-      nombre: string;
-      lotes: number;
-      volumen: number;
-      insumosSet: Set<string>;
-    }>();
+  const datosDistribucionProductos = useMemo(() => {
+    if (lotes.length === 0) return [];
+    const mapa = new Map<string, { nombre: string; volumen: number; lotes: number }>();
 
     for (const l of lotes) {
       const pNom = l.producto?.nombre || 'Sin producto';
       if (!mapa.has(pNom)) {
-        mapa.set(pNom, {
-          nombre: pNom,
-          lotes: 0,
-          volumen: 0,
-          insumosSet: new Set<string>(),
-        });
+        mapa.set(pNom, { nombre: pNom, volumen: 0, lotes: 0 });
       }
       const item = mapa.get(pNom)!;
-      item.lotes += 1;
       item.volumen += Number(l.cantidad) || 0;
-      for (const ins of l.insumos || []) {
-        if (ins?.insumo?.nombre) item.insumosSet.add(ins.insumo.nombre);
-      }
+      item.lotes += 1;
     }
 
-    const prods = Array.from(mapa.values());
-    if (prods.length === 0) return { dimensiones: [], productos: [] };
+    const items = Array.from(mapa.values());
+    const totalVol = items.reduce((acc, curr) => acc + curr.volumen, 0);
 
-    const maxLotes = Math.max(...prods.map((p) => p.lotes), 1);
-    const maxVol = Math.max(...prods.map((p) => p.volumen), 1);
-    const maxInsumos = Math.max(...prods.map((p) => p.insumosSet.size), 1);
-    const maxProm = Math.max(...prods.map((p) => p.volumen / Math.max(p.lotes, 1)), 1);
+    return items
+      .map((item) => {
+        const volumen = Math.round(item.volumen * 10) / 10;
+        const porcentaje = totalVol > 0 ? Math.round((item.volumen / totalVol) * 1000) / 10 : 0;
+        return {
+          nombre: item.nombre,
+          volumen,
+          lotes: item.lotes,
+          porcentaje,
+          etiquetaValor: `${volumen} ${abreviarUnidad(unidadSeleccionada)} (${porcentaje}%)`,
+        };
+      })
+      .sort((a, b) => b.volumen - a.volumen);
+  }, [lotes, unidadSeleccionada]);
 
-    const prodsOrdenados = prods.sort((a, b) => b.lotes - a.lotes).slice(0, 4);
-
-    const configDims = [
-      { metrica: 'Volumen Fabricado', key: 'vol' },
-      { metrica: 'Frecuencia Lotes', key: 'lot' },
-      { metrica: 'Variedad Insumos', key: 'ins' },
-      { metrica: 'Tamaño Medio', key: 'prom' },
-      { metrica: 'Consistencia Operativa', key: 'cons' },
-    ];
-
-    const dimensiones = configDims.map((dim) => {
-      const fila: Record<string, any> = { dimension: dim.metrica };
-      prodsOrdenados.forEach((p, idx) => {
-        let score = 50;
-        if (dim.key === 'vol') score = Math.round((p.volumen / maxVol) * 100);
-        else if (dim.key === 'lot') score = Math.round((p.lotes / maxLotes) * 100);
-        else if (dim.key === 'ins') score = Math.round((p.insumosSet.size / maxInsumos) * 100);
-        else if (dim.key === 'prom') score = Math.round(((p.volumen / Math.max(p.lotes, 1)) / maxProm) * 100);
-        else if (dim.key === 'cons') score = Math.min(100, Math.round(70 + (p.lotes / maxLotes) * 30));
-
-        fila[`prod_${idx}`] = score;
-      });
-      return fila;
-    });
-
-    return {
-      dimensiones,
-      productos: prodsOrdenados.map((p, idx) => ({
-        key: `prod_${idx}`,
-        nombre: p.nombre,
-        color: PALETA_COLORES[idx % PALETA_COLORES.length],
-        lotes: p.lotes,
-        volumen: Math.round(p.volumen * 100) / 100,
-      })),
-    };
-  }, [lotes]);
+  const datosRendimientoLotes = useMemo(() => {
+    if (lotes.length === 0) return [];
+    return datosDistribucionProductos.map((item) => ({
+      nombre: item.nombre,
+      promedio: item.lotes > 0 ? Math.round((item.volumen / item.lotes) * 10) / 10 : 0,
+      lotes: item.lotes,
+      volumen: item.volumen,
+    }));
+  }, [datosDistribucionProductos]);
 
   const datosProductosPorUnidad = useMemo(() => {
     const normUnidad = unidadSeleccionada.toLowerCase().trim();
@@ -1322,18 +1289,16 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
               <CardDescription>
                 {tipoGraficoEvolucion === 'control_spc'
                   ? 'Monitoreo estadístico de tamaño de lote con límites superior e inferior (UCL/LCL a ±3σ) y media'
-                  : tipoGraficoEvolucion === 'radar'
-                  ? 'Comparativa radial multicriterio entre productos (volumen, lotes, insumos, regularidad)'
-                  : tipoGraficoEvolucion === 'combinado'
-                  ? `Lotes elaborados (barras) y volumen total en ${formatearUnidad(unidadSeleccionada)} (línea)`
-                  : productoSeleccionado
-                  ? 'Evolución temporal de lotes elaborados del producto seleccionado'
-                  : 'Cantidad de lotes producidos a lo largo del tiempo clasificados por período'}
+                  : tipoGraficoEvolucion === 'ranking'
+                  ? `Ranking de volumen total elaborado y porcentaje de participación por producto en ${formatearUnidad(unidadSeleccionada)}`
+                  : tipoGraficoEvolucion === 'rendimiento'
+                  ? `Tamaño promedio de lote por producto (${formatearUnidad(unidadSeleccionada)} / lote)`
+                  : `Lotes elaborados (barras) y volumen total en ${formatearUnidad(unidadSeleccionada)} (línea) según período`}
               </CardDescription>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              {(tipoGraficoEvolucion === 'lineas' || tipoGraficoEvolucion === 'barras' || tipoGraficoEvolucion === 'combinado') && (
+              {tipoGraficoEvolucion === 'combinado' && (
                 <div
                   style={{
                     display: 'inline-flex',
@@ -1380,11 +1345,10 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                 }}
               >
                 {[
-                  { id: 'combinado', label: 'Combinado' },
-                  { id: 'barras', label: 'Barras' },
-                  { id: 'lineas', label: 'Líneas' },
+                  { id: 'combinado', label: 'Evolución Temporal' },
+                  { id: 'ranking', label: 'Ranking y Participación' },
+                  { id: 'rendimiento', label: 'Rendimiento / Lote' },
                   { id: 'control_spc', label: 'Control (CEP)' },
-                  { id: 'radar', label: 'Red de Araña' },
                 ].map((modo) => (
                   <button
                     key={modo.id}
@@ -1560,51 +1524,160 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                     </ResponsiveContainer>
                   </div>
                 </div>
-              ) : tipoGraficoEvolucion === 'radar' ? (
+              ) : tipoGraficoEvolucion === 'ranking' ? (
+                <div style={{ width: '100%' }}>
+                  <div style={{ width: '100%', height: Math.max(340, datosDistribucionProductos.length * 52) }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                      <BarChart
+                        layout="vertical"
+                        data={datosDistribucionProductos}
+                        margin={{ top: 12, right: 130, left: 10, bottom: 12 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} horizontal={false} />
+                        <XAxis
+                          type="number"
+                          stroke={colores.textoSec}
+                          fontSize={12}
+                          tickLine={false}
+                          unit={` ${abreviarUnidad(unidadSeleccionada)}`}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="nombre"
+                          stroke={colores.textoSec}
+                          fontSize={12}
+                          tickLine={false}
+                          width={150}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                            borderColor: 'var(--color-borde)',
+                            borderRadius: '8px',
+                            color: 'var(--color-texto)',
+                          }}
+                          formatter={(val: any, name: any, item: any) => [
+                            `${val} ${abreviarUnidad(unidadSeleccionada)} (${item?.payload?.porcentaje ?? 0}%) · ${item?.payload?.lotes ?? 0} lotes`,
+                            'Volumen Fabricado',
+                          ]}
+                        />
+                        <Bar
+                          dataKey="volumen"
+                          name="Volumen Fabricado"
+                          radius={[0, 6, 6, 0]}
+                        >
+                          {datosDistribucionProductos.map((entry, index) => (
+                            <Cell
+                              key={`bar-cell-${entry.nombre}`}
+                              fill={PALETA_COLORES[index % PALETA_COLORES.length]}
+                            />
+                          ))}
+                          <LabelList
+                            dataKey="etiquetaValor"
+                            position="right"
+                            style={{ fontSize: 11.5, fontWeight: 600, fill: colores.texto }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '10px',
+                      justifyContent: 'center',
+                      marginTop: '16px',
+                      paddingTop: '14px',
+                      borderTop: '1px solid var(--color-borde)',
+                    }}
+                  >
+                    {datosDistribucionProductos.map((p, index) => (
+                      <div
+                        key={p.nombre}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '7px',
+                          fontSize: '12px',
+                          padding: '5px 12px',
+                          borderRadius: '8px',
+                          backgroundColor: 'var(--color-fondo)',
+                          border: '1px solid var(--color-borde)',
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '50%',
+                            backgroundColor: PALETA_COLORES[index % PALETA_COLORES.length],
+                            flexShrink: 0,
+                          }}
+                        />
+                        <strong style={{ color: 'var(--text-h)' }}>{p.nombre}:</strong>
+                        <span>{p.volumen} {abreviarUnidad(unidadSeleccionada)}</span>
+                        <span style={{ color: 'var(--color-primario, #3b82f6)', fontWeight: 600 }}>({p.porcentaje}%)</span>
+                        <span style={{ color: 'var(--color-texto-sec)', fontSize: '11px' }}>· {p.lotes} {p.lotes === 1 ? 'lote' : 'lotes'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : tipoGraficoEvolucion === 'rendimiento' ? (
                 <div style={{ width: '100%', height: 360 }}>
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datosRadarProduccion.dimensiones}>
-                      <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
-                      <PolarAngleAxis
-                        dataKey="dimension"
-                        tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
+                    <BarChart data={datosRendimientoLotes} margin={{ top: 16, right: 24, left: 10, bottom: 35 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
+                      <XAxis
+                        dataKey="nombre"
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-15}
+                        textAnchor="end"
+                        height={40}
                       />
-                      <PolarRadiusAxis
-                        angle={90}
-                        domain={[0, 100]}
-                        stroke="var(--color-texto-sec, #64748b)"
-                        tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
+                      <YAxis
+                        allowDecimals={false}
+                        stroke={colores.textoSec}
+                        fontSize={12}
+                        tickLine={false}
+                        width={50}
+                        label={{
+                          value: `Promedio (${abreviarUnidad(unidadSeleccionada)}/lote)`,
+                          angle: -90,
+                          position: 'insideLeft',
+                          offset: 10,
+                          fill: colores.textoSec,
+                          fontSize: 11,
+                        }}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
-                          borderColor: 'var(--color-borde, #334155)',
+                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
+                          borderColor: 'var(--color-borde)',
                           borderRadius: '8px',
-                          color: 'var(--color-texto, #f8fafc)',
+                          color: 'var(--color-texto)',
                         }}
+                        formatter={(val: any, _, item: any) => [
+                          `${val} ${abreviarUnidad(unidadSeleccionada)}/lote (${item?.payload?.lotes} lotes, total ${item?.payload?.volumen} ${abreviarUnidad(unidadSeleccionada)})`,
+                          'Rendimiento promedio',
+                        ]}
                       />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={28}
-                        iconType="circle"
-                        wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
-                      />
-                      {datosRadarProduccion.productos.map((prod) => (
-                        <Radar
-                          key={prod.key}
-                          name={`${prod.nombre} (${prod.lotes} lotes)`}
-                          dataKey={prod.key}
-                          stroke={prod.color}
-                          fill={prod.color}
-                          fillOpacity={0.25}
-                          strokeWidth={2}
-                          dot={{ r: 3, fill: prod.color }}
-                        />
-                      ))}
-                    </RadarChart>
+                      <Bar dataKey="promedio" radius={[5, 5, 0, 0]}>
+                        {datosRendimientoLotes.map((_, index) => (
+                          <Cell
+                            key={`rendimiento-bar-${index}`}
+                            fill={PALETA_COLORES[index % PALETA_COLORES.length]}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
-              ) : tipoGraficoEvolucion === 'combinado' ? (
+              ) : (
                 <div style={{ width: '100%', height: 360 }}>
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <ComposedChart data={datosEvolucionTemporal} margin={{ top: 16, right: 30, left: 10, bottom: 25 }}>
@@ -1671,99 +1744,6 @@ export const VistaDetalladaProduccion: React.FC<VistaDetalladaProduccionProps> =
                       <Bar yAxisId="left" dataKey="lotes" name="Lotes Producidos" fill={colores.primario} radius={[4, 4, 0, 0]} />
                       <Line yAxisId="right" type="monotone" dataKey="volumen" name={`Volumen Fabricado (${abreviarUnidad(unidadSeleccionada)})`} stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3.5, fill: '#f59e0b' }} />
                     </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : tipoGraficoEvolucion === 'lineas' ? (
-                <div style={{ width: '100%', height: 360 }}>
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <AreaChart data={datosEvolucionTemporal} margin={{ top: 12, right: 16, left: -10, bottom: 20 }}>
-                      <defs>
-                        <linearGradient id="gradEvolucionLotes" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={colores.primario} stopOpacity={0.4} />
-                          <stop offset="95%" stopColor={colores.primario} stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                      <XAxis
-                        dataKey="etiqueta"
-                        stroke={colores.textoSec}
-                        fontSize={12}
-                        tickLine={false}
-                        interval={datosEvolucionTemporal.length > 15 ? 'preserveStartEnd' : 0}
-                        angle={datosEvolucionTemporal.length > 8 ? -20 : 0}
-                        textAnchor={datosEvolucionTemporal.length > 8 ? 'end' : 'middle'}
-                        height={datosEvolucionTemporal.length > 8 ? 35 : 25}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        stroke={colores.textoSec}
-                        fontSize={12}
-                        tickLine={false}
-                        width={42}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                          borderColor: 'var(--color-borde)',
-                          borderRadius: '8px',
-                          color: 'var(--color-texto)',
-                        }}
-                        formatter={(valor: any, _, item: any) => [
-                          `${valor} ${valor === 1 ? 'lote' : 'lotes'}${item?.payload?.detalle ? ` (${item.payload.detalle})` : ''}`,
-                          'Lotes Producidos',
-                        ]}
-                        labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="lotes"
-                        stroke={colores.primario}
-                        strokeWidth={2.5}
-                        fillOpacity={1}
-                        fill="url(#gradEvolucionLotes)"
-                        dot={{ r: 3.5, fill: colores.primario, strokeWidth: 2, stroke: 'var(--color-superficie)' }}
-                        activeDot={{ r: 6, stroke: colores.primario, strokeWidth: 2, fill: 'var(--color-superficie)' }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div style={{ width: '100%', height: 360 }}>
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <BarChart data={datosEvolucionTemporal} margin={{ top: 12, right: 16, left: -10, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={colores.borde} vertical={false} />
-                      <XAxis
-                        dataKey="etiqueta"
-                        stroke={colores.textoSec}
-                        fontSize={12}
-                        tickLine={false}
-                        interval={datosEvolucionTemporal.length > 15 ? 'preserveStartEnd' : 0}
-                        angle={datosEvolucionTemporal.length > 8 ? -20 : 0}
-                        textAnchor={datosEvolucionTemporal.length > 8 ? 'end' : 'middle'}
-                        height={datosEvolucionTemporal.length > 8 ? 35 : 25}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        stroke={colores.textoSec}
-                        fontSize={12}
-                        tickLine={false}
-                        width={42}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'var(--color-superficie-elevada, #ffffff)',
-                          borderColor: 'var(--color-borde)',
-                          borderRadius: '8px',
-                          color: 'var(--color-texto)',
-                        }}
-                        formatter={(valor: any, _, item: any) => [
-                          `${valor} ${valor === 1 ? 'lote' : 'lotes'}${item?.payload?.detalle ? ` (${item.payload.detalle})` : ''}`,
-                          'Lotes Producidos',
-                        ]}
-                        labelFormatter={(_, items) => items?.[0]?.payload?.etiquetaCompleta || ''}
-                      />
-                      <Bar dataKey="lotes" fill={colores.primario} radius={[5, 5, 0, 0]} />
-                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}

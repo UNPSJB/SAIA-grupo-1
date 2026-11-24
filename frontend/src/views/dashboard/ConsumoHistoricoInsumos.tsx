@@ -9,11 +9,6 @@ import {
   ComposedChart,
   Legend,
   Line,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -106,7 +101,7 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
   );
   const [agrupacionTiempo, setAgrupacionTiempo] = useState<AgrupacionTiempo>('dia');
   const [unidadSeleccionada, setUnidadSeleccionada] = useState<string>('');
-  const [pestañaGrafico, setPestañaGrafico] = useState<'evolucion' | 'tipo' | 'radar' | 'pareto' | 'proveedor'>('evolucion');
+  const [pestañaGrafico, setPestañaGrafico] = useState<'evolucion' | 'tipo' | 'pareto' | 'proveedor'>('evolucion');
   const [tipoGraficoEvolucion, setTipoGraficoEvolucion] = useState<'lineas' | 'barras'>('lineas');
 
   const [catalogoQuimicos, setCatalogoQuimicos] = useState<InsumoQuimico[]>([]);
@@ -332,8 +327,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
       ? `Consumo Histórico - Evolución Temporal (${unidadUso})`
       : pestañaGrafico === 'tipo'
       ? `Consumo Histórico - Por Tipo de Químico (${unidadUso})`
-      : pestañaGrafico === 'radar'
-      ? `Consumo Histórico - Red de Araña por Tipo (${unidadUso})`
       : pestañaGrafico === 'pareto'
       ? `Consumo Histórico - Diagrama de Pareto 80/20 (${unidadUso})`
       : `Consumo Histórico - Por Proveedor (${unidadUso})`;
@@ -343,16 +336,12 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
       ? `Evolución del volumen acumulado de químicos (${unidadUso}) a través del tiempo.`
       : pestañaGrafico === 'tipo'
       ? `Distribución del consumo según la función química del producto.`
-      : pestañaGrafico === 'radar'
-      ? `Perfil radial multicriterio del consumo de insumos químicos.`
       : pestañaGrafico === 'pareto'
       ? `Concentración del volumen consumido por insumo químico (corte acumulado 80%).`
       : `Comparativa de consumo acumulado según el proveedor suministrador.`;
 
   const puedeExportarGraficoActual =
-    pestañaGrafico === 'radar'
-      ? (datos?.por_tipo || []).length > 0
-      : pestañaGrafico === 'pareto'
+    pestañaGrafico === 'pareto'
       ? datosParetoInsumos.length > 0
       : true;
 
@@ -897,7 +886,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
                     {[
                       { id: 'evolucion', label: 'Evolución Temporal' },
                       { id: 'tipo', label: 'Por Tipo' },
-                      { id: 'radar', label: 'Red de Araña' },
                       { id: 'pareto', label: 'Pareto (80/20)' },
                       { id: 'proveedor', label: 'Por Proveedor' },
                     ].map((tab) => (
@@ -1166,59 +1154,6 @@ export const ConsumoHistoricoInsumos: React.FC<Props> = ({
                 </div>
               )}
 
-              {pestañaGrafico === 'radar' && (
-                <div style={{ width: '100%', minHeight: 360, height: 360, marginTop: '8px' }}>
-                  {(datos?.por_tipo || []).length === 0 ? (
-                    <div style={{ height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-sec)', fontSize: '13px' }}>
-                      Sin datos suficientes para proyectar la red de consumo químico en este período.
-                    </div>
-                  ) : (
-                    <div ref={graficoAnalisisRef} style={{ width: '100%', height: '100%' }}>
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datos?.por_tipo || []}>
-                          <PolarGrid stroke="var(--color-borde, #334155)" strokeDasharray="3 3" />
-                          <PolarAngleAxis
-                            dataKey="etiqueta"
-                            tick={{ fill: 'var(--color-texto, #cbd5e1)', fontSize: 12, fontWeight: 500 }}
-                          />
-                          <PolarRadiusAxis
-                            angle={90}
-                            stroke="var(--color-texto-sec, #64748b)"
-                            tick={{ fontSize: 10, fill: 'var(--color-texto-sec, #64748b)' }}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'var(--color-superficie-elevada, #1e293b)',
-                              borderColor: 'var(--color-borde, #334155)',
-                              borderRadius: '8px',
-                              color: 'var(--color-texto, #f8fafc)',
-                            }}
-                            formatter={(val: any, _, item: any) => [
-                              `${val} ${unidadUso} (${item.payload.porcentaje}%)`,
-                              item.payload.etiqueta,
-                            ]}
-                          />
-                          <Legend
-                            verticalAlign="bottom"
-                            height={28}
-                            iconType="circle"
-                            wrapperStyle={{ fontSize: '12px', paddingTop: '6px' }}
-                          />
-                          <Radar
-                            name="Consumo Acumulado"
-                            dataKey="cantidad_total"
-                            stroke="#3b82f6"
-                            fill="#3b82f6"
-                            fillOpacity={0.4}
-                            strokeWidth={2}
-                            dot={{ r: 4, fill: '#2563eb' }}
-                          />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {pestañaGrafico === 'pareto' && (
                 <div style={{ width: '100%', minHeight: 360, height: 360, marginTop: '8px' }}>
